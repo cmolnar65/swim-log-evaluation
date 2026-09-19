@@ -283,7 +283,12 @@ final class Admin {
 		<form method="post"><?php wp_nonce_field('swimlog_save_privacy'); ?><input type="hidden" name="swimlog_privacy_action" value="save"><table class="form-table" role="presentation"><tr><th scope="row"><?php esc_html_e('Public Results','swim-log-evaluation'); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked($value,'1'); ?>> <?php esc_html_e('Allow my swim results to be displayed by Swim Log public shortcodes.','swim-log-evaluation'); ?></label><p class="description"><?php esc_html_e('Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.','swim-log-evaluation'); ?></p></td></tr></table><?php submit_button(__('Save Privacy','swim-log-evaluation')); ?></form></div><?php
 	}
 	public function settings() {
-		if(!current_user_can('swimlog_manage_settings'))wp_die(esc_html__('You do not have permission to manage Swim Log settings.','swim-log-evaluation'));$saved=false;
+		if(!current_user_can('swimlog_manage_settings'))wp_die(esc_html__('You do not have permission to manage Swim Log settings.','swim-log-evaluation'));$saved=false;$rebuild=null;$rebuild_error=null;
+		if(isset($_POST['swimlog_rebuild_action'])&&$_POST['swimlog_rebuild_action']==='rebuild'){
+			check_admin_referer('swimlog_rebuild_performances');
+			require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';
+			$rebuild=Evaluator::rebuild_all_users();if(is_wp_error($rebuild)){$rebuild_error=$rebuild->get_error_message();$rebuild=null;}
+		}
 		if(isset($_POST['swimlog_settings_action'])&&$_POST['swimlog_settings_action']==='save'){
 			check_admin_referer('swimlog_save_settings');
 			$course=sanitize_key($_POST['default_course_unit']??'m');if(!in_array($course,array('m','yd'),true))$course='m';
@@ -300,6 +305,13 @@ final class Admin {
 		<tr><th><label for="swimlog-event-count"><?php esc_html_e('Upcoming event count','swim-log-evaluation'); ?></label></th><td><input id="swimlog-event-count" type="number" min="1" max="50" name="default_event_count" value="<?php echo esc_attr($count); ?>"></td></tr></table>
 		<h2><?php esc_html_e('Upload Controls','swim-log-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Allowed workout files','swim-log-evaluation'); ?></th><td><label><input type="checkbox" name="allowed_upload_types[]" value="fit" <?php checked(in_array('fit',$types,true)); ?>> FIT</label><br><label><input type="checkbox" name="allowed_upload_types[]" value="csv" <?php checked(in_array('csv',$types,true)); ?>> CSV</label><p class="description"><?php esc_html_e('At least one type must remain enabled. File content is still validated during import.','swim-log-evaluation'); ?></p></td></tr></table>
 		<h2><?php esc_html_e('Privacy and Data Preservation','swim-log-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Public Results default','swim-log-evaluation'); ?></th><td><strong><?php esc_html_e('OFF','swim-log-evaluation'); ?></strong><p class="description"><?php esc_html_e('New swimmers remain private until they explicitly enable Public Results on their Privacy page.','swim-log-evaluation'); ?></p></td></tr><tr><th><?php esc_html_e('Historical data','swim-log-evaluation'); ?></th><td><strong><?php esc_html_e('Preserve data','swim-log-evaluation'); ?></strong><p class="description"><?php esc_html_e('Deactivation, normal updates, and derived-performance rebuilds do not delete workout history, original source files, normalized laps or lengths, locations, or events. Data preservation is mandatory in v0.1.','swim-log-evaluation'); ?></p></td></tr></table>
-		<?php submit_button(__('Save Settings','swim-log-evaluation')); ?></form></div><?php
+		<?php submit_button(__('Save Settings','swim-log-evaluation')); ?></form>
+		<hr><h2><?php esc_html_e('Rebuild Derived Performances','swim-log-evaluation'); ?></h2>
+		<p><?php esc_html_e('Recalculate all derived performances and personal-best flags from the authoritative normalized workout history for every swimmer. Use this after evaluator changes or when calculated results need to be regenerated.','swim-log-evaluation'); ?></p>
+		<div class="notice notice-info inline"><p><strong><?php esc_html_e('Historical data is protected.','swim-log-evaluation'); ?></strong> <?php esc_html_e('This operation replaces only derived performance records. It does not delete or modify original FIT/CSV source files, imports, workouts, laps, lengths, locations, events, or swimmer privacy settings.','swim-log-evaluation'); ?></p></div>
+		<?php if($rebuild_error):?><div class="notice notice-error inline"><p><?php echo esc_html($rebuild_error); ?></p></div><?php endif;?>
+		<?php if($rebuild):?><div class="notice notice-success inline"><p><?php echo esc_html(sprintf(__('Rebuild complete: %1$d swimmers, %2$d workouts processed, and %3$d derived performances generated. %4$d previous derived performance rows were replaced.','swim-log-evaluation'),$rebuild['users'],$rebuild['workouts'],$rebuild['performances'],$rebuild['deleted'])); ?></p></div><?php endif;?>
+		<form method="post"><?php wp_nonce_field('swimlog_rebuild_performances'); ?><input type="hidden" name="swimlog_rebuild_action" value="rebuild"><?php submit_button(__('Rebuild Derived Performances','swim-log-evaluation'),'secondary','submit',false,array('onclick'=>"return confirm('".esc_js(__('Rebuild all derived performances and personal-best flags? Historical workout and source data will not be changed.','swim-log-evaluation'))."');")); ?></form>
+		</div><?php
 	}
 }
