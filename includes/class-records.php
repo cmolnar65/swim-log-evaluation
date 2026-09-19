@@ -19,6 +19,9 @@ final class Records {
 		return $wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND is_personal_best=1 ORDER BY achieved_at ASC,id ASC LIMIT 1",$user_id,$distance,$course,$stroke));
 	}
 
+	public static function progression($user_id,$distance,$course,$stroke=''){
+		$rows=self::history($user_id,$distance,$course,$stroke);$best=null;$out=array();foreach($rows as$r){if($best===null||(int)$r->duration_ms<$best){$best=(int)$r->duration_ms;$out[]=$r;}}return$out;
+	}
 	public static function history($user_id,$distance,$course,$stroke=''){
 		global $wpdb;$t=Database::table('performances');$where="user_id=%d AND distance_value=%d AND course_unit=%s";$args=array($user_id,$distance,$course);
 		if($stroke!==''){$where.=" AND stroke=%s";$args[]=$stroke;}
