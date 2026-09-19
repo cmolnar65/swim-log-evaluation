@@ -40,7 +40,7 @@ final class Evaluator {
 			$r->_native=$native;$block[]=$r;$expected=(int)$r->sequence_no+1;
 		}
 		if($block)$blocks[]=$block;$out=array();
-		foreach($blocks as $b){$n=count($b);for($i=0;$i<$n;$i++){$sum=0;$ms=0;$known=array();$unknown=false;for($j=$i;$j<$n;$j++){$sum+=$b[$j]->_native;$ms+=(int)$b[$j]->elapsed_time_ms;$s=strtoupper((string)$b[$j]->stroke;if(self::known_stroke($s))$known[$s]=true;else$unknown=true;
+		foreach($blocks as $b){$n=count($b);for($i=0;$i<$n;$i++){$sum=0;$ms=0;$known=array();$unknown=false;for($j=$i;$j<$n;$j++){$sum+=$b[$j]->_native;$ms+=(int)$b[$j]->elapsed_time_ms;$s=strtoupper((string)$b[$j]->stroke);if(self::known_stroke($s))$known[$s]=true;else$unknown=true;
 				foreach(self::DISTANCES as $target){if(abs($sum-$target)<0.02){$stroke=$unknown?'UNKNOWN':(count($known)===1?array_key_first($known):(count($known)>1?'MIXED':'UNKNOWN'));$out[]=array('distance'=>$target,'course'=>$course,'stroke'=>$stroke,'duration'=>$ms,'start_id'=>(int)$b[$i]->id,'end_id'=>(int)$b[$j]->id,'start_offset'=>$b[$i]->start_offset_ms,'end_offset'=>null===$b[$j]->start_offset_ms?null:(int)$b[$j]->start_offset_ms+(int)$b[$j]->elapsed_time_ms);break;}if($sum<$target)break;}
 				if($sum>max(self::DISTANCES)+0.02)break;
 			}}}
