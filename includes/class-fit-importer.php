@@ -26,8 +26,8 @@ final class FIT_Importer {
 				if($p+5>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT definition message.','swim-log-evaluation'));
 				$p++; $arch=ord($bin[$p++]); $global=$this->u16(substr($bin,$p,2),$arch); $p+=2; $n=ord($bin[$p++]); $fields=array();
 				for($i=0;$i<$n;$i++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT field definition.','swim-log-evaluation'));$fields[]=array(ord($bin[$p]),ord($bin[$p+1]),ord($bin[$p+2]));$p+=3;}
-				if($hdr&0x20){if($p>=$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer definition.','swim-log-evaluation'));$dn=ord($bin[$p++]);$p+=3*$dn;if($p>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer fields.','swim-log-evaluation'));}
-				$this->defs[$local]=array('arch'=>$arch,'global'=>$global,'fields'=>$fields); continue;
+				$developer_sizes=array();if($hdr&0x20){if($p>=$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer definition.','swim-log-evaluation'));$dn=ord($bin[$p++]);for($di=0;$di<$dn;$di++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer fields.','swim-log-evaluation'));$p++;$developer_sizes[]=ord($bin[$p++]);$p++;}}
+				$this->defs[$local]=array('arch'=>$arch,'global'=>$global,'fields'=>$fields,'developer_sizes'=>$developer_sizes); continue;
 			}
 			$msg=$this->read_data($bin,$p,$end,$local); if(is_wp_error($msg))return $msg; $this->collect($out,$msg);
 		}
@@ -38,6 +38,7 @@ final class FIT_Importer {
 		if(!isset($this->defs[$local]))return new \WP_Error('swimlog_fit_local',__('FIT data references an undefined message type.','swim-log-evaluation'));
 		$d=$this->defs[$local];$vals=array();
 		foreach($d['fields'] as $f){list($num,$size,$base)=$f;if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT data message is truncated.','swim-log-evaluation'));$raw=substr($bin,$p,$size);$p+=$size;$vals[$num]=$this->value($raw,$base,$d['arch']);}
+		foreach(($d['developer_sizes']??array()) as $size){if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT developer data is truncated.','swim-log-evaluation'));$p+=$size;}
 		return array('global'=>$d['global'],'fields'=>$vals);
 	}
 	private function value($raw,$base,$arch){
