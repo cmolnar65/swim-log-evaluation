@@ -34,6 +34,18 @@ final class Workout {
 		return $wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$user_id,$limit));
 	}
 
+	public static function for_month( $user_id, $year, $month ) {
+		global $wpdb; $w=Database::table('workouts'); $l=Database::table('locations');
+		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=date('Y-m-d H:i:s',strtotime($start.' +1 month'));
+		return $wpdb->get_results($wpdb->prepare("SELECT w.*,l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s ORDER BY w.workout_start ASC,w.id ASC",$user_id,$start,$end));
+	}
+
+	public static function totals_by_month_for_year( $user_id, $year ) {
+		global $wpdb; $w=Database::table('workouts');
+		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
+		return $wpdb->get_results($wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM $w WHERE user_id=%d AND workout_start >= %s AND workout_start < %s GROUP BY MONTH(workout_start) ORDER BY month_num ASC",$user_id,$start,$end));
+	}
+
 	public static function lengths( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
