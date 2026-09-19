@@ -4,7 +4,7 @@ if(!defined('ABSPATH')){exit;}
 
 /** Deterministic native-course performance evaluator. Derived data only. */
 final class Evaluator {
-	const VERSION='0.1';
+	const VERSION='0.1.1';
 	const DISTANCES=array(50,100,200,500,800,1000,1500,1650,2000,2500,3300,5000);
 
 	public static function evaluate_workout($workout_id,$user_id){
@@ -32,11 +32,22 @@ final class Evaluator {
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_eval_save',__('Performance evaluation could not be saved.','swim-log-evaluation'));}
 	}
 
+	private static function evaluate_candidates($workout_id,$user_id){
+		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');
+		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-evaluation'));
+		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-evaluation'));
+		$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));$candidates=!empty($rows)?self::from_lengths($rows,$w,$course):array();$laps=array();
+		if(empty($rows)){$laps=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lapt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));if(!empty($laps))$candidates=self::from_laps($laps,$w,$course);}
+		$summary_distance=(float)$w->original_distance;$exact_target=null;foreach(self::DISTANCES as$target){if(abs($summary_distance-$target)<0.001){$exact_target=$target;break;}}
+		if(empty($rows)&&empty($laps)&&null!==$exact_target&&(int)$w->elapsed_time_ms>0)$candidates[]=array('distance'=>$exact_target,'course'=>$course,'stroke'=>self::known_stroke($w->primary_stroke)?strtoupper($w->primary_stroke):'UNKNOWN','duration'=>(int)$w->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>null,'end_offset'=>null);
+		$best=array();foreach($candidates as$c){if((int)$c['duration']<=0)continue;$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}return array('workout'=>$w,'best'=>$best);
+	}
+	private static function insert_performance($pt,$user_id,$workout_id,$w,$c){global $wpdb;return(bool)$wpdb->insert($pt,array('user_id'=>$user_id,'workout_id'=>$workout_id,'distance_value'=>$c['distance'],'course_unit'=>$c['course'],'stroke'=>$c['stroke'],'duration_ms'=>$c['duration'],'start_length_id'=>$c['start_id'],'end_length_id'=>$c['end_id'],'start_offset_ms'=>$c['start_offset'],'end_offset_ms'=>$c['end_offset'],'is_personal_best'=>0,'evaluation_version'=>self::VERSION,'achieved_at'=>$w->workout_start,'created_at'=>current_time('mysql')));}
 	private static function from_lengths($rows,$w,$course){
 		$blocks=array();$block=array();$expected=null;$pool_native=(float)$w->original_pool_length;
 		foreach($rows as $r){
 			$hard=false;
-			if($r->length_type!=='active'||(float)$r->distance_m<=0||null===$r->elapsed_time_ms)$hard=true;
+			if($r->length_type!=='active'||(float)$r->distance_m<=0||null===$r->elapsed_time_ms||(int)$r->elapsed_time_ms<=0)$hard=true;
 			if($expected!==null&&(int)$r->sequence_no!==$expected)$hard=true;
 			if($hard){if($block)$blocks[]=$block;$block=array();$expected=(int)$r->sequence_no+1;continue;}
 			$native=$course==='yd'?(float)$r->distance_m/0.9144:(float)$r->distance_m;
@@ -54,7 +65,7 @@ final class Evaluator {
 		$out=array();$expected=null;$pool_native=(float)$w->original_pool_length;
 		foreach($rows as $r){
 			if($expected!==null&&(int)$r->sequence_no!==$expected){$expected=(int)$r->sequence_no+1;continue;}$expected=(int)$r->sequence_no+1;
-			if(null===$r->distance_m||null===$r->elapsed_time_ms||(float)$r->distance_m<=0)continue;
+			if(null===$r->distance_m||null===$r->elapsed_time_ms||(float)$r->distance_m<=0||(int)$r->elapsed_time_ms<=0)continue;
 			$native=$course==='yd'?(float)$r->distance_m/0.9144:(float)$r->distance_m;$target=null;foreach(self::DISTANCES as $d){if(abs($native-$d)<0.02){$target=$d;break;}}
 			if(null===$target)continue;$stroke=self::known_stroke($r->stroke)?strtoupper($r->stroke):'UNKNOWN';
 			$out[]=array('distance'=>$target,'course'=>$course,'stroke'=>$stroke,'duration'=>(int)$r->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>$r->start_offset_ms??null,'end_offset'=>isset($r->start_offset_ms)?(int)$r->start_offset_ms+(int)$r->elapsed_time_ms:null);
@@ -71,12 +82,16 @@ final class Evaluator {
 		global $wpdb;$wt=Database::table('workouts');$pt=Database::table('performances');
 		$user_id=absint($user_id);if(!$user_id)return new \WP_Error('swimlog_rebuild_user',__('Invalid swimmer.','swim-log-evaluation'));
 		$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d ORDER BY workout_start ASC,id ASC",$user_id));
-		// A rebuild is allowed to replace derived performance rows only. Authoritative
-		// workouts, imports, laps, lengths, locations and events are never touched.
-		$deleted=$wpdb->delete($pt,array('user_id'=>$user_id));if(false===$deleted)return new \WP_Error('swimlog_rebuild_clear',__('Existing derived performances could not be cleared. No workout history was deleted.','swim-log-evaluation'));
-		$count=0;foreach($ids as$id){$r=self::evaluate_workout((int)$id,$user_id);if(is_wp_error($r))return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Rebuild stopped at workout %1$d: %2$s','swim-log-evaluation'),$id,$r->get_error_message()));$count+=$r;}
-		self::recalculate_personal_bests($user_id);
-		return array('workouts'=>count($ids),'performances'=>$count,'deleted'=>(int)$deleted);
+		// Rebuild derived rows atomically for the swimmer. If any workout fails,
+		// rollback restores the complete pre-rebuild performance history.
+		if($wpdb->query('START TRANSACTION')===false)return new \WP_Error('swimlog_rebuild_start',__('Performance rebuild could not start. No workout history was changed.','swim-log-evaluation'));
+		try{
+			$deleted=$wpdb->delete($pt,array('user_id'=>$user_id));if(false===$deleted)throw new \Exception('clear');
+			$count=0;foreach($ids as$id){$r=self::evaluate_candidates((int)$id,$user_id);if(is_wp_error($r))throw new \Exception('workout '.$id.': '.$r->get_error_message());foreach($r['best'] as$c){if(!self::insert_performance($pt,$user_id,(int)$id,$r['workout'],$c))throw new \Exception('performance '.$id);$count++;}}
+			self::recalculate_personal_bests($user_id);
+			if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
+			return array('workouts'=>count($ids),'performances'=>$count,'deleted'=>(int)$deleted);
+		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Performance rebuild failed and was rolled back: %s','swim-log-evaluation'),$e->getMessage()));}
 	}
 	public static function rebuild_all_users(){
 		global $wpdb;$wt=Database::table('workouts');$users=$wpdb->get_col("SELECT DISTINCT user_id FROM $wt ORDER BY user_id ASC");$summary=array('users'=>0,'workouts'=>0,'performances'=>0,'deleted'=>0);
