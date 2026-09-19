@@ -40,4 +40,11 @@ final class ImportFixture001Test extends TestCase {
   $this->assertTrue(is_wp_error($result));
   $this->assertSame('swimlog_csv_incomplete',$result->get_error_code());
  }
+ public function test_garmin_export_csv_is_cleanly_rejected_in_v01(){
+  $path=getenv('SWIMLOG_GARMIN_CSV_FIXTURE');
+  if(!$path||!is_file($path))$this->markTestSkipped('Set SWIMLOG_GARMIN_CSV_FIXTURE to the unchanged private Garmin export CSV activity_22038489308.csv.');
+  $result=(new CSV_Importer)->parse($path);
+  $this->assertTrue(is_wp_error($result),'Garmin export CSV must not be interpreted as a FORM CSV in v0.1.');
+  $this->assertSame('swimlog_csv_format',$result->get_error_code());
+ }
 }
