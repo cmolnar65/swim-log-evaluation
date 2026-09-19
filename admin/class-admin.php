@@ -22,6 +22,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Personal Bests', 'swim-log-evaluation' ), 'swimlog_view_own_results', 'swimlog-personal-bests', 'personal_bests' );
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'swim-log-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
 		$this->submenu( 'swimlog-dashboard', __( 'Locations', 'swim-log-evaluation' ), 'swimlog_manage_own_locations', 'swimlog-locations', 'locations' );
+		$this->submenu( 'swimlog-dashboard', __( 'Privacy', 'swim-log-evaluation' ), 'swimlog_view_own_results', 'swimlog-privacy', 'privacy' );
 
 		if ( current_user_can( 'swimlog_manage_settings' ) ) {
 			$this->submenu( 'swimlog-dashboard', __( 'Shortcodes', 'swim-log-evaluation' ), 'swimlog_manage_settings', 'swimlog-shortcodes', 'shortcodes' );
@@ -270,7 +271,35 @@ final class Admin {
 		<tr><td><code>[swimlog_latest]</code></td><td><?php esc_html_e('Latest swim summary.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_bests]</code></td><td><?php esc_html_e('Native-course personal best table. Supports user, course, stroke, distance, and title attributes.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_upcoming_events]</code></td><td><?php esc_html_e('Upcoming events with exact matching current PB. Supports user, count, and title attributes.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_workout id="123"]</code></td><td><?php esc_html_e('One public workout summary and evaluated workout bests. Ownership is derived from the workout.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_log]</code></td><td><?php esc_html_e('Training log. With no period attribute it shows the current month. Use month="Sep" with optional year="2025" for a monthly workout list, or year="2026" by itself for monthly totals across a year. Meter and yard totals remain separate. Supports user and title attributes.','swim-log-evaluation'); ?></td></tr>
 		</tbody></table><h2><?php esc_html_e('Examples','swim-log-evaluation'); ?></h2><p><code>[swimlog_bests course="m" stroke="BR" distance="200"]</code><br><code>[swimlog_upcoming_events count="3" title="no"]</code><br><code>[swimlog_latest user="123"]</code><br><code>[swimlog_log]</code><br><code>[swimlog_log month="Sep"]</code><br><code>[swimlog_log month="Sep" year="2025"]</code><br><code>[swimlog_log year="2026"]</code></p></div><?php
 	}
+	public function privacy() {
+		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to manage Swim Log privacy.','swim-log-evaluation'));
+		$uid=get_current_user_id();$saved=false;
+		if(isset($_POST['swimlog_privacy_action'])&&$_POST['swimlog_privacy_action']==='save'){
+			check_admin_referer('swimlog_save_privacy');$public=isset($_POST['public_results'])?'1':'0';update_user_meta($uid,'swimlog_public_results',$public);$saved=true;
+		}
+		$value=get_user_meta($uid,'swimlog_public_results',true);if($value==='')$value=get_option('swimlog_public_results_default','0');
+		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Swim Log Privacy','swim-log-evaluation'); ?></h1><?php if($saved):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Privacy setting saved.','swim-log-evaluation'); ?></p></div><?php endif;?>
+		<p><?php esc_html_e('Your swim results are private unless you explicitly enable public results. This controls the public Swim Log shortcodes; it does not change who can manage your workouts in WordPress administration.','swim-log-evaluation'); ?></p>
+		<form method="post"><?php wp_nonce_field('swimlog_save_privacy'); ?><input type="hidden" name="swimlog_privacy_action" value="save"><table class="form-table" role="presentation"><tr><th scope="row"><?php esc_html_e('Public Results','swim-log-evaluation'); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked($value,'1'); ?>> <?php esc_html_e('Allow my swim results to be displayed by Swim Log public shortcodes.','swim-log-evaluation'); ?></label><p class="description"><?php esc_html_e('Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.','swim-log-evaluation'); ?></p></td></tr></table><?php submit_button(__('Save Privacy','swim-log-evaluation')); ?></form></div><?php
+	}
 	public function settings() {
-		$this->page( __( 'Swim Log Settings', 'swim-log-evaluation' ), __( 'Plugin defaults, privacy, upload controls, data preservation, and rebuild tools will appear here.', 'swim-log-evaluation' ), 'swimlog_manage_settings' );
+		if(!current_user_can('swimlog_manage_settings'))wp_die(esc_html__('You do not have permission to manage Swim Log settings.','swim-log-evaluation'));$saved=false;
+		if(isset($_POST['swimlog_settings_action'])&&$_POST['swimlog_settings_action']==='save'){
+			check_admin_referer('swimlog_save_settings');
+			$course=sanitize_key($_POST['default_course_unit']??'m');if(!in_array($course,array('m','yd'),true))$course='m';
+			$count=max(1,min(50,absint($_POST['default_event_count']??5)));
+			$types=array();foreach((array)($_POST['allowed_upload_types']??array()) as$t){$t=sanitize_key($t);if(in_array($t,array('fit','csv'),true))$types[]=$t;}if(!$types)$types=array('fit','csv');
+			update_option('swimlog_default_course_unit',$course);update_option('swimlog_default_event_count',$count);update_option('swimlog_allowed_upload_types',array_values(array_unique($types)));
+			// v0.1 preservation remains enabled; destructive uninstall is deliberately not exposed here.
+			update_option('swimlog_data_preservation','1');update_option('swimlog_public_results_default','0');$saved=true;
+		}
+		$course=get_option('swimlog_default_course_unit','m');$count=(int)get_option('swimlog_default_event_count',5);$types=(array)get_option('swimlog_allowed_upload_types',array('fit','csv'));
+		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Swim Log Settings','swim-log-evaluation'); ?></h1><?php if($saved):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Settings saved.','swim-log-evaluation'); ?></p></div><?php endif;?>
+		<form method="post"><?php wp_nonce_field('swimlog_save_settings'); ?><input type="hidden" name="swimlog_settings_action" value="save"><h2><?php esc_html_e('Defaults','swim-log-evaluation'); ?></h2><table class="form-table" role="presentation">
+		<tr><th><label for="swimlog-default-course"><?php esc_html_e('Default course','swim-log-evaluation'); ?></label></th><td><select id="swimlog-default-course" name="default_course_unit"><option value="m" <?php selected($course,'m'); ?>><?php esc_html_e('Meters','swim-log-evaluation'); ?></option><option value="yd" <?php selected($course,'yd'); ?>><?php esc_html_e('Yards','swim-log-evaluation'); ?></option></select></td></tr>
+		<tr><th><label for="swimlog-event-count"><?php esc_html_e('Upcoming event count','swim-log-evaluation'); ?></label></th><td><input id="swimlog-event-count" type="number" min="1" max="50" name="default_event_count" value="<?php echo esc_attr($count); ?>"></td></tr></table>
+		<h2><?php esc_html_e('Upload Controls','swim-log-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Allowed workout files','swim-log-evaluation'); ?></th><td><label><input type="checkbox" name="allowed_upload_types[]" value="fit" <?php checked(in_array('fit',$types,true)); ?>> FIT</label><br><label><input type="checkbox" name="allowed_upload_types[]" value="csv" <?php checked(in_array('csv',$types,true)); ?>> CSV</label><p class="description"><?php esc_html_e('At least one type must remain enabled. File content is still validated during import.','swim-log-evaluation'); ?></p></td></tr></table>
+		<h2><?php esc_html_e('Privacy and Data Preservation','swim-log-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Public Results default','swim-log-evaluation'); ?></th><td><strong><?php esc_html_e('OFF','swim-log-evaluation'); ?></strong><p class="description"><?php esc_html_e('New swimmers remain private until they explicitly enable Public Results on their Privacy page.','swim-log-evaluation'); ?></p></td></tr><tr><th><?php esc_html_e('Historical data','swim-log-evaluation'); ?></th><td><strong><?php esc_html_e('Preserve data','swim-log-evaluation'); ?></strong><p class="description"><?php esc_html_e('Deactivation, normal updates, and derived-performance rebuilds do not delete workout history, original source files, normalized laps or lengths, locations, or events. Data preservation is mandatory in v0.1.','swim-log-evaluation'); ?></p></td></tr></table>
+		<?php submit_button(__('Save Settings','swim-log-evaluation')); ?></form></div><?php
 	}
 }
