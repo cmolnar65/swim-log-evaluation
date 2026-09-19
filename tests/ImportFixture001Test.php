@@ -174,6 +174,7 @@ final class ImportFixture001Test extends TestCase {
       && abs((int)$this->existing['elapsed_time_ms']-(int)$a[3])<=2000;
     return $auto?(object)array('id'=>9003,'user_id'=>42):null;
    }
+   public function get_results($prepared){return array();}
   };
 
   $m=new ReflectionMethod(Importer::class,'find_match');$m->setAccessible(true);
@@ -183,5 +184,12 @@ final class ImportFixture001Test extends TestCase {
   // The confirmation/review path is deliberately not asserted here because
   // probable-match tolerances are not yet frozen. This regression protects
   // the safety boundary until that workflow is specified and implemented.
+ }
+ public function test_probable_match_classifier_requires_review(){
+  global $wpdb;$fit=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));$this->assertFalse(is_wp_error($fit));$w=$fit['workout'];
+  $candidate=(object)array('id'=>9010,'user_id'=>42,'workout_start'=>$w['workout_start'],'total_distance_m'=>$w['total_distance_m'],'elapsed_time_ms'=>$w['elapsed_time_ms'],'pool_length_m'=>$w['pool_length_m'],'pool_length_unit'=>$w['pool_length_unit']);
+  $wpdb=new class($candidate){public $prefix='wp_';private $c;public function __construct($c){$this->c=$c;}public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}public function get_row($p){return null;}public function get_results($p){return array($this->c);}};
+  $w['elapsed_time_ms']=(int)$w['elapsed_time_ms']+5000;
+  $m=Importer::classify_match(42,$w);$this->assertSame('probable',$m['status']);$this->assertSame(9010,(int)$m['workout']->id);
  }
 }
