@@ -149,4 +149,39 @@ final class ImportFixture001Test extends TestCase {
    && abs((int)$a['elapsed_time_ms']-(int)$b['elapsed_time_ms'])<=2000;
   $this->assertFalse($sameFingerprint,'A clearly different real workout must not satisfy the automatic attachment fingerprint.');
  }
+ public function test_probable_uncertain_match_is_not_silently_attached(){
+  global $wpdb;
+  $fit=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));
+  $this->assertFalse(is_wp_error($fit));
+  $existing=$fit['workout'];
+  $uncertain=$fit['workout'];
+
+  // Preserve the strong identifying characteristics but move elapsed time
+  // outside the frozen high-confidence auto-attach tolerance. This is an
+  // intentionally ambiguous candidate, not permission to create a new
+  // probable-match threshold.
+  $uncertain['elapsed_time_ms']=(int)$existing['elapsed_time_ms']+5000;
+
+  $wpdb=new class($existing){
+   public $prefix='wp_';private $existing;
+   public function __construct($existing){$this->existing=$existing;}
+   public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+   public function get_row($prepared){
+    $a=$prepared['args'];
+    $auto=((int)$a[0]===42)
+      && abs(strtotime($this->existing['workout_start'])-strtotime($a[1]))<=2
+      && abs((float)$this->existing['total_distance_m']-(float)$a[2])<=0.5
+      && abs((int)$this->existing['elapsed_time_ms']-(int)$a[3])<=2000;
+    return $auto?(object)array('id'=>9003,'user_id'=>42):null;
+   }
+  };
+
+  $m=new ReflectionMethod(Importer::class,'find_match');$m->setAccessible(true);
+  $match=$m->invoke(null,42,$uncertain);
+  $this->assertNull($match,'An uncertain candidate outside high-confidence tolerances must never be silently attached.');
+
+  // The confirmation/review path is deliberately not asserted here because
+  // probable-match tolerances are not yet frozen. This regression protects
+  // the safety boundary until that workflow is specified and implemented.
+ }
 }
