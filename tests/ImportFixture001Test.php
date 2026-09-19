@@ -192,4 +192,15 @@ final class ImportFixture001Test extends TestCase {
   $w['elapsed_time_ms']=(int)$w['elapsed_time_ms']+5000;
   $m=Importer::classify_match(42,$w);$this->assertSame('probable',$m['status']);$this->assertSame(9010,(int)$m['workout']->id);
  }
+ public function test_fit_crc_rejects_corruption(){
+  $src=$this->fixture('form-2026-09-19.fit');$bin=file_get_contents($src);$this->assertNotFalse($bin);
+  $hs=ord($bin[0]);$size=unpack('V',substr($bin,4,4))[1];$at=$hs+min(20,max(1,$size-1));$bin[$at]=chr(ord($bin[$at])^0x01);
+  $tmp=tempnam(sys_get_temp_dir(),'swimlog-fit-');file_put_contents($tmp,$bin);try{$r=(new FIT_Importer)->parse($tmp);$this->assertTrue(is_wp_error($r));$this->assertSame('swimlog_fit_crc',$r->get_error_code());}finally{@unlink($tmp);}
+ }
+
+ public function test_fit_device_metadata_is_not_generic_placeholder(){
+  $r=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));$this->assertFalse(is_wp_error($r));
+  $manufacturer=$r['workout']['device_manufacturer'];$this->assertNotSame('FIT',$manufacturer);
+  $this->assertTrue($manufacturer===null||is_string($manufacturer));
+ }
 }
