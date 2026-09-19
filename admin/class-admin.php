@@ -111,7 +111,14 @@ final class Admin {
 		<?php submit_button(__('Upload and Import','swim-log-evaluation')); ?></form></div><?php
 	}
 	public function personal_bests() {
-		$this->page( __( 'Personal Bests', 'swim-log-evaluation' ), __( 'Your native meter and yard personal bests will appear here.', 'swim-log-evaluation' ), 'swimlog_view_own_results' );
+		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
+		$course=sanitize_key($_GET['course']??get_option('swimlog_default_course_unit','m'));if(!in_array($course,array('m','yd'),true))$course='m';$pbs=Records::personal_bests(get_current_user_id(),$course);
+		$cols=array('OVERALL'=>__('Overall','swim-log-evaluation'),'FR'=>__('Freestyle','swim-log-evaluation'),'BR'=>__('Breaststroke','swim-log-evaluation'),'BACK'=>__('Backstroke','swim-log-evaluation'),'FLY'=>__('Butterfly','swim-log-evaluation'),'MIXED'=>__('Mixed','swim-log-evaluation'));
+		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Personal Bests','swim-log-evaluation'); ?></h1><p><a class="button <?php echo $course==='m'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course=m')); ?>"><?php esc_html_e('Meters','swim-log-evaluation'); ?></a> <a class="button <?php echo $course==='yd'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course=yd')); ?>"><?php esc_html_e('Yards','swim-log-evaluation'); ?></a></p>
+		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><?php foreach($cols as $label):?><th><?php echo esc_html($label); ?></th><?php endforeach;?></tr></thead><tbody>
+		<?php foreach(Evaluator::DISTANCES as $d):?><tr><th><?php echo esc_html($d.' '.$course); ?></th><?php foreach($cols as $code=>$label):$p=$pbs[$d][$code]??null;?><td><?php if($p):?><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$p->workout_id),admin_url('admin.php'))); ?>"><?php echo esc_html(Workout::format_duration($p->duration_ms)); ?></a><br><small><?php echo esc_html(wp_date('M j, Y',strtotime($p->achieved_at))); ?></small><?php else:?>&mdash;<?php endif;?></td><?php endforeach;?></tr><?php endforeach;?>
+		</tbody></table></div><?php
 	}
 	public function events() {
 		if ( ! current_user_can( 'swimlog_manage_own_events' ) ) {
