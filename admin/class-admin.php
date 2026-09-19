@@ -264,7 +264,11 @@ final class Admin {
 		<?php
 	}
 	public function shortcodes() {
-		$this->page( __( 'Shortcodes', 'swim-log-evaluation' ), __( 'Public display shortcode documentation will appear here.', 'swim-log-evaluation' ), 'swimlog_manage_settings' );
+		if(!current_user_can('swimlog_manage_settings'))wp_die(esc_html__('You do not have permission to access this Swim Log page.','swim-log-evaluation'));
+		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Shortcodes','swim-log-evaluation'); ?></h1><p><?php esc_html_e('Swim Log public output is display-only and private by default. Without a user attribute, the current page or post author is used. There is no logged-in-viewer fallback.','swim-log-evaluation'); ?></p>
+		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Shortcode','swim-log-evaluation'); ?></th><th><?php esc_html_e('Purpose','swim-log-evaluation'); ?></th></tr></thead><tbody>
+		<tr><td><code>[swimlog_latest]</code></td><td><?php esc_html_e('Latest swim summary.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_bests]</code></td><td><?php esc_html_e('Native-course personal best table. Supports user, course, stroke, distance, and title attributes.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_upcoming_events]</code></td><td><?php esc_html_e('Upcoming events with exact matching current PB. Supports user, count, and title attributes.','swim-log-evaluation'); ?></td></tr><tr><td><code>[swimlog_workout id="123"]</code></td><td><?php esc_html_e('One public workout summary and evaluated workout bests. Ownership is derived from the workout.','swim-log-evaluation'); ?></td></tr>
+		</tbody></table><h2><?php esc_html_e('Examples','swim-log-evaluation'); ?></h2><p><code>[swimlog_bests course="m" stroke="BR" distance="200"]</code><br><code>[swimlog_upcoming_events count="3" title="no"]</code><br><code>[swimlog_latest user="123"]</code></p></div><?php
 	}
 	public function settings() {
 		$this->page( __( 'Swim Log Settings', 'swim-log-evaluation' ), __( 'Plugin defaults, privacy, upload controls, data preservation, and rebuild tools will appear here.', 'swim-log-evaluation' ), 'swimlog_manage_settings' );
