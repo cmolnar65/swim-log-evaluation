@@ -61,4 +61,31 @@ final class ImportFixture001Test extends TestCase {
   $this->assertTrue(Importer::validate($fit));
   $this->assertTrue(Importer::validate($csv));
  }
+ public function test_fit_first_then_csv_attaches_to_same_workout(){
+  global $wpdb;
+  $fit=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));
+  $csv=(new CSV_Importer)->parse($this->fixture('form-2026-09-19.csv'));
+  $this->assertFalse(is_wp_error($fit));$this->assertFalse(is_wp_error($csv));
+  $fw=$fit['workout'];$cw=$csv['workout'];
+
+  // Represent the authoritative workout created by importing FIT first.
+  $wpdb=new class($fw){
+   public $prefix='wp_';private $fit;
+   public function __construct($fit){$this->fit=$fit;}
+   public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+   public function get_row($prepared){
+    $a=$prepared['args'];$uid=(int)$a[0];$start=$a[1];$dist=(float)$a[2];$elapsed=(int)$a[3];
+    if($uid!==42)return null;
+    if(abs(strtotime($this->fit['workout_start'])-strtotime($start))>2)return null;
+    if(abs((float)$this->fit['total_distance_m']-$dist)>0.5)return null;
+    if(abs((int)$this->fit['elapsed_time_ms']-$elapsed)>2000)return null;
+    return (object)array('id'=>9001,'user_id'=>42);
+   }
+  };
+
+  $m=new ReflectionMethod(Importer::class,'find_match');$m->setAccessible(true);
+  $match=$m->invoke(null,42,$cw);
+  $this->assertNotNull($match,'The supported FORM CSV should attach to the FIT-created workout.');
+  $this->assertSame(9001,(int)$match->id);
+ }
 }
