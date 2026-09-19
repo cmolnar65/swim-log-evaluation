@@ -20,6 +20,13 @@ final class Event {
 		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $table WHERE $where ORDER BY $order", $args ) );
 	}
 
+	public static function upcoming_for_user( $user_id, $limit=5 ) {
+		global $wpdb;
+		$table=Database::table('events'); $locations=Database::table('locations');
+		$today=current_time('Y-m-d'); $limit=max(1,min(50,(int)$limit));
+		return $wpdb->get_results($wpdb->prepare("SELECT e.*, l.name AS location_name FROM $table e LEFT JOIN $locations l ON l.id=e.location_id AND l.user_id=e.user_id WHERE e.user_id=%d AND e.event_date >= %s ORDER BY e.event_date ASC, CASE WHEN e.event_time IS NULL THEN 1 ELSE 0 END ASC, e.event_time ASC, e.id ASC LIMIT %d",$user_id,$today,$limit));
+	}
+
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'events' );
