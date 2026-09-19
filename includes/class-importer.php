@@ -20,8 +20,21 @@ final class Importer {
 		$parser=$ext==='fit'?new FIT_Importer():new CSV_Importer();$parsed=$parser->parse($file['tmp_name']);if(is_wp_error($parsed))return $parsed;
 		$v=self::validate($parsed);if(is_wp_error($v))return$v;
 		if(!$location_id&&$ext==='csv')$location_id=self::location_from_csv($user_id,$parsed);
-		$upload=wp_upload_bits('swimlog-'.$user_id.'-'.wp_generate_uuid4().'.'.$ext,null,file_get_contents($file['tmp_name']));
-		if(!empty($upload['error']))return new \WP_Error('swimlog_store',__('The original workout file could not be preserved.','swim-log-evaluation'));
+		$source_bytes = file_get_contents( $file['tmp_name'] );
+		if ( false === $source_bytes ) {
+			return new \WP_Error( 'swimlog_store_read', __( 'The validated workout file could not be read for preservation.', 'swim-log-evaluation' ) );
+		}
+		$upload = wp_upload_bits( 'swimlog-' . $user_id . '-' . wp_generate_uuid4() . '.' . $ext, null, $source_bytes );
+		if ( ! empty( $upload['error'] ) ) {
+			return new \WP_Error(
+				'swimlog_store',
+				sprintf(
+					/* translators: %s: WordPress upload error message. */
+					__( 'The original workout file could not be preserved: %s', 'swim-log-evaluation' ),
+					sanitize_text_field( $upload['error'] )
+				)
+			);
+		}
 
 		$match_info=self::classify_match($user_id,$parsed['workout']);
 		$now=current_time('mysql');
