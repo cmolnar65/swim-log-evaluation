@@ -125,4 +125,28 @@ final class ImportFixture001Test extends TestCase {
   $this->assertEqualsWithDelta(3000.0,(float)$fw['total_distance_m'],0.01);
   $this->assertEqualsWithDelta(3945671,(int)$fw['elapsed_time_ms'],10);
  }
+ public function test_duplicate_source_hash_detection_rule(){
+  $path=$this->fixture('form-2026-09-19.fit');
+  $first=hash_file('sha256',$path);$second=hash_file('sha256',$path);
+  $this->assertSame($first,$second);
+  $this->assertSame(64,strlen($first));
+  // Importer duplicate protection is scoped to user_id + SHA-256 before parsing.
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("SELECT id FROM \\$it WHERE user_id=%d AND file_hash=%s",$source);
+  $this->assertStringContainsString("swimlog_duplicate",$source);
+ }
+
+ public function test_september_18_fit_is_clearly_different_from_september_19(){
+  $other=getenv('SWIMLOG_DIFFERENT_FIT_FIXTURE');
+  if(!$other||!is_file($other))$this->markTestSkipped('Set SWIMLOG_DIFFERENT_FIT_FIXTURE to the unchanged private FORM Sep 18 FIT.');
+  $sep19=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));
+  $sep18=(new FIT_Importer)->parse($other);
+  $this->assertFalse(is_wp_error($sep19));$this->assertFalse(is_wp_error($sep18));
+  $a=$sep19['workout'];$b=$sep18['workout'];
+  $this->assertGreaterThan(2,abs(strtotime($a['workout_start'])-strtotime($b['workout_start'])));
+  $sameFingerprint=abs(strtotime($a['workout_start'])-strtotime($b['workout_start']))<=2
+   && abs((float)$a['total_distance_m']-(float)$b['total_distance_m'])<=0.5
+   && abs((int)$a['elapsed_time_ms']-(int)$b['elapsed_time_ms'])<=2000;
+  $this->assertFalse($sameFingerprint,'A clearly different real workout must not satisfy the automatic attachment fingerprint.');
+ }
 }
