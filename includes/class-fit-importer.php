@@ -56,7 +56,7 @@ final class FIT_Importer {
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
 	private function normalize($o){
 		$s=$o['session']; $pool=isset($s[44])?$s[44]/100:0; $unit=(isset($s[46])&&(int)$s[46]===1)?'yd':'m'; $pool_m=$unit==='yd'?$pool*0.9144:$pool;
-		$start=isset($s[2])?$this->fit_time($s[2]):null; $elapsed=isset($s[7])?(int)round($s[7]*10):null; // FIT time scale 1000 -> ms, raw /1000 sec => raw ms.
+		$start=isset($s[2])?$this->fit_time($s[2]):null; $elapsed=isset($s[7])?(int)$s[7]:null; // FIT total_elapsed_time has scale 1000 seconds; the decoded raw value is already milliseconds.
 		$distance=isset($s[9])?$s[9]/100:null;
 		$lengths=array();$seq=1;$offset=0;
 		foreach($o['lengths'] as $x){$type=(isset($x[12])&&(int)$x[12]===0)?'rest':'active';$ms=isset($x[3])?(int)$x[3]:null;$lengths[]=array('sequence_no'=>$seq++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'start_offset_ms'=>$offset,'distance_m'=>$type==='active'?$pool_m:0,'elapsed_time_ms'=>$ms,'stroke'=>$type==='active'?$this->stroke($x[7]??255):null,'length_type'=>$type,'source_length_index'=>$seq-2,'raw_metadata'=>wp_json_encode($x));if(null!==$ms)$offset+=$ms;}
