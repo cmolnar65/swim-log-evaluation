@@ -59,3 +59,19 @@ Expected facts:
 - normalized active-length distance totals 1554.48 m
 
 This fixture specifically guards against double-converting FIT distance fields when the FIT session declares yard course units.
+
+
+## Fixture 004 — Garmin export CSV (unsupported in v0.1)
+
+Use the exact unchanged private Garmin export CSV `activity_22038489308.csv`, paired with Fixture 003's non-FORM yard-pool FIT workout. Set `SWIMLOG_GARMIN_CSV_FIXTURE` to its local path when running the regression suite. Do not commit the original CSV to the public repository.
+
+Known source characteristics:
+- Garmin export CSV
+- paired with the 25 yd / 1700 yd workout in `22038489308_ACTIVITY.fit`
+- CSV columns include Intervals, Swim Stroke, Lengths, Distance, Time, Cumulative Time, Avg Pace, Best Pace, Avg. Swolf, Avg HR, Max HR, Total Strokes, Avg Strokes, and Calories
+- 68 active 25 yd lengths = 1700 yd
+- 34 freestyle and 34 breaststroke active lengths
+- includes a final rest record
+- CSV timing differs slightly from FIT session elapsed time
+
+v0.1 intentionally supports FORM swim-export CSV only. The regression must therefore verify that this Garmin CSV returns `swimlog_csv_format` and is never misinterpreted as a FORM CSV. Keep this fixture for future Garmin CSV support; when Garmin support is intentionally added, replace this rejection assertion with Garmin-specific normalization assertions rather than weakening FORM format detection.
