@@ -47,4 +47,18 @@ final class ImportFixture001Test extends TestCase {
   $this->assertTrue(is_wp_error($result),'Garmin export CSV must not be interpreted as a FORM CSV in v0.1.');
   $this->assertSame('swimlog_csv_format',$result->get_error_code());
  }
+ public function test_paired_form_sources_meet_match_fingerprint(){
+  $fit=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));
+  $csv=(new CSV_Importer)->parse($this->fixture('form-2026-09-19.csv'));
+  $this->assertFalse(is_wp_error($fit));$this->assertFalse(is_wp_error($csv));
+  $fw=$fit['workout'];$cw=$csv['workout'];
+  $this->assertSame($fw['workout_start'],$cw['workout_start']);
+  $this->assertSame($fw['original_distance_unit'],$cw['original_distance_unit']);
+  $this->assertSame($fw['pool_length_unit'],$cw['pool_length_unit']);
+  $this->assertEqualsWithDelta((float)$fw['pool_length_m'],(float)$cw['pool_length_m'],0.001);
+  $this->assertEqualsWithDelta((float)$fw['total_distance_m'],(float)$cw['total_distance_m'],0.5);
+  $this->assertEqualsWithDelta((int)$fw['elapsed_time_ms'],(int)$cw['elapsed_time_ms'],2000);
+  $this->assertTrue(Importer::validate($fit));
+  $this->assertTrue(Importer::validate($csv));
+ }
 }
