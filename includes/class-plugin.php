@@ -6,6 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		if ( is_admin() ) {
+			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
+			$admin = new Admin();
+			add_action( 'admin_menu', array( $admin, 'register_menu' ) );
+		}
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
 	}
