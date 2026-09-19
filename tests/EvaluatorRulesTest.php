@@ -24,4 +24,19 @@ final class EvaluatorRulesTest extends TestCase {
  public function test_yard_native_distance_is_not_meter_pb(){
   $rows=[$this->row(1,1,'active','FR',20000,25*0.9144),$this->row(2,2,'active','FR',20000,25*0.9144)];$c=$this->candidates($rows,'yd',25);$this->assertSame('yd',$c[0]['course']);$this->assertSame(50,$c[0]['distance']);
  }
+ public function test_sequence_gap_is_hard_boundary(){
+  $rows=[$this->row(1,1),$this->row(2,2),$this->row(4,4),$this->row(5,5)];$c=$this->candidates($rows);$this->assertEmpty(array_filter($c,fn($x)=>$x['distance']===100));
+ }
+ public function test_wrong_length_distance_is_hard_boundary(){
+  $rows=[$this->row(1,1),$this->row(2,2),$this->row(3,3,'active','FR',20000,50),$this->row(4,4),$this->row(5,5)];$c=$this->candidates($rows);$this->assertEmpty(array_filter($c,fn($x)=>$x['distance']===100));
+ }
+ public function test_large_timestamp_gap_alone_does_not_break_block(){
+  $a=$this->row(1,1);$b=$this->row(2,2);$b->start_offset_ms=3600000;$c=$this->candidates([$a,$b]);$this->assertNotEmpty(array_filter($c,fn($x)=>$x['distance']===50));
+ }
+ public function test_exact_millisecond_duration_is_preserved(){
+  $a=$this->row(1,1,'active','FR',18765);$b=$this->row(2,2,'active','FR',19041);$c=$this->candidates([$a,$b]);$f=array_values(array_filter($c,fn($x)=>$x['distance']===50));$this->assertSame(37806,$f[0]['duration']);
+ }
+ public function test_1650_and_3300_meter_targets_are_native(){
+  $rows=[];for($i=1;$i<=132;$i++)$rows[]=$this->row($i,$i);$c=$this->candidates($rows);$d=array_unique(array_column($c,'distance'));$this->assertContains(1650,$d);$this->assertContains(3300,$d);
+ }
 }
