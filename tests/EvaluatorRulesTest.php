@@ -39,4 +39,18 @@ final class EvaluatorRulesTest extends TestCase {
  public function test_1650_and_3300_meter_targets_are_native(){
   $rows=[];for($i=1;$i<=132;$i++)$rows[]=$this->row($i,$i);$c=$this->candidates($rows);$d=array_unique(array_column($c,'distance'));$this->assertContains(1650,$d);$this->assertContains(3300,$d);
  }
+ public function test_zero_duration_length_is_hard_boundary(){
+  $rows=[$this->row(1,1),$this->row(2,2,'active','FR',0),$this->row(3,3),$this->row(4,4)];$c=$this->candidates($rows);$this->assertEmpty(array_filter($c,fn($x)=>$x['distance']===100));
+ }
+ public function test_rest_duration_is_never_included_in_candidate(){
+  $rows=[$this->row(1,1,'active','FR',10000),$this->row(2,2,'active','FR',11000),$this->row(3,3,'rest',null,60000,0),$this->row(4,4,'active','FR',12000),$this->row(5,5,'active','FR',13000)];
+  $c=$this->candidates($rows);$f=array_values(array_filter($c,fn($x)=>$x['distance']===50));$this->assertCount(2,$f);$this->assertSame([21000,25000],array_column($f,'duration'));
+ }
+ public function test_unknown_contamination_beats_mixed_label(){
+  $rows=[$this->row(1,1,'active','FR'),$this->row(2,2,'active','BR'),$this->row(3,3,'active','UNKNOWN'),$this->row(4,4,'active','FR')];$c=$this->candidates($rows);$h=array_values(array_filter($c,fn($x)=>$x['distance']===100));$this->assertSame('UNKNOWN',$h[0]['stroke']);
+ }
+ public function test_overshoot_does_not_create_interpolated_target(){
+  $rows=[$this->row(1,1,'active','FR',20000,30),$this->row(2,2,'active','FR',20000,30)];$c=$this->candidates($rows,'m',0);$this->assertEmpty(array_filter($c,fn($x)=>$x['distance']===50));
+ }
 }
+
