@@ -15,6 +15,22 @@ final class Database {
 		return $wpdb->prefix . 'swimlog_' . $name;
 	}
 
+	public static function required_tables() {
+		return array( 'imports', 'locations', 'workouts', 'laps', 'lengths', 'performances', 'events' );
+	}
+
+	public static function schema_is_complete() {
+		global $wpdb;
+		foreach ( self::required_tables() as $name ) {
+			$table = self::table( $name );
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) );
+			if ( $found !== $table ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public static function install_schema() {
 		global $wpdb;
 
@@ -183,5 +199,8 @@ final class Database {
 		foreach ( $sql as $statement ) {
 			dbDelta( $statement );
 		}
+
+		return self::schema_is_complete();
 	}
 }
+
