@@ -4,6 +4,7 @@
  * Description: Import, normalize, evaluate, and display swimming workout history and personal bests.
  * Version: 0.1.0-dev
  * Author: Christopher Molnar
+ * Author Email: cmolnar65@gmail.com
  * License: GPL-2.0-or-later
  * Text Domain: swim-log-evaluation
  */
