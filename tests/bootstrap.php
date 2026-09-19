@@ -9,3 +9,5 @@ if(!function_exists('is_wp_error')){function is_wp_error($v){return$v instanceof
 require_once dirname(__DIR__).'/includes/class-fit-importer.php';
 require_once dirname(__DIR__).'/includes/class-csv-importer.php';
 require_once dirname(__DIR__).'/includes/class-evaluator.php';
+
+require_once dirname(__DIR__).'/includes/class-importer.php';
