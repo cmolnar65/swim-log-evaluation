@@ -36,7 +36,32 @@ final class Admin {
 	private function swimmer_selector($user_id,$page){
 		if(!current_user_can('swimlog_manage_all_users'))return;$users=get_users(array('fields'=>array('ID','display_name'),'orderby'=>'display_name'));?><form method="get" class="swimlog-swimmer-selector"><input type="hidden" name="page" value="<?php echo esc_attr($page); ?>"><label for="swimlog-swimmer"><?php esc_html_e('Swimmer','swim-log-evaluation'); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach($users as$u):?><option value="<?php echo esc_attr($u->ID); ?>" <?php selected($user_id,$u->ID); ?>><?php echo esc_html($u->display_name.' (#'.$u->ID.')'); ?></option><?php endforeach;?></select> <?php submit_button(__('View','swim-log-evaluation'),'secondary','',false); ?></form><?php
 	}
-	private function admin_css(){?><style>.swimlog-admin .swimlog-table-wrap{overflow-x:auto}.swimlog-admin .swimlog-swimmer-selector{margin:12px 0 18px}.swimlog-admin .swimlog-swimmer-selector label{font-weight:600}.swimlog-admin .swimlog-match-grid{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:16px}.swimlog-admin .swimlog-actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:782px){.swimlog-admin .swimlog-match-grid{grid-template-columns:1fr}.swimlog-admin table.widefat{min-width:680px}.swimlog-admin .swimlog-table-wrap{margin-right:0}.swimlog-admin input[type=date],.swimlog-admin select{max-width:100%}}</style><?php}
+	private function admin_css() {
+		?>
+		<style>
+			.swimlog-admin .swimlog-table-wrap { overflow-x: auto; }
+			.swimlog-admin .swimlog-swimmer-selector { margin: 12px 0 18px; }
+			.swimlog-admin .swimlog-swimmer-selector label { font-weight: 600; }
+			.swimlog-admin .swimlog-match-grid {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(260px, 1fr));
+				gap: 16px;
+			}
+			.swimlog-admin .swimlog-actions {
+				display: flex;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			@media (max-width: 782px) {
+				.swimlog-admin .swimlog-match-grid { grid-template-columns: 1fr; }
+				.swimlog-admin table.widefat { min-width: 680px; }
+				.swimlog-admin .swimlog-table-wrap { margin-right: 0; }
+				.swimlog-admin input[type="date"],
+				.swimlog-admin select { max-width: 100%; }
+			}
+		</style>
+		<?php
+	}
 	private function submenu( $parent, $title, $capability, $slug, $method ) {
 		add_submenu_page( $parent, $title, $title, $capability, $slug, array( $this, $method ) );
 	}
