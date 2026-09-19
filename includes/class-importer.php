@@ -33,7 +33,10 @@ final class Importer {
 			else{self::supplement_workout($workout_id,$user_id,$location_id,$parsed['workout']);}
 			$wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id));
 			$wpdb->query('COMMIT');
-			return array('workout_id'=>$workout_id,'import_id'=>$import_id,'attached'=>(bool)$match,'source'=>$ext);
+			require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';
+			$evaluated=Evaluator::evaluate_workout($workout_id,$user_id);
+			if(is_wp_error($evaluated))return $evaluated;
+			return array('workout_id'=>$workout_id,'import_id'=>$import_id,'attached'=>(bool)$match,'source'=>$ext,'performances'=>$evaluated);
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');@unlink($upload['file']);return new \WP_Error('swimlog_import_failed',__('The workout could not be committed. No normalized workout data was partially saved.','swim-log-evaluation'));}
 	}
 	private static function validate($p){$w=$p['workout'];if(empty($w['workout_start']))return new \WP_Error('swimlog_start',__('Workout start time is missing.','swim-log-evaluation'));if(empty($w['pool_length_unit'])||!in_array($w['pool_length_unit'],array('m','yd'),true))return new \WP_Error('swimlog_course',__('Pool course could not be determined.','swim-log-evaluation'));if(empty($p['lengths']))return new \WP_Error('swimlog_lengths',__('No usable swim lengths were found.','swim-log-evaluation'));$sum=0;foreach($p['lengths'] as $l){if($l['length_type']==='active')$sum+=(float)$l['distance_m'];}if(isset($w['total_distance_m'])&&$w['total_distance_m']!==null&&abs($sum-(float)$w['total_distance_m'])>max(1.0,(float)$w['pool_length_m']))return new \WP_Error('swimlog_totals',__('Workout distance and normalized active lengths disagree. Import stopped for review.','swim-log-evaluation'));return true;}
