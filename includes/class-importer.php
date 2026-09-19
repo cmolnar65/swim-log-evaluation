@@ -11,7 +11,8 @@ final class Importer {
 		if(!empty($file['error']))return new \WP_Error('swimlog_upload',__('The upload failed before import.','swim-log-evaluation'));
 		if((int)$file['size']>self::MAX_BYTES)return new \WP_Error('swimlog_upload_size',__('Workout files may not exceed 10 MB.','swim-log-evaluation'));
 		$name=sanitize_file_name($file['name']);$ext=strtolower(pathinfo($name,PATHINFO_EXTENSION));
-		if(!in_array($ext,array('fit','csv'),true))return new \WP_Error('swimlog_upload_type',__('Only FIT and CSV files are supported.','swim-log-evaluation'));
+		$allowed=(array)get_option('swimlog_allowed_upload_types',array('fit','csv'));
+		if(!in_array($ext,array('fit','csv'),true)||!in_array($ext,$allowed,true))return new \WP_Error('swimlog_upload_type',__('This workout file type is not currently allowed.','swim-log-evaluation'));
 		$hash=hash_file('sha256',$file['tmp_name']);$it=Database::table('imports');
 		if($wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s",$user_id,$hash)))return new \WP_Error('swimlog_duplicate',__('This exact file has already been imported.','swim-log-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$user_id))return new \WP_Error('swimlog_location',__('Select one of your own locations.','swim-log-evaluation'));
