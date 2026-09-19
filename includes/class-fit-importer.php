@@ -62,7 +62,7 @@ final class FIT_Importer {
 	private function collect(&$out,$m){if($m['global']===18)$out['session']=$m['fields'];elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];}
 	private function fit_time($v){$gmt=gmdate('Y-m-d H:i:s',(int)$v+631065600);return get_date_from_gmt($gmt,'Y-m-d H:i:s');}
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
-	private function device_info($devices){$manufacturer=null;$model=null;foreach($devices as $d){if($manufacturer===null&&isset($d[2]))$manufacturer=$this->manufacturer_name((int)$d[2]);if($model===null&&isset($d[4]))$model=(string)$d[4];if($model===null&&isset($d[27])&&$d[27]!=='')$model=(string)$d[27];}return array($manufacturer,$model);}
+	private function device_info($devices){$manufacturer=null;$model=null;foreach($devices as $d){if($manufacturer===null&&isset($d[2])&&is_numeric($d[2])&&(int)$d[2]>0)$manufacturer=$this->manufacturer_name((int)$d[2]);if($model===null&&isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];if($model===null&&isset($d[27])&&$d[27]!=='')$model=(string)$d[27];}return array($manufacturer,$model);}
 	private function manufacturer_name($id){$known=array(1=>'Garmin',15=>'Dynastream',255=>'Development');return $known[$id]??('FIT manufacturer '.$id);}
 	private function normalize($o){
 		$s=$o['session'];list($device_manufacturer,$device_model)=$this->device_info($o['device']); $pool_m=isset($s[44])?$s[44]/100:0; $unit=(isset($s[46])&&(int)$s[46]===1)?'yd':'m';
