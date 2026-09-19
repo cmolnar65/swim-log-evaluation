@@ -26,3 +26,16 @@ Expected independently established facts:
 - FORM CSV contains 7 high-level sets; those are supplemental metadata and are not normalized as native FIT laps
 
 Do not alter fixture bytes to make a parser test pass. Parser behavior must be fixed instead.
+
+## Fixture 002 — incomplete FORM export
+
+Use the original August 26, 2026 export as `form-2026-08-26-empty.csv`.
+
+Expected facts:
+- summary start: 2026-08-26 10:20:19
+- summary end: 2026-08-26 11:07:03
+- 25 m pool
+- detail header is present but there are no detail rows
+- parser may recognize the FORM export, but the importer must reject it with `swimlog_csv_incomplete` rather than create an empty workout
+
+As with Fixture 001, keep the original file private/out of the public repository and point the test environment at an unchanged local copy.
