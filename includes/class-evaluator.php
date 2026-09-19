@@ -53,6 +53,19 @@ final class Evaluator {
 		foreach($groups as $g){$id=$wpdb->get_var($wpdb->prepare("SELECT id FROM $pt WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND duration_ms=%d ORDER BY achieved_at ASC,id ASC LIMIT 1",$user_id,$g->distance_value,$g->course_unit,$g->stroke,$g->best));if($id)$wpdb->update($pt,array('is_personal_best'=>1),array('id'=>$id));}
 	}
 	public static function rebuild_user($user_id){
-		global $wpdb;$wt=Database::table('workouts');$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d ORDER BY workout_start ASC,id ASC",$user_id));$count=0;foreach($ids as $id){$r=self::evaluate_workout((int)$id,$user_id);if(is_wp_error($r))return$r;$count+=$r;}return array('workouts'=>count($ids),'performances'=>$count);
+		global $wpdb;$wt=Database::table('workouts');$pt=Database::table('performances');
+		$user_id=absint($user_id);if(!$user_id)return new \WP_Error('swimlog_rebuild_user',__('Invalid swimmer.','swim-log-evaluation'));
+		$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d ORDER BY workout_start ASC,id ASC",$user_id));
+		// A rebuild is allowed to replace derived performance rows only. Authoritative
+		// workouts, imports, laps, lengths, locations and events are never touched.
+		$deleted=$wpdb->delete($pt,array('user_id'=>$user_id));if(false===$deleted)return new \WP_Error('swimlog_rebuild_clear',__('Existing derived performances could not be cleared. No workout history was deleted.','swim-log-evaluation'));
+		$count=0;foreach($ids as$id){$r=self::evaluate_workout((int)$id,$user_id);if(is_wp_error($r))return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Rebuild stopped at workout %1$d: %2$s','swim-log-evaluation'),$id,$r->get_error_message()));$count+=$r;}
+		self::recalculate_personal_bests($user_id);
+		return array('workouts'=>count($ids),'performances'=>$count,'deleted'=>(int)$deleted);
+	}
+	public static function rebuild_all_users(){
+		global $wpdb;$wt=Database::table('workouts');$users=$wpdb->get_col("SELECT DISTINCT user_id FROM $wt ORDER BY user_id ASC");$summary=array('users'=>0,'workouts'=>0,'performances'=>0,'deleted'=>0);
+		foreach($users as$user_id){$r=self::rebuild_user((int)$user_id);if(is_wp_error($r))return$r;$summary['users']++;$summary['workouts']+=$r['workouts'];$summary['performances']+=$r['performances'];$summary['deleted']+=$r['deleted'];}
+		return$summary;
 	}
 }
