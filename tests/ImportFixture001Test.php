@@ -88,4 +88,41 @@ final class ImportFixture001Test extends TestCase {
   $this->assertNotNull($match,'The supported FORM CSV should attach to the FIT-created workout.');
   $this->assertSame(9001,(int)$match->id);
  }
+ public function test_csv_first_then_fit_attaches_to_same_workout_and_fit_is_structural_authority(){
+  global $wpdb;
+  $csv=(new CSV_Importer)->parse($this->fixture('form-2026-09-19.csv'));
+  $fit=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));
+  $this->assertFalse(is_wp_error($csv));$this->assertFalse(is_wp_error($fit));
+  $cw=$csv['workout'];$fw=$fit['workout'];
+
+  // Represent the workout already created from CSV, then match the later FIT.
+  $wpdb=new class($cw){
+   public $prefix='wp_';private $csv;
+   public function __construct($csv){$this->csv=$csv;}
+   public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+   public function get_row($prepared){
+    $a=$prepared['args'];$uid=(int)$a[0];$start=$a[1];$dist=(float)$a[2];$elapsed=(int)$a[3];
+    if($uid!==42)return null;
+    if(abs(strtotime($this->csv['workout_start'])-strtotime($start))>2)return null;
+    if(abs((float)$this->csv['total_distance_m']-$dist)>0.5)return null;
+    if(abs((int)$this->csv['elapsed_time_ms']-$elapsed)>2000)return null;
+    return (object)array('id'=>9002,'user_id'=>42);
+   }
+  };
+
+  $m=new ReflectionMethod(Importer::class,'find_match');$m->setAccessible(true);
+  $match=$m->invoke(null,42,$fw);
+  $this->assertNotNull($match,'The later FIT should attach to the CSV-created workout.');
+  $this->assertSame(9002,(int)$match->id);
+
+  // FIT import path always replaces normalized structure and updates the
+  // workout, making FIT authoritative after attachment.
+  $this->assertCount(65,$fit['laps']);
+  $this->assertCount(152,$fit['lengths']);
+  $active=array_values(array_filter($fit['lengths'],fn($x)=>$x['length_type']==='active'));
+  $rest=array_values(array_filter($fit['lengths'],fn($x)=>$x['length_type']==='rest'));
+  $this->assertCount(120,$active);$this->assertCount(32,$rest);
+  $this->assertEqualsWithDelta(3000.0,(float)$fw['total_distance_m'],0.01);
+  $this->assertEqualsWithDelta(3945671,(int)$fw['elapsed_time_ms'],10);
+ }
 }
