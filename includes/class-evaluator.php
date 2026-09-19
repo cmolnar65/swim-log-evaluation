@@ -8,14 +8,18 @@ final class Evaluator {
 	const DISTANCES=array(50,100,200,500,800,1000,1500,1650,2000,2500,3300,5000);
 
 	public static function evaluate_workout($workout_id,$user_id){
-		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$pt=Database::table('performances');
+		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');$pt=Database::table('performances');
 		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-evaluation'));
 		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-evaluation'));
 		$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));
 		$candidates=!empty($rows)?self::from_lengths($rows,$w,$course):array();
-		// Summary-only rule: exact target only, no inferred intermediate performances.
-		if(empty($rows)&&in_array((int)$w->original_distance,self::DISTANCES,true)&&$w->elapsed_time_ms){
-			$candidates[]=array('distance'=>(int)$w->original_distance,'course'=>$course,'stroke'=>self::known_stroke($w->primary_stroke)?$w->primary_stroke:'UNKNOWN','duration'=>(int)$w->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>null,'end_offset'=>null);
+		// Source hierarchy: active lengths > native laps > exact whole-workout summary.
+		$laps=array();if(empty($rows)){$laps=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lapt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));if(!empty($laps))$candidates=self::from_laps($laps,$w,$course);}
+		// Summary-only rule: the native distance itself must exactly match a target;
+		// integer coercion must never turn (for example) 50.9 into a 50 PB.
+		$summary_distance=(float)$w->original_distance;$exact_target=null;foreach(self::DISTANCES as $target){if(abs($summary_distance-$target)<0.001){$exact_target=$target;break;}}
+		if(empty($rows)&&empty($laps)&&null!==$exact_target&&$w->elapsed_time_ms){
+			$candidates[]=array('distance'=>$exact_target,'course'=>$course,'stroke'=>self::known_stroke($w->primary_stroke)?strtoupper($w->primary_stroke):'UNKNOWN','duration'=>(int)$w->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>null,'end_offset'=>null);
 		}
 		// Persist fastest candidate per workout/distance/course/stroke.
 		$best=array();foreach($candidates as $c){$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}
@@ -44,6 +48,17 @@ final class Evaluator {
 				foreach(self::DISTANCES as $target){if(abs($sum-$target)<0.02){$stroke=$unknown?'UNKNOWN':(count($known)===1?array_key_first($known):(count($known)>1?'MIXED':'UNKNOWN'));$out[]=array('distance'=>$target,'course'=>$course,'stroke'=>$stroke,'duration'=>$ms,'start_id'=>(int)$b[$i]->id,'end_id'=>(int)$b[$j]->id,'start_offset'=>$b[$i]->start_offset_ms,'end_offset'=>null===$b[$j]->start_offset_ms?null:(int)$b[$j]->start_offset_ms+(int)$b[$j]->elapsed_time_ms);break;}if($sum<$target)break;}
 				if($sum>max(self::DISTANCES)+0.02)break;
 			}}}
+		return$out;
+	}
+	private static function from_laps($rows,$w,$course){
+		$out=array();$expected=null;$pool_native=(float)$w->original_pool_length;
+		foreach($rows as $r){
+			if($expected!==null&&(int)$r->sequence_no!==$expected){$expected=(int)$r->sequence_no+1;continue;}$expected=(int)$r->sequence_no+1;
+			if(null===$r->distance_m||null===$r->elapsed_time_ms||(float)$r->distance_m<=0)continue;
+			$native=$course==='yd'?(float)$r->distance_m/0.9144:(float)$r->distance_m;$target=null;foreach(self::DISTANCES as $d){if(abs($native-$d)<0.02){$target=$d;break;}}
+			if(null===$target)continue;$stroke=self::known_stroke($r->stroke)?strtoupper($r->stroke):'UNKNOWN';
+			$out[]=array('distance'=>$target,'course'=>$course,'stroke'=>$stroke,'duration'=>(int)$r->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>$r->start_offset_ms??null,'end_offset'=>isset($r->start_offset_ms)?(int)$r->start_offset_ms+(int)$r->elapsed_time_ms:null);
+		}
 		return$out;
 	}
 	private static function known_stroke($s){return in_array(strtoupper((string)$s),array('FR','BR','BACK','FLY','MIXED'),true);}
