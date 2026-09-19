@@ -56,12 +56,15 @@ final class FIT_Importer {
 	private function fit_time($v){$gmt=gmdate('Y-m-d H:i:s',(int)$v+631065600);return get_date_from_gmt($gmt,'Y-m-d H:i:s');}
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
 	private function normalize($o){
-		$s=$o['session']; $pool=isset($s[44])?$s[44]/100:0; $unit=(isset($s[46])&&(int)$s[46]===1)?'yd':'m'; $pool_m=$unit==='yd'?$pool*0.9144:$pool;
+		$s=$o['session']; $pool_m=isset($s[44])?$s[44]/100:0; $unit=(isset($s[46])&&(int)$s[46]===1)?'yd':'m';
+		// FIT distance fields are stored in meters even when display/course units are yards.
+		// Preserve metric storage for normalization and derive the native yard values only for original_* fields.
+		$pool=$unit==='yd'?$pool_m/0.9144:$pool_m;
 		$start=isset($s[2])?$this->fit_time($s[2]):null; $elapsed=isset($s[7])?(int)$s[7]:null; // FIT total_elapsed_time has scale 1000 seconds; the decoded raw value is already milliseconds.
-		$distance=isset($s[9])?$s[9]/100:null;
+		$distance_m=isset($s[9])?$s[9]/100:null; $distance=$distance_m!==null&&$unit==='yd'?$distance_m/0.9144:$distance_m;
 		$lengths=array();$seq=1;$offset=0;
 		foreach($o['lengths'] as $x){$type=(isset($x[12])&&(int)$x[12]===0)?'rest':'active';$ms=isset($x[3])?(int)$x[3]:null;$lengths[]=array('sequence_no'=>$seq++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'start_offset_ms'=>$offset,'distance_m'=>$type==='active'?$pool_m:0,'elapsed_time_ms'=>$ms,'stroke'=>$type==='active'?$this->stroke($x[7]??255):null,'length_type'=>$type,'source_length_index'=>$seq-2,'raw_metadata'=>wp_json_encode($x));if(null!==$ms)$offset+=$ms;}
 		$laps=array();$i=1;foreach($o['laps'] as $x){$laps[]=array('sequence_no'=>$i++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
-		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$unit==='yd'&&$distance!==null?$distance*0.9144:$distance,'original_distance'=>$distance,'original_distance_unit'=>$unit,'elapsed_time_ms'=>$elapsed,'pool_length_m'=>$pool_m,'original_pool_length'=>$pool,'pool_length_unit'=>$unit,'device_manufacturer'=>'FIT','device_model'=>null),'laps'=>$laps,'lengths'=>$lengths,'metadata'=>array());
+		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$distance_m,'original_distance'=>$distance,'original_distance_unit'=>$unit,'elapsed_time_ms'=>$elapsed,'pool_length_m'=>$pool_m,'original_pool_length'=>$pool,'pool_length_unit'=>$unit,'device_manufacturer'=>'FIT','device_model'=>null),'laps'=>$laps,'lengths'=>$lengths,'metadata'=>array());
 	}
 }
