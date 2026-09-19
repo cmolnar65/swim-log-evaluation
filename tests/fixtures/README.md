@@ -75,3 +75,8 @@ Known source characteristics:
 - CSV timing differs slightly from FIT session elapsed time
 
 v0.1 intentionally supports FORM swim-export CSV only. The regression must therefore verify that this Garmin CSV returns `swimlog_csv_format` and is never misinterpreted as a FORM CSV. Keep this fixture for future Garmin CSV support; when Garmin support is intentionally added, replace this rejection assertion with Garmin-specific normalization assertions rather than weakening FORM format detection.
+
+
+### Fixture 005 — clearly different FORM workout (private)
+
+Set `SWIMLOG_DIFFERENT_FIT_FIXTURE` to the unchanged September 18, 2026 FORM FIT file (`FORM_2026-09-18_110730.fit`). It is used against the September 19 reference workout to prove a clearly different real workout does not satisfy the automatic attachment fingerprint. Keep the binary outside the public repository.
