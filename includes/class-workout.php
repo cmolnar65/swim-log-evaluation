@@ -27,6 +27,13 @@ final class Workout {
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
+	public static function recent_for_user( $user_id, $limit=5 ) {
+		global $wpdb;
+		$w=Database::table('workouts'); $l=Database::table('locations');
+		$limit=max(1,min(20,(int)$limit));
+		return $wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$user_id,$limit));
+	}
+
 	public static function lengths( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
