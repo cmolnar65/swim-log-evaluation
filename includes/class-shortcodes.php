@@ -10,6 +10,7 @@ final class Shortcodes {
 		add_shortcode('swimlog_bests',array(__CLASS__,'bests'));
 		add_shortcode('swimlog_upcoming_events',array(__CLASS__,'events'));
 		add_shortcode('swimlog_workout',array(__CLASS__,'workout'));
+		add_shortcode('swimlog_log',array(__CLASS__,'log'));
 	}
 	private static function load(){
 		if(self::$loaded)return;
@@ -64,6 +65,36 @@ final class Shortcodes {
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Date','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Event','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Distance','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Stroke','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Current PB','swim-log-evaluation').'</th></tr></thead><tbody>';
 		foreach($events as $e){$pb=Records::exact_personal_best($uid,(int)$e->distance_value,$e->course_unit,$e->stroke);$o.='<tr><td>'.esc_html(wp_date('F j, Y',strtotime($e->event_date.' 12:00:00'))).($e->event_time?'<br><span class="swimlog-muted">'.esc_html(wp_date(get_option('time_format','g:i a'),strtotime($e->event_date.' '.$e->event_time))).'</span>':'').'</td><td>'.esc_html($e->event_name).'</td><td>'.esc_html(self::distance_label((int)$e->distance_value,$e->course_unit)).'</td><td>'.esc_html(self::stroke_name($e->stroke)).'</td><td>'.($pb?esc_html(Workout::format_duration($pb->duration_ms)):'&mdash;').'</td></tr>';}$o.='</tbody></table></div>';return$o.self::close();
 	}
+	private static function month_number($value){
+		$value=trim((string)$value);if($value==='')return(int)current_time('n');
+		if(ctype_digit($value)){ $n=(int)$value; return($n>=1&&$n<=12)?$n:0; }
+		$months=array('jan'=>1,'january'=>1,'feb'=>2,'february'=>2,'mar'=>3,'march'=>3,'apr'=>4,'april'=>4,'may'=>5,'jun'=>6,'june'=>6,'jul'=>7,'july'=>7,'aug'=>8,'august'=>8,'sep'=>9,'sept'=>9,'september'=>9,'oct'=>10,'october'=>10,'nov'=>11,'november'=>11,'dec'=>12,'december'=>12);
+		return$months[strtolower($value)]??0;
+	}
+	private static function distance_totals($rows){
+		$t=array('m'=>0.0,'yd'=>0.0);foreach($rows as$w){$u=$w->original_distance_unit;if(in_array($u,array('m','yd'),true)&&null!==$w->original_distance)$t[$u]+=(float)$w->original_distance;}return$t;
+	}
+	private static function total_label($m,$y){
+		$p=array();if($m>0)$p[]=number_format_i18n($m,0).' m';if($y>0)$p[]=number_format_i18n($y,0).' yd';return$p?implode(' + ',$p):'—';
+	}
+	public static function log($atts){
+		self::load();$raw=(array)$atts;$a=self::attrs($atts,array('month'=>'','year'=>''));$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
+		$has_year=array_key_exists('year',$raw);$has_month=array_key_exists('month',$raw);$year=absint($a['year']??0);if(!$year)$year=(int)current_time('Y');
+		$annual=$has_year&&!$has_month;$o=self::styles();
+		if($annual){
+			if($year<1900||$year>2100)return self::unavailable();$rows=Workout::totals_by_month_for_year($uid,$year);$o.=self::open(sprintf(__('Swim Log — %d','swim-log-evaluation'),$year),$a['title']);
+			if(!$rows)return$o.'<p>'.esc_html__('No swim workouts are available for this year.','swim-log-evaluation').'</p>'.self::close();
+			$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Month','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Workouts','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Total Distance','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Total Elapsed Time','swim-log-evaluation').'</th></tr></thead><tbody>';$wc=0;$tm=0;$ty=0;$te=0;
+			foreach($rows as$r){$wc+=(int)$r->workout_count;$tm+=(float)$r->meters;$ty+=(float)$r->yards;$te+=(int)$r->elapsed_ms;$month=wp_date('F',mktime(12,0,0,(int)$r->month_num,1,$year));$o.='<tr><th scope="row">'.esc_html($month.' '.$year).'</th><td>'.esc_html($r->workout_count).'</td><td>'.esc_html(self::total_label((float)$r->meters,(float)$r->yards)).'</td><td>'.esc_html(Workout::format_duration((int)$r->elapsed_ms)).'</td></tr>';}
+			$o.='<tr><th scope="row">'.esc_html(sprintf(__('%d Total','swim-log-evaluation'),$year)).'</th><td>'.esc_html($wc).'</td><td>'.esc_html(self::total_label($tm,$ty)).'</td><td>'.esc_html(Workout::format_duration($te)).'</td></tr></tbody></table></div>';return$o.self::close();
+		}
+		$month=self::month_number($a['month']??'');if(!$month||$year<1900||$year>2100)return self::unavailable();$rows=Workout::for_month($uid,$year,$month);$label=wp_date('F Y',mktime(12,0,0,$month,1,$year));$o.=self::open(sprintf(__('Swim Log — %s','swim-log-evaluation'),$label),$a['title']);
+		if(!$rows)return$o.'<p>'.esc_html__('No swim workouts are available for this month.','swim-log-evaluation').'</p>'.self::close();
+		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Date','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Location','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Distance','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Course','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Elapsed Time','swim-log-evaluation').'</th></tr></thead><tbody>';$elapsed=0;
+		foreach($rows as$w){$elapsed+=(int)$w->elapsed_time_ms;$dist=null!==$w->original_distance?$w->original_distance.' '.$w->original_distance_unit:($w->total_distance_m?$w->total_distance_m.' m':'—');$o.='<tr><td>'.esc_html(wp_date('F j, Y',strtotime($w->workout_start))).'</td><td>'.esc_html($w->location_name?:'—').'</td><td>'.esc_html($dist).'</td><td>'.esc_html($w->pool_length_unit?:'—').'</td><td>'.esc_html(Workout::format_duration($w->elapsed_time_ms)).'</td></tr>';}
+		$t=self::distance_totals($rows);$o.='<tr><th scope="row">'.esc_html__('Month Total','swim-log-evaluation').'</th><td>'.esc_html(sprintf(_n('%d workout','%d workouts',count($rows),'swim-log-evaluation'),count($rows))).'</td><td>'.esc_html(self::total_label($t['m'],$t['yd'])).'</td><td>—</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.self::close();
+	}
+
 	public static function workout($atts){
 		self::load();$a=self::attrs($atts,array('id'=>''));$id=absint($atts['id']??0);if(!$id)return self::unavailable();global$wpdb;$t=Database::table('workouts');$base=$wpdb->get_row($wpdb->prepare("SELECT id,user_id FROM $t WHERE id=%d",$id));if(!$base)return self::unavailable();$uid=self::owner($a,$base);if(!self::allowed($uid))return self::unavailable();$w=Workout::get_for_user($id,$uid);if(!$w)return self::unavailable();$perfs=Workout::performances($id,$uid);$o=self::styles().self::open(__('Swim Workout','swim-log-evaluation'),$a['title']);
 		$o.='<dl><dt>'.esc_html__('Date','swim-log-evaluation').'</dt><dd>'.esc_html(wp_date('F j, Y',strtotime($w->workout_start))).'</dd>';if($w->location_name)$o.='<dt>'.esc_html__('Location','swim-log-evaluation').'</dt><dd>'.esc_html($w->location_name).'</dd>';$o.='<dt>'.esc_html__('Distance','swim-log-evaluation').'</dt><dd>'.esc_html(null!==$w->original_distance?$w->original_distance.' '.$w->original_distance_unit:($w->total_distance_m?$w->total_distance_m.' m':'—')).'</dd><dt>'.esc_html__('Pool','swim-log-evaluation').'</dt><dd>'.esc_html(null!==$w->original_pool_length?$w->original_pool_length.' '.$w->pool_length_unit:'—').'</dd><dt>'.esc_html__('Elapsed','swim-log-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($w->elapsed_time_ms)).'</dd></dl>';
