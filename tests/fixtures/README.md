@@ -39,3 +39,23 @@ Expected facts:
 - parser may recognize the FORM export, but the importer must reject it with `swimlog_csv_incomplete` rather than create an empty workout
 
 As with Fixture 001, keep the original file private/out of the public repository and point the test environment at an unchanged local copy.
+
+
+## Fixture 003 — non-FORM 25-yard FIT
+
+Use the exact unchanged private file `22038489308_ACTIVITY.fit`. Set `SWIMLOG_YARD_FIT_FIXTURE` to its local path when running the regression suite. Do not commit the original FIT file to the public repository.
+
+Expected facts:
+- non-FORM FIT source
+- 25 yd native pool = 22.86 m normalized
+- 1700 yd native workout distance = 1554.48 m normalized
+- elapsed 2029.308 seconds
+- 2 native FIT laps
+- 69 length/rest records
+- 68 active lengths
+- 1 rest record
+- 34 freestyle active lengths = 850 yd
+- 34 breaststroke active lengths = 850 yd
+- normalized active-length distance totals 1554.48 m
+
+This fixture specifically guards against double-converting FIT distance fields when the FIT session declares yard course units.
