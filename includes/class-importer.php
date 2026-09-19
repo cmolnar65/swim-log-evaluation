@@ -26,7 +26,7 @@ final class Importer {
 		$now=current_time('mysql');
 		if($match_info['status']==='probable'){
 			$ok=$wpdb->insert($it,array('user_id'=>$user_id,'workout_id'=>(int)$match_info['workout']->id,'source_type'=>$ext,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>(int)$file['size'],'parser_version'=>$parsed['parser_version'],'import_status'=>'pending','error_message'=>null,'imported_at'=>$now,'updated_at'=>$now));
-			if(!$ok){@unlink($upload['file']);return new \\WP_Error('swimlog_import_failed',__('The pending import could not be saved.','swim-log-evaluation'));}
+			if(!$ok){return new \WP_Error('swimlog_import_failed',__('The pending import could not be saved.','swim-log-evaluation'));}
 			return array('pending'=>true,'import_id'=>(int)$wpdb->insert_id,'candidate_workout_id'=>(int)$match_info['workout']->id,'source'=>$ext,'workout'=>$parsed['workout']);
 		}
 		$wpdb->query('START TRANSACTION');$import_id=0;
@@ -36,16 +36,20 @@ final class Importer {
 			if(!$workout_id)throw new \Exception('workout');
 			// FIT is structural authority. CSV supplements an existing FIT-backed workout without replacing its lengths.
 			$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));
-			if($ext==='fit'){self::replace_structure($workout_id,$parsed);self::update_workout($workout_id,$user_id,$location_id,$parsed['workout']);}
-			elseif(!$match||!$has_fit){self::replace_structure($workout_id,$parsed);if($match)self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'],false);}
-			else{self::supplement_workout($workout_id,$user_id,$location_id,$parsed['workout']);}
-			$wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id));
-			$wpdb->query('COMMIT');
+			if($ext==='fit'){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if(self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout update');}
+			elseif(!$match||!$has_fit){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if($match&&self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'],false)===false)throw new \Exception('workout update');}
+			else{if(self::supplement_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');}
+			if($wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id))===false)throw new \Exception('import completion');
+			if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
 			require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';
 			$evaluated=Evaluator::evaluate_workout($workout_id,$user_id);
-			if(is_wp_error($evaluated))return $evaluated;
+			if(is_wp_error($evaluated)){self::record_evaluation_error($import_id,$evaluated);return $evaluated;}
 			return array('workout_id'=>$workout_id,'import_id'=>$import_id,'attached'=>(bool)$match,'source'=>$ext,'performances'=>$evaluated);
-		}catch(\Throwable $e){$wpdb->query('ROLLBACK');@unlink($upload['file']);return new \WP_Error('swimlog_import_failed',__('The workout could not be committed. No normalized workout data was partially saved.','swim-log-evaluation'));}
+		}catch(\Throwable $e){
+			$wpdb->query('ROLLBACK');
+			self::persist_failed_import($user_id,$ext,$name,$upload,$hash,(int)$file['size'],$parsed['parser_version'],$e->getMessage());
+			return new \WP_Error('swimlog_import_failed',__('The workout could not be committed. The preserved source file and failure status were retained for diagnosis; no normalized workout data was partially saved.','swim-log-evaluation'));
+		}
 	}
 	public static function validate($p){$w=$p['workout'];if(empty($w['workout_start']))return new \WP_Error('swimlog_start',__('Workout start time is missing.','swim-log-evaluation'));if(empty($w['pool_length_unit'])||!in_array($w['pool_length_unit'],array('m','yd'),true))return new \WP_Error('swimlog_course',__('Pool course could not be determined.','swim-log-evaluation'));if(empty($p['lengths'])){if(($p['source']??'')==='csv')return new \WP_Error('swimlog_csv_incomplete',__('This FORM CSV contains workout information but no swim-length data or workout distance. It cannot be imported as a complete workout.','swim-log-evaluation'));return new \WP_Error('swimlog_lengths',__('No usable swim lengths were found.','swim-log-evaluation'));}$sum=0;foreach($p['lengths'] as $l){if($l['length_type']==='active')$sum+=(float)$l['distance_m'];}if(isset($w['total_distance_m'])&&$w['total_distance_m']!==null&&abs($sum-(float)$w['total_distance_m'])>max(1.0,(float)$w['pool_length_m']))return new \WP_Error('swimlog_totals',__('Workout distance and normalized active lengths disagree. Import stopped for review.','swim-log-evaluation'));return true;}
 	private static function find_match($uid,$w){$m=self::classify_match($uid,$w);return $m['status']==='exact'?$m['workout']:null;}
@@ -69,17 +73,19 @@ final class Importer {
 		$wpdb->query('START TRANSACTION');try{
 			$workout_id=$choice==='attach'?$candidate_id:self::insert_workout($uid,$location_id,$parsed['workout']);if(!$workout_id)throw new \Exception('workout');
 			$it=Database::table('imports');$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));
-			if($row->source_type==='fit'){self::replace_structure($workout_id,$parsed);self::update_workout($workout_id,$uid,$location_id,$parsed['workout']);}
-			elseif($choice==='separate'||!$has_fit){self::replace_structure($workout_id,$parsed);if($choice==='attach')self::update_workout($workout_id,$uid,$location_id,$parsed['workout'],false);}
-			else self::supplement_workout($workout_id,$uid,$location_id,$parsed['workout']);
-			$wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id,'user_id'=>$uid));$wpdb->query('COMMIT');
-			require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';$evaluated=Evaluator::evaluate_workout($workout_id,$uid);if(is_wp_error($evaluated))return $evaluated;
+			if($row->source_type==='fit'){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if(self::update_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout update');}
+			elseif($choice==='separate'||!$has_fit){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if($choice==='attach'&&self::update_workout($workout_id,$uid,$location_id,$parsed['workout'],false)===false)throw new \Exception('workout update');}
+			else if(self::supplement_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');
+			if($wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql'),'error_message'=>null),array('id'=>$import_id,'user_id'=>$uid))===false)throw new \Exception('import completion');if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
+			require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';$evaluated=Evaluator::evaluate_workout($workout_id,$uid);if(is_wp_error($evaluated)){self::record_evaluation_error($import_id,$evaluated);return $evaluated;}
 			return array('workout_id'=>$workout_id,'import_id'=>(int)$import_id,'attached'=>$choice==='attach','source'=>$row->source_type,'performances'=>$evaluated);
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_import_failed',__('The pending workout could not be committed. No normalized workout data was partially saved.','swim-log-evaluation'));}
 	}
+	private static function persist_failed_import($uid,$source,$name,$upload,$hash,$size,$parser_version,$message){global $wpdb;$it=Database::table('imports');$now=current_time('mysql');$existing=$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s",$uid,$hash));if($existing){$wpdb->update($it,array('import_status'=>'failed','error_message'=>substr((string)$message,0,2000),'updated_at'=>$now),array('id'=>(int)$existing,'user_id'=>$uid));return;}$wpdb->insert($it,array('user_id'=>$uid,'workout_id'=>null,'source_type'=>$source,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parser_version,'import_status'=>'failed','error_message'=>substr((string)$message,0,2000),'imported_at'=>$now,'updated_at'=>$now));}
+	private static function record_evaluation_error($import_id,$error){global $wpdb;$it=Database::table('imports');$wpdb->update($it,array('error_message'=>substr('Evaluation: '.$error->get_error_message(),0,2000),'updated_at'=>current_time('mysql')),array('id'=>(int)$import_id));}
 	private static function insert_workout($uid,$loc,$w){global $wpdb;$t=Database::table('workouts');$d=self::workout_values($uid,$loc,$w);$d['created_at']=current_time('mysql');$d['updated_at']=current_time('mysql');return $wpdb->insert($t,$d)?(int)$wpdb->insert_id:0;}
 	private static function update_workout($id,$uid,$loc,$w,$overwrite=true){global $wpdb;$t=Database::table('workouts');$d=self::workout_values($uid,$loc,$w);unset($d['user_id']);if(!$overwrite){foreach($d as $k=>$v){if($v===null||$v==='')unset($d[$k]);}}$d['updated_at']=current_time('mysql');return $wpdb->update($t,$d,array('id'=>$id,'user_id'=>$uid));}
 	private static function supplement_workout($id,$uid,$loc,$w){global $wpdb;$t=Database::table('workouts');$d=array('updated_at'=>current_time('mysql'));if($loc)$d['location_id']=$loc;if(!empty($w['notes']))$d['notes']=$w['notes'];if(!empty($w['device_model']))$d['device_model']=$w['device_model'];return $wpdb->update($t,$d,array('id'=>$id,'user_id'=>$uid));}
 	private static function workout_values($uid,$loc,$w){return array('user_id'=>$uid,'location_id'=>$loc?:null,'workout_start'=>$w['workout_start'],'workout_end'=>$w['workout_end']??null,'total_distance_m'=>$w['total_distance_m']??null,'original_distance'=>$w['original_distance']??null,'original_distance_unit'=>$w['original_distance_unit']??null,'elapsed_time_ms'=>$w['elapsed_time_ms']??null,'moving_time_ms'=>$w['moving_time_ms']??null,'pool_length_m'=>$w['pool_length_m']??null,'original_pool_length'=>$w['original_pool_length']??null,'pool_length_unit'=>$w['pool_length_unit']??null,'primary_stroke'=>$w['primary_stroke']??null,'device_manufacturer'=>$w['device_manufacturer']??null,'device_model'=>$w['device_model']??null,'source_activity_id'=>$w['source_activity_id']??null,'notes'=>$w['notes']??null);}
-	private static function replace_structure($wid,$p){global $wpdb;$lt=Database::table('laps');$nt=Database::table('lengths');$wpdb->delete($lt,array('workout_id'=>$wid));$wpdb->delete($nt,array('workout_id'=>$wid));foreach($p['laps'] as $x){$x['workout_id']=$wid;$x['created_at']=current_time('mysql');$wpdb->insert($lt,$x);}foreach($p['lengths'] as $x){$x['workout_id']=$wid;$x['lap_id']=null;$x['created_at']=current_time('mysql');$wpdb->insert($nt,$x);}}
+	private static function replace_structure($wid,$p){global $wpdb;$lt=Database::table('laps');$nt=Database::table('lengths');if($wpdb->delete($lt,array('workout_id'=>$wid))===false)return false;if($wpdb->delete($nt,array('workout_id'=>$wid))===false)return false;foreach($p['laps'] as $x){$x['workout_id']=$wid;$x['created_at']=current_time('mysql');if(!$wpdb->insert($lt,$x))return false;}foreach($p['lengths'] as $x){$x['workout_id']=$wid;$x['lap_id']=null;$x['created_at']=current_time('mysql');if(!$wpdb->insert($nt,$x))return false;}return true;}
 }
