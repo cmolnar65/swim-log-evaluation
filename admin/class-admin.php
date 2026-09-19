@@ -98,30 +98,33 @@ final class Admin {
 	}
 	public function upload() {
 		if(!current_user_can('swimlog_upload_workouts'))wp_die(esc_html__('You do not have permission to upload workouts.','swim-log-evaluation'));
-		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
-		require_once SWIMLOG_EVALUATION_DIR.'includes/class-location.php';
-		require_once SWIMLOG_EVALUATION_DIR.'includes/class-fit-importer.php';
-		require_once SWIMLOG_EVALUATION_DIR.'includes/class-csv-importer.php';
-		require_once SWIMLOG_EVALUATION_DIR.'includes/class-importer.php';
-		$user_id=get_current_user_id();$locations=Location::all_for_user($user_id);$results=array();$errors=array();
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-location.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-fit-importer.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-csv-importer.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-importer.php';
+		$user_id=get_current_user_id();$locations=Location::all_for_user($user_id);$results=array();$errors=array();$pending=array();
+
+		if(isset($_POST['swimlog_match_action'])&&$_POST['swimlog_match_action']==='resolve'){
+			check_admin_referer('swimlog_resolve_match');$import_id=absint($_POST['import_id']??0);$choice=sanitize_key($_POST['match_choice']??'');$loc=absint($_POST['location_id']??0);
+			$res=Importer::resolve_pending($import_id,$user_id,$choice,$loc);if(is_wp_error($res))$errors[]=$res->get_error_message();else$results[]=$res;
+		}
 		if(isset($_POST['swimlog_upload_action'])&&'import'===$_POST['swimlog_upload_action']){
-			check_admin_referer('swimlog_upload_workout');$loc=absint($_POST['location_id']??0);
-			$files=$_FILES['workout_files']??array();
+			check_admin_referer('swimlog_upload_workout');$loc=absint($_POST['location_id']??0);$files=$_FILES['workout_files']??array();
 			if(empty($files['name']))$errors[]=__('Choose at least one FIT or CSV file.','swim-log-evaluation');
-			else{
-				$items=array();foreach((array)$files['name'] as $i=>$name){$items[]=array('name'=>$name,'type'=>$files['type'][$i]??'','tmp_name'=>$files['tmp_name'][$i]??'','error'=>$files['error'][$i]??UPLOAD_ERR_NO_FILE,'size'=>$files['size'][$i]??0);}
-				usort($items,function($x,$y){return(strtolower(pathinfo($x['name'],PATHINFO_EXTENSION))==='fit'?-1:1);}); // FIT first: structural authority.
-				foreach($items as $file){$res=Importer::import_upload($user_id,$file,$loc);if(is_wp_error($res))$errors[]=$file['name'].': '.$res->get_error_message();else$results[]=$res;}
+			else{$items=array();foreach((array)$files['name'] as $i=>$name){$items[]=array('name'=>$name,'type'=>$files['type'][$i]??'','tmp_name'=>$files['tmp_name'][$i]??'','error'=>$files['error'][$i]??UPLOAD_ERR_NO_FILE,'size'=>$files['size'][$i]??0);}usort($items,function($x,$y){return(strtolower(pathinfo($x['name'],PATHINFO_EXTENSION))==='fit'?-1:1);});
+				foreach($items as $file){$res=Importer::import_upload($user_id,$file,$loc);if(is_wp_error($res))$errors[]=$file['name'].': '.$res->get_error_message();elseif(!empty($res['pending']))$pending[]=$res;else$results[]=$res;}
 			}
 		}
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Upload Workout','swim-log-evaluation'); ?></h1>
-		<p><?php esc_html_e('Upload FORM CSV files, FIT pool-swim files, or both files from the same workout. When both are supplied, FIT is used as the structural authority and CSV supplements FORM-specific information. Original source files are preserved.','swim-log-evaluation'); ?></p>
+		<p><?php esc_html_e('Upload FORM CSV files, FIT pool-swim files, or both files from the same workout. High-confidence matches attach automatically. Probable matches require your confirmation before any workout history is changed.','swim-log-evaluation'); ?></p>
 		<?php foreach($errors as $e):?><div class="notice notice-error"><p><?php echo esc_html($e); ?></p></div><?php endforeach;?>
 		<?php foreach($results as $res):?><div class="notice notice-success"><p><?php echo esc_html($res['attached']?__('Source file attached to an existing matching workout.','swim-log-evaluation'):__('Workout imported successfully.','swim-log-evaluation')); ?> <a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$res['workout_id']),admin_url('admin.php'))); ?>"><?php esc_html_e('View workout','swim-log-evaluation'); ?></a></p></div><?php endforeach;?>
-		<form method="post" enctype="multipart/form-data"><?php wp_nonce_field('swimlog_upload_workout'); ?><input type="hidden" name="swimlog_upload_action" value="import">
-		<table class="form-table" role="presentation"><tr><th><label for="swimlog-workout-files"><?php esc_html_e('Workout files','swim-log-evaluation'); ?></label></th><td><input required id="swimlog-workout-files" type="file" name="workout_files[]" accept=".fit,.csv" multiple><p class="description"><?php esc_html_e('FIT and CSV only. Maximum 10 MB per file. You may select both files for one workout. CSV support in this version is currently limited to FORM swim-export CSV files; support for additional CSV formats is planned for future versions.','swim-log-evaluation'); ?></p></td></tr>
-		<tr><th><label for="swimlog-upload-location"><?php esc_html_e('Location','swim-log-evaluation'); ?></label></th><td><select id="swimlog-upload-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','swim-log-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>"><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php esc_html_e('Optional. The selected location must belong to you.','swim-log-evaluation'); ?></p></td></tr></table>
-		<?php submit_button(__('Upload and Import','swim-log-evaluation')); ?></form></div><?php
+		<?php foreach($pending as $p):$row=Importer::pending_for_user($p['import_id'],$user_id);if(!$row)continue;$nw=$p['workout'];?><div class="notice notice-warning inline"><h2><?php esc_html_e('Possible matching workout','swim-log-evaluation'); ?></h2><p><?php esc_html_e('This upload may be another source for an existing workout. Review the values below. Nothing will be attached until you choose.','swim-log-evaluation'); ?></p>
+		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Field','swim-log-evaluation'); ?></th><th><?php esc_html_e('Existing workout','swim-log-evaluation'); ?></th><th><?php esc_html_e('Uploaded source','swim-log-evaluation'); ?></th></tr></thead><tbody>
+		<tr><th><?php esc_html_e('Start','swim-log-evaluation'); ?></th><td><?php echo esc_html(wp_date('F j, Y g:i:s a',strtotime($row->candidate_start))); ?></td><td><?php echo esc_html(wp_date('F j, Y g:i:s a',strtotime($nw['workout_start']))); ?></td></tr>
+		<tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><td><?php echo esc_html($row->candidate_original_distance.' '.$row->candidate_distance_unit); ?></td><td><?php echo esc_html($nw['original_distance'].' '.$nw['original_distance_unit']); ?></td></tr>
+		<tr><th><?php esc_html_e('Pool','swim-log-evaluation'); ?></th><td><?php echo esc_html($row->candidate_pool_length.' '.$row->candidate_course); ?></td><td><?php echo esc_html($nw['original_pool_length'].' '.$nw['pool_length_unit']); ?></td></tr>
+		<tr><th><?php esc_html_e('Elapsed','swim-log-evaluation'); ?></th><td><?php echo esc_html(number_format((int)$row->candidate_elapsed_ms/1000,3).' s'); ?></td><td><?php echo esc_html(number_format((int)$nw['elapsed_time_ms']/1000,3).' s'); ?></td></tr></tbody></table>
+		<form method="post" style="margin-top:12px"><?php wp_nonce_field('swimlog_resolve_match'); ?><input type="hidden" name="swimlog_match_action" value="resolve"><input type="hidden" name="import_id" value="<?php echo esc_attr($p['import_id']); ?>"><input type="hidden" name="location_id" value="<?php echo esc_attr($loc??0); ?>"><button class="button button-primary" name="match_choice" value="attach"><?php esc_html_e('Attach to this workout','swim-log-evaluation'); ?></button> <button class="button" name="match_choice" value="separate"><?php esc_html_e('Import as a separate workout','swim-log-evaluation'); ?></button></form></div><?php endforeach;?>
+		<form method="post" enctype="multipart/form-data"><?php wp_nonce_field('swimlog_upload_workout'); ?><input type="hidden" name="swimlog_upload_action" value="import"><table class="form-table" role="presentation"><tr><th><label for="swimlog-workout-files"><?php esc_html_e('Workout files','swim-log-evaluation'); ?></label></th><td><input required id="swimlog-workout-files" type="file" name="workout_files[]" accept=".fit,.csv" multiple><p class="description"><?php esc_html_e('FIT and CSV only. Maximum 10 MB per file. CSV support in this version is limited to FORM swim-export CSV files.','swim-log-evaluation'); ?></p></td></tr>
+		<tr><th><label for="swimlog-upload-location"><?php esc_html_e('Location','swim-log-evaluation'); ?></label></th><td><select id="swimlog-upload-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','swim-log-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>"><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select></td></tr></table><?php submit_button(__('Upload and Import','swim-log-evaluation')); ?></form></div><?php
 	}
 	public function personal_bests() {
 		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
