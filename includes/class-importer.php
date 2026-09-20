@@ -102,9 +102,10 @@ final class Importer {
 		}
 		$dir=untrailingslashit($dir);
 		if(!self::is_outside_web_root($dir))return new \WP_Error('swimlog_store_public',__('The workout source directory must be outside the public web root. Import stopped before preserving the source.','swim-log-evaluation'));
-		if(!is_dir($dir)&&!wp_mkdir_p($dir)){error_log('Swim Log: Unable to create private source directory: '.$dir);return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));}
-		if(!is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable. Import stopped before preserving the source.','swim-log-evaluation'));
-		$index=trailingslashit($dir).'index.php';if(!file_exists($index)&&false===@file_put_contents($index,"<?php\\n// Silence is golden.\\n"))return new \WP_Error('swimlog_store',__('The private workout source directory could not be initialized.','swim-log-evaluation'));
+		$fs=self::filesystem();if(is_wp_error($fs))return$fs;
+		if(!$fs->is_dir($dir)&&!$fs->mkdir($dir,FS_CHMOD_DIR))return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));
+		if(!$fs->is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable. Import stopped before preserving the source.','swim-log-evaluation'));
+		$index=trailingslashit($dir).'index.php';if(!$fs->exists($index)&&!$fs->put_contents($index,"<?php\n// Silence is golden.\n",FS_CHMOD_FILE))return new \WP_Error('swimlog_store',__('The private workout source directory could not be initialized.','swim-log-evaluation'));
 		return$dir;
 	}
 	private static function is_outside_web_root($dir){
@@ -114,8 +115,14 @@ final class Importer {
 		$candidate=rtrim($candidate,'/').'/';return strpos($candidate,$root)!==0;
 	}
 	private static function preserve_source($uid,$ext,$tmp){
-		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$filename='swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
-		if(!@copy($tmp,$path))return new \WP_Error('swimlog_store',__('The original workout file could not be preserved in protected storage.','swim-log-evaluation'));@chmod($path,0640);return array('file'=>$path,'url'=>'','error'=>false);
+		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$fs=self::filesystem();if(is_wp_error($fs))return$fs;$filename='swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
+		if(!$fs->copy($tmp,$path,true,0640))return new \WP_Error('swimlog_store',__('The original workout file could not be preserved in protected storage.','swim-log-evaluation'));$fs->chmod($path,0640);return array('file'=>$path,'url'=>'','error'=>false);
+	}
+	private static function filesystem(){
+		global $wp_filesystem;
+		if(!function_exists('WP_Filesystem'))require_once ABSPATH.'wp-admin/includes/file.php';
+		if(!$wp_filesystem&&!WP_Filesystem())return new \WP_Error('swimlog_filesystem',__('WordPress could not initialize filesystem access for protected workout storage.','swim-log-evaluation'));
+		return$wp_filesystem;
 	}
 	private static function cleanup_unowned_source($path,$uid,$hash){global $wpdb;if(!$path||!is_file($path))return;$it=Database::table('imports');$owned=$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s AND stored_path=%s",$uid,$hash,$path));if(!$owned)wp_delete_file($path);}
 	private static function persist_failed_import($uid,$source,$name,$upload,$hash,$size,$parser_version,$message){global $wpdb;$it=Database::table('imports');$now=current_time('mysql');$existing=$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s",$uid,$hash));if($existing){$ok=$wpdb->update($it,array('import_status'=>'failed','error_message'=>substr((string)$message,0,2000),'updated_at'=>$now),array('id'=>(int)$existing,'user_id'=>$uid));return false!==$ok;}$ok=$wpdb->insert($it,array('user_id'=>$uid,'workout_id'=>null,'source_type'=>$source,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parser_version,'import_status'=>'failed','error_message'=>substr((string)$message,0,2000),'imported_at'=>$now,'updated_at'=>$now));return(bool)$ok;}
