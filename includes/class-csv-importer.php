@@ -6,8 +6,10 @@ if(!defined('ABSPATH')){exit;}
 final class CSV_Importer {
 	const VERSION='0.1';
 	public function parse($path){
-		$h=fopen($path,'r');if(!$h)return new \WP_Error('swimlog_csv_read',__('CSV file could not be read.','swim-log-evaluation'));
-		$rows=array();while(($r=fgetcsv($h))!==false){$rows[]=$r;if(count($rows)>20000){fclose($h);return new \WP_Error('swimlog_csv_large',__('CSV contains too many rows.','swim-log-evaluation'));}}fclose($h);
+		global $wp_filesystem;if(!function_exists('WP_Filesystem'))require_once ABSPATH.'wp-admin/includes/file.php';
+		if(!$wp_filesystem&&!WP_Filesystem())return new \WP_Error('swimlog_csv_read',__('WordPress could not initialize filesystem access for the CSV import.','swim-log-evaluation'));
+		$contents=$wp_filesystem->get_contents($path);if(false===$contents)return new \WP_Error('swimlog_csv_read',__('CSV file could not be read.','swim-log-evaluation'));
+		$records=str_getcsv($contents,"\n");$rows=array();foreach($records as $record){$record=rtrim($record,"\r");if(''===$record)continue;$rows[]=str_getcsv($record);if(count($rows)>20000)return new \WP_Error('swimlog_csv_large',__('CSV contains too many rows.','swim-log-evaluation'));}
 		$summary=null;$detail_header=null;$detail_start=null;
 		for($i=0;$i<count($rows);$i++){
 			$norm=array_map(array($this,'key'),$rows[$i]);
