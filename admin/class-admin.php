@@ -104,8 +104,28 @@ final class Admin {
 		if($detail){
 			$w=Workout::get_for_user($detail,$user_id);
 			if(!$w) wp_die(esc_html__('Workout not found.','swim-log-evaluation'));
+			$edit=isset($_GET['edit'])&&'1'===$_GET['edit']; $metadata_error=null;
+			if(isset($_POST['swimlog_workout_action'])&&'save_metadata'===$_POST['swimlog_workout_action']){
+				check_admin_referer('swimlog_save_workout_metadata_'.$detail);
+				$result=Workout::update_metadata($detail,$user_id,absint($_POST['location_id']??0),wp_unslash($_POST['notes']??''));
+				if(is_wp_error($result)){$metadata_error=$result->get_error_message();$edit=true;}
+				else{
+					$redirect=add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'saved'=>1),admin_url('admin.php'));
+					if(!headers_sent()){wp_safe_redirect($redirect);exit;}
+					echo '<script>window.location.replace('.wp_json_encode($redirect).');</script><noscript><p><a href="'.esc_url($redirect).'">'.esc_html__('Return to Workout','swim-log-evaluation').'</a></p></noscript>';exit;
+				}
+			}
+			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
 			$lengths=Workout::lengths($detail,$user_id); $perfs=Workout::performances($detail,$user_id); $imports=Workout::imports($detail,$user_id);
 			?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workout Details','swim-log-evaluation'); ?></h1><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-workouts')); ?>">&larr; <?php esc_html_e('Back to Workouts','swim-log-evaluation'); ?></a></p>
+			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Workout metadata saved. Imported swim data and historical pool snapshot were unchanged.','swim-log-evaluation'); ?></p></div><?php endif;?>
+			<?php if($metadata_error):?><div class="notice notice-error"><p><?php echo esc_html($metadata_error); ?></p></div><?php endif;?>
+			<?php if($edit):?>
+			<form method="post"><?php wp_nonce_field('swimlog_save_workout_metadata_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="save_metadata">
+			<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-workout-location"><?php esc_html_e('Location','swim-log-evaluation'); ?></label></th><td><select id="swimlog-workout-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','swim-log-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected((int)$w->location_id,(int)$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php esc_html_e('Changing the location does not change the pool length or course stored with this workout.','swim-log-evaluation'); ?></p></td></tr>
+			<tr><th scope="row"><label for="swimlog-workout-notes"><?php esc_html_e('Notes','swim-log-evaluation'); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-workout-notes" name="notes"><?php echo esc_textarea($w->notes??''); ?></textarea></td></tr></table>
+			<?php submit_button(__('Save Changes','swim-log-evaluation'),'primary','',false); ?> <a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail),admin_url('admin.php'))); ?>"><?php esc_html_e('Cancel','swim-log-evaluation'); ?></a></form>
+			<?php else:?><p><a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit Workout','swim-log-evaluation'); ?></a></p>
 			<table class="widefat striped"><tbody>
 			<tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><td><?php echo esc_html(mysql2date('F j, Y g:i a',$w->workout_start,false)); ?></td></tr>
 			<tr><th><?php esc_html_e('Location','swim-log-evaluation'); ?></th><td><?php echo esc_html($w->location_name?:'—'); ?></td></tr>
@@ -113,7 +133,8 @@ final class Admin {
 			<tr><th><?php esc_html_e('Pool','swim-log-evaluation'); ?></th><td><?php echo esc_html(null!==$w->original_pool_length?$w->original_pool_length.' '.$w->pool_length_unit:'—'); ?></td></tr>
 			<tr><th><?php esc_html_e('Elapsed','swim-log-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->elapsed_time_ms)); ?></td></tr>
 			<tr><th><?php esc_html_e('Primary stroke','swim-log-evaluation'); ?></th><td><?php echo esc_html($strokes[$w->primary_stroke]??($w->primary_stroke?:'—')); ?></td></tr>
-			</tbody></table>
+			<tr><th><?php esc_html_e('Notes','swim-log-evaluation'); ?></th><td><?php echo ''!==trim((string)($w->notes??''))?nl2br(esc_html($w->notes)):'—'; ?></td></tr>
+			</tbody></table><?php endif;?>
 			<h2><?php esc_html_e('Workout Performances','swim-log-evaluation'); ?></h2>
 			<?php if(!$perfs):?><p><?php esc_html_e('No evaluated performances are stored for this workout yet.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Stroke','swim-log-evaluation'); ?></th><th><?php esc_html_e('Time','swim-log-evaluation'); ?></th><th><?php esc_html_e('Current PB','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($perfs as $p):?><tr><td><?php echo esc_html($p->distance_value.' '.$p->course_unit); ?></td><td><?php echo esc_html($strokes[$p->stroke]??$p->stroke); ?></td><td><?php echo esc_html(Workout::format_duration($p->duration_ms)); ?></td><td><?php echo $p->is_personal_best?esc_html__('Yes','swim-log-evaluation'):'—'; ?></td></tr><?php endforeach;?></tbody></table><?php endif;?>
 			<h2><?php esc_html_e('Source Imports','swim-log-evaluation'); ?></h2><?php if(!$imports):?><p><?php esc_html_e('No source import records are attached.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Type','swim-log-evaluation'); ?></th><th><?php esc_html_e('Original file','swim-log-evaluation'); ?></th><th><?php esc_html_e('Status','swim-log-evaluation'); ?></th><th><?php esc_html_e('Imported','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($imports as $i):?><tr><td><?php echo esc_html(strtoupper($i->source_type)); ?></td><td><?php echo esc_html($i->original_filename); ?></td><td><?php echo esc_html($i->import_status); ?></td><td><?php echo esc_html(wp_date('F j, Y g:i a',strtotime($i->imported_at))); ?></td></tr><?php endforeach;?></tbody></table><?php endif;?>
