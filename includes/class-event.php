@@ -12,12 +12,32 @@ final class Event {
 		global $wpdb;
 		$table = Database::table( 'events' );
 		$today = current_time( 'Y-m-d' );
-		$where = 'user_id = %d';
-		$args = array( $user_id );
-		if ( 'upcoming' === $view ) { $where .= ' AND event_date >= %s'; $args[] = $today; }
-		elseif ( 'past' === $view ) { $where .= ' AND event_date < %s'; $args[] = $today; }
-		$order = 'past' === $view ? 'event_date DESC, event_time DESC, id DESC' : 'event_date ASC, event_time ASC, id ASC';
-		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $table WHERE $where ORDER BY $order", $args ) );
+		// Keep the prepared query shapes static so placeholder counts are explicit.
+		// The view controls only which fixed query is selected; it is never inserted into SQL.
+		if ( 'upcoming' === $view ) {
+			return $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM $table WHERE user_id = %d AND event_date >= %s ORDER BY event_date ASC, event_time ASC, id ASC",
+					$user_id,
+					$today
+				)
+			);
+		}
+		if ( 'past' === $view ) {
+			return $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM $table WHERE user_id = %d AND event_date < %s ORDER BY event_date DESC, event_time DESC, id DESC",
+					$user_id,
+					$today
+				)
+			);
+		}
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM $table WHERE user_id = %d ORDER BY event_date ASC, event_time ASC, id ASC",
+				$user_id
+			)
+		);
 	}
 
 	public static function upcoming_for_user( $user_id, $limit=5 ) {
