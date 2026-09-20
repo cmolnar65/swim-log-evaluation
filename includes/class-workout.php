@@ -36,7 +36,7 @@ final class Workout {
 
 	public static function for_month( $user_id, $year, $month ) {
 		global $wpdb; $w=Database::table('workouts'); $l=Database::table('locations');
-		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=date('Y-m-d H:i:s',strtotime($start.' +1 month'));
+		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=(new \DateTimeImmutable($start,wp_timezone()))->modify('+1 month')->format('Y-m-d H:i:s');
 		return $wpdb->get_results($wpdb->prepare("SELECT w.*,l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s ORDER BY w.workout_start ASC,w.id ASC",$user_id,$start,$end));
 	}
 
