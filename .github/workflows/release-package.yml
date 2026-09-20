@@ -1,0 +1,36 @@
+name: Release Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/release-package.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build clean plugin package
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/swim-log-evaluation"
+          mkdir -p "$ROOT/admin" "$ROOT/includes" "$ROOT/languages" "$ROOT/public"
+          cp LICENSE README.md readme.txt swim-log-evaluation.php uninstall.php "$ROOT/"
+          cp admin/class-admin.php admin/index.php "$ROOT/admin/"
+          cp includes/*.php "$ROOT/includes/"
+          cp languages/index.php "$ROOT/languages/"
+          cp public/index.php "$ROOT/public/"
+          cd "$RUNNER_TEMP"
+          zip -r swim-log-evaluation-0.2-rc.zip swim-log-evaluation
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: swim-log-evaluation-0.2-rc
+          path: ${{ runner.temp }}/swim-log-evaluation-0.2-rc.zip
+          if-no-files-found: error
+          retention-days: 14
