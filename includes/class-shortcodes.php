@@ -11,6 +11,7 @@ final class Shortcodes {
 		add_shortcode('swimlog_upcoming_events',array(__CLASS__,'events'));
 		add_shortcode('swimlog_workout',array(__CLASS__,'workout'));
 		add_shortcode('swimlog_log',array(__CLASS__,'log'));
+		add_shortcode('swimlog_progress',array(__CLASS__,'progress'));
 	}
 	private static function load(){
 		if(self::$loaded)return;
@@ -64,6 +65,21 @@ final class Shortcodes {
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Distance','swim-log-evaluation').'</th>';foreach($strokes as $s)$o.='<th scope="col">'.esc_html($s==='OVERALL'?__('Overall','swim-log-evaluation'):self::stroke_name($s)).'</th>';$o.='</tr></thead><tbody>';
 		$any=false;foreach($distances as $d){$o.='<tr><th scope="row">'.esc_html(self::distance_label($d,$course)).'</th>';foreach($strokes as $s){$p=$pbs[$d][$s]??null;$any=$any||!!$p;$o.='<td>'.($p?esc_html(Workout::format_duration($p->duration_ms)).'<br><span class="swimlog-muted">'.esc_html(self::local_date('M j, Y',$p->achieved_at)).'</span>':'&mdash;').'</td>';}$o.='</tr>';}$o.='</tbody></table></div>';return$o.(!$any?'<p>'.esc_html__('No qualifying personal bests are available for this selection.','swim-log-evaluation').'</p>':'').self::close();
 	}
+	public static function progress($atts){
+		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
+		$course=in_array($a['course'],array('m','yd'),true)?$a['course']:get_option('swimlog_default_course_unit','m');if(!in_array($course,array('m','yd'),true))$course='m';
+		$valid_strokes=array('FR','BR','BACK','FLY','MIXED');if(!$a['distance']||!in_array($a['distance'],Evaluator::DISTANCES,true)||!in_array($a['stroke'],$valid_strokes,true))return self::unavailable();
+		$rows=Records::progression($uid,$a['distance'],$course,$a['stroke']);$event=self::distance_label($a['distance'],$course).' '.self::stroke_name($a['stroke']);
+		/* translators: %s: swim event, for example 100 m Breaststroke. */
+		$title=sprintf(__('%s — Personal Best Progression','swim-log-evaluation'),$event);$o=self::styles().self::open($title,$a['title']);
+		if(!$rows)return$o.'<p>'.esc_html__('No personal best history is available for this event.','swim-log-evaluation').'</p>'.self::close();
+		$points=array();foreach($rows as$r)$points[]=array('date'=>self::local_date('F j, Y',$r->achieved_at),'shortDate'=>self::local_date('M j, Y',$r->achieved_at),'duration'=>(int)$r->duration_ms,'time'=>Workout::format_duration((int)$r->duration_ms));
+		$first=$points[0];$current=$points[count($points)-1];$improvement=max(0,$first['duration']-$current['duration']);
+		$o.='<div class="swimlog-progress-summary"><strong>'.esc_html__('Current PB:','swim-log-evaluation').'</strong> '.esc_html($current['time']).' <span aria-hidden="true">·</span> <strong>'.esc_html__('First recorded PB:','swim-log-evaluation').'</strong> '.esc_html($first['time']).' <span aria-hidden="true">·</span> <strong>'.esc_html__('Improvement:','swim-log-evaluation').'</strong> '.esc_html(number_format_i18n($improvement/1000,2).' '.__('seconds','swim-log-evaluation')).'</div>';
+		if(count($points)>1){wp_enqueue_style('swimlog-progress',SWIMLOG_EVALUATION_URL.'assets/css/progress.css',array(),SWIMLOG_EVALUATION_VERSION);wp_enqueue_script('swimlog-progress',SWIMLOG_EVALUATION_URL.'assets/js/progress.js',array(),SWIMLOG_EVALUATION_VERSION,true);$json=wp_json_encode($points);$o.='<div class="swimlog-progress-chart" data-swimlog-progress="'.esc_attr($json).'" data-swimlog-label="'.esc_attr($event).'" role="img" aria-label="'.esc_attr(sprintf(__('%s personal best progression chart. Faster times appear higher.','swim-log-evaluation'),$event)).'"><canvas aria-hidden="true"></canvas><div class="swimlog-progress-tooltip" hidden></div></div>';}
+		$o.='<div class="swimlog-table-wrap swimlog-progress-data"><table><thead><tr><th scope="col">'.esc_html__('Date','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Personal Best','swim-log-evaluation').'</th></tr></thead><tbody>';foreach($points as$p)$o.='<tr><td>'.esc_html($p['date']).'</td><td>'.esc_html($p['time']).'</td></tr>';$o.='</tbody></table></div>';return$o.self::close();
+	}
+
 	public static function events($atts){
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();$count=$a['count']?:max(1,min(50,(int)get_option('swimlog_default_event_count',5)));$count=max(1,min(50,$count));$events=Event::upcoming_for_user($uid,$count);$o=self::styles().self::open(__('Upcoming Events','swim-log-evaluation'),$a['title']);if(!$events)return$o.'<p>'.esc_html__('No upcoming events are scheduled.','swim-log-evaluation').'</p>'.self::close();
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Date','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Event','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Distance','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Stroke','swim-log-evaluation').'</th><th scope="col">'.esc_html__('Current PB','swim-log-evaluation').'</th></tr></thead><tbody>';
