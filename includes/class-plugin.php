@@ -11,6 +11,7 @@ final class Plugin {
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();
 			add_action( 'admin_menu', array( $admin, 'register_menu' ) );
+			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';
 		Shortcodes::register();
