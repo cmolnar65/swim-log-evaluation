@@ -14,16 +14,19 @@ final class Workout {
 	public static function query_for_user( $user_id, $filters=array(), $page=1, $per_page=20 ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
-		$where=array('w.user_id=%d'); $args=array($user_id);
-		if(!empty($filters['date_from'])){$where[]='DATE(w.workout_start) >= %s';$args[]=$filters['date_from'];}
-		if(!empty($filters['date_to'])){$where[]='DATE(w.workout_start) <= %s';$args[]=$filters['date_to'];}
-		if(!empty($filters['location_id'])){$where[]='w.location_id=%d';$args[]=absint($filters['location_id']);}
-		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]='w.pool_length_unit=%s';$args[]=$filters['course_unit'];}
-		if(!empty($filters['stroke'])){$where[]='w.primary_stroke=%s';$args[]=$filters['stroke'];}
+		// Prepare each optional predicate independently. This keeps user-supplied
+		// values out of the dynamically assembled WHERE clause while leaving the
+		// final pagination query with a fixed, statically visible placeholder count.
+		$where=array($wpdb->prepare('w.user_id=%d',$user_id));
+		if(!empty($filters['date_from'])){$where[]=$wpdb->prepare('DATE(w.workout_start) >= %s',$filters['date_from']);}
+		if(!empty($filters['date_to'])){$where[]=$wpdb->prepare('DATE(w.workout_start) <= %s',$filters['date_to']);}
+		if(!empty($filters['location_id'])){$where[]=$wpdb->prepare('w.location_id=%d',absint($filters['location_id']));}
+		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);}
+		if(!empty($filters['stroke'])){$where[]=$wpdb->prepare('w.primary_stroke=%s',$filters['stroke']);}
 		$sql_where=implode(' AND ',$where);
-		$total=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $w w WHERE $sql_where",...$args));
-		$offset=max(0,($page-1)*$per_page); $qargs=array_merge($args,array($per_page,$offset));
-		$rows=$wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $sql_where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",...$qargs));
+		$total=(int)$wpdb->get_var("SELECT COUNT(*) FROM $w w WHERE $sql_where");
+		$offset=max(0,($page-1)*$per_page);
+		$rows=$wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $sql_where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",$per_page,$offset));
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
