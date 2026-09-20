@@ -2,7 +2,9 @@
 /**
  * Plugin Name: Swim Log and Evaluation
  * Description: Import, normalize, evaluate, and display swimming workout history and personal bests.
- * Version: 0.1.0-dev
+ * Version: 0.2
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
  * Author: Christopher Molnar
  * Author Email: cmolnar65@gmail.com
  * License: GPL-2.0-or-later
@@ -11,8 +13,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWIMLOG_EVALUATION_VERSION', '0.1.0-dev' );
-define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.1.0' );
+define( 'SWIMLOG_EVALUATION_VERSION', '0.2' );
+define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.2' );
 define( 'SWIMLOG_EVALUATION_FILE', __FILE__ );
 define( 'SWIMLOG_EVALUATION_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SWIMLOG_EVALUATION_URL', plugin_dir_url( __FILE__ ) );
