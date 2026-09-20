@@ -94,21 +94,24 @@ final class Importer {
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function source_directory(){
-		$uploads=wp_upload_dir();if(!empty($uploads['error']))return new \WP_Error('swimlog_store',sanitize_text_field($uploads['error']));
-		$dir=trailingslashit($uploads['basedir']).'swim-log-evaluation/private';if(!wp_mkdir_p($dir))return new \WP_Error('swimlog_store',__('The protected workout source directory could not be created.','swim-log-evaluation'));
-		if(!self::protect_source_directory($dir))return new \WP_Error('swimlog_store_protection',__('The workout source directory could not be protected from direct web access. Import stopped before preserving the source.','swim-log-evaluation'));return$dir;
-	}
-	private static function protect_source_directory($dir){
-		$files=array(
-			trailingslashit($dir).'index.php'=>"<?php\\n// Silence is golden.\\n",
-			trailingslashit($dir).'.htaccess'=>"# Swim Log preserved sources are private.\\n<IfModule mod_authz_core.c>\\nRequire all denied\\n</IfModule>\\n<IfModule !mod_authz_core.c>\\nDeny from all\\n</IfModule>\\n",
-			trailingslashit($dir).'web.config'=>"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<configuration><system.webServer><security><authorization><remove users=\\\"*\\\" roles=\\\"\\\" verbs=\\\"\\\"/><add accessType=\\\"Deny\\\" users=\\\"*\\\"/></authorization></security></system.webServer></configuration>\\n"
-		);
-		foreach($files as$file=>$contents){
-			if(file_exists($file)){if(!is_readable($file))return false;continue;}
-			if(false===@file_put_contents($file,$contents))return false;
+		$dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?trim((string)SWIMLOG_PRIVATE_STORAGE_DIR):'';
+		if($dir===''){
+			$docroot=!empty($_SERVER['DOCUMENT_ROOT'])?realpath((string)$_SERVER['DOCUMENT_ROOT']):false;
+			if(!$docroot)return new \WP_Error('swimlog_store_private',__('A private workout source directory could not be determined. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));
+			$dir=trailingslashit(dirname($docroot)).'swim-log-evaluation-private';
 		}
-		return true;
+		$dir=untrailingslashit($dir);
+		if(!self::is_outside_web_root($dir))return new \WP_Error('swimlog_store_public',__('The workout source directory must be outside the public web root. Import stopped before preserving the source.','swim-log-evaluation'));
+		if(!is_dir($dir)&&!wp_mkdir_p($dir))return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));
+		if(!is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable. Import stopped before preserving the source.','swim-log-evaluation'));
+		$index=trailingslashit($dir).'index.php';if(!file_exists($index)&&false===@file_put_contents($index,"<?php\\n// Silence is golden.\\n"))return new \WP_Error('swimlog_store',__('The private workout source directory could not be initialized.','swim-log-evaluation'));
+		return$dir;
+	}
+	private static function is_outside_web_root($dir){
+		$docroot=!empty($_SERVER['DOCUMENT_ROOT'])?realpath((string)$_SERVER['DOCUMENT_ROOT']):false;if(!$docroot)return false;
+		$root=rtrim(wp_normalize_path($docroot),'/').'/';$candidate=wp_normalize_path($dir);
+		$existing=realpath($dir);if($existing)$candidate=wp_normalize_path($existing);
+		$candidate=rtrim($candidate,'/').'/';return strpos($candidate,$root)!==0;
 	}
 	private static function preserve_source($uid,$ext,$tmp){
 		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$filename='swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
