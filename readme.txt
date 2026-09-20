@@ -2,6 +2,7 @@
 Contributors: cmolnar65
 Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 0.2
 License: GPLv2 or later
