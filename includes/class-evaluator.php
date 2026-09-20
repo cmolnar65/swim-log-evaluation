@@ -91,7 +91,9 @@ final class Evaluator {
 			self::recalculate_personal_bests($user_id);
 			if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
 			return array('workouts'=>count($ids),'performances'=>$count,'deleted'=>(int)$deleted);
-		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Performance rebuild failed and was rolled back: %s','swim-log-evaluation'),$e->getMessage()));}
+		}catch(\Throwable $e){$wpdb->query('ROLLBACK');
+			/* translators: %s: performance rebuild error message. */
+			return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Performance rebuild failed and was rolled back: %s','swim-log-evaluation'),$e->getMessage()));}
 	}
 	public static function rebuild_all_users(){
 		global $wpdb;$wt=Database::table('workouts');$users=$wpdb->get_col("SELECT DISTINCT user_id FROM $wt ORDER BY user_id ASC");$summary=array('users'=>0,'workouts'=>0,'performances'=>0,'deleted'=>0);
