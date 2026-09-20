@@ -34,4 +34,4 @@ jobs:
           path: ${{ runner.temp }}/swim-log-evaluation-0.2-rc.zip
           if-no-files-found: error
           retention-days: 14
-          # RC3 diagnostic rebuild from the current develop branch.
+          # RC4 rebuild from the current develop branch.
