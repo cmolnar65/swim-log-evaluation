@@ -23,8 +23,10 @@ final class Records {
 		$rows=self::history($user_id,$distance,$course,$stroke);$best=null;$out=array();foreach($rows as$r){if($best===null||(int)$r->duration_ms<$best){$best=(int)$r->duration_ms;$out[]=$r;}}return$out;
 	}
 	public static function history($user_id,$distance,$course,$stroke=''){
-		global $wpdb;$t=Database::table('performances');$where="user_id=%d AND distance_value=%d AND course_unit=%s";$args=array($user_id,$distance,$course);
-		if($stroke!==''){$where.=" AND stroke=%s";$args[]=$stroke;}
-		return$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE $where ORDER BY achieved_at ASC,id ASC",$args));
+		global $wpdb;$t=Database::table('performances');
+		if($stroke!==''){
+			return$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s ORDER BY achieved_at ASC,id ASC",$user_id,$distance,$course,$stroke));
+		}
+		return$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND distance_value=%d AND course_unit=%s ORDER BY achieved_at ASC,id ASC",$user_id,$distance,$course));
 	}
 }
