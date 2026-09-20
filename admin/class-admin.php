@@ -284,7 +284,16 @@ final class Admin {
 			if ( is_wp_error( $result ) ) {
 				$error = $result->get_error_message();
 			} else {
-				wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-locations', 'saved' => 1 ), admin_url( 'admin.php' ) ) );
+				// Redirect after saving so the browser returns to the locations list rather than reposting the form.
+				$redirect_url = add_query_arg( array( 'page' => 'swimlog-locations', 'saved' => 1 ), admin_url( 'admin.php' ) );
+				if ( ! headers_sent() ) {
+					wp_safe_redirect( $redirect_url );
+					exit;
+				}
+				// This admin page is rendered after WordPress has already emitted the admin header,
+				// so fall back to a client-side redirect when HTTP headers are no longer available.
+				echo '<script>window.location.replace(' . wp_json_encode( $redirect_url ) . ');</script>';
+				echo '<noscript><p><a href="' . esc_url( $redirect_url ) . '">' . esc_html__( 'Return to Locations', 'swim-log-evaluation' ) . '</a></p></noscript>';
 				exit;
 			}
 		}
@@ -319,7 +328,7 @@ final class Admin {
 				<input type="hidden" name="location_id" value="<?php echo esc_attr( $editing ? $editing->id : 0 ); ?>">
 				<table class="form-table" role="presentation">
 					<tr><th scope="row"><label for="swimlog-location-name"><?php esc_html_e( 'Name', 'swim-log-evaluation' ); ?></label></th><td><input class="regular-text" required id="swimlog-location-name" name="name" type="text" maxlength="191" value="<?php echo esc_attr( $editing ? $editing->name : '' ); ?>"></td></tr>
-					<tr><th scope="row"><label for="swimlog-pool-length"><?php esc_html_e( 'Pool length', 'swim-log-evaluation' ); ?></label></th><td><input id="swimlog-pool-length" name="pool_length" type="number" min="0.001" step="0.001" value="<?php echo esc_attr( $editing ? $editing->pool_length : '' ); ?>"> <select name="pool_unit" aria-label="<?php esc_attr_e( 'Pool length unit', 'swim-log-evaluation' ); ?>"><option value=""><?php esc_html_e( 'Select unit', 'swim-log-evaluation' ); ?></option><option value="m" <?php selected( $editing ? $editing->pool_unit : '', 'm' ); ?>><?php esc_html_e( 'Meters', 'swim-log-evaluation' ); ?></option><option value="yd" <?php selected( $editing ? $editing->pool_unit : '', 'yd' ); ?>><?php esc_html_e( 'Yards', 'swim-log-evaluation' ); ?></option></select></td></tr>
+					<tr><th scope="row"><label for="swimlog-pool-length"><?php esc_html_e( 'Pool length', 'swim-log-evaluation' ); ?></label></th><td><input id="swimlog-pool-length" name="pool_length" type="number" min="1" step="1" value="<?php echo esc_attr( $editing && null !== $editing->pool_length ? (string) (int) round( (float) $editing->pool_length ) : '' ); ?>"> <select name="pool_unit" aria-label="<?php esc_attr_e( 'Pool length unit', 'swim-log-evaluation' ); ?>"><option value=""><?php esc_html_e( 'Select unit', 'swim-log-evaluation' ); ?></option><option value="m" <?php selected( $editing ? $editing->pool_unit : '', 'm' ); ?>><?php esc_html_e( 'Meters', 'swim-log-evaluation' ); ?></option><option value="yd" <?php selected( $editing ? $editing->pool_unit : '', 'yd' ); ?>><?php esc_html_e( 'Yards', 'swim-log-evaluation' ); ?></option></select></td></tr>
 					<tr><th scope="row"><label for="swimlog-location-notes"><?php esc_html_e( 'Notes', 'swim-log-evaluation' ); ?></label></th><td><textarea class="large-text" rows="4" id="swimlog-location-notes" name="notes"><?php echo esc_textarea( $editing ? $editing->notes : '' ); ?></textarea></td></tr>
 				</table>
 				<?php submit_button( $editing ? __( 'Update Location', 'swim-log-evaluation' ) : __( 'Add Location', 'swim-log-evaluation' ) ); ?>
@@ -332,7 +341,7 @@ final class Admin {
 			<?php else : ?>
 				<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Name', 'swim-log-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'swim-log-evaluation' ); ?></th><th><?php esc_html_e( 'Notes', 'swim-log-evaluation' ); ?></th><th><?php esc_html_e( 'Actions', 'swim-log-evaluation' ); ?></th></tr></thead><tbody>
 				<?php foreach ( $locations as $location ) : ?>
-					<tr><td><?php echo esc_html( $location->name ); ?></td><td><?php echo null !== $location->pool_length ? esc_html( $location->pool_length . ' ' . $location->pool_unit ) : '&mdash;'; ?></td><td><?php echo esc_html( $location->notes ); ?></td><td><a class="button button-small" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-locations', 'edit' => $location->id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'swim-log-evaluation' ); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field( 'swimlog_delete_location' ); ?><input type="hidden" name="swimlog_location_action" value="delete"><input type="hidden" name="location_id" value="<?php echo esc_attr( $location->id ); ?>"><button type="submit" class="button button-small" onclick="return confirm('<?php echo esc_js( __( 'Delete this location? Historical workout snapshots will remain unchanged.', 'swim-log-evaluation' ) ); ?>');"><?php esc_html_e( 'Delete', 'swim-log-evaluation' ); ?></button></form></td></tr>
+					<tr><td><?php echo esc_html( $location->name ); ?></td><td><?php echo null !== $location->pool_length ? esc_html( number_format_i18n( (float) $location->pool_length, 0 ) . ' ' . $location->pool_unit ) : '&mdash;'; ?></td><td><?php echo esc_html( $location->notes ); ?></td><td><a class="button button-small" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-locations', 'edit' => $location->id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'swim-log-evaluation' ); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field( 'swimlog_delete_location' ); ?><input type="hidden" name="swimlog_location_action" value="delete"><input type="hidden" name="location_id" value="<?php echo esc_attr( $location->id ); ?>"><button type="submit" class="button button-small" onclick="return confirm('<?php echo esc_js( __( 'Delete this location? Historical workout snapshots will remain unchanged.', 'swim-log-evaluation' ) ); ?>');"><?php esc_html_e( 'Delete', 'swim-log-evaluation' ); ?></button></form></td></tr>
 				<?php endforeach; ?>
 				</tbody></table>
 			<?php endif; ?>
