@@ -96,7 +96,7 @@ final class Importer {
 	private static function source_directory(){
 		$uploads=wp_upload_dir();if(!empty($uploads['error']))return new \WP_Error('swimlog_store',sanitize_text_field($uploads['error']));
 		$dir=trailingslashit($uploads['basedir']).'swim-log-evaluation/private';if(!wp_mkdir_p($dir))return new \WP_Error('swimlog_store',__('The protected workout source directory could not be created.','swim-log-evaluation'));
-		self::protect_source_directory($dir);return$dir;
+		if(!self::protect_source_directory($dir))return new \WP_Error('swimlog_store_protection',__('The workout source directory could not be protected from direct web access. Import stopped before preserving the source.','swim-log-evaluation'));return$dir;
 	}
 	private static function protect_source_directory($dir){
 		$index=trailingslashit($dir).'index.php';if(!file_exists($index))@file_put_contents($index,"<?php\\n// Silence is golden.\\n");
