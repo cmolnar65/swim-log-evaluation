@@ -206,13 +206,14 @@ final class ImportFixture001Test extends TestCase {
   $this->assertNotFalse($match);$this->assertNotFalse($disagreement);$this->assertNotFalse($preserve);
   $this->assertLessThan($preserve,$disagreement,'A disagreement must stop the import before a permanent source copy is created.');
  }
- public function test_new_sources_use_dedicated_protected_storage(){
+ public function test_new_sources_use_storage_outside_public_web_root(){
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
-  $this->assertStringContainsString("'swim-log-evaluation/private'",$source);
-  $this->assertStringContainsString("Require all denied",$source);
-  $this->assertStringContainsString("Deny from all",$source);
-  $this->assertStringContainsString("web.config",$source);
-  $this->assertStringContainsString("index.php",$source);
+  $this->assertStringContainsString("SWIMLOG_PRIVATE_STORAGE_DIR",$source);
+  $this->assertStringContainsString("DOCUMENT_ROOT",$source);
+  $this->assertStringContainsString("swim-log-evaluation-private",$source);
+  $this->assertStringContainsString("is_outside_web_root",$source);
+  $this->assertStringContainsString("must be outside the public web root",$source);
+  $this->assertStringNotContainsString("'swim-log-evaluation/private'",$source);
  }
  public function test_untracked_source_cleanup_is_present_for_database_failures(){
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
