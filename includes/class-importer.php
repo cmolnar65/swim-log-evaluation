@@ -102,7 +102,7 @@ final class Importer {
 		}
 		$dir=untrailingslashit($dir);
 		if(!self::is_outside_web_root($dir))return new \WP_Error('swimlog_store_public',__('The workout source directory must be outside the public web root. Import stopped before preserving the source.','swim-log-evaluation'));
-		if(!is_dir($dir)&&!wp_mkdir_p($dir))return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));
+		if(!is_dir($dir)&&!wp_mkdir_p($dir)){error_log('Swim Log: Unable to create private source directory: '.$dir);return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));}
 		if(!is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable. Import stopped before preserving the source.','swim-log-evaluation'));
 		$index=trailingslashit($dir).'index.php';if(!file_exists($index)&&false===@file_put_contents($index,"<?php\\n// Silence is golden.\\n"))return new \WP_Error('swimlog_store',__('The private workout source directory could not be initialized.','swim-log-evaluation'));
 		return$dir;
