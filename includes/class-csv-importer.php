@@ -42,6 +42,6 @@ final class CSV_Importer {
 	private function key($v){return strtolower(preg_replace('/[^a-z0-9]+/i','',trim((string)$v)));}
 	private function number($v){if(preg_match('/-?\d+(?:\.\d+)?/',str_replace(',','',(string)$v),$m))return(float)$m[0];return null;}
 	private function seconds($v){$v=trim((string)$v);if($v==='')return null;if(is_numeric($v))return(float)$v;$p=array_map('floatval',explode(':',$v));if(count($p)===3)return$p[0]*3600+$p[1]*60+$p[2];if(count($p)===2)return$p[0]*60+$p[1];return null;}
-	private function datetime($date,$time){$s=trim($date.' '.$time);if(trim($s)==='')return null;if(function_exists('wp_timezone')){$dt=date_create_immutable($s,wp_timezone());return $dt?$dt->format('Y-m-d H:i:s'):null;}$ts=strtotime($s);return $ts?date('Y-m-d H:i:s',$ts):null;}
+	private function datetime($date,$time){$s=trim($date.' '.$time);if(trim($s)==='')return null;if(function_exists('wp_timezone')){$dt=date_create_immutable($s,wp_timezone());return $dt?$dt->format('Y-m-d H:i:s'):null;}$dt=date_create_immutable($s,new \DateTimeZone('UTC'));return $dt?$dt->format('Y-m-d H:i:s'):null;}
 	private function stroke($v){$v=strtoupper(trim((string)$v));if(in_array($v,array('FR','FREE','FREESTYLE'),true))return'FR';if(in_array($v,array('BR','BREAST','BREASTSTROKE'),true))return'BR';if(in_array($v,array('BACK','BK','BACKSTROKE'),true))return'BACK';if(in_array($v,array('FLY','BUTTERFLY'),true))return'FLY';if(in_array($v,array('MIXED','IM','MEDLEY'),true))return'MIXED';return'UNKNOWN';}
 }
