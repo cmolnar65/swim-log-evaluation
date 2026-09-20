@@ -15,7 +15,6 @@ final class Plugin {
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';
 		Shortcodes::register();
-		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
 	}
 
@@ -34,13 +33,6 @@ final class Plugin {
 		return $mimes;
 	}
 
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'swim-log-evaluation',
-			false,
-			dirname( plugin_basename( SWIMLOG_EVALUATION_FILE ) ) . '/languages'
-		);
-	}
 
 	public function maybe_upgrade_schema() {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
