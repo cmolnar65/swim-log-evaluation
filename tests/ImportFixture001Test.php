@@ -200,9 +200,9 @@ final class ImportFixture001Test extends TestCase {
 
  public function test_disagreement_is_checked_before_source_preservation(){
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
-  $match=strpos($source,"$match_info=self::classify_match");
-  $disagreement=strpos($source,"$match_info['status']==='disagreement'");
-  $preserve=strpos($source,"$upload=self::preserve_source");
+  $match=strpos($source,'$match_info=self::classify_match');
+  $disagreement=strpos($source,"\$match_info['status']==='disagreement'");
+  $preserve=strpos($source,'$upload=self::preserve_source');
   $this->assertNotFalse($match);$this->assertNotFalse($disagreement);$this->assertNotFalse($preserve);
   $this->assertLessThan($preserve,$disagreement,'A disagreement must stop the import before a permanent source copy is created.');
  }
@@ -217,8 +217,8 @@ final class ImportFixture001Test extends TestCase {
  public function test_untracked_source_cleanup_is_present_for_database_failures(){
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
   $this->assertStringContainsString("cleanup_unowned_source",$source);
-  $this->assertStringContainsString("if(!$failure_saved)self::cleanup_unowned_source",$source);
-  $this->assertStringContainsString("if(!$ok){self::cleanup_unowned_source",$source);
+  $this->assertStringContainsString('if(!$failure_saved)self::cleanup_unowned_source',$source);
+  $this->assertStringContainsString('if(!$ok){self::cleanup_unowned_source',$source);
  }
 
  public function test_fit_device_metadata_is_not_generic_placeholder(){
