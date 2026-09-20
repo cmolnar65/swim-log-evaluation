@@ -34,4 +34,4 @@ jobs:
           path: ${{ runner.temp }}/swim-log-evaluation-0.2-rc.zip
           if-no-files-found: error
           retention-days: 14
-          # RC package is intentionally rebuilt from the current develop branch.
+          # RC3 package uses private source storage outside the public web root.
