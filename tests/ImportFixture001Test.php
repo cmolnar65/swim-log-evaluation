@@ -40,11 +40,11 @@ final class ImportFixture001Test extends TestCase {
   $this->assertTrue(is_wp_error($result));
   $this->assertSame('swimlog_csv_incomplete',$result->get_error_code());
  }
- public function test_garmin_export_csv_is_cleanly_rejected_in_v01(){
+ public function test_garmin_export_csv_is_cleanly_rejected_in_v02(){
   $path=getenv('SWIMLOG_GARMIN_CSV_FIXTURE');
   if(!$path||!is_file($path))$this->markTestSkipped('Set SWIMLOG_GARMIN_CSV_FIXTURE to the unchanged private Garmin export CSV activity_22038489308.csv.');
   $result=(new CSV_Importer)->parse($path);
-  $this->assertTrue(is_wp_error($result),'Garmin export CSV must not be interpreted as a FORM CSV in v0.1.');
+  $this->assertTrue(is_wp_error($result),'Garmin export CSV must not be interpreted as a FORM CSV in v0.2.');
   $this->assertSame('swimlog_csv_format',$result->get_error_code());
  }
  public function test_paired_form_sources_meet_match_fingerprint(){
@@ -196,6 +196,29 @@ final class ImportFixture001Test extends TestCase {
   $src=$this->fixture('form-2026-09-19.fit');$bin=file_get_contents($src);$this->assertNotFalse($bin);
   $hs=ord($bin[0]);$size=unpack('V',substr($bin,4,4))[1];$at=$hs+min(20,max(1,$size-1));$bin[$at]=chr(ord($bin[$at])^0x01);
   $tmp=tempnam(sys_get_temp_dir(),'swimlog-fit-');file_put_contents($tmp,$bin);try{$r=(new FIT_Importer)->parse($tmp);$this->assertTrue(is_wp_error($r));$this->assertSame('swimlog_fit_crc',$r->get_error_code());}finally{@unlink($tmp);}
+ }
+
+ public function test_disagreement_is_checked_before_source_preservation(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $match=strpos($source,"$match_info=self::classify_match");
+  $disagreement=strpos($source,"$match_info['status']==='disagreement'");
+  $preserve=strpos($source,"$upload=self::preserve_source");
+  $this->assertNotFalse($match);$this->assertNotFalse($disagreement);$this->assertNotFalse($preserve);
+  $this->assertLessThan($preserve,$disagreement,'A disagreement must stop the import before a permanent source copy is created.');
+ }
+ public function test_new_sources_use_dedicated_protected_storage(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("'swim-log-evaluation/private'",$source);
+  $this->assertStringContainsString("Require all denied",$source);
+  $this->assertStringContainsString("Deny from all",$source);
+  $this->assertStringContainsString("web.config",$source);
+  $this->assertStringContainsString("index.php",$source);
+ }
+ public function test_untracked_source_cleanup_is_present_for_database_failures(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("cleanup_unowned_source",$source);
+  $this->assertStringContainsString("if(!$failure_saved)self::cleanup_unowned_source",$source);
+  $this->assertStringContainsString("if(!$ok){self::cleanup_unowned_source",$source);
  }
 
  public function test_fit_device_metadata_is_not_generic_placeholder(){
