@@ -67,6 +67,48 @@ final class Workout {
 		return $wpdb->get_results($wpdb->prepare("SELECT id,source_type,original_filename,import_status,imported_at FROM $t WHERE workout_id=%d AND user_id=%d ORDER BY imported_at ASC,id ASC",$workout_id,$user_id));
 	}
 
+
+	public static function update_metadata( $workout_id, $user_id, $location_id, $notes ) {
+		global $wpdb;
+		$workout_id = absint( $workout_id );
+		$user_id = absint( $user_id );
+		$location_id = absint( $location_id );
+
+		if ( ! self::get_for_user( $workout_id, $user_id ) ) {
+			return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'swim-log-evaluation' ) );
+		}
+
+		if ( $location_id ) {
+			$locations = Database::table( 'locations' );
+			$owned_location = (int) $wpdb->get_var(
+				$wpdb->prepare( "SELECT id FROM $locations WHERE id = %d AND user_id = %d", $location_id, $user_id )
+			);
+			if ( $owned_location !== $location_id ) {
+				return new \WP_Error( 'swimlog_workout_location', __( 'Select one of this swimmer\'s locations.', 'swim-log-evaluation' ) );
+			}
+		}
+
+		$table = Database::table( 'workouts' );
+		$result = $wpdb->update(
+			$table,
+			array(
+				'location_id' => $location_id ?: null,
+				'notes'       => sanitize_textarea_field( $notes ),
+				'updated_at'  => current_time( 'mysql' ),
+			),
+			array(
+				'id'      => $workout_id,
+				'user_id' => $user_id,
+			),
+			array( '%d', '%s', '%s' ),
+			array( '%d', '%d' )
+		);
+
+		return false === $result
+			? new \WP_Error( 'swimlog_workout_update', __( 'The workout metadata could not be saved.', 'swim-log-evaluation' ) )
+			: true;
+	}
+
 	public static function format_duration( $ms ) {
 		if(null===$ms) return '—';
 		$hundredths=(int)round($ms/10); $h=intdiv($hundredths,360000); $rem=$hundredths%360000;
