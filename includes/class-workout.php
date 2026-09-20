@@ -21,9 +21,9 @@ final class Workout {
 		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]='w.pool_length_unit=%s';$args[]=$filters['course_unit'];}
 		if(!empty($filters['stroke'])){$where[]='w.primary_stroke=%s';$args[]=$filters['stroke'];}
 		$sql_where=implode(' AND ',$where);
-		$total=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $w w WHERE $sql_where",$args));
+		$total=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $w w WHERE $sql_where",...$args));
 		$offset=max(0,($page-1)*$per_page); $qargs=array_merge($args,array($per_page,$offset));
-		$rows=$wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $sql_where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",$qargs));
+		$rows=$wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $sql_where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",...$qargs));
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
