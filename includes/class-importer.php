@@ -96,7 +96,8 @@ final class Importer {
 	private static function source_directory(){
 		$dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?trim((string)SWIMLOG_PRIVATE_STORAGE_DIR):'';
 		if($dir===''){
-			$docroot=!empty($_SERVER['DOCUMENT_ROOT'])?realpath((string)$_SERVER['DOCUMENT_ROOT']):false;
+			$document_root = isset( $_SERVER['DOCUMENT_ROOT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['DOCUMENT_ROOT'] ) ) : '';
+			$docroot = '' !== $document_root ? realpath( $document_root ) : false;
 			if(!$docroot)return new \WP_Error('swimlog_store_private',__('A private workout source directory could not be determined. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','swim-log-evaluation'));
 			$dir=trailingslashit(dirname($docroot)).'swim-log-evaluation-private';
 		}
@@ -109,7 +110,8 @@ final class Importer {
 		return$dir;
 	}
 	private static function is_outside_web_root($dir){
-		$docroot=!empty($_SERVER['DOCUMENT_ROOT'])?realpath((string)$_SERVER['DOCUMENT_ROOT']):false;if(!$docroot)return false;
+		$document_root = isset( $_SERVER['DOCUMENT_ROOT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['DOCUMENT_ROOT'] ) ) : '';
+		$docroot = '' !== $document_root ? realpath( $document_root ) : false;if(!$docroot)return false;
 		$root=rtrim(wp_normalize_path($docroot),'/').'/';$candidate=wp_normalize_path($dir);
 		$existing=realpath($dir);if($existing)$candidate=wp_normalize_path($existing);
 		$candidate=rtrim($candidate,'/').'/';return strpos($candidate,$root)!==0;
