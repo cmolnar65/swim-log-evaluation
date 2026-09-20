@@ -99,9 +99,16 @@ final class Importer {
 		if(!self::protect_source_directory($dir))return new \WP_Error('swimlog_store_protection',__('The workout source directory could not be protected from direct web access. Import stopped before preserving the source.','swim-log-evaluation'));return$dir;
 	}
 	private static function protect_source_directory($dir){
-		$index=trailingslashit($dir).'index.php';if(!file_exists($index))@file_put_contents($index,"<?php\\n// Silence is golden.\\n");
-		$htaccess=trailingslashit($dir).'.htaccess';if(!file_exists($htaccess))@file_put_contents($htaccess,"# Swim Log preserved sources are private.\\n<IfModule mod_authz_core.c>\\nRequire all denied\\n</IfModule>\\n<IfModule !mod_authz_core.c>\\nDeny from all\\n</IfModule>\\n");
-		$webconfig=trailingslashit($dir).'web.config';if(!file_exists($webconfig))@file_put_contents($webconfig,"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<configuration><system.webServer><security><authorization><remove users=\\\"*\\\" roles=\\\"\\\" verbs=\\\"\\\"/><add accessType=\\\"Deny\\\" users=\\\"*\\\"/></authorization></security></system.webServer></configuration>\\n");
+		$files=array(
+			trailingslashit($dir).'index.php'=>"<?php\\n// Silence is golden.\\n",
+			trailingslashit($dir).'.htaccess'=>"# Swim Log preserved sources are private.\\n<IfModule mod_authz_core.c>\\nRequire all denied\\n</IfModule>\\n<IfModule !mod_authz_core.c>\\nDeny from all\\n</IfModule>\\n",
+			trailingslashit($dir).'web.config'=>"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<configuration><system.webServer><security><authorization><remove users=\\\"*\\\" roles=\\\"\\\" verbs=\\\"\\\"/><add accessType=\\\"Deny\\\" users=\\\"*\\\"/></authorization></security></system.webServer></configuration>\\n"
+		);
+		foreach($files as$file=>$contents){
+			if(file_exists($file)){if(!is_readable($file))return false;continue;}
+			if(false===@file_put_contents($file,$contents))return false;
+		}
+		return true;
 	}
 	private static function preserve_source($uid,$ext,$tmp){
 		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$filename='swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
