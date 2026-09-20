@@ -89,7 +89,7 @@ final class Admin {
 		<h2><?php esc_html_e('Latest Swim','swim-log-evaluation'); ?></h2><?php if(!$latest):?><p><?php esc_html_e('No workouts have been imported yet.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><tbody><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><td><?php echo esc_html(mysql2date('F j, Y g:i a',$latest->workout_start,false)); ?></td></tr><tr><th><?php esc_html_e('Location','swim-log-evaluation'); ?></th><td><?php echo esc_html($latest->location_name?:'—'); ?></td></tr><tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><td><?php echo esc_html(null!==$latest->original_distance?$latest->original_distance.' '.$latest->original_distance_unit:($latest->total_distance_m?$latest->total_distance_m.' m':'—')); ?></td></tr><tr><th><?php esc_html_e('Elapsed','swim-log-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($latest->elapsed_time_ms)); ?></td></tr></tbody></table><p><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$latest->id),admin_url('admin.php'))); ?>"><?php esc_html_e('View latest workout','swim-log-evaluation'); ?></a></p><?php endif;?>
 		<h2><?php esc_html_e('Personal Best Summary','swim-log-evaluation'); ?></h2><p><a class="button <?php echo $course==='m'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-dashboard&course=m')); ?>"><?php esc_html_e('Meters','swim-log-evaluation'); ?></a> <a class="button <?php echo $course==='yd'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-dashboard&course=yd')); ?>"><?php esc_html_e('Yards','swim-log-evaluation'); ?></a> <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course='.$course)); ?>"><?php esc_html_e('View all personal bests','swim-log-evaluation'); ?></a></p>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Overall','swim-log-evaluation'); ?></th><th><?php esc_html_e('Freestyle','swim-log-evaluation'); ?></th><th><?php esc_html_e('Breaststroke','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach(array(50,100,200,500,800,1500) as $d):?><tr><th><?php echo esc_html($d.' '.$course); ?></th><?php foreach(array('OVERALL','FR','BR') as $s):$p=$pbs[$d][$s]??null;?><td><?php echo $p?esc_html(Workout::format_duration($p->duration_ms)):'—'; ?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table>
-		<h2><?php esc_html_e('Upcoming Events','swim-log-evaluation'); ?></h2><?php if(!$events):?><p><?php esc_html_e('No upcoming events are scheduled.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Event','swim-log-evaluation'); ?></th><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Stroke','swim-log-evaluation'); ?></th><th><?php esc_html_e('Current PB','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($events as $e):$pb=Records::exact_personal_best($user_id,(int)$e->distance_value,$e->course_unit,$e->stroke);?><tr><td><?php echo esc_html(wp_date('F j, Y',strtotime($e->event_date.' 12:00:00'))); ?><?php if($e->event_time):?><br><small><?php echo esc_html(wp_date(get_option('time_format','g:i a'),strtotime($e->event_date.' '.$e->event_time))); ?></small><?php endif;?></td><td><?php echo esc_html($e->event_name); ?><?php if($e->location_name):?><br><small><?php echo esc_html($e->location_name); ?></small><?php endif;?></td><td><?php echo esc_html($e->distance_value.' '.$e->course_unit); ?></td><td><?php echo esc_html($strokes[$e->stroke]??$e->stroke); ?></td><td><?php echo $pb?esc_html(Workout::format_duration($pb->duration_ms)):'—'; ?></td></tr><?php endforeach;?></tbody></table><?php endif;?>
+		<h2><?php esc_html_e('Upcoming Events','swim-log-evaluation'); ?></h2><?php if(!$events):?><p><?php esc_html_e('No upcoming events are scheduled.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Event','swim-log-evaluation'); ?></th><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Stroke','swim-log-evaluation'); ?></th><th><?php esc_html_e('Current PB','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($events as $e):$pb=Records::exact_personal_best($user_id,(int)$e->distance_value,$e->course_unit,$e->stroke);?><tr><td><?php echo esc_html(wp_date('F j, Y',strtotime($e->event_date.' 12:00:00'))); ?><?php if($e->event_time):?><br><small><?php echo esc_html(wp_date( get_option( 'time_format', 'g:i a' ), ( new \\DateTimeImmutable( $e->event_date . ' ' . $e->event_time, wp_timezone() ) )->getTimestamp(), wp_timezone() )); ?></small><?php endif;?></td><td><?php echo esc_html($e->event_name); ?><?php if($e->location_name):?><br><small><?php echo esc_html($e->location_name); ?></small><?php endif;?></td><td><?php echo esc_html($e->distance_value.' '.$e->course_unit); ?></td><td><?php echo esc_html($strokes[$e->stroke]??$e->stroke); ?></td><td><?php echo $pb?esc_html(Workout::format_duration($pb->duration_ms)):'—'; ?></td></tr><?php endforeach;?></tbody></table><?php endif;?>
 		<h2><?php esc_html_e('Recent Workouts','swim-log-evaluation'); ?></h2><?php if(!$recent):?><p><?php esc_html_e('No workout history is available yet.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Location','swim-log-evaluation'); ?></th><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Elapsed','swim-log-evaluation'); ?></th><th><?php esc_html_e('Action','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($recent as $w):?><tr><td><?php echo esc_html(wp_date('M j, Y',strtotime($w->workout_start))); ?></td><td><?php echo esc_html($w->location_name?:'—'); ?></td><td><?php echo esc_html(null!==$w->original_distance?$w->original_distance.' '.$w->original_distance_unit:($w->total_distance_m?$w->total_distance_m.' m':'—')); ?></td><td><?php echo esc_html(Workout::format_duration($w->elapsed_time_ms)); ?></td><td><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$w->id),admin_url('admin.php'))); ?>"><?php esc_html_e('View','swim-log-evaluation'); ?></a></td></tr><?php endforeach;?></tbody></table><?php endif;?>
 		</div><?php
 	}
@@ -184,6 +184,44 @@ final class Admin {
 		<?php if($history_distance&&$history_stroke):?><?php if(!$progression):?><p><?php esc_html_e('No progression records found for that distance and stroke.','swim-log-evaluation'); ?></p><?php else:?><div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Time','swim-log-evaluation'); ?></th><th><?php esc_html_e('Workout','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($progression as$p):?><tr><td><?php echo esc_html(wp_date('F j, Y',strtotime($p->achieved_at))); ?></td><td><?php echo esc_html(Workout::format_duration($p->duration_ms)); ?></td><td><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$p->workout_id,'swimmer_id'=>$user_id),admin_url('admin.php'))); ?>"><?php esc_html_e('View workout','swim-log-evaluation'); ?></a></td></tr><?php endforeach;?></tbody></table></div><?php endif;?><?php endif;?>
 		</div><?php
 	}
+	private $event_action_error = null;
+
+	public function handle_event_actions() {
+		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_events' ) ) return;
+		if ( empty( $_GET['page'] ) || 'swimlog-events' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
+		if ( empty( $_POST['swimlog_event_action'] ) ) return;
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
+
+		$user_id = get_current_user_id();
+		$action = sanitize_key( wp_unslash( $_POST['swimlog_event_action'] ) );
+
+		if ( 'save' === $action ) {
+			check_admin_referer( 'swimlog_save_event' );
+			$id = isset( $_POST['event_id'] ) ? absint( $_POST['event_id'] ) : 0;
+			$result = Event::save( $user_id, wp_unslash( $_POST ), $id );
+			if ( is_wp_error( $result ) ) {
+				$this->event_action_error = $result->get_error_message();
+				return;
+			}
+			wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>'upcoming','saved'=>1 ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		if ( 'delete' === $action ) {
+			check_admin_referer( 'swimlog_delete_event' );
+			$result = Event::delete( absint( $_POST['event_id'] ?? 0 ), $user_id );
+			if ( is_wp_error( $result ) || ! $result ) {
+				$this->event_action_error = is_wp_error( $result ) ? $result->get_error_message() : __( 'The event could not be deleted.', 'swim-log-evaluation' );
+				return;
+			}
+			wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>'upcoming','deleted'=>1 ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+	}
+
 	public function events() {
 		if ( ! current_user_can( 'swimlog_manage_own_events' ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this Swim Log page.', 'swim-log-evaluation' ) );
@@ -193,21 +231,7 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
 
 		$user_id = get_current_user_id();
-		$error = null;
-		if ( isset( $_POST['swimlog_event_action'] ) && 'save' === $_POST['swimlog_event_action'] ) {
-			check_admin_referer( 'swimlog_save_event' );
-			$id = isset( $_POST['event_id'] ) ? absint( $_POST['event_id'] ) : 0;
-			$result = Event::save( $user_id, wp_unslash( $_POST ), $id );
-			if ( is_wp_error( $result ) ) $error = $result->get_error_message();
-			else { wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>'upcoming','saved'=>1 ), admin_url('admin.php') ) ); exit; }
-		}
-		if ( isset( $_POST['swimlog_event_action'] ) && 'delete' === $_POST['swimlog_event_action'] ) {
-			check_admin_referer( 'swimlog_delete_event' );
-			$result=Event::delete(absint($_POST['event_id'] ?? 0),$user_id);
-			if(is_wp_error($result)||!$result) $error=is_wp_error($result)?$result->get_error_message():__( 'The event could not be deleted.', 'swim-log-evaluation' );
-			else { wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>'upcoming','deleted'=>1 ), admin_url('admin.php') ) ); exit; }
-		}
-
+		$error = $this->event_action_error;
 		$view=sanitize_key($_GET['view'] ?? 'upcoming');
 		if(!in_array($view,array('upcoming','past','all'),true)) $view='upcoming';
 		$edit_id=absint($_GET['edit'] ?? 0);
@@ -238,7 +262,7 @@ final class Admin {
 			<h2><?php esc_html_e('Your Events','swim-log-evaluation'); ?></h2>
 			<p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=upcoming')); ?>"><?php esc_html_e('Upcoming','swim-log-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=past')); ?>"><?php esc_html_e('Past','swim-log-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=all')); ?>"><?php esc_html_e('All','swim-log-evaluation'); ?></a></p>
 			<?php if(empty($events)):?><p><?php esc_html_e('No events found for this view.','swim-log-evaluation'); ?></p><?php else:?><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Event','swim-log-evaluation'); ?></th><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><th><?php esc_html_e('Stroke','swim-log-evaluation'); ?></th><th><?php esc_html_e('Location','swim-log-evaluation'); ?></th><th><?php esc_html_e('Actions','swim-log-evaluation'); ?></th></tr></thead><tbody>
-			<?php foreach($events as $event): $locname='—'; foreach($locations as $loc){if((int)$loc->id===(int)$event->location_id){$locname=$loc->name;break;}} ?><tr><td><?php echo esc_html(wp_date('F j, Y',strtotime($event->event_date.' 12:00:00'))); ?><?php if($event->event_time) echo '<br>'.esc_html(wp_date(get_option('time_format','g:i a'),strtotime($event->event_date.' '.$event->event_time))); ?></td><td><?php echo esc_html($event->event_name); ?></td><td><?php echo esc_html($event->distance_value.' '.$event->course_unit); ?></td><td><?php echo esc_html($strokes[$event->stroke]??$event->stroke); ?></td><td><?php echo esc_html($locname); ?></td><td><a class="button button-small" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-events','view'=>$view,'edit'=>$event->id),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit','swim-log-evaluation'); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field('swimlog_delete_event'); ?><input type="hidden" name="swimlog_event_action" value="delete"><input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>"><button class="button button-small" onclick="return confirm('<?php echo esc_js(__('Delete this event?','swim-log-evaluation')); ?>');"><?php esc_html_e('Delete','swim-log-evaluation'); ?></button></form></td></tr><?php endforeach; ?>
+			<?php foreach($events as $event): $locname='—'; foreach($locations as $loc){if((int)$loc->id===(int)$event->location_id){$locname=$loc->name;break;}} ?><tr><td><?php echo esc_html(wp_date('F j, Y',strtotime($event->event_date.' 12:00:00'))); ?><?php if($event->event_time) echo '<br>'.esc_html(wp_date( get_option( 'time_format', 'g:i a' ), ( new \\DateTimeImmutable( $event->event_date . ' ' . $event->event_time, wp_timezone() ) )->getTimestamp(), wp_timezone() )); ?></td><td><?php echo esc_html($event->event_name); ?></td><td><?php echo esc_html($event->distance_value.' '.$event->course_unit); ?></td><td><?php echo esc_html($strokes[$event->stroke]??$event->stroke); ?></td><td><?php echo esc_html($locname); ?></td><td><a class="button button-small" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-events','view'=>$view,'edit'=>$event->id),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit','swim-log-evaluation'); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field('swimlog_delete_event'); ?><input type="hidden" name="swimlog_event_action" value="delete"><input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>"><button class="button button-small" onclick="return confirm('<?php echo esc_js(__('Delete this event?','swim-log-evaluation')); ?>');"><?php esc_html_e('Delete','swim-log-evaluation'); ?></button></form></td></tr><?php endforeach; ?>
 			</tbody></table><?php endif; ?>
 		</div><?php
 	}
