@@ -31,7 +31,9 @@ final class Admin {
 	}
 
 	private function selected_user_id(){
-		$uid=get_current_user_id();if(current_user_can('swimlog_manage_all_users')&&!empty($_GET['swimmer_id'])){$requested=absint($_GET['swimmer_id']);if($requested&&get_userdata($requested))$uid=$requested;}return$uid;
+		$uid=get_current_user_id();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin swimmer selector; no state is changed.
+		if(current_user_can('swimlog_manage_all_users')&&!empty($_GET['swimmer_id'])){$requested=absint(wp_unslash($_GET['swimmer_id']));if($requested&&get_userdata($requested))$uid=$requested;}return$uid;
 	}
 	private function swimmer_selector($user_id,$page){
 		if(!current_user_can('swimlog_manage_all_users'))return;$users=get_users(array('fields'=>array('ID','display_name'),'orderby'=>'display_name'));?><form method="get" class="swimlog-swimmer-selector"><input type="hidden" name="page" value="<?php echo esc_attr($page); ?>"><label for="swimlog-swimmer"><?php esc_html_e('Swimmer','swim-log-evaluation'); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach($users as$u):?><option value="<?php echo esc_attr($u->ID); ?>" <?php selected($user_id,$u->ID); ?>><?php echo esc_html($u->display_name.' (#'.$u->ID.')'); ?></option><?php endforeach;?></select> <?php submit_button(__('View','swim-log-evaluation'),'secondary','',false); ?></form><?php
@@ -90,7 +92,8 @@ final class Admin {
 	public function dashboard() {
 		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-event.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';
-		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-dashboard');$course=sanitize_key($_GET['course']??get_option('swimlog_default_course_unit','m'));if(!in_array($course,array('m','yd'),true))$course='m';
+		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-dashboard');// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only course filter.
+		$course=sanitize_key(wp_unslash($_GET['course']??get_option('swimlog_default_course_unit','m')));if(!in_array($course,array('m','yd'),true))$course='m';
 		$recent=Workout::recent_for_user($user_id,5);$latest=$recent[0]??null;$pbs=Records::personal_bests($user_id,$course);$event_count=max(1,min(50,(int)get_option('swimlog_default_event_count',5)));$events=Event::upcoming_for_user($user_id,$event_count);
 		$strokes=array('FR'=>__('Freestyle','swim-log-evaluation'),'BR'=>__('Breaststroke','swim-log-evaluation'),'BACK'=>__('Backstroke','swim-log-evaluation'),'FLY'=>__('Butterfly','swim-log-evaluation'),'MIXED'=>__('Mixed','swim-log-evaluation'),'UNKNOWN'=>__('Unknown','swim-log-evaluation'));
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Swim Log Dashboard','swim-log-evaluation'); ?></h1>
@@ -116,7 +119,7 @@ final class Admin {
 			$edit=isset($_GET['edit'])&&'1'===$_GET['edit']; $metadata_error=null;
 			if(isset($_POST['swimlog_workout_action'])&&'save_metadata'===$_POST['swimlog_workout_action']){
 				check_admin_referer('swimlog_save_workout_metadata_'.$detail);
-				$result=Workout::update_metadata($detail,$user_id,absint($_POST['location_id']??0),wp_unslash($_POST['notes']??''));
+				$result=Workout::update_metadata($detail,$user_id,absint($_POST['location_id']??0),sanitize_textarea_field(wp_unslash($_POST['notes']??'')));
 				if(is_wp_error($result)){$metadata_error=$result->get_error_message();$edit=true;}
 				else{
 					$redirect=add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'saved'=>1),admin_url('admin.php'));
@@ -127,6 +130,7 @@ final class Admin {
 			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
 			$lengths=Workout::lengths($detail,$user_id); $perfs=Workout::performances($detail,$user_id); $imports=Workout::imports($detail,$user_id);
 			?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workout Details','swim-log-evaluation'); ?></h1><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-workouts')); ?>">&larr; <?php esc_html_e('Back to Workouts','swim-log-evaluation'); ?></a></p>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Workout metadata saved. Imported swim data and historical pool snapshot were unchanged.','swim-log-evaluation'); ?></p></div><?php endif;?>
 			<?php if($metadata_error):?><div class="notice notice-error"><p><?php echo esc_html($metadata_error); ?></p></div><?php endif;?>
 			<?php if($edit):?>
@@ -151,7 +155,8 @@ final class Admin {
 			</div><?php return;
 		}
 
-		$filters=array('date_from'=>sanitize_text_field($_GET['date_from']??''),'date_to'=>sanitize_text_field($_GET['date_to']??''),'location_id'=>absint($_GET['location_id']??0),'course_unit'=>sanitize_key($_GET['course_unit']??''),'stroke'=>strtoupper(sanitize_key($_GET['stroke']??'')));
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout filters.
+		$filters=array('date_from'=>sanitize_text_field(wp_unslash($_GET['date_from']??'')),'date_to'=>sanitize_text_field(wp_unslash($_GET['date_to']??'')),'location_id'=>absint(wp_unslash($_GET['location_id']??0)),'course_unit'=>sanitize_key(wp_unslash($_GET['course_unit']??'')),'stroke'=>strtoupper(sanitize_key(wp_unslash($_GET['stroke']??''))));
 		$paged=max(1,absint($_GET['paged']??1)); $result=Workout::query_for_user($user_id,$filters,$paged,20); $locations=Location::all_for_user($user_id);
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workouts','swim-log-evaluation'); ?></h1><p><?php esc_html_e('Browse your normalized swim workout history.','swim-log-evaluation'); ?></p>
 		<form method="get"><input type="hidden" name="page" value="swimlog-workouts"><label><?php esc_html_e('From','swim-log-evaluation'); ?> <input type="date" name="date_from" value="<?php echo esc_attr($filters['date_from']); ?>"></label> <label><?php esc_html_e('To','swim-log-evaluation'); ?> <input type="date" name="date_to" value="<?php echo esc_attr($filters['date_to']); ?>"></label> <select name="location_id"><option value="0"><?php esc_html_e('All locations','swim-log-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected($filters['location_id'],$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select> <select name="course_unit"><option value=""><?php esc_html_e('All courses','swim-log-evaluation'); ?></option><option value="m" <?php selected($filters['course_unit'],'m'); ?>><?php esc_html_e('Meters','swim-log-evaluation'); ?></option><option value="yd" <?php selected($filters['course_unit'],'yd'); ?>><?php esc_html_e('Yards','swim-log-evaluation'); ?></option></select> <select name="stroke"><option value=""><?php esc_html_e('All strokes','swim-log-evaluation'); ?></option><?php foreach($strokes as $code=>$label):?><option value="<?php echo esc_attr($code); ?>" <?php selected($filters['stroke'],$code); ?>><?php echo esc_html($label); ?></option><?php endforeach;?></select> <?php submit_button(__('Filter','swim-log-evaluation'),'secondary','',false); ?></form>
@@ -168,7 +173,8 @@ final class Admin {
 			$res=Importer::resolve_pending($import_id,$user_id,$choice,$loc);if(is_wp_error($res))$errors[]=$res->get_error_message();else$results[]=$res;
 		}
 		if(isset($_POST['swimlog_upload_action'])&&'import'===$_POST['swimlog_upload_action']){
-			check_admin_referer('swimlog_upload_workout');$loc=absint($_POST['location_id']??0);$files=$_FILES['workout_files']??array();
+			check_admin_referer('swimlog_upload_workout');$loc=absint($_POST['location_id']??0);// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Raw upload metadata is validated by Importer::import_upload().
+			$files=$_FILES['workout_files']??array();
 			if(empty($files['name']))$errors[]=__('Choose at least one FIT or CSV file.','swim-log-evaluation');
 			else{$items=array();foreach((array)$files['name'] as $i=>$name){$items[]=array('name'=>$name,'type'=>$files['type'][$i]??'','tmp_name'=>$files['tmp_name'][$i]??'','error'=>$files['error'][$i]??UPLOAD_ERR_NO_FILE,'size'=>$files['size'][$i]??0);}usort($items,function($x,$y){return(strtolower(pathinfo($x['name'],PATHINFO_EXTENSION))==='fit'?-1:1);});
 				foreach($items as $file){$res=Importer::import_upload($user_id,$file,$loc);if(is_wp_error($res))$errors[]=$file['name'].': '.$res->get_error_message();elseif(!empty($res['pending']))$pending[]=$res;else$results[]=$res;}
@@ -205,7 +211,10 @@ final class Admin {
 	public function personal_bests() {
 		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-personal-bests');$course=sanitize_key($_GET['course']??get_option('swimlog_default_course_unit','m'));if(!in_array($course,array('m','yd'),true))$course='m';$pbs=Records::personal_bests($user_id,$course);$history_distance=absint($_GET['history_distance']??0);$history_stroke=strtoupper(sanitize_key($_GET['history_stroke']??''));$progression=($history_distance&&in_array($history_stroke,array('FR','BR','BACK','FLY','MIXED'),true))?Records::progression($user_id,$history_distance,$course,$history_stroke):array();
+		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-personal-bests');// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB filters.
+		$course=sanitize_key(wp_unslash($_GET['course']??get_option('swimlog_default_course_unit','m')));if(!in_array($course,array('m','yd'),true))$course='m';$pbs=Records::personal_bests($user_id,$course);
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB history filters.
+		$history_distance=absint(wp_unslash($_GET['history_distance']??0));$history_stroke=strtoupper(sanitize_key(wp_unslash($_GET['history_stroke']??'')));$progression=($history_distance&&in_array($history_stroke,array('FR','BR','BACK','FLY','MIXED'),true))?Records::progression($user_id,$history_distance,$course,$history_stroke):array();
 		$cols=array('OVERALL'=>__('Overall','swim-log-evaluation'),'FR'=>__('Freestyle','swim-log-evaluation'),'BR'=>__('Breaststroke','swim-log-evaluation'),'BACK'=>__('Backstroke','swim-log-evaluation'),'FLY'=>__('Butterfly','swim-log-evaluation'),'MIXED'=>__('Mixed','swim-log-evaluation'));
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Personal Bests','swim-log-evaluation'); ?></h1><p><a class="button <?php echo $course==='m'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course=m')); ?>"><?php esc_html_e('Meters','swim-log-evaluation'); ?></a> <a class="button <?php echo $course==='yd'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course=yd')); ?>"><?php esc_html_e('Yards','swim-log-evaluation'); ?></a></p>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','swim-log-evaluation'); ?></th><?php foreach($cols as $label):?><th><?php echo esc_html($label); ?></th><?php endforeach;?></tr></thead><tbody>
@@ -263,9 +272,11 @@ final class Admin {
 
 		$user_id = get_current_user_id();
 		$error = $this->event_action_error;
-		$view=sanitize_key($_GET['view'] ?? 'upcoming');
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only event list filter.
+		$view=sanitize_key(wp_unslash($_GET['view'] ?? 'upcoming'));
 		if(!in_array($view,array('upcoming','past','all'),true)) $view='upcoming';
-		$edit_id=absint($_GET['edit'] ?? 0);
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only event edit selector.
+		$edit_id=absint(wp_unslash($_GET['edit'] ?? 0));
 		$editing=$edit_id?Event::get_for_user($edit_id,$user_id):null;
 		$events=Event::all_for_user($user_id,$view);
 		$locations=Location::all_for_user($user_id);
@@ -275,6 +286,7 @@ final class Admin {
 			<h1><?php esc_html_e('Events','swim-log-evaluation'); ?></h1>
 			<p><?php esc_html_e('Manage upcoming and historical swim events. Past events remain in your history.','swim-log-evaluation'); ?></p>
 			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Event saved.','swim-log-evaluation'); ?></p></div><?php endif; ?>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['deleted'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Event deleted.','swim-log-evaluation'); ?></p></div><?php endif; ?>
 			<?php if($error):?><div class="notice notice-error"><p><?php echo esc_html($error); ?></p></div><?php endif; ?>
 
@@ -408,7 +420,7 @@ final class Admin {
 			check_admin_referer('swimlog_save_settings');
 			$course=sanitize_key($_POST['default_course_unit']??'m');if(!in_array($course,array('m','yd'),true))$course='m';
 			$count=max(1,min(50,absint($_POST['default_event_count']??5)));
-			$types=array();foreach((array)($_POST['allowed_upload_types']??array()) as$t){$t=sanitize_key($t);if(in_array($t,array('fit','csv'),true))$types[]=$t;}if(!$types)$types=array('fit','csv');
+			$types=array();foreach((array)wp_unslash($_POST['allowed_upload_types']??array()) as$t){$t=sanitize_key($t);if(in_array($t,array('fit','csv'),true))$types[]=$t;}if(!$types)$types=array('fit','csv');
 			update_option('swimlog_default_course_unit',$course);update_option('swimlog_default_event_count',$count);update_option('swimlog_allowed_upload_types',array_values(array_unique($types)));
 			// v0.2 preservation remains enabled; destructive uninstall is deliberately not exposed here.
 			update_option('swimlog_data_preservation','1');update_option('swimlog_public_results_default','0');$saved=true;
