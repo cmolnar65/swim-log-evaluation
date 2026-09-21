@@ -18,7 +18,9 @@ $ExcludeTopLevel = @(
     "phpunit.xml.dist",
     "composer.json",
     "composer.lock",
-    "build-release.ps1"
+    "build-release.ps1",
+    "build-release.sh",
+    "PLUGIN-CHECK.md"
 )
 
 try {
