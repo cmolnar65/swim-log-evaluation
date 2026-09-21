@@ -26,8 +26,8 @@ final class Activator {
 		if ( ! Database::install_schema() ) {
 			update_option( 'swimlog_db_version', $previous_version );
 			wp_die(
-				esc_html__( 'Swim Log and Evaluation could not create or verify all required database tables. No existing swim history was deleted.', 'swim-log-evaluation' ),
-				esc_html__( 'Plugin activation failed', 'swim-log-evaluation' ),
+				esc_html__( 'Swim Log and Evaluation could not create or verify all required database tables. No existing swim history was deleted.', 'swim-log-and-evaluation' ),
+				esc_html__( 'Plugin activation failed', 'swim-log-and-evaluation' ),
 				array( 'back_link' => true )
 			);
 		}
