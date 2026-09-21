@@ -8,7 +8,7 @@
  * Author: Christopher Molnar
  * Author Email: cmolnar65@gmail.com
  * License: GPL-2.0-or-later
- * Text Domain: swim-log-evaluation
+ * Text Domain: swim-log-and-evaluation
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
