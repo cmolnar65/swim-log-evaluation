@@ -7,16 +7,16 @@ final class CSV_Importer {
 	const VERSION='0.1';
 	public function parse($path){
 		global $wp_filesystem;if(!function_exists('WP_Filesystem'))require_once ABSPATH.'wp-admin/includes/file.php';
-		if(!$wp_filesystem&&!WP_Filesystem())return new \WP_Error('swimlog_csv_read',__('WordPress could not initialize filesystem access for the CSV import.','swim-log-evaluation'));
-		$contents=$wp_filesystem->get_contents($path);if(false===$contents)return new \WP_Error('swimlog_csv_read',__('CSV file could not be read.','swim-log-evaluation'));
-		$records=str_getcsv($contents,"\n");$rows=array();foreach($records as $record){$record=rtrim($record,"\r");if(''===$record)continue;$rows[]=str_getcsv($record);if(count($rows)>20000)return new \WP_Error('swimlog_csv_large',__('CSV contains too many rows.','swim-log-evaluation'));}
+		if(!$wp_filesystem&&!WP_Filesystem())return new \WP_Error('swimlog_csv_read',__('WordPress could not initialize filesystem access for the CSV import.','swim-log-and-evaluation'));
+		$contents=$wp_filesystem->get_contents($path);if(false===$contents)return new \WP_Error('swimlog_csv_read',__('CSV file could not be read.','swim-log-and-evaluation'));
+		$records=str_getcsv($contents,"\n");$rows=array();foreach($records as $record){$record=rtrim($record,"\r");if(''===$record)continue;$rows[]=str_getcsv($record);if(count($rows)>20000)return new \WP_Error('swimlog_csv_large',__('CSV contains too many rows.','swim-log-and-evaluation'));}
 		$summary=null;$detail_header=null;$detail_start=null;
 		for($i=0;$i<count($rows);$i++){
 			$norm=array_map(array($this,'key'),$rows[$i]);
 			if(in_array('swimdate',$norm,true)&&$this->has_any($norm,array('start','swimstarttime'))&&$this->has_any($norm,array('end','swimendtime'))&&$i+1<count($rows)&&!$summary){$summary=array_combine($norm,array_pad($rows[$i+1],count($norm),''));}
 			if(in_array('swimdate',$norm,true)&&in_array('swimtime',$norm,true)&&$this->has_any($norm,array('lengthm','lengthyd','lengthyards','distm','distyd','distyards'))){$detail_header=$this->unique_keys($norm);$detail_start=$i+1;break;}
 		}
-		if(!$summary&&!$detail_header)return new \WP_Error('swimlog_csv_format',__('CSV format is not recognized as a supported swim export.','swim-log-evaluation'));
+		if(!$summary&&!$detail_header)return new \WP_Error('swimlog_csv_format',__('CSV format is not recognized as a supported swim export.','swim-log-and-evaluation'));
 		$pool=$summary?$this->number($summary['poolsize']??''):null;$unit=$this->course_unit($summary,$detail_header);
 		$pool_m=$pool!==null?($unit==='yd'?$pool*0.9144:$pool):null;
 		$start=$summary?$this->datetime($summary['swimdate']??'', $summary['swimstarttime']??($summary['start']??'')):null;
