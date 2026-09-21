@@ -78,7 +78,7 @@ final class Workout {
 		$location_id = absint( $location_id );
 
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) {
-			return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'swim-log-and-evaluation' ) );
+			return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'swim-log-evaluation' ) );
 		}
 
 		if ( $location_id ) {
@@ -87,7 +87,7 @@ final class Workout {
 				$wpdb->prepare( "SELECT id FROM $locations WHERE id = %d AND user_id = %d", $location_id, $user_id )
 			);
 			if ( $owned_location !== $location_id ) {
-				return new \WP_Error( 'swimlog_workout_location', __( 'Select one of this swimmer\'s locations.', 'swim-log-and-evaluation' ) );
+				return new \WP_Error( 'swimlog_workout_location', __( 'Select one of this swimmer\'s locations.', 'swim-log-evaluation' ) );
 			}
 		}
 
@@ -108,7 +108,7 @@ final class Workout {
 		);
 
 		return false === $result
-			? new \WP_Error( 'swimlog_workout_update', __( 'The workout metadata could not be saved.', 'swim-log-and-evaluation' ) )
+			? new \WP_Error( 'swimlog_workout_update', __( 'The workout metadata could not be saved.', 'swim-log-evaluation' ) )
 			: true;
 	}
 
