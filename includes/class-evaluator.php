@@ -9,8 +9,8 @@ final class Evaluator {
 
 	public static function evaluate_workout($workout_id,$user_id){
 		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');$pt=Database::table('performances');
-		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-and-evaluation'));
-		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-and-evaluation'));
+		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-evaluation'));
+		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-evaluation'));
 		$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));
 		$candidates=!empty($rows)?self::from_lengths($rows,$w,$course):array();
 		// Source hierarchy: active lengths > native laps > exact whole-workout summary.
@@ -29,13 +29,13 @@ final class Evaluator {
 			foreach($best as $c){$ok=$wpdb->insert($pt,array('user_id'=>$user_id,'workout_id'=>$workout_id,'distance_value'=>$c['distance'],'course_unit'=>$c['course'],'stroke'=>$c['stroke'],'duration_ms'=>$c['duration'],'start_length_id'=>$c['start_id'],'end_length_id'=>$c['end_id'],'start_offset_ms'=>$c['start_offset'],'end_offset_ms'=>$c['end_offset'],'is_personal_best'=>0,'evaluation_version'=>self::VERSION,'achieved_at'=>$w->workout_start,'created_at'=>current_time('mysql')));if(!$ok)throw new \Exception('performance');}
 			self::recalculate_personal_bests($user_id);
 			$wpdb->query('COMMIT');return count($best);
-		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_eval_save',__('Performance evaluation could not be saved.','swim-log-and-evaluation'));}
+		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_eval_save',__('Performance evaluation could not be saved.','swim-log-evaluation'));}
 	}
 
 	private static function evaluate_candidates($workout_id,$user_id){
 		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');
-		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-and-evaluation'));
-		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-and-evaluation'));
+		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','swim-log-evaluation'));
+		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','swim-log-evaluation'));
 		$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));$candidates=!empty($rows)?self::from_lengths($rows,$w,$course):array();$laps=array();
 		if(empty($rows)){$laps=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lapt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));if(!empty($laps))$candidates=self::from_laps($laps,$w,$course);}
 		$summary_distance=(float)$w->original_distance;$exact_target=null;foreach(self::DISTANCES as$target){if(abs($summary_distance-$target)<0.001){$exact_target=$target;break;}}
@@ -80,11 +80,11 @@ final class Evaluator {
 	}
 	public static function rebuild_user($user_id){
 		global $wpdb;$wt=Database::table('workouts');$pt=Database::table('performances');
-		$user_id=absint($user_id);if(!$user_id)return new \WP_Error('swimlog_rebuild_user',__('Invalid swimmer.','swim-log-and-evaluation'));
+		$user_id=absint($user_id);if(!$user_id)return new \WP_Error('swimlog_rebuild_user',__('Invalid swimmer.','swim-log-evaluation'));
 		$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d ORDER BY workout_start ASC,id ASC",$user_id));
 		// Rebuild derived rows atomically for the swimmer. If any workout fails,
 		// rollback restores the complete pre-rebuild performance history.
-		if($wpdb->query('START TRANSACTION')===false)return new \WP_Error('swimlog_rebuild_start',__('Performance rebuild could not start. No workout history was changed.','swim-log-and-evaluation'));
+		if($wpdb->query('START TRANSACTION')===false)return new \WP_Error('swimlog_rebuild_start',__('Performance rebuild could not start. No workout history was changed.','swim-log-evaluation'));
 		try{
 			$deleted=$wpdb->delete($pt,array('user_id'=>$user_id));if(false===$deleted)throw new \Exception('clear');
 			$count=0;foreach($ids as$id){$r=self::evaluate_candidates((int)$id,$user_id);if(is_wp_error($r))throw new \Exception('workout '.$id.': '.$r->get_error_message());foreach($r['best'] as$c){if(!self::insert_performance($pt,$user_id,(int)$id,$r['workout'],$c))throw new \Exception('performance '.$id);$count++;}}
@@ -93,7 +93,7 @@ final class Evaluator {
 			return array('workouts'=>count($ids),'performances'=>$count,'deleted'=>(int)$deleted);
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');
 			/* translators: %s: performance rebuild error message. */
-			return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Performance rebuild failed and was rolled back: %s','swim-log-and-evaluation'),$e->getMessage()));}
+			return new \WP_Error('swimlog_rebuild_eval',sprintf(__('Performance rebuild failed and was rolled back: %s','swim-log-evaluation'),$e->getMessage()));}
 	}
 	public static function rebuild_all_users(){
 		global $wpdb;$wt=Database::table('workouts');$users=$wpdb->get_col("SELECT DISTINCT user_id FROM $wt ORDER BY user_id ASC");$summary=array('users'=>0,'workouts'=>0,'performances'=>0,'deleted'=>0);
