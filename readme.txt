@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2
+Stable tag: 0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,7 @@ CSV swimming workouts, preserving normalized workout history, evaluating native
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
-Version 0.2 includes the initial release-hardening and compatibility updates.
+Version 0.3 includes WordPress.org submission corrections.
 
 == Data Preservation ==
 
