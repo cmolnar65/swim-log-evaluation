@@ -1,6 +1,6 @@
 # Plugin Check Baseline
 
-This document records the reviewed WordPress Plugin Check baseline for **Swim Log and Evaluation**.
+This document records the reviewed WordPress Plugin Check baseline for **Chris's Swim Training Progress and Evaluation**.
 
 It is developer and release documentation. It is not intended to suppress Plugin Check findings or to make warnings disappear. Its purpose is to distinguish reviewed architectural warnings from findings that require investigation.
 
@@ -29,7 +29,7 @@ No RC8 finding in the baseline is automatically considered safe merely because i
 
 ## Why the plugin uses direct database queries
 
-Swim Log and Evaluation stores structured workout history in dedicated custom WordPress database tables. These tables include imports, locations, workouts, laps, lengths, performances, and events.
+Chris's Swim Training Progress and Evaluation stores structured workout history in dedicated custom WordPress database tables. These tables include imports, locations, workouts, laps, lengths, performances, and events.
 
 The plugin therefore uses `$wpdb` directly for operations that do not map naturally to WordPress post, post-meta, term, or option APIs. This includes transactional imports, normalized swim-length data, performance evaluation, personal-best history, and derived-data rebuilds.
 
