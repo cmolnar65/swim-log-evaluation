@@ -10,13 +10,13 @@ final class FIT_Importer {
 
 	public function parse($path){
 		$bin=file_get_contents($path);
-		if(false===$bin||strlen($bin)<14)return new \WP_Error('swimlog_fit_read',__('Invalid or unreadable FIT file.','swim-log-evaluation'));
-		$hs=ord($bin[0]); if($hs<12||strlen($bin)<$hs)return new \WP_Error('swimlog_fit_header',__('Invalid FIT header.','swim-log-evaluation'));
-		if(substr($bin,8,4)!=='.FIT')return new \WP_Error('swimlog_fit_signature',__('The file does not contain a FIT signature.','swim-log-evaluation'));
-		if($hs>=14){$stored=$this->u16(substr($bin,12,2),0);$calc=$this->crc16(substr($bin,0,12));if($stored!==$calc)return new \WP_Error('swimlog_fit_header_crc',__('FIT header checksum is invalid.','swim-log-evaluation'));}
+		if(false===$bin||strlen($bin)<14)return new \WP_Error('swimlog_fit_read',__('Invalid or unreadable FIT file.','chriss-swim-training-progress-evaluation'));
+		$hs=ord($bin[0]); if($hs<12||strlen($bin)<$hs)return new \WP_Error('swimlog_fit_header',__('Invalid FIT header.','chriss-swim-training-progress-evaluation'));
+		if(substr($bin,8,4)!=='.FIT')return new \WP_Error('swimlog_fit_signature',__('The file does not contain a FIT signature.','chriss-swim-training-progress-evaluation'));
+		if($hs>=14){$stored=$this->u16(substr($bin,12,2),0);$calc=$this->crc16(substr($bin,0,12));if($stored!==$calc)return new \WP_Error('swimlog_fit_header_crc',__('FIT header checksum is invalid.','chriss-swim-training-progress-evaluation'));}
 		$data_size=unpack('V',substr($bin,4,4))[1]; $end=$hs+$data_size;
-		if($end>strlen($bin))return new \WP_Error('swimlog_fit_truncated',__('The FIT file is truncated.','swim-log-evaluation'));
-		if(strlen($bin)>=$end+2){$stored=$this->u16(substr($bin,$end,2),0);$calc=$this->crc16(substr($bin,0,$end));if($stored!==$calc)return new \WP_Error('swimlog_fit_crc',__('FIT file checksum is invalid.','swim-log-evaluation'));}
+		if($end>strlen($bin))return new \WP_Error('swimlog_fit_truncated',__('The FIT file is truncated.','chriss-swim-training-progress-evaluation'));
+		if(strlen($bin)>=$end+2){$stored=$this->u16(substr($bin,$end,2),0);$calc=$this->crc16(substr($bin,0,$end));if($stored!==$calc)return new \WP_Error('swimlog_fit_crc',__('FIT file checksum is invalid.','chriss-swim-training-progress-evaluation'));}
 		$this->defs=array();$this->last_timestamp=null;
 		$out=array('session'=>null,'laps'=>array(),'lengths'=>array(),'device'=>array());
 		$p=$hs;
@@ -27,22 +27,22 @@ final class FIT_Importer {
 			}
 			$local=$hdr&0x0f;
 			if($hdr&0x40){
-				if($p+5>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT definition message.','swim-log-evaluation'));
+				if($p+5>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT definition message.','chriss-swim-training-progress-evaluation'));
 				$p++; $arch=ord($bin[$p++]); $global=$this->u16(substr($bin,$p,2),$arch); $p+=2; $n=ord($bin[$p++]); $fields=array();
-				for($i=0;$i<$n;$i++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT field definition.','swim-log-evaluation'));$fields[]=array(ord($bin[$p]),ord($bin[$p+1]),ord($bin[$p+2]));$p+=3;}
-				$developer_sizes=array();if($hdr&0x20){if($p>=$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer definition.','swim-log-evaluation'));$dn=ord($bin[$p++]);for($di=0;$di<$dn;$di++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer fields.','swim-log-evaluation'));$p++;$developer_sizes[]=ord($bin[$p++]);$p++;}}
+				for($i=0;$i<$n;$i++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT field definition.','chriss-swim-training-progress-evaluation'));$fields[]=array(ord($bin[$p]),ord($bin[$p+1]),ord($bin[$p+2]));$p+=3;}
+				$developer_sizes=array();if($hdr&0x20){if($p>=$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer definition.','chriss-swim-training-progress-evaluation'));$dn=ord($bin[$p++]);for($di=0;$di<$dn;$di++){if($p+3>$end)return new \WP_Error('swimlog_fit_definition',__('Invalid FIT developer fields.','chriss-swim-training-progress-evaluation'));$p++;$developer_sizes[]=ord($bin[$p++]);$p++;}}
 				$this->defs[$local]=array('arch'=>$arch,'global'=>$global,'fields'=>$fields,'developer_sizes'=>$developer_sizes); continue;
 			}
 			$msg=$this->read_data($bin,$p,$end,$local); if(is_wp_error($msg))return $msg; $this->collect($out,$msg);
 		}
-		if(!$out['session']||empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable pool-swim session and lengths.','swim-log-evaluation'));
+		if(!$out['session']||empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable pool-swim session and lengths.','chriss-swim-training-progress-evaluation'));
 		return $this->normalize($out);
 	}
 	private function read_data($bin,&$p,$end,$local){
-		if(!isset($this->defs[$local]))return new \WP_Error('swimlog_fit_local',__('FIT data references an undefined message type.','swim-log-evaluation'));
+		if(!isset($this->defs[$local]))return new \WP_Error('swimlog_fit_local',__('FIT data references an undefined message type.','chriss-swim-training-progress-evaluation'));
 		$d=$this->defs[$local];$vals=array();
-		foreach($d['fields'] as $f){list($num,$size,$base)=$f;if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT data message is truncated.','swim-log-evaluation'));$raw=substr($bin,$p,$size);$p+=$size;$vals[$num]=$this->value($raw,$base,$d['arch']);}
-		foreach(($d['developer_sizes']??array()) as $size){if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT developer data is truncated.','swim-log-evaluation'));$p+=$size;}
+		foreach($d['fields'] as $f){list($num,$size,$base)=$f;if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT data message is truncated.','chriss-swim-training-progress-evaluation'));$raw=substr($bin,$p,$size);$p+=$size;$vals[$num]=$this->value($raw,$base,$d['arch']);}
+		foreach(($d['developer_sizes']??array()) as $size){if($p+$size>$end)return new \WP_Error('swimlog_fit_data',__('FIT developer data is truncated.','chriss-swim-training-progress-evaluation'));$p+=$size;}
 		if(isset($vals[253])&&is_numeric($vals[253]))$this->last_timestamp=(int)$vals[253];
 		return array('global'=>$d['global'],'fields'=>$vals);
 	}
