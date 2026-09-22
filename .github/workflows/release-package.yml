@@ -20,7 +20,7 @@ jobs:
           set -euo pipefail
           ROOT="$RUNNER_TEMP/chriss-swim-training-progress-evaluation"
           mkdir -p "$ROOT/admin" "$ROOT/includes" "$ROOT/languages" "$ROOT/public"
-          cp LICENSE README.md readme.txt chriss-swim-training-progress-evaluation.php uninstall.php "$ROOT/"
+          cp LICENSE README.md readme.txt swim-log-evaluation.php uninstall.php "$ROOT/"
           cp admin/class-admin.php admin/index.php "$ROOT/admin/"
           cp includes/*.php "$ROOT/includes/"
           cp languages/index.php "$ROOT/languages/"
