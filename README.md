@@ -1,6 +1,6 @@
-# Swim Log and Evaluation
+# Chris's Swim Training Progress and Evaluation
 
-Swim Log and Evaluation is a WordPress plugin for importing, preserving, and evaluating swimming workout history.
+Chris's Swim Training Progress and Evaluation is a WordPress plugin for importing, preserving, and evaluating swimming workout history.
 
 The plugin supports FIT and supported CSV workout sources, normalized workout/lap/length storage, personal-best evaluation, events, locations, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
@@ -13,7 +13,7 @@ Original uploaded FIT and CSV workout files are preserved in private server stor
 By default, the plugin uses the site's `DOCUMENT_ROOT` to determine the public web root and attempts to create a directory named:
 
 ```text
-swim-log-evaluation-private
+chriss-swim-training-progress-evaluation-private
 ```
 
 one directory above the public web root.
@@ -27,7 +27,7 @@ For example, if the public web root is:
 the default private storage location would be:
 
 ```text
-/var/www/example.com/swim-log-evaluation-private
+/var/www/example.com/chriss-swim-training-progress-evaluation-private
 ```
 
 The selected directory must be writable by the PHP/WordPress process. The plugin validates that the storage directory is outside the public web root and refuses to preserve workout source files in a web-accessible location.
@@ -41,7 +41,7 @@ Some hosting environments do not permit WordPress to create or write to a direct
 For example:
 
 ```php
-define( 'SWIMLOG_PRIVATE_STORAGE_DIR', '/path/outside/public/webroot/swim-log-evaluation-private' );
+define( 'SWIMLOG_PRIVATE_STORAGE_DIR', '/path/outside/public/webroot/chriss-swim-training-progress-evaluation-private' );
 ```
 
 The configured path must:
