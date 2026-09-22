@@ -6,7 +6,7 @@
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author: Christopher Molnar
- * Author Email: cmolnar65@gmail.com
+ * Author Email: cmolnar@cmolnar.com
  * License: GPL-2.0-or-later
  * Text Domain: swim-log-evaluation
  */
