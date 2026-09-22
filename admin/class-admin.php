@@ -99,12 +99,15 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-location.php';
-		$user_id=$this->selected_user_id();$this->swimmer_selector($user_id,'swimlog-workouts'); $detail=absint(wp_unslash($_GET['workout_id']??0));
+		$user_id=$this->selected_user_id();$this->swimmer_selector($user_id,'swimlog-workouts');
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout detail selector.
+		$detail=absint(wp_unslash($_GET['workout_id']??0));
 		$strokes=array('FR'=>__('Freestyle','chriss-swim-training-progress-evaluation'),'BR'=>__('Breaststroke','chriss-swim-training-progress-evaluation'),'BACK'=>__('Backstroke','chriss-swim-training-progress-evaluation'),'FLY'=>__('Butterfly','chriss-swim-training-progress-evaluation'),'MIXED'=>__('Mixed','chriss-swim-training-progress-evaluation'),'UNKNOWN'=>__('Unknown','chriss-swim-training-progress-evaluation'));
 
 		if($detail){
 			$w=Workout::get_for_user($detail,$user_id);
 			if(!$w) wp_die(esc_html__('Workout not found.','chriss-swim-training-progress-evaluation'));
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout edit-mode selector.
 			$edit=isset($_GET['edit'])&&'1'===sanitize_text_field(wp_unslash($_GET['edit'])); $metadata_error=$this->workout_action_error;
 			if($metadata_error)$edit=true;
 			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
@@ -137,6 +140,7 @@ final class Admin {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout filters.
 		$filters=array('date_from'=>sanitize_text_field(wp_unslash($_GET['date_from']??'')),'date_to'=>sanitize_text_field(wp_unslash($_GET['date_to']??'')),'location_id'=>absint(wp_unslash($_GET['location_id']??0)),'course_unit'=>sanitize_key(wp_unslash($_GET['course_unit']??'')),'stroke'=>strtoupper(sanitize_key(wp_unslash($_GET['stroke']??''))));
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout pagination selector.
 		$paged=max(1,absint(wp_unslash($_GET['paged']??1))); $result=Workout::query_for_user($user_id,$filters,$paged,20); $locations=Location::all_for_user($user_id);
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workouts','chriss-swim-training-progress-evaluation'); ?></h1><p><?php esc_html_e('Browse your normalized swim workout history.','chriss-swim-training-progress-evaluation'); ?></p>
 		<form method="get"><input type="hidden" name="page" value="swimlog-workouts"><label><?php esc_html_e('From','chriss-swim-training-progress-evaluation'); ?> <input type="date" name="date_from" value="<?php echo esc_attr($filters['date_from']); ?>"></label> <label><?php esc_html_e('To','chriss-swim-training-progress-evaluation'); ?> <input type="date" name="date_to" value="<?php echo esc_attr($filters['date_to']); ?>"></label> <select name="location_id"><option value="0"><?php esc_html_e('All locations','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected($filters['location_id'],$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select> <select name="course_unit"><option value=""><?php esc_html_e('All courses','chriss-swim-training-progress-evaluation'); ?></option><option value="m" <?php selected($filters['course_unit'],'m'); ?>><?php esc_html_e('Meters','chriss-swim-training-progress-evaluation'); ?></option><option value="yd" <?php selected($filters['course_unit'],'yd'); ?>><?php esc_html_e('Yards','chriss-swim-training-progress-evaluation'); ?></option></select> <select name="stroke"><option value=""><?php esc_html_e('All strokes','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($strokes as $code=>$label):?><option value="<?php echo esc_attr($code); ?>" <?php selected($filters['stroke'],$code); ?>><?php echo esc_html($label); ?></option><?php endforeach;?></select> <?php submit_button(__('Filter','chriss-swim-training-progress-evaluation'),'secondary','',false); ?></form>
@@ -388,6 +392,7 @@ final class Admin {
 		$user_id = get_current_user_id();
 		$error = $this->location_action_error;
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only location edit selector.
 		$edit_id = isset( $_GET['edit'] ) ? absint( wp_unslash( $_GET['edit'] ) ) : 0;
 		$editing = $edit_id ? Location::get_for_user( $edit_id, $user_id ) : null;
 		$locations = Location::all_for_user( $user_id );
@@ -395,7 +400,9 @@ final class Admin {
 		<div class="wrap swimlog-admin">
 			<h1><?php esc_html_e( 'Locations', 'chriss-swim-training-progress-evaluation' ); ?></h1>
 			<p><?php esc_html_e( 'Manage your pool and swim locations. Editing a location does not change the pool information stored with historical workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Location saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if ( isset( $_GET['deleted'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Location deleted. Historical workout snapshots were preserved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
