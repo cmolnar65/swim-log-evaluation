@@ -42,7 +42,15 @@ final class Shortcodes {
 	private static function local_date($format,$value){$ts=self::local_timestamp($value);return false===$ts?'':wp_date($format,$ts,wp_timezone());}
 	private static function close(){return '</div>';}
 	private static function distance_label($d,$c){if($c==='yd'&&$d===1650)return __('1650 yd / 1 Mile','swim-log-evaluation');if($c==='yd'&&$d===3300)return __('3300 yd / 2 Miles','swim-log-evaluation');if($c==='m'&&$d===5000)return __('5000 m / 5K','swim-log-evaluation');return $d.' '.$c;}
-	private static function styles(){return '<style>.swimlog-public{margin:1.5em 0;max-width:100%}.swimlog-table-wrap{width:100%;max-width:100%;overflow-x:auto}.swimlog-public table{width:100%;max-width:100%;border-collapse:collapse;table-layout:auto}.swimlog-public th,.swimlog-public td{padding:.55em .7em;border:1px solid currentColor;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:normal}.swimlog-public th{font-weight:600}.swimlog-public .swimlog-muted{opacity:.75}@media(max-width:782px){.swimlog-public th,.swimlog-public td{padding:.4em .45em;font-size:.9em}}</style>';}
+	private static function styles(){
+		wp_enqueue_style(
+			'swimlog-public',
+			SWIMLOG_EVALUATION_URL.'assets/css/public.css',
+			array(),
+			SWIMLOG_EVALUATION_VERSION
+		);
+		return '';
+	}
 
 	public static function latest($atts){
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
