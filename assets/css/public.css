@@ -1,0 +1,43 @@
+.swimlog-public {
+	margin: 1.5em 0;
+	max-width: 100%;
+}
+
+.swimlog-table-wrap {
+	width: 100%;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.swimlog-public table {
+	width: 100%;
+	max-width: 100%;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+
+.swimlog-public th,
+.swimlog-public td {
+	padding: .55em .7em;
+	border: 1px solid currentColor;
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+	word-break: normal;
+}
+
+.swimlog-public th {
+	font-weight: 600;
+}
+
+.swimlog-public .swimlog-muted {
+	opacity: .75;
+}
+
+@media (max-width: 782px) {
+	.swimlog-public th,
+	.swimlog-public td {
+		padding: .4em .45em;
+		font-size: .9em;
+	}
+}
