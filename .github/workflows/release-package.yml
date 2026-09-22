@@ -18,20 +18,20 @@ jobs:
       - name: Build clean plugin package
         run: |
           set -euo pipefail
-          ROOT="$RUNNER_TEMP/swim-log-evaluation"
+          ROOT="$RUNNER_TEMP/chriss-swim-training-progress-evaluation"
           mkdir -p "$ROOT/admin" "$ROOT/includes" "$ROOT/languages" "$ROOT/public"
-          cp LICENSE README.md readme.txt swim-log-evaluation.php uninstall.php "$ROOT/"
+          cp LICENSE README.md readme.txt chriss-swim-training-progress-evaluation.php uninstall.php "$ROOT/"
           cp admin/class-admin.php admin/index.php "$ROOT/admin/"
           cp includes/*.php "$ROOT/includes/"
           cp languages/index.php "$ROOT/languages/"
           cp public/index.php "$ROOT/public/"
           cd "$RUNNER_TEMP"
-          zip -r swim-log-evaluation-0.2-rc.zip swim-log-evaluation
+          zip -r chriss-swim-training-progress-evaluation-0.2-rc.zip chriss-swim-training-progress-evaluation
       - name: Upload release candidate
         uses: actions/upload-artifact@v4
         with:
-          name: swim-log-evaluation-0.2-rc
-          path: ${{ runner.temp }}/swim-log-evaluation-0.2-rc.zip
+          name: chriss-swim-training-progress-evaluation-0.2-rc
+          path: ${{ runner.temp }}/chriss-swim-training-progress-evaluation-0.2-rc.zip
           if-no-files-found: error
           retention-days: 14
           # RC4 rebuild from the current develop branch.
