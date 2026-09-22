@@ -3,7 +3,7 @@ namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-/** Registers the Swim Log wp-admin shell and capability-gated pages. */
+/** Registers the swim training wp-admin shell and capability-gated pages. */
 final class Admin {
 	public function register_menu() {
 		add_menu_page(
