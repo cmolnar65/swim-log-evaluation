@@ -1,10 +1,10 @@
 param(
-    [string]$Output = "../swim-log-evaluation.zip"
+    [string]$Output = "../chriss-swim-training-progress-evaluation.zip"
 )
 
 $ErrorActionPreference = "Stop"
 
-$PluginSlug = "swim-log-evaluation"
+$PluginSlug = "chriss-swim-training-progress-evaluation"
 $RepoRoot = (Resolve-Path $PSScriptRoot).Path
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("swimlog-release-" + [guid]::NewGuid().ToString("N"))
 $StageDir = Join-Path $TempRoot $PluginSlug
