@@ -1,6 +1,6 @@
 <?php
 /**
- * Swim Log and Evaluation uninstall handler.
+ * Chris's Swim Training Progress and Evaluation uninstall handler.
  *
  * Historical data is preserved by default. Permanent removal must never occur
  * unless an administrator has explicitly enabled the destructive removal option.
