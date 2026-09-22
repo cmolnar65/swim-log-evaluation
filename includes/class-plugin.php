@@ -25,7 +25,7 @@ final class Plugin {
 	/**
 	 * Allow validated Garmin/FORM FIT source files to be preserved by WordPress.
 	 *
-	 * FIT files are still restricted by Swim Log's own extension, size, parser,
+	 * FIT files are still restricted by the plugin's own extension, size, parser,
 	 * CRC, and normalized-workout validation before they are preserved.
 	 */
 	public function allow_fit_upload_mime( $mimes ) {
