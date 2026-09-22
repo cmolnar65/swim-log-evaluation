@@ -12,7 +12,9 @@ final class Plugin {
 			$admin = new Admin();
 			add_action( 'admin_menu', array( $admin, 'register_menu' ) );
 			add_action( 'admin_enqueue_scripts', array( $admin, 'enqueue_assets' ) );
+			add_action( 'admin_init', array( $admin, 'handle_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
+			add_action( 'admin_init', array( $admin, 'handle_location_actions' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';
 		Shortcodes::register();
