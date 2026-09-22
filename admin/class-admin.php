@@ -38,31 +38,17 @@ final class Admin {
 	private function swimmer_selector($user_id,$page){
 		if(!current_user_can('swimlog_manage_all_users'))return;$users=get_users(array('fields'=>array('ID','display_name'),'orderby'=>'display_name'));?><form method="get" class="swimlog-swimmer-selector"><input type="hidden" name="page" value="<?php echo esc_attr($page); ?>"><label for="swimlog-swimmer"><?php esc_html_e('Swimmer','swim-log-evaluation'); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach($users as$u):?><option value="<?php echo esc_attr($u->ID); ?>" <?php selected($user_id,$u->ID); ?>><?php echo esc_html($u->display_name.' (#'.$u->ID.')'); ?></option><?php endforeach;?></select> <?php submit_button(__('View','swim-log-evaluation'),'secondary','',false); ?></form><?php
 	}
-	private function admin_css() {
-		?>
-		<style>
-			.swimlog-admin .swimlog-table-wrap { overflow-x: auto; }
-			.swimlog-admin .swimlog-swimmer-selector { margin: 12px 0 18px; }
-			.swimlog-admin .swimlog-swimmer-selector label { font-weight: 600; }
-			.swimlog-admin .swimlog-match-grid {
-				display: grid;
-				grid-template-columns: repeat(2, minmax(260px, 1fr));
-				gap: 16px;
-			}
-			.swimlog-admin .swimlog-actions {
-				display: flex;
-				gap: 8px;
-				flex-wrap: wrap;
-			}
-			@media (max-width: 782px) {
-				.swimlog-admin .swimlog-match-grid { grid-template-columns: 1fr; }
-				.swimlog-admin table.widefat { min-width: 680px; }
-				.swimlog-admin .swimlog-table-wrap { margin-right: 0; }
-				.swimlog-admin input[type="date"],
-				.swimlog-admin select { max-width: 100%; }
-			}
-		</style>
-		<?php
+	public function enqueue_assets( $hook_suffix ) {
+		if ( false === strpos( (string) $hook_suffix, 'swimlog' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'swimlog-admin',
+			SWIMLOG_EVALUATION_URL . 'assets/css/admin.css',
+			array(),
+			SWIMLOG_EVALUATION_VERSION
+		);
 	}
 	private function submenu( $parent, $title, $capability, $slug, $method ) {
 		add_submenu_page( $parent, $title, $title, $capability, $slug, array( $this, $method ) );
@@ -92,7 +78,7 @@ final class Admin {
 	public function dashboard() {
 		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-event.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';
-		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-dashboard');
+		$user_id=$this->selected_user_id();$this->swimmer_selector($user_id,'swimlog-dashboard');
 		$course = get_option('swimlog_default_course_unit','m');
 		if ( isset( $_GET['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only course filter.
 			$course = sanitize_key( wp_unslash( $_GET['course'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -113,7 +99,7 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-location.php';
-		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-workouts'); $detail=absint($_GET['workout_id']??0);
+		$user_id=$this->selected_user_id();$this->swimmer_selector($user_id,'swimlog-workouts'); $detail=absint($_GET['workout_id']??0);
 		$strokes=array('FR'=>__('Freestyle','swim-log-evaluation'),'BR'=>__('Breaststroke','swim-log-evaluation'),'BACK'=>__('Backstroke','swim-log-evaluation'),'FLY'=>__('Butterfly','swim-log-evaluation'),'MIXED'=>__('Mixed','swim-log-evaluation'),'UNKNOWN'=>__('Unknown','swim-log-evaluation'));
 
 		if($detail){
@@ -226,7 +212,7 @@ final class Admin {
 	public function personal_bests() {
 		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to view these results.','swim-log-evaluation'));
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-		$user_id=$this->selected_user_id();$this->admin_css();$this->swimmer_selector($user_id,'swimlog-personal-bests');
+		$user_id=$this->selected_user_id();$this->swimmer_selector($user_id,'swimlog-personal-bests');
 		$course = get_option('swimlog_default_course_unit','m');
 		if ( isset( $_GET['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB course filter.
 			$course = sanitize_key( wp_unslash( $_GET['course'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
