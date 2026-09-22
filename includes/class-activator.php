@@ -45,7 +45,7 @@ final class Activator {
 			}
 		}
 
-		// Subscriber-like users may use Swim Log without receiving content-editing capabilities.
+		// Subscriber-like users may use the plugin without receiving content-editing capabilities.
 		$subscriber = get_role( 'subscriber' );
 		if ( $subscriber ) {
 			foreach ( self::SWIMMER_CAPABILITIES as $capability ) {
