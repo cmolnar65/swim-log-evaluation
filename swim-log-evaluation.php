@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Swim Log and Evaluation
+ * Plugin Name: Chris's Swim Training Progress and Evaluation
  * Description: Import, normalize, evaluate, and display swimming workout history and personal bests.
  * Version: 0.2
  * Requires at least: 6.0
@@ -8,7 +8,7 @@
  * Author: Christopher Molnar
  * Author Email: cmolnar@cmolnar.com
  * License: GPL-2.0-or-later
- * Text Domain: swim-log-evaluation
+ * Text Domain: chriss-swim-training-progress-evaluation
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
