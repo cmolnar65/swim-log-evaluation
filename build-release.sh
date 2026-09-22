@@ -30,6 +30,7 @@ EXCLUDE_TOP_LEVEL=(
     "composer.lock"
     "build-release.ps1"
     "build-release.sh"
+    "PLUGIN-CHECK.md"
 )
 
 mkdir -p -- "$STAGE_DIR"
