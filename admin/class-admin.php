@@ -105,17 +105,8 @@ final class Admin {
 		if($detail){
 			$w=Workout::get_for_user($detail,$user_id);
 			if(!$w) wp_die(esc_html__('Workout not found.','swim-log-evaluation'));
-			$edit=isset($_GET['edit'])&&'1'===$_GET['edit']; $metadata_error=null;
-			if(isset($_POST['swimlog_workout_action'])&&'save_metadata'===$_POST['swimlog_workout_action']){
-				check_admin_referer('swimlog_save_workout_metadata_'.$detail);
-				$result=Workout::update_metadata($detail,$user_id,absint($_POST['location_id']??0),sanitize_textarea_field(wp_unslash($_POST['notes']??'')));
-				if(is_wp_error($result)){$metadata_error=$result->get_error_message();$edit=true;}
-				else{
-					$redirect=add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'saved'=>1),admin_url('admin.php'));
-					if(!headers_sent()){wp_safe_redirect($redirect);exit;}
-					echo '<script>window.location.replace('.wp_json_encode($redirect).');</script><noscript><p><a href="'.esc_url($redirect).'">'.esc_html__('Return to Workout','swim-log-evaluation').'</a></p></noscript>';exit;
-				}
-			}
+			$edit=isset($_GET['edit'])&&'1'===$_GET['edit']; $metadata_error=$this->workout_action_error;
+			if($metadata_error)$edit=true;
 			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
 			$lengths=Workout::lengths($detail,$user_id); $perfs=Workout::performances($detail,$user_id); $imports=Workout::imports($detail,$user_id);
 			?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workout Details','swim-log-evaluation'); ?></h1><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-workouts')); ?>">&larr; <?php esc_html_e('Back to Workouts','swim-log-evaluation'); ?></a></p>
@@ -228,6 +219,78 @@ final class Admin {
 		<?php if($history_distance&&$history_stroke):?><?php if(!$progression):?><p><?php esc_html_e('No progression records found for that distance and stroke.','swim-log-evaluation'); ?></p><?php else:?><div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','swim-log-evaluation'); ?></th><th><?php esc_html_e('Time','swim-log-evaluation'); ?></th><th><?php esc_html_e('Workout','swim-log-evaluation'); ?></th></tr></thead><tbody><?php foreach($progression as$p):?><tr><td><?php echo esc_html(wp_date('F j, Y',(new \DateTimeImmutable($p->achieved_at,wp_timezone()))->getTimestamp(),wp_timezone())); ?></td><td><?php echo esc_html(Workout::format_duration($p->duration_ms)); ?></td><td><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$p->workout_id,'swimmer_id'=>$user_id),admin_url('admin.php'))); ?>"><?php esc_html_e('View workout','swim-log-evaluation'); ?></a></td></tr><?php endforeach;?></tbody></table></div><?php endif;?><?php endif;?>
 		</div><?php
 	}
+	private $workout_action_error = null;
+	private $location_action_error = null;
+
+	public function handle_workout_actions() {
+		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+		if ( empty( $_GET['page'] ) || 'swimlog-workouts' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
+		if ( empty( $_POST['swimlog_workout_action'] ) || 'save_metadata' !== sanitize_key( wp_unslash( $_POST['swimlog_workout_action'] ) ) ) return;
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
+
+		$user_id = $this->selected_user_id();
+		$detail = isset( $_GET['workout_id'] ) ? absint( wp_unslash( $_GET['workout_id'] ) ) : 0;
+		if ( ! $detail || ! Workout::get_for_user( $detail, $user_id ) ) {
+			wp_die( esc_html__( 'Workout not found.', 'swim-log-evaluation' ) );
+		}
+
+		check_admin_referer( 'swimlog_save_workout_metadata_' . $detail );
+		$result = Workout::update_metadata(
+			$detail,
+			$user_id,
+			isset( $_POST['location_id'] ) ? absint( $_POST['location_id'] ) : 0,
+			sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) )
+		);
+
+		if ( is_wp_error( $result ) ) {
+			$this->workout_action_error = $result->get_error_message();
+			return;
+		}
+
+		wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => $detail, 'saved' => 1 ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	public function handle_location_actions() {
+		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_locations' ) ) return;
+		if ( empty( $_GET['page'] ) || 'swimlog-locations' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
+		if ( empty( $_POST['swimlog_location_action'] ) ) return;
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
+
+		$user_id = get_current_user_id();
+		$action = sanitize_key( wp_unslash( $_POST['swimlog_location_action'] ) );
+
+		if ( 'save' === $action ) {
+			check_admin_referer( 'swimlog_save_location' );
+			$id = isset( $_POST['location_id'] ) ? absint( $_POST['location_id'] ) : 0;
+			$result = Location::save( $user_id, wp_unslash( $_POST ), $id );
+			if ( is_wp_error( $result ) ) {
+				$this->location_action_error = $result->get_error_message();
+				return;
+			}
+
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-locations', 'saved' => 1 ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+
+		if ( 'delete' === $action ) {
+			check_admin_referer( 'swimlog_delete_location' );
+			$id = isset( $_POST['location_id'] ) ? absint( $_POST['location_id'] ) : 0;
+			$result = Location::delete( $id, $user_id );
+			if ( is_wp_error( $result ) || ! $result ) {
+				$this->location_action_error = is_wp_error( $result ) ? $result->get_error_message() : __( 'The location could not be deleted.', 'swim-log-evaluation' );
+				return;
+			}
+
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-locations', 'deleted' => 1 ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+	}
+
 	private $event_action_error = null;
 
 	public function handle_event_actions() {
@@ -323,40 +386,7 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
 
 		$user_id = get_current_user_id();
-		$error = null;
-
-		if ( isset( $_POST['swimlog_location_action'] ) && 'save' === $_POST['swimlog_location_action'] ) {
-			check_admin_referer( 'swimlog_save_location' );
-			$id = isset( $_POST['location_id'] ) ? absint( $_POST['location_id'] ) : 0;
-			$result = Location::save( $user_id, wp_unslash( $_POST ), $id );
-			if ( is_wp_error( $result ) ) {
-				$error = $result->get_error_message();
-			} else {
-				// Redirect after saving so the browser returns to the locations list rather than reposting the form.
-				$redirect_url = add_query_arg( array( 'page' => 'swimlog-locations', 'saved' => 1 ), admin_url( 'admin.php' ) );
-				if ( ! headers_sent() ) {
-					wp_safe_redirect( $redirect_url );
-					exit;
-				}
-				// This admin page is rendered after WordPress has already emitted the admin header,
-				// so fall back to a client-side redirect when HTTP headers are no longer available.
-				echo '<script>window.location.replace(' . wp_json_encode( $redirect_url ) . ');</script>';
-				echo '<noscript><p><a href="' . esc_url( $redirect_url ) . '">' . esc_html__( 'Return to Locations', 'swim-log-evaluation' ) . '</a></p></noscript>';
-				exit;
-			}
-		}
-
-		if ( isset( $_POST['swimlog_location_action'] ) && 'delete' === $_POST['swimlog_location_action'] ) {
-			check_admin_referer( 'swimlog_delete_location' );
-			$id = isset( $_POST['location_id'] ) ? absint( $_POST['location_id'] ) : 0;
-			$result = Location::delete( $id, $user_id );
-			if ( is_wp_error( $result ) || ! $result ) {
-				$error = is_wp_error( $result ) ? $result->get_error_message() : __( 'The location could not be deleted.', 'swim-log-evaluation' );
-			} else {
-				wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-locations', 'deleted' => 1 ), admin_url( 'admin.php' ) ) );
-				exit;
-			}
-		}
+		$error = $this->location_action_error;
 
 		$edit_id = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
 		$editing = $edit_id ? Location::get_for_user( $edit_id, $user_id ) : null;
