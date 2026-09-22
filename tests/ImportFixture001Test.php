@@ -210,10 +210,10 @@ final class ImportFixture001Test extends TestCase {
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
   $this->assertStringContainsString("SWIMLOG_PRIVATE_STORAGE_DIR",$source);
   $this->assertStringContainsString("DOCUMENT_ROOT",$source);
-  $this->assertStringContainsString("swim-log-evaluation-private",$source);
+  $this->assertStringContainsString("chriss-swim-training-progress-evaluation-private",$source);
   $this->assertStringContainsString("is_outside_web_root",$source);
   $this->assertStringContainsString("must be outside the public web root",$source);
-  $this->assertStringNotContainsString("'swim-log-evaluation/private'",$source);
+  $this->assertStringNotContainsString("'chriss-swim-training-progress-evaluation/private'",$source);
  }
  public function test_untracked_source_cleanup_is_present_for_database_failures(){
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
