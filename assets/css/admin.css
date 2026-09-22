@@ -1,0 +1,42 @@
+.swimlog-admin .swimlog-table-wrap {
+	overflow-x: auto;
+}
+
+.swimlog-admin .swimlog-swimmer-selector {
+	margin: 12px 0 18px;
+}
+
+.swimlog-admin .swimlog-swimmer-selector label {
+	font-weight: 600;
+}
+
+.swimlog-admin .swimlog-match-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(260px, 1fr));
+	gap: 16px;
+}
+
+.swimlog-admin .swimlog-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+@media (max-width: 782px) {
+	.swimlog-admin .swimlog-match-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.swimlog-admin table.widefat {
+		min-width: 680px;
+	}
+
+	.swimlog-admin .swimlog-table-wrap {
+		margin-right: 0;
+	}
+
+	.swimlog-admin input[type="date"],
+	.swimlog-admin select {
+		max-width: 100%;
+	}
+}
