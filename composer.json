@@ -1,6 +1,6 @@
 {
-  "name": "cmolnar65/swim-log-evaluation",
-  "description": "Development test dependencies for Swim Log and Evaluation.",
+  "name": "cmolnar65/chriss-swim-training-progress-evaluation",
+  "description": "Development test dependencies for Chris's Swim Training Progress and Evaluation.",
   "type": "wordpress-plugin",
   "require-dev": {"phpunit/phpunit": "^9.6"},
   "scripts": {"test": "phpunit -c phpunit.xml.dist"}
