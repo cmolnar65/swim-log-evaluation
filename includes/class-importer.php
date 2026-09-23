@@ -94,18 +94,25 @@ final class Importer {
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function source_directory(){
-		$dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?trim((string)SWIMLOG_PRIVATE_STORAGE_DIR):'';
+		$dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?trim((string)SWIMLOG_PRIVATE_STORAGE_DIR):trim((string)get_option('swimlog_private_storage_dir',''));
 		if($dir===''){
 			$document_root = isset( $_SERVER['DOCUMENT_ROOT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['DOCUMENT_ROOT'] ) ) : '';
 			$docroot = '' !== $document_root ? realpath( $document_root ) : false;
-			if(!$docroot)return new \WP_Error('swimlog_store_private',__('A private workout source directory could not be determined. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','chriss-swim-training-progress-evaluation'));
+			if(!$docroot)return new \WP_Error('swimlog_store_private',__('A private workout source directory could not be determined. Configure the Private Workout Storage Directory in Swim Training Settings.','chriss-swim-training-progress-evaluation'));
 			$dir=trailingslashit(dirname($docroot)).'chriss-swim-training-progress-evaluation-private';
 		}
-		$dir=untrailingslashit($dir);
-		if(!self::is_outside_web_root($dir))return new \WP_Error('swimlog_store_public',__('The workout source directory must be outside the public web root. Import stopped before preserving the source.','chriss-swim-training-progress-evaluation'));
+		return self::validate_storage_directory($dir,true);
+	}
+	public static function validate_storage_directory($dir,$create=false){
+		$dir=untrailingslashit(trim((string)$dir));
+		if($dir===''||!wp_is_absolute_path($dir))return new \WP_Error('swimlog_store_path',__('Enter an absolute filesystem path for the private workout storage directory.','chriss-swim-training-progress-evaluation'));
+		if(!self::is_outside_web_root($dir))return new \WP_Error('swimlog_store_public',__('The workout source directory must be outside the public web root.','chriss-swim-training-progress-evaluation'));
 		$fs=self::filesystem();if(is_wp_error($fs))return$fs;
-		if(!$fs->is_dir($dir)&&!$fs->mkdir($dir,FS_CHMOD_DIR))return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Define SWIMLOG_PRIVATE_STORAGE_DIR to a writable directory outside the public web root.','chriss-swim-training-progress-evaluation'));
-		if(!$fs->is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable. Import stopped before preserving the source.','chriss-swim-training-progress-evaluation'));
+		if(!$fs->is_dir($dir)){
+			if(!$create)return new \WP_Error('swimlog_store_missing',__('The private workout source directory does not exist.','chriss-swim-training-progress-evaluation'));
+			if(!$fs->mkdir($dir,FS_CHMOD_DIR))return new \WP_Error('swimlog_store',__('The private workout source directory could not be created. Choose a writable directory outside the public web root.','chriss-swim-training-progress-evaluation'));
+		}
+		if(!$fs->is_writable($dir))return new \WP_Error('swimlog_store',__('The private workout source directory is not writable by WordPress.','chriss-swim-training-progress-evaluation'));
 		$index=trailingslashit($dir).'index.php';if(!$fs->exists($index)&&!$fs->put_contents($index,"<?php\n// Silence is golden.\n",FS_CHMOD_FILE))return new \WP_Error('swimlog_store',__('The private workout source directory could not be initialized.','chriss-swim-training-progress-evaluation'));
 		return$dir;
 	}
