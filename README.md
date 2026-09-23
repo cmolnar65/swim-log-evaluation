@@ -36,7 +36,9 @@ The plugin also creates an `index.php` file in the private directory as an addit
 
 ### Configuring a custom private directory
 
-Some hosting environments do not permit WordPress to create or write to a directory adjacent to the site's document root. Administrators can explicitly configure another private storage location by defining `SWIMLOG_PRIVATE_STORAGE_DIR` in `wp-config.php`.
+Some hosting environments do not permit WordPress to create or write to a directory adjacent to the site's document root. Administrators can configure another private storage location on the plugin's **Swim Training Settings** screen using **Private Workout Storage Directory**. The setting accepts an absolute server filesystem path and is validated before it is saved.
+
+For advanced or managed hosting deployments, `SWIMLOG_PRIVATE_STORAGE_DIR` may still be defined in `wp-config.php`. When the constant is defined it takes precedence over the Settings value and the field is displayed as locked.
 
 For example:
 
@@ -67,7 +69,7 @@ If an import reports that the private workout source directory cannot be determi
 1. Confirm that PHP/WordPress can determine the site's document root.
 2. Confirm that the intended private directory is outside the public web root.
 3. Confirm that the PHP/WordPress process has permission to create and write files in that directory.
-4. If the automatically selected location is unsuitable, define `SWIMLOG_PRIVATE_STORAGE_DIR` in `wp-config.php` with an appropriate private path.
+4. If the automatically selected location is unsuitable, enter an appropriate absolute path in **Swim Training Settings → Private Workout Storage Directory**. Server administrators may instead define `SWIMLOG_PRIVATE_STORAGE_DIR` as an override.
 
 Do not move the source directory under `public_html`, `htdocs`, the WordPress installation directory, or another publicly served directory merely to resolve a permissions problem.
 
