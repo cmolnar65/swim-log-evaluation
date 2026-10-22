@@ -112,6 +112,45 @@ final class Workout {
 			: true;
 	}
 
+
+	public static function delete( $workout_id, $user_id ) {
+		global $wpdb;
+		$workout_id = absint( $workout_id );
+		$user_id = absint( $user_id );
+		if ( ! $workout_id || ! $user_id || ! self::get_for_user( $workout_id, $user_id ) ) {
+			return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		$imports = Database::table( 'imports' );
+		$laps = Database::table( 'laps' );
+		$lengths = Database::table( 'lengths' );
+		$performances = Database::table( 'performances' );
+		$workouts = Database::table( 'workouts' );
+		$source_paths = $wpdb->get_col( $wpdb->prepare( "SELECT stored_path FROM $imports WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $workout_id, $user_id ) );
+
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			return new \WP_Error( 'swimlog_workout_delete_start', __( 'The workout deletion could not be started.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		try {
+			if ( false === $wpdb->delete( $performances, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
+			if ( false === $wpdb->delete( $lengths, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'lengths' );
+			if ( false === $wpdb->delete( $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
+			if ( false === $wpdb->delete( $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
+			if ( 1 !== $wpdb->delete( $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
+			Evaluator::recalculate_personal_bests( $user_id );
+			if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' );
+		} catch ( \Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new \WP_Error( 'swimlog_workout_delete', __( 'The workout could not be deleted. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		foreach ( array_unique( array_filter( $source_paths ) ) as $source_path ) {
+			if ( is_file( $source_path ) ) wp_delete_file( $source_path );
+		}
+		return true;
+	}
+
 	public static function format_duration( $ms ) {
 		if(null===$ms) return '—';
 		$hundredths=(int)round($ms/10); $h=intdiv($hundredths,360000); $rem=$hundredths%360000;
