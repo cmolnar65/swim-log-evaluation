@@ -479,6 +479,17 @@ final class Admin {
 		$notice = '';
 		$error = '';
 		$activities = null;
+		$activity_detail = null;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
+		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
+		if ( $detail_id ) {
+			$activity_detail = Garmin_Personal_API::activity( $user_id, $detail_id );
+			if ( is_wp_error( $activity_detail ) ) {
+				$error = $activity_detail->get_error_message();
+				$activity_detail = null;
+			}
+		}
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
@@ -543,6 +554,32 @@ final class Admin {
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
 
+				<?php if ( is_array( $activity_detail ) ) :
+					$summary = isset( $activity_detail['summaryDTO'] ) && is_array( $activity_detail['summaryDTO'] ) ? $activity_detail['summaryDTO'] : array();
+					$atype = isset( $activity_detail['activityType']['typeKey'] ) ? (string) $activity_detail['activityType']['typeKey'] : '';
+					$aname = isset( $activity_detail['activityName'] ) ? (string) $activity_detail['activityName'] : '';
+					$astart = isset( $activity_detail['startTimeLocal'] ) ? (string) $activity_detail['startTimeLocal'] : '';
+					$adistance = isset( $summary['distance'] ) && is_numeric( $summary['distance'] ) ? number_format_i18n( (float) $summary['distance'], 1 ) . ' m' : '—';
+					$aduration = isset( $summary['duration'] ) && is_numeric( $summary['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $summary['duration'] ) ) ) : '—';
+					$acalories = isset( $summary['calories'] ) && is_numeric( $summary['calories'] ) ? number_format_i18n( (float) $summary['calories'], 0 ) : '—';
+					$aavg_hr = isset( $summary['averageHR'] ) && is_numeric( $summary['averageHR'] ) ? number_format_i18n( (float) $summary['averageHR'], 0 ) . ' bpm' : '—';
+					$amax_hr = isset( $summary['maxHR'] ) && is_numeric( $summary['maxHR'] ) ? number_format_i18n( (float) $summary['maxHR'], 0 ) . ' bpm' : '—';
+				?>
+					<hr><h2><?php esc_html_e( 'Garmin Activity Details', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+					<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-garmin' ) ); ?>"><?php esc_html_e( 'Back to Garmin Connect', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+					<table class="widefat striped"><tbody>
+						<tr><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( (string) $detail_id ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aname ?: '—' ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $atype ?: '—' ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Start', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $astart ?: '—' ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $adistance ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Duration', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aduration ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Calories', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $acalories ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
+						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
+					</tbody></table>
+				<?php endif; ?>
+
 				<hr><h2><?php esc_html_e( 'Recent Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<p><?php esc_html_e( 'Read the 10 most recent Garmin activities for inspection only. This does not download FIT files or change any swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
@@ -563,7 +600,7 @@ final class Admin {
 							$distance = isset( $activity['distance'] ) && is_numeric( $activity['distance'] ) ? number_format_i18n( (float) $activity['distance'], 1 ) . ' m' : '—';
 							$duration = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $activity['duration'] ) ) ) : '—';
 						?>
-						<tr><td><?php echo esc_html( $activity_id ); ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
+						<tr><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
 						<?php endforeach; ?>
 						</tbody></table>
 					<?php endif; ?>
