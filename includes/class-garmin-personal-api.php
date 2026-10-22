@@ -60,6 +60,35 @@ final class Garmin_Personal_API {
 		return $activities;
 	}
 
+
+	public static function activity( $user_id, $activity_id ) {
+		$activity_id = absint( $activity_id );
+		if ( ! $activity_id ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity ID.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$token = self::access_token( $user_id );
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+		$response = wp_remote_get( self::API_BASE . 'activity-service/activity/' . $activity_id, array(
+			'timeout' => 15,
+			'redirection' => 0,
+			'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+		) );
+		if ( is_wp_error( $response ) ) {
+			return new \WP_Error( 'swimlog_garmin_activity_request_failed', __( 'Garmin Connect activity details could not be reached. Please try again.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status < 200 || $status >= 300 ) {
+			return new \WP_Error( 'swimlog_garmin_activity_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the activity detail request (HTTP %d).', 'chriss-swim-training-progress-evaluation' ), $status ) );
+		}
+		$activity = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $activity ) ) {
+			return new \WP_Error( 'swimlog_garmin_activity_invalid', __( 'Garmin Connect returned an unexpected activity detail response.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		return $activity;
+	}
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
