@@ -478,6 +478,7 @@ final class Admin {
 		$user_id = get_current_user_id();
 		$notice = '';
 		$error = '';
+		$activities = null;
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
@@ -497,6 +498,14 @@ final class Admin {
 					$error = $result->get_error_message();
 				} else {
 					$notice = __( 'Garmin Connect connection successful. An access token was returned.', 'chriss-swim-training-progress-evaluation' );
+				}
+			} elseif ( 'activities' === $action ) {
+				check_admin_referer( 'swimlog_garmin_recent_activities' );
+				$result = Garmin_Personal_API::recent_activities( $user_id, 10 );
+				if ( is_wp_error( $result ) ) {
+					$error = $result->get_error_message();
+				} else {
+					$activities = $result;
 				}
 			} elseif ( 'remove' === $action ) {
 				check_admin_referer( 'swimlog_remove_garmin_key' );
@@ -533,6 +542,32 @@ final class Admin {
 					<input type="hidden" name="swimlog_garmin_action" value="test">
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
+
+				<hr><h2><?php esc_html_e( 'Recent Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'Read the 10 most recent Garmin activities for inspection only. This does not download FIT files or change any swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<form method="post">
+					<?php wp_nonce_field( 'swimlog_garmin_recent_activities' ); ?>
+					<input type="hidden" name="swimlog_garmin_action" value="activities">
+					<?php submit_button( __( 'Show Recent Activities', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+				</form>
+				<?php if ( is_array( $activities ) ) : ?>
+					<?php if ( empty( $activities ) ) : ?>
+						<p><?php esc_html_e( 'Garmin returned no activities.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+					<?php else : ?>
+						<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Duration', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+						<?php foreach ( $activities as $activity ) :
+							$activity_id = isset( $activity['activityId'] ) ? (string) $activity['activityId'] : '';
+							$date = isset( $activity['startTimeLocal'] ) ? (string) $activity['startTimeLocal'] : '';
+							$name = isset( $activity['activityName'] ) ? (string) $activity['activityName'] : '';
+							$type = isset( $activity['activityType']['typeKey'] ) ? (string) $activity['activityType']['typeKey'] : '';
+							$distance = isset( $activity['distance'] ) && is_numeric( $activity['distance'] ) ? number_format_i18n( (float) $activity['distance'], 1 ) . ' m' : '—';
+							$duration = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $activity['duration'] ) ) ) : '—';
+						?>
+						<tr><td><?php echo esc_html( $activity_id ); ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
+						<?php endforeach; ?>
+						</tbody></table>
+					<?php endif; ?>
+				<?php endif; ?>
 
 				<hr><h2><?php esc_html_e( 'Remove Garmin Connect Configuration', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<form method="post">
