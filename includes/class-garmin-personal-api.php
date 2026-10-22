@@ -44,7 +44,6 @@ final class Garmin_Personal_API {
 				'redirection' => 0,
 				'headers'     => array(
 					'Authorization' => 'ApiKey ' . $api_key,
-					'Accept'        => 'application/json',
 				),
 				'body'        => '',
 			)
@@ -55,12 +54,12 @@ final class Garmin_Personal_API {
 		}
 
 		$status = (int) wp_remote_retrieve_response_code( $response );
-		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
+		$token  = trim( wp_remote_retrieve_body( $response ) );
 		if ( $status < 200 || $status >= 300 ) {
 			return new \WP_Error( 'swimlog_garmin_auth_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the connection request (HTTP %d). Check or replace the Personal API key.', 'chriss-swim-training-progress-evaluation' ), $status ) );
 		}
-		if ( ! is_array( $body ) || empty( $body['access_token'] ) || ! is_string( $body['access_token'] ) ) {
-			return new \WP_Error( 'swimlog_garmin_invalid_response', __( 'Garmin Connect responded, but no access token was returned.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( '' === $token || 2 !== substr_count( $token, '.' ) ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_response', __( 'Garmin Connect responded, but no valid access token was returned.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
 		return true;
