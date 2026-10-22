@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Garmin_Personal_API {
 	const META_KEY = 'swimlog_garmin_personal_api_key';
 	const TOKEN_ENDPOINT = 'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token';
+	const API_BASE = 'https://personal.connectapi.garmin.com/';
 
 	public static function is_configured( $user_id ) {
 		return '' !== (string) get_user_meta( (int) $user_id, self::META_KEY, true );
@@ -29,6 +30,37 @@ final class Garmin_Personal_API {
 	}
 
 	public static function test_connection( $user_id ) {
+		$token = self::access_token( $user_id );
+		return is_wp_error( $token ) ? $token : true;
+	}
+
+	public static function recent_activities( $user_id, $limit = 10 ) {
+		$token = self::access_token( $user_id );
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+		$limit = max( 1, min( 50, (int) $limit ) );
+		$url = add_query_arg( array( 'start' => 0, 'limit' => $limit ), self::API_BASE . 'activitylist-service/activities/search/activities' );
+		$response = wp_remote_get( $url, array(
+			'timeout' => 15,
+			'redirection' => 0,
+			'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+		) );
+		if ( is_wp_error( $response ) ) {
+			return new \WP_Error( 'swimlog_garmin_activities_request_failed', __( 'Garmin Connect activities could not be reached. Please try again.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status < 200 || $status >= 300 ) {
+			return new \WP_Error( 'swimlog_garmin_activities_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the activity request (HTTP %d).', 'chriss-swim-training-progress-evaluation' ), $status ) );
+		}
+		$activities = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $activities ) ) {
+			return new \WP_Error( 'swimlog_garmin_activities_invalid', __( 'Garmin Connect returned an unexpected activity-list response.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		return $activities;
+	}
+
+	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
 			return $api_key;
@@ -62,7 +94,7 @@ final class Garmin_Personal_API {
 			return new \WP_Error( 'swimlog_garmin_invalid_response', __( 'Garmin Connect responded, but no valid access token was returned.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
-		return true;
+		return $token;
 	}
 
 	private static function get_key( $user_id ) {
