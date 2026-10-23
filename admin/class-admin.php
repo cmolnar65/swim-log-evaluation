@@ -76,6 +76,44 @@ final class Admin {
 		return $display . ( $unit ? ' ' . $unit : '' );
 	}
 
+
+	private function open_water_pace_per_100m( $workout ) {
+		$distance_m = (float) ( $workout->total_distance_m ?? 0 );
+		$elapsed_ms = (int) ( $workout->elapsed_time_ms ?? 0 );
+		if ( $distance_m <= 0 || $elapsed_ms <= 0 ) return '—';
+		return Workout::format_duration( (int) round( $elapsed_ms / ( $distance_m / 100 ) ) ) . ' / 100 m';
+	}
+
+	private function open_water_route_svg( $trackpoints ) {
+		$points = array();
+		foreach ( (array) $trackpoints as $point ) {
+			if ( null === $point->latitude || null === $point->longitude ) continue;
+			$lat = (float) $point->latitude;
+			$lon = (float) $point->longitude;
+			if ( 0.0 === $lat && 0.0 === $lon ) continue;
+			$points[] = array( $lat, $lon );
+		}
+		if ( count( $points ) < 2 ) return '';
+
+		$lats = array_column( $points, 0 );
+		$lons = array_column( $points, 1 );
+		$min_lat = min( $lats ); $max_lat = max( $lats );
+		$min_lon = min( $lons ); $max_lon = max( $lons );
+		$lat_span = max( 0.000001, $max_lat - $min_lat );
+		$lon_span = max( 0.000001, $max_lon - $min_lon );
+		$width = 800.0; $height = 400.0; $pad = 20.0;
+		$scale = min( ( $width - 2 * $pad ) / $lon_span, ( $height - 2 * $pad ) / $lat_span );
+		$route_width = $lon_span * $scale; $route_height = $lat_span * $scale;
+		$x_offset = ( $width - $route_width ) / 2; $y_offset = ( $height - $route_height ) / 2;
+		$svg_points = array();
+		foreach ( $points as $point ) {
+			$x = $x_offset + ( $point[1] - $min_lon ) * $scale;
+			$y = $height - ( $y_offset + ( $point[0] - $min_lat ) * $scale );
+			$svg_points[] = number_format( $x, 2, '.', '' ) . ',' . number_format( $y, 2, '.', '' );
+		}
+		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="' . esc_attr__( 'Open-water GPS route', 'chriss-swim-training-progress-evaluation' ) . '" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff"><polyline points="' . esc_attr( implode( ' ', $svg_points ) ) . '" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
+	}
+
 	private function page( $title, $description, $capability ) {
 		if ( ! current_user_can( $capability ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this swim training page.', 'chriss-swim-training-progress-evaluation' ) );
@@ -124,7 +162,7 @@ final class Admin {
 			$edit=isset($_GET['edit'])&&'1'===sanitize_text_field(wp_unslash($_GET['edit'])); $metadata_error=$this->workout_action_error;
 			if($metadata_error)$edit=true;
 			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
-			$lengths=Workout::lengths($detail,$user_id); $perfs=Workout::performances($detail,$user_id); $imports=Workout::imports($detail,$user_id);
+			$is_open_water=('open_water'===($w->workout_type??'pool')); $lengths=$is_open_water?array():Workout::lengths($detail,$user_id); $perfs=$is_open_water?array():Workout::performances($detail,$user_id); $trackpoints=$is_open_water?Workout::trackpoints($detail,$user_id):array(); $imports=Workout::imports($detail,$user_id);
 			?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Workout Details','chriss-swim-training-progress-evaluation'); ?></h1><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-workouts')); ?>">&larr; <?php esc_html_e('Back to Workouts','chriss-swim-training-progress-evaluation'); ?></a></p>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Workout metadata saved. Imported swim data and historical pool snapshot were unchanged.','chriss-swim-training-progress-evaluation'); ?></p></div><?php endif;?>
