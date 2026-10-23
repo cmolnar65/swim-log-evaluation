@@ -22,7 +22,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Personal Bests', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-personal-bests', 'personal_bests' );
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
 		$this->submenu( 'swimlog-dashboard', __( 'Locations', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_locations', 'swimlog-locations', 'locations' );
-		$this->submenu( 'swimlog-dashboard', __( 'Privacy', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-privacy', 'privacy' );
+		$this->submenu( 'swimlog-dashboard', __( 'Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-privacy', 'privacy' );
 		$this->submenu( 'swimlog-dashboard', __( 'Garmin Connect', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-garmin', 'garmin' );
 
 		if ( current_user_can( 'swimlog_manage_settings' ) ) {
@@ -471,15 +471,65 @@ final class Admin {
 		</tbody></table><h2><?php esc_html_e('Examples','chriss-swim-training-progress-evaluation'); ?></h2><p><code>[swimlog_bests course="m" stroke="BR" distance="200"]</code><br><code>[swimlog_upcoming_events count="3" title="no"]</code><br><code>[swimlog_latest user="123" count="5" title="Recent Swims"]</code><br><code>[swimlog_log]</code><br><code>[swimlog_log month="Sep"]</code><br><code>[swimlog_log month="Sep" year="2025"]</code><br><code>[swimlog_log year="2026"]</code></p></div><?php
 	}
 	public function privacy() {
-		if(!current_user_can('swimlog_view_own_results'))wp_die(esc_html__('You do not have permission to manage swim training privacy.','chriss-swim-training-progress-evaluation'));
-		$uid=get_current_user_id();$saved=false;
-		if(isset($_POST['swimlog_privacy_action'])&&'save'===sanitize_key(wp_unslash($_POST['swimlog_privacy_action']))){
-			check_admin_referer('swimlog_save_privacy');$public=isset($_POST['public_results'])?'1':'0';update_user_meta($uid,'swimlog_public_results',$public);$saved=true;
+		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage swimmer configuration.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		$value=get_user_meta($uid,'swimlog_public_results',true);if($value==='')$value=get_option('swimlog_public_results_default','0');
-		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Swim Training Privacy','chriss-swim-training-progress-evaluation'); ?></h1><?php if($saved):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Privacy setting saved.','chriss-swim-training-progress-evaluation'); ?></p></div><?php endif;?>
-		<p><?php esc_html_e('Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.','chriss-swim-training-progress-evaluation'); ?></p>
-		<form method="post"><?php wp_nonce_field('swimlog_save_privacy'); ?><input type="hidden" name="swimlog_privacy_action" value="save"><table class="form-table" role="presentation"><tr><th scope="row"><?php esc_html_e('Public Results','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked($value,'1'); ?>> <?php esc_html_e('Allow my swim results to be displayed by public swim shortcodes.','chriss-swim-training-progress-evaluation'); ?></label><p class="description"><?php esc_html_e('Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.','chriss-swim-training-progress-evaluation'); ?></p></td></tr></table><?php submit_button(__('Save Privacy','chriss-swim-training-progress-evaluation')); ?></form></div><?php
+		$uid = get_current_user_id();
+		$saved = false;
+		$error = '';
+		if ( isset( $_POST['swimlog_privacy_action'] ) && 'save' === sanitize_key( wp_unslash( $_POST['swimlog_privacy_action'] ) ) ) {
+			check_admin_referer( 'swimlog_save_privacy' );
+			$public = isset( $_POST['public_results'] ) ? '1' : '0';
+			$birthdate = isset( $_POST['birthdate'] ) ? sanitize_text_field( wp_unslash( $_POST['birthdate'] ) ) : '';
+			if ( '' !== $birthdate ) {
+				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
+				$birthdate_errors = \DateTimeImmutable::getLastErrors();
+				$valid_birthdate = $parsed_birthdate && ( false === $birthdate_errors || ( 0 === $birthdate_errors['warning_count'] && 0 === $birthdate_errors['error_count'] ) ) && $parsed_birthdate->format( 'Y-m-d' ) === $birthdate;
+				$today = new \DateTimeImmutable( 'today', wp_timezone() );
+				if ( ! $valid_birthdate || $parsed_birthdate > $today ) {
+					$error = __( 'Enter a valid date of birth that is not in the future.', 'chriss-swim-training-progress-evaluation' );
+				}
+			}
+			if ( '' === $error ) {
+				if ( '' === $birthdate ) {
+					delete_user_meta( $uid, 'swimlog_birthdate' );
+				} else {
+					update_user_meta( $uid, 'swimlog_birthdate', $birthdate );
+				}
+				update_user_meta( $uid, 'swimlog_public_results', $public );
+				$saved = true;
+			}
+		}
+		$value = get_user_meta( $uid, 'swimlog_public_results', true );
+		if ( '' === $value ) {
+			$value = get_option( 'swimlog_public_results_default', '0' );
+		}
+		$birthdate = (string) get_user_meta( $uid, 'swimlog_birthdate', true );
+		?>
+		<div class="wrap swimlog-admin">
+			<h1><?php esc_html_e( 'Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ); ?></h1>
+			<?php if ( $saved ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Swimmer configuration saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+			<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+			<form method="post">
+				<?php wp_nonce_field( 'swimlog_save_privacy' ); ?>
+				<input type="hidden" name="swimlog_privacy_action" value="save">
+				<h2><?php esc_html_e( 'Swimmer Information', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="swimlog-birthdate"><?php esc_html_e( 'Date of Birth', 'chriss-swim-training-progress-evaluation' ); ?></label></th>
+						<td><input id="swimlog-birthdate" type="date" name="birthdate" value="<?php echo esc_attr( $birthdate ); ?>" max="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>"><p class="description"><?php esc_html_e( 'Private. Used only to calculate your swimming age group. Your date of birth is not displayed by public swim output.', 'chriss-swim-training-progress-evaluation' ); ?></p></td>
+					</tr>
+				</table>
+				<hr>
+				<h2><?php esc_html_e( 'Privacy', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<table class="form-table" role="presentation">
+					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my swim results to be displayed by public swim shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+				</table>
+				<?php submit_button( __( 'Save Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ) ); ?>
+			</form>
+		</div>
+		<?php
 	}
 	private function garmin_activity_match_status( $user_id, $activity ) {
 		if ( ! isset( $activity['activityType']['typeKey'] ) || 'lap_swimming' !== (string) $activity['activityType']['typeKey'] ) {
