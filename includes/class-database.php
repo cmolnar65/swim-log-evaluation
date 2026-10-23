@@ -91,6 +91,7 @@ final class Database {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			user_id bigint(20) unsigned NOT NULL,
 			location_id bigint(20) unsigned NULL,
+			workout_type varchar(20) NOT NULL DEFAULT 'pool',
 			workout_start datetime NOT NULL,
 			workout_end datetime NULL,
 			total_distance_m decimal(10,3) NULL,
@@ -110,6 +111,7 @@ final class Database {
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY user_id (user_id),
+			KEY user_workout_type (user_id,workout_type),
 			KEY user_workout_start (user_id,workout_start),
 			KEY location_id (location_id),
 			KEY user_source_activity (user_id,source_activity_id)
