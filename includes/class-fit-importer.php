@@ -2,9 +2,9 @@
 namespace SwimLogEvaluation;
 if(!defined('ABSPATH')){exit;}
 
-/** Minimal defensive FIT decoder for pool-swim Session/Lap/Length messages. */
+/** Minimal defensive FIT decoder for swimming Session/Lap/Length messages. */
 final class FIT_Importer {
-	const VERSION='0.1';
+	const VERSION='0.1.1';
 	private $defs=array();
 	private $last_timestamp=null;
 
@@ -35,7 +35,11 @@ final class FIT_Importer {
 			}
 			$msg=$this->read_data($bin,$p,$end,$local); if(is_wp_error($msg))return $msg; $this->collect($out,$msg);
 		}
-		if(!$out['session']||empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable pool-swim session and lengths.','chriss-swim-training-progress-evaluation'));
+		if(!$out['session'])return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable swimming session.','chriss-swim-training-progress-evaluation'));
+		$workout_type=$this->workout_type($out['session'],$out['lengths']);
+		if('open_water'===$workout_type)return new \WP_Error('swimlog_fit_open_water_detected',__('Open-water swimming FIT file recognized. Open-water normalization is not enabled yet.','chriss-swim-training-progress-evaluation'));
+		if('pool'!==$workout_type)return new \WP_Error('swimlog_fit_swim_type',__('FIT swimming session could not be classified safely as pool or open-water swimming.','chriss-swim-training-progress-evaluation'));
+		if(empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain usable pool-swim lengths.','chriss-swim-training-progress-evaluation'));
 		return $this->normalize($out);
 	}
 	private function read_data($bin,&$p,$end,$local){
@@ -60,6 +64,19 @@ final class FIT_Importer {
 	private function u16($s,$a){return unpack($a?'n':'v',substr($s,0,2))[1];}
 	private function u32($s,$a){return unpack($a?'N':'V',substr($s,0,4))[1];}
 	private function collect(&$out,$m){if($m['global']===18)$out['session']=$m['fields'];elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];}
+	private function workout_type($session,$lengths){
+		// FIT Profile: sport 5 = swimming; sub_sport 17 = lap_swimming; 18 = open_water.
+		$sport=isset($session[5])&&is_numeric($session[5])?(int)$session[5]:null;
+		$sub_sport=isset($session[6])&&is_numeric($session[6])?(int)$session[6]:null;
+		if(5!==$sport)return null;
+		if(17===$sub_sport)return 'pool';
+		if(18===$sub_sport)return 'open_water';
+		// Some swimming FIT producers use generic/omitted sub_sport. FIT Length
+		// messages are structural evidence of lap swimming; their absence is not
+		// enough to infer open water, so ambiguous sessions fail closed.
+		if((0===$sub_sport||null===$sub_sport)&&!empty($lengths))return 'pool';
+		return null;
+	}
 	private function fit_time($v){$gmt=gmdate('Y-m-d H:i:s',(int)$v+631065600);return get_date_from_gmt($gmt,'Y-m-d H:i:s');}
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
 	private function device_info($devices){$manufacturer=null;$model=null;foreach($devices as $d){if($manufacturer===null&&isset($d[2])&&is_numeric($d[2])&&(int)$d[2]>0)$manufacturer=$this->manufacturer_name((int)$d[2]);if(isset($d[27])&&is_string($d[27])&&trim($d[27])!=='')$model=trim($d[27]);elseif($model===null&&isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];}return array($manufacturer,$model);}
