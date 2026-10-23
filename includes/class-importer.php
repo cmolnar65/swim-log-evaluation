@@ -106,7 +106,12 @@ final class Importer {
 			$workout_id=$choice==='attach'?$candidate_id:self::insert_workout($uid,$location_id,$parsed['workout']);if(!$workout_id)throw new \Exception('workout');
 			$it=Database::table('imports');$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));
 			if($row->source_type==='fit'&&$choice==='separate'){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');}
-			elseif($row->source_type==='fit'&&$choice==='attach'){if(self::supplement_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');}
+			elseif($row->source_type==='fit'&&$choice==='attach'){
+				$incoming_form=self::is_form_fit($parsed,(string)$row->original_filename);
+				$existing_form=self::workout_has_form_authority($workout_id);
+				if($incoming_form&&!$existing_form){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if(self::update_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout update');}
+				elseif(self::supplement_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');
+			}
 			elseif($choice==='separate'||!$has_fit){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if($choice==='attach'&&self::update_workout($workout_id,$uid,$location_id,$parsed['workout'],false)===false)throw new \Exception('workout update');}
 			else if(self::supplement_workout($workout_id,$uid,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');
 			if($wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql'),'error_message'=>null),array('id'=>$import_id,'user_id'=>$uid))===false)throw new \Exception('import completion');if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
@@ -118,6 +123,8 @@ final class Importer {
 	private static function remember_pending_location($uid,$import_id,$location_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);if($location_id)$map[(int)$import_id]=absint($location_id);else unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
+	private static function is_form_fit($parsed,$filename=''){$w=(array)($parsed['workout']??array());$identity=strtolower(trim((string)($w['device_manufacturer']??'')).' '.trim((string)($w['device_model']??'')));if(strpos($identity,'form swim')!==false||preg_match('/(^|[^a-z])form([^a-z]|$)/',$identity))return true;return(bool)preg_match('/^FORM[_-].*\\.fit$/i',basename((string)$filename));}
+	private static function workout_has_form_authority($workout_id){global $wpdb;$wt=Database::table('workouts');$it=Database::table('imports');$w=$wpdb->get_row($wpdb->prepare("SELECT device_manufacturer,device_model FROM $wt WHERE id=%d",$workout_id),ARRAY_A);if($w&&self::is_form_fit(array('workout'=>$w)))return true;$names=$wpdb->get_col($wpdb->prepare("SELECT original_filename FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));foreach((array)$names as $name){if(self::is_form_fit(array('workout'=>array()),(string)$name))return true;}return false;}
 	private static function source_directory(){
 		$dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?trim((string)SWIMLOG_PRIVATE_STORAGE_DIR):trim((string)get_option('swimlog_private_storage_dir',''));
 		if($dir===''){
