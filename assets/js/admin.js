@@ -9,6 +9,15 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
+		var garminPage = document.querySelector('.swimlog-admin[data-swimlog-garmin-configured="1"]');
+		var garminActivities = document.getElementById('swimlog-garmin-activities');
+		if (garminPage && garminActivities) {
+			var statusTable = garminPage.querySelector('.form-table');
+			if (statusTable) {
+				statusTable.insertAdjacentElement('afterend', garminActivities);
+			}
+		}
+
 		var apiKey = document.getElementById('swimlog-garmin-api-key');
 		var apiKeySubmit = document.getElementById('swimlog-garmin-api-key-submit');
 		if (apiKey && apiKeySubmit) {
