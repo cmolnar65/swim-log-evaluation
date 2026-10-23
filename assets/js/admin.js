@@ -9,6 +9,16 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
+		var apiKey = document.getElementById('swimlog-garmin-api-key');
+		var apiKeySubmit = document.getElementById('swimlog-garmin-api-key-submit');
+		if (apiKey && apiKeySubmit) {
+			var updateApiKeySubmit = function () {
+				apiKeySubmit.disabled = apiKey.value.trim() === '';
+			};
+			apiKey.addEventListener('input', updateApiKeySubmit);
+			updateApiKeySubmit();
+		}
+
 		var form = document.getElementById('swimlog-garmin-batch-form');
 		if (!form) {
 			return;
