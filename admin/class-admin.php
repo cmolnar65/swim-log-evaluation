@@ -480,6 +480,7 @@ final class Admin {
 		$error = '';
 		$activities = null;
 		$activity_detail = null;
+		$activity_full_detail = null;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
 		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
@@ -493,6 +494,20 @@ final class Admin {
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
+			if ( 'activity_detail' === $action ) {
+				check_admin_referer( 'swimlog_garmin_activity_detail' );
+				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
+				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
+					$error = __( 'Invalid Garmin activity detail request.', 'chriss-swim-training-progress-evaluation' );
+				} else {
+					$result = Garmin_Personal_API::activity( $user_id, $requested_activity_id );
+					if ( is_wp_error( $result ) ) {
+						$error = $result->get_error_message();
+					} else {
+						$activity_full_detail = $result;
+					}
+				}
+			} else
 			if ( 'save' === $action ) {
 				check_admin_referer( 'swimlog_save_garmin_key' );
 				$api_key = isset( $_POST['garmin_api_key'] ) ? trim( (string) wp_unslash( $_POST['garmin_api_key'] ) ) : '';
@@ -522,6 +537,7 @@ final class Admin {
 				check_admin_referer( 'swimlog_remove_garmin_key' );
 				Garmin_Personal_API::remove_key( $user_id );
 				$notice = __( 'Garmin Connect Personal API key removed.', 'chriss-swim-training-progress-evaluation' );
+			}
 			}
 		}
 
@@ -578,6 +594,34 @@ final class Admin {
 						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
 					</tbody></table>
+					<form method="post" style="margin-top:16px">
+						<?php wp_nonce_field( 'swimlog_garmin_activity_detail' ); ?>
+						<input type="hidden" name="swimlog_garmin_action" value="activity_detail">
+						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
+						<?php submit_button( __( 'Get Activity Detail', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+					</form>
+					<?php if ( is_array( $activity_full_detail ) ) :
+						$detail_sections = array(
+							'metadataDTO' => __( 'Metadata', 'chriss-swim-training-progress-evaluation' ),
+							'summaryDTO' => __( 'Summary / Measurements', 'chriss-swim-training-progress-evaluation' ),
+							'splitSummaries' => __( 'Split Summaries', 'chriss-swim-training-progress-evaluation' ),
+							'activityWorkout' => __( 'Associated Workout', 'chriss-swim-training-progress-evaluation' ),
+						);
+					?>
+						<h3><?php esc_html_e( 'Activity Detail Structure', 'chriss-swim-training-progress-evaluation' ); ?></h3>
+						<p><?php esc_html_e( 'This diagnostic view shows which documented detail sections Garmin returned for this activity. Nothing is imported or stored.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+						<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Section', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Returned', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Fields / Items', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+						<?php foreach ( $detail_sections as $detail_key => $detail_label ) :
+							$detail_value = $activity_full_detail[ $detail_key ] ?? null;
+							$returned = null !== $detail_value && array() !== $detail_value && '' !== $detail_value;
+							$count = is_array( $detail_value ) ? count( $detail_value ) : ( $returned ? 1 : 0 );
+						?>
+							<tr><th><?php echo esc_html( $detail_label ); ?></th><td><?php echo $returned ? esc_html__( 'Yes', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'No', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php echo esc_html( number_format_i18n( $count ) ); ?></td></tr>
+						<?php endforeach; ?>
+						</tbody></table>
+						<h4><?php esc_html_e( 'Top-level Garmin fields returned', 'chriss-swim-training-progress-evaluation' ); ?></h4>
+						<p><code><?php echo esc_html( implode( ', ', array_keys( $activity_full_detail ) ) ); ?></code></p>
+					<?php endif; ?>
 				<?php endif; ?>
 
 				<hr><h2><?php esc_html_e( 'Recent Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
