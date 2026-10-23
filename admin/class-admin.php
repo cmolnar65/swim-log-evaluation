@@ -570,7 +570,7 @@ final class Admin {
 				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityTypeDTO']['typeKey'] ) {
 					$error = __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
 				} else {
-					$import_preflight = Garmin_Personal_API::preflight_activity_import( $user_id, $requested_activity_id );
+					$import_preflight = Garmin_Personal_API::associate_existing_activity( $user_id, $requested_activity_id );
 					if ( is_wp_error( $import_preflight ) ) {
 						$error = $import_preflight->get_error_message();
 						$import_preflight = null;
@@ -691,11 +691,21 @@ final class Admin {
 						<?php submit_button( __( 'Import Activity', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
 					</form>
 					<?php if ( is_array( $import_preflight ) ) : ?>
-						<?php if ( 'activity_exists' === $import_preflight['status'] ) : ?>
+						<?php if ( 'already_associated' === $import_preflight['status'] ) : ?>
 							<div class="notice notice-warning inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
 									__( 'Activity Already Imported: Preflight stopped safely: Garmin activity %1$d is already associated with import #%2$d and workout #%3$d. No data was changed.', 'chriss-swim-training-progress-evaluation' ),
+									(int) $import_preflight['activity_id'],
+									(int) $import_preflight['import_id'],
+									(int) $import_preflight['workout_id']
+								) );
+							?></p></div>
+						<?php elseif ( 'associated' === $import_preflight['status'] ) : ?>
+							<div class="notice notice-success inline"><p><?php
+								echo esc_html( sprintf(
+									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
+									__( 'Activity Already Imported: Garmin activity %1$d was safely associated with existing import #%2$d / workout #%3$d after an exact FIT SHA-256 match. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ),
 									(int) $import_preflight['activity_id'],
 									(int) $import_preflight['import_id'],
 									(int) $import_preflight['workout_id']
