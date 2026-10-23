@@ -18,6 +18,29 @@
 				updateGarminBatchButtons(form);
 			});
 		});
+
+		form.addEventListener('submit', function () {
+			var selected = form.querySelectorAll('.swimlog-garmin-select:checked').length;
+			if (selected === 0) {
+				return;
+			}
+
+			form.querySelectorAll('.swimlog-garmin-select').forEach(function (checkbox) {
+				checkbox.disabled = true;
+			});
+			form.querySelectorAll('[data-swimlog-garmin-import-selected="1"]').forEach(function (button) {
+				button.disabled = true;
+				button.value = 'Importing…';
+			});
+			var status = document.getElementById('swimlog-garmin-import-progress');
+			if (status) {
+				status.hidden = false;
+				status.querySelector('.spinner').classList.add('is-active');
+				status.querySelector('.swimlog-garmin-import-progress-text').textContent =
+					'Importing ' + selected + ' selected ' + (selected === 1 ? 'activity' : 'activities') + '… Please wait.';
+			}
+		});
+
 		updateGarminBatchButtons(form);
 	});
 }());
