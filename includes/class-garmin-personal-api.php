@@ -265,6 +265,94 @@ final class Garmin_Personal_API {
 		);
 	}
 
+
+	/**
+	 * Perform a read-only Garmin import preflight.
+	 *
+	 * This deliberately stops before source preservation, import-row changes,
+	 * FIT parsing, workout changes, or PB evaluation.
+	 */
+	public static function preflight_activity_import( $user_id, $activity_id ) {
+		global $wpdb;
+		$user_id = absint( $user_id );
+		$activity_id = absint( $activity_id );
+		if ( ! $user_id || ! $activity_id ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		$imports = Database::table( 'imports' );
+		$external_id = (string) $activity_id;
+		$existing_activity = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, workout_id, original_filename, file_hash, import_status FROM $imports WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$user_id,
+				'garmin',
+				$external_id
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( $existing_activity ) {
+			return array(
+				'status'       => 'activity_exists',
+				'activity_id'  => $activity_id,
+				'import_id'    => (int) $existing_activity->id,
+				'workout_id'   => (int) $existing_activity->workout_id,
+				'filename'     => (string) $existing_activity->original_filename,
+				'file_hash'    => (string) $existing_activity->file_hash,
+				'import_status'=> (string) $existing_activity->import_status,
+			);
+		}
+
+		$prepared = self::prepare_activity_fit( $user_id, $activity_id );
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
+		}
+
+		$fit_path = $prepared['tmp_name'];
+		try {
+			$hash = hash_file( 'sha256', $fit_path );
+			if ( false === $hash || '' === $hash ) {
+				return new \WP_Error( 'swimlog_garmin_hash_failed', __( 'The Garmin FIT file could not be fingerprinted safely.', 'chriss-swim-training-progress-evaluation' ) );
+			}
+			$existing_file = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT id, workout_id, source_type, source_provider, external_activity_id, original_filename, import_status FROM $imports WHERE user_id=%d AND file_hash=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$user_id,
+					$hash
+				)
+			); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+
+			if ( $existing_file ) {
+				return array(
+					'status'                => 'file_exists',
+					'activity_id'           => $activity_id,
+					'filename'              => (string) $prepared['filename'],
+					'file_hash'             => $hash,
+					'file_size'             => (int) $prepared['size'],
+					'existing_import_id'    => (int) $existing_file->id,
+					'existing_workout_id'   => (int) $existing_file->workout_id,
+					'existing_source_type'  => (string) $existing_file->source_type,
+					'existing_provider'     => (string) $existing_file->source_provider,
+					'existing_external_id'  => (string) $existing_file->external_activity_id,
+					'existing_filename'     => (string) $existing_file->original_filename,
+					'existing_import_status'=> (string) $existing_file->import_status,
+				);
+			}
+
+			return array(
+				'status'      => 'new_candidate',
+				'activity_id' => $activity_id,
+				'filename'    => (string) $prepared['filename'],
+				'file_hash'   => $hash,
+				'file_size'   => (int) $prepared['size'],
+			);
+		} finally {
+			if ( is_file( $fit_path ) ) {
+				wp_delete_file( $fit_path );
+			}
+		}
+	}
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
