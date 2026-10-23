@@ -4,7 +4,8 @@ if(!defined('ABSPATH')){exit;}
 
 /** Deterministic native-course performance evaluator. Derived data only. */
 final class Evaluator {
-	const VERSION='0.1.1';
+	const VERSION='0.1.2';
+	const MIN_SECONDS_PER_25=13.0;
 	const DISTANCES=array(50,100,200,500,800,1000,1500,1650,2000,2500,3300,5000);
 
 	public static function evaluate_workout($workout_id,$user_id){
@@ -21,8 +22,8 @@ final class Evaluator {
 		if(empty($rows)&&empty($laps)&&null!==$exact_target&&$w->elapsed_time_ms){
 			$candidates[]=array('distance'=>$exact_target,'course'=>$course,'stroke'=>self::known_stroke($w->primary_stroke)?strtoupper($w->primary_stroke):'UNKNOWN','duration'=>(int)$w->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>null,'end_offset'=>null);
 		}
-		// Persist fastest candidate per workout/distance/course/stroke.
-		$best=array();foreach($candidates as $c){$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}
+		// Persist fastest plausible candidate per workout/distance/course/stroke.
+		$best=array();foreach($candidates as $c){if(!self::is_plausible_performance($c))continue;$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}
 		$wpdb->query('START TRANSACTION');
 		try{
 			$wpdb->delete($pt,array('workout_id'=>$workout_id,'user_id'=>$user_id));
@@ -40,7 +41,7 @@ final class Evaluator {
 		if(empty($rows)){$laps=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lapt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));if(!empty($laps))$candidates=self::from_laps($laps,$w,$course);}
 		$summary_distance=(float)$w->original_distance;$exact_target=null;foreach(self::DISTANCES as$target){if(abs($summary_distance-$target)<0.001){$exact_target=$target;break;}}
 		if(empty($rows)&&empty($laps)&&null!==$exact_target&&(int)$w->elapsed_time_ms>0)$candidates[]=array('distance'=>$exact_target,'course'=>$course,'stroke'=>self::known_stroke($w->primary_stroke)?strtoupper($w->primary_stroke):'UNKNOWN','duration'=>(int)$w->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>null,'end_offset'=>null);
-		$best=array();foreach($candidates as$c){if((int)$c['duration']<=0)continue;$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}return array('workout'=>$w,'best'=>$best);
+		$best=array();foreach($candidates as$c){if(!self::is_plausible_performance($c))continue;$k=$c['distance'].'|'.$c['course'].'|'.$c['stroke'];if(!isset($best[$k])||$c['duration']<$best[$k]['duration'])$best[$k]=$c;}return array('workout'=>$w,'best'=>$best);
 	}
 	private static function insert_performance($pt,$user_id,$workout_id,$w,$c){global $wpdb;return(bool)$wpdb->insert($pt,array('user_id'=>$user_id,'workout_id'=>$workout_id,'distance_value'=>$c['distance'],'course_unit'=>$c['course'],'stroke'=>$c['stroke'],'duration_ms'=>$c['duration'],'start_length_id'=>$c['start_id'],'end_length_id'=>$c['end_id'],'start_offset_ms'=>$c['start_offset'],'end_offset_ms'=>$c['end_offset'],'is_personal_best'=>0,'evaluation_version'=>self::VERSION,'achieved_at'=>$w->workout_start,'created_at'=>current_time('mysql')));}
 	private static function from_lengths($rows,$w,$course){
@@ -71,6 +72,13 @@ final class Evaluator {
 			$out[]=array('distance'=>$target,'course'=>$course,'stroke'=>$stroke,'duration'=>(int)$r->elapsed_time_ms,'start_id'=>null,'end_id'=>null,'start_offset'=>$r->start_offset_ms??null,'end_offset'=>isset($r->start_offset_ms)?(int)$r->start_offset_ms+(int)$r->elapsed_time_ms:null);
 		}
 		return$out;
+	}
+	private static function is_plausible_performance( $candidate ) {
+		$distance = isset( $candidate['distance'] ) ? (float) $candidate['distance'] : 0.0;
+		$duration_ms = isset( $candidate['duration'] ) ? (int) $candidate['duration'] : 0;
+		if ( $distance <= 0 || $duration_ms <= 0 ) return false;
+		$minimum_ms = (int) round( ( $distance / 25.0 ) * self::MIN_SECONDS_PER_25 * 1000 );
+		return $duration_ms >= $minimum_ms;
 	}
 	private static function known_stroke($s){return in_array(strtoupper((string)$s),array('FR','BR','BACK','FLY','MIXED'),true);}
 	public static function recalculate_personal_bests($user_id){
