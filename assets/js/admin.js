@@ -3,7 +3,7 @@
 
 	function updateGarminBatchButtons(form) {
 		var selected = form.querySelectorAll('.swimlog-garmin-select:checked').length;
-		form.querySelectorAll('#swimlog-garmin-import-selected, .swimlog-garmin-import-selected').forEach(function (button) {
+		form.querySelectorAll('[data-swimlog-garmin-import-selected="1"]').forEach(function (button) {
 			button.disabled = selected === 0;
 		});
 	}
