@@ -685,9 +685,9 @@ final class Admin {
 		$configured = Garmin_Personal_API::is_configured( $user_id );
 		$activity_mode = $detail_id > 0 || is_array( $activities );
 		?>
-		<div class="wrap swimlog-admin">
+		<div class="wrap swimlog-admin"<?php echo ( $configured && ! $activity_mode ) ? ' data-swimlog-garmin-configured="1"' : ''; ?>>
 			<h1><?php esc_html_e( 'Garmin Connect Personal API', 'chriss-swim-training-progress-evaluation' ); ?></h1>
-			<p><?php esc_html_e( 'Configure your own Garmin Connect Personal API key. The key is encrypted before it is stored and is never displayed again after saving.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<?php if ( ! $configured ) : ?><p><?php esc_html_e( 'Configure your own Garmin Connect Personal API key. The key is encrypted before it is stored and is never displayed again after saving.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
 			<?php if ( $notice ) : ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
@@ -696,25 +696,27 @@ final class Admin {
 				<tr><th scope="row"><?php esc_html_e( 'Status', 'chriss-swim-training-progress-evaluation' ); ?></th><td><strong><?php echo $configured ? esc_html__( 'Configured', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Not configured', 'chriss-swim-training-progress-evaluation' ); ?></strong></td></tr>
 			</table>
 
-			<h2><?php echo $configured ? esc_html__( 'Replace Personal API Key', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Add Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<?php if ( $configured ) : ?><details id="swimlog-garmin-key-settings"><summary><strong><?php esc_html_e( 'Replace Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px"><?php else : ?><h2><?php esc_html_e( 'Add Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></h2><?php endif; ?>
 			<form method="post">
 				<?php wp_nonce_field( 'swimlog_save_garmin_key' ); ?>
 				<input type="hidden" name="swimlog_garmin_action" value="save">
 				<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-garmin-api-key"><?php esc_html_e( 'Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-garmin-api-key" class="regular-text" type="password" name="garmin_api_key" value="" autocomplete="new-password" required><p class="description"><?php esc_html_e( 'The key is accepted only over this POST form, encrypted for storage, and is not written back into the page.', 'chriss-swim-training-progress-evaluation' ); ?></p><details style="margin-top:12px;max-width:760px"><summary><strong><?php esc_html_e( 'How do I get a Personal API Key?', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:10px"><ol><li><?php esc_html_e( 'Sign in to your Garmin Connect account.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php esc_html_e( 'Open Settings.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php esc_html_e( 'Select Personal API Key from the menu on the left.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php esc_html_e( 'Create a new Personal API Key.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php esc_html_e( 'Copy the generated API key.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php esc_html_e( 'Return to this page and paste the value into the Personal API Key field above.', 'chriss-swim-training-progress-evaluation' ); ?></li><li><?php echo $configured ? esc_html__( 'Click Replace API Key.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Click Save API Key.', 'chriss-swim-training-progress-evaluation' ); ?></li></ol><p><strong><?php esc_html_e( 'Keep your API key private.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'Treat it like a password and do not share it. After saving, this plugin encrypts the key for storage and does not display the saved value again.', 'chriss-swim-training-progress-evaluation' ); ?></p></div></details></td></tr></table>
 				<?php submit_button( $configured ? __( 'Replace API Key', 'chriss-swim-training-progress-evaluation' ) : __( 'Save API Key', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', true, array( 'id' => 'swimlog-garmin-api-key-submit', 'disabled' => 'disabled' ) ); ?>
 			</form>
+			<?php if ( $configured ) : ?></div></details><?php endif; ?>
 
 			<?php endif; ?>
 
 			<?php if ( $configured ) : ?>
 				<?php if ( ! $activity_mode ) : ?>
-				<hr><h2><?php esc_html_e( 'Connection', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<details id="swimlog-garmin-connection"><summary><strong><?php esc_html_e( 'Test Connection', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px">
 				<p><?php esc_html_e( 'Test the saved credential by requesting a short-lived access token from Garmin Connect. The access token is not stored by this test.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_test_garmin_connection' ); ?>
 					<input type="hidden" name="swimlog_garmin_action" value="test">
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
+				</div></details>
 				<?php endif; ?>
 
 				<?php if ( is_array( $activity_detail ) ) :
@@ -866,7 +868,7 @@ final class Admin {
 					<?php endif; ?>
 				<?php endif; ?>
 
-				<hr><h2><?php esc_html_e( 'Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<div id="swimlog-garmin-activities"><h2><?php esc_html_e( 'Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<p><?php esc_html_e( 'Retrieve Garmin activities for a date range of up to 30 days. This inspection does not import or change swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_garmin_recent_activities' ); ?>
@@ -924,13 +926,15 @@ final class Admin {
 					<?php endif; ?>
 				<?php endif; ?>
 
+				</div>
 				<?php if ( ! $activity_mode ) : ?>
-				<hr><h2><?php esc_html_e( 'Remove Garmin Connect Configuration', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<details id="swimlog-garmin-remove"><summary><strong><?php esc_html_e( 'Remove Garmin Connect Configuration', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px">
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_remove_garmin_key' ); ?>
 					<input type="hidden" name="swimlog_garmin_action" value="remove">
 					<?php submit_button( __( 'Remove API Key', 'chriss-swim-training-progress-evaluation' ), 'delete', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Remove your stored Garmin Connect Personal API key?', 'chriss-swim-training-progress-evaluation' ) ) . "');" ) ); ?>
 				</form>
+				</div></details>
 				<?php endif; ?>
 			<?php endif; ?>
 		</div>
