@@ -470,6 +470,29 @@ final class Admin {
 		<p><?php esc_html_e('Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.','chriss-swim-training-progress-evaluation'); ?></p>
 		<form method="post"><?php wp_nonce_field('swimlog_save_privacy'); ?><input type="hidden" name="swimlog_privacy_action" value="save"><table class="form-table" role="presentation"><tr><th scope="row"><?php esc_html_e('Public Results','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked($value,'1'); ?>> <?php esc_html_e('Allow my swim results to be displayed by public swim shortcodes.','chriss-swim-training-progress-evaluation'); ?></label><p class="description"><?php esc_html_e('Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.','chriss-swim-training-progress-evaluation'); ?></p></td></tr></table><?php submit_button(__('Save Privacy','chriss-swim-training-progress-evaluation')); ?></form></div><?php
 	}
+	public function handle_garmin_fit_download() {
+		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
+			wp_die( esc_html__( 'You do not have permission to download Garmin activity files.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		check_admin_referer( 'swimlog_garmin_download_fit' );
+		$activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
+		if ( ! $activity_id ) {
+			wp_die( esc_html__( 'Invalid Garmin activity file request.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
+		$result = Garmin_Personal_API::download_activity_file( get_current_user_id(), $activity_id );
+		if ( is_wp_error( $result ) ) {
+			wp_die( esc_html( $result->get_error_message() ) );
+		}
+		$filename = 'garmin-activity-' . $activity_id . '.zip';
+		nocache_headers();
+		header( 'Content-Type: application/zip' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $result['body'] ) );
+		echo $result['body']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary Garmin activity archive.
+		exit;
+	}
+
 	public function garmin() {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage your Garmin Connect configuration.', 'chriss-swim-training-progress-evaluation' ) );
@@ -494,26 +517,7 @@ final class Admin {
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
-			if ( 'download_fit' === $action ) {
-				check_admin_referer( 'swimlog_garmin_download_fit' );
-				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
-				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
-					$error = __( 'Invalid Garmin activity file request.', 'chriss-swim-training-progress-evaluation' );
-				} else {
-					$result = Garmin_Personal_API::download_activity_file( $user_id, $requested_activity_id );
-					if ( is_wp_error( $result ) ) {
-						$error = $result->get_error_message();
-					} else {
-						$filename = 'garmin-activity-' . $requested_activity_id . '.zip';
-						nocache_headers();
-						header( 'Content-Type: application/zip' );
-						header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-						header( 'Content-Length: ' . strlen( $result['body'] ) );
-						echo $result['body']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary Garmin activity archive.
-						exit;
-					}
-				}
-			} elseif ( 'activity_detail' === $action ) {
+			if ( 'activity_detail' === $action ) {
 				check_admin_referer( 'swimlog_garmin_activity_detail' );
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
@@ -611,9 +615,9 @@ final class Admin {
 						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
 					</tbody></table>
-					<form method="post" style="margin-top:16px">
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:16px">
 						<?php wp_nonce_field( 'swimlog_garmin_download_fit' ); ?>
-						<input type="hidden" name="swimlog_garmin_action" value="download_fit">
+						<input type="hidden" name="action" value="swimlog_garmin_download_fit">
 						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
 						<?php submit_button( __( 'Download Garmin FIT', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 					</form>
