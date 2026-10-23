@@ -353,6 +353,94 @@ final class Garmin_Personal_API {
 		}
 	}
 
+
+	/**
+	 * Associate a Garmin activity with an existing import only when the
+	 * downloaded Garmin FIT is byte-identical to that import's file hash.
+	 *
+	 * No workout, source file, normalized swim data, or PB data is changed.
+	 */
+	public static function associate_existing_activity( $user_id, $activity_id ) {
+		global $wpdb;
+		$user_id = absint( $user_id );
+		$activity_id = absint( $activity_id );
+		if ( ! $user_id || ! $activity_id ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity association request.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		$preflight = self::preflight_activity_import( $user_id, $activity_id );
+		if ( is_wp_error( $preflight ) ) {
+			return $preflight;
+		}
+		if ( 'activity_exists' === $preflight['status'] ) {
+			return array(
+				'status'      => 'already_associated',
+				'activity_id' => $activity_id,
+				'import_id'   => (int) $preflight['import_id'],
+				'workout_id'  => (int) $preflight['workout_id'],
+			);
+		}
+		if ( 'file_exists' !== $preflight['status'] ) {
+			return array(
+				'status'      => 'new_candidate',
+				'activity_id' => $activity_id,
+				'filename'    => (string) $preflight['filename'],
+				'file_hash'   => (string) $preflight['file_hash'],
+				'file_size'   => (int) $preflight['file_size'],
+			);
+		}
+
+		$existing_provider = trim( (string) $preflight['existing_provider'] );
+		$existing_external = trim( (string) $preflight['existing_external_id'] );
+		if ( '' !== $existing_provider && 'garmin' !== $existing_provider ) {
+			return new \WP_Error( 'swimlog_garmin_provider_conflict', __( 'The matching import is already associated with another source provider. No data was changed.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		if ( '' !== $existing_external && (string) $activity_id !== $existing_external ) {
+			return new \WP_Error( 'swimlog_garmin_activity_conflict', __( 'The matching import is already associated with a different external activity. No data was changed.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		$imports = Database::table( 'imports' );
+		$conflicting_activity = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM $imports WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s AND id<>%d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$user_id,
+				'garmin',
+				(string) $activity_id,
+				(int) $preflight['existing_import_id']
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( $conflicting_activity ) {
+			return new \WP_Error( 'swimlog_garmin_activity_conflict', __( 'This Garmin activity is already associated with a different import. No data was changed.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		$updated = $wpdb->update(
+			$imports,
+			array(
+				'source_provider'      => 'garmin',
+				'external_activity_id' => (string) $activity_id,
+				'updated_at'           => current_time( 'mysql' ),
+			),
+			array(
+				'id'      => (int) $preflight['existing_import_id'],
+				'user_id' => $user_id,
+			),
+			array( '%s', '%s', '%s' ),
+			array( '%d', '%d' )
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( false === $updated ) {
+			return new \WP_Error( 'swimlog_garmin_association_failed', __( 'The Garmin activity association could not be saved. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		return array(
+			'status'      => 'associated',
+			'activity_id' => $activity_id,
+			'import_id'   => (int) $preflight['existing_import_id'],
+			'workout_id'  => (int) $preflight['existing_workout_id'],
+			'filename'    => (string) $preflight['filename'],
+		);
+	}
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
