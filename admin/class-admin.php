@@ -285,7 +285,6 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
 
 		$user_id = get_current_user_id();
-		$debugging = defined( 'WP_DEBUG' ) && WP_DEBUG;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_location_action'] ) );
 
 		if ( 'save' === $action ) {
@@ -535,6 +534,7 @@ final class Admin {
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
 		$user_id = get_current_user_id();
+		$debugging = defined( 'WP_DEBUG' ) && WP_DEBUG;
 		$notice = '';
 		$error = '';
 		$activities = null;
