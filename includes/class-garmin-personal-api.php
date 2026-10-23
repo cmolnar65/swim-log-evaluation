@@ -65,11 +65,12 @@ final class Garmin_Personal_API {
 			return new \WP_Error( 'swimlog_garmin_activities_invalid', __( 'Garmin Connect returned an unexpected activity-list response.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$activity_types = array_values( array_intersect( array( 'lap_swimming', 'open_water_swimming' ), array_map( 'sanitize_key', (array) $activity_types ) ) );
-		if ( ! empty( $activity_types ) ) {
-			$activities = array_values( array_filter( $activities, static function ( $activity ) use ( $activity_types ) {
-				return isset( $activity['activityType']['typeKey'] ) && in_array( (string) $activity['activityType']['typeKey'], $activity_types, true );
-			} ) );
+		if ( empty( $activity_types ) ) {
+			return array();
 		}
+		$activities = array_values( array_filter( $activities, static function ( $activity ) use ( $activity_types ) {
+			return isset( $activity['activityType']['typeKey'] ) && in_array( (string) $activity['activityType']['typeKey'], $activity_types, true );
+		} ) );
 		return $activities;
 	}
 
