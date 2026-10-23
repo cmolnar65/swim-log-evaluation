@@ -34,13 +34,20 @@ final class Garmin_Personal_API {
 		return is_wp_error( $token ) ? $token : true;
 	}
 
-	public static function recent_activities( $user_id, $limit = 10 ) {
+	public static function recent_activities( $user_id, $limit = 50, $start_date = '', $end_date = '', $swimming_only = false ) {
 		$token = self::access_token( $user_id );
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
-		$limit = max( 1, min( 50, (int) $limit ) );
-		$url = add_query_arg( array( 'start' => 0, 'limit' => $limit ), self::API_BASE . 'activitylist-service/activities/search/activities' );
+		$limit = max( 1, min( 100, (int) $limit ) );
+		$args = array( 'start' => 0, 'limit' => $limit );
+		if ( '' !== $start_date ) {
+			$args['startDate'] = $start_date;
+		}
+		if ( '' !== $end_date ) {
+			$args['endDate'] = $end_date;
+		}
+		$url = add_query_arg( $args, self::API_BASE . 'activitylist-service/activities/search/activities' );
 		$response = wp_remote_get( $url, array(
 			'timeout' => 15,
 			'redirection' => 0,
@@ -56,6 +63,11 @@ final class Garmin_Personal_API {
 		$activities = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $activities ) ) {
 			return new \WP_Error( 'swimlog_garmin_activities_invalid', __( 'Garmin Connect returned an unexpected activity-list response.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		if ( $swimming_only ) {
+			$activities = array_values( array_filter( $activities, static function ( $activity ) {
+				return isset( $activity['activityType']['typeKey'] ) && 'lap_swimming' === (string) $activity['activityType']['typeKey'];
+			} ) );
 		}
 		return $activities;
 	}
