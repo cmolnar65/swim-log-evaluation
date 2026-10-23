@@ -507,8 +507,7 @@ final class Admin {
 						$activity_full_detail = $result;
 					}
 				}
-			} else
-			if ( 'save' === $action ) {
+			} elseif ( 'save' === $action ) {
 				check_admin_referer( 'swimlog_save_garmin_key' );
 				$api_key = isset( $_POST['garmin_api_key'] ) ? trim( (string) wp_unslash( $_POST['garmin_api_key'] ) ) : '';
 				$result = Garmin_Personal_API::save_key( $user_id, $api_key );
@@ -537,7 +536,6 @@ final class Admin {
 				check_admin_referer( 'swimlog_remove_garmin_key' );
 				Garmin_Personal_API::remove_key( $user_id );
 				$notice = __( 'Garmin Connect Personal API key removed.', 'chriss-swim-training-progress-evaluation' );
-			}
 			}
 		}
 
