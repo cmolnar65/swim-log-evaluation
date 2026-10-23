@@ -16,7 +16,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'laps', 'lengths', 'performances', 'events' );
+		return array( 'imports', 'locations', 'workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events' );
 	}
 
 	public static function schema_is_complete() {
@@ -42,6 +42,7 @@ final class Database {
 		$workouts     = self::table( 'workouts' );
 		$laps         = self::table( 'laps' );
 		$lengths      = self::table( 'lengths' );
+		$trackpoints  = self::table( 'trackpoints' );
 		$performances = self::table( 'performances' );
 		$events       = self::table( 'events' );
 
@@ -158,6 +159,23 @@ final class Database {
 			KEY workout_id (workout_id),
 			KEY lap_id (lap_id),
 			KEY workout_stroke (workout_id,stroke)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $trackpoints (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			workout_id bigint(20) unsigned NOT NULL,
+			sequence_no int(10) unsigned NOT NULL,
+			recorded_at datetime NULL,
+			latitude decimal(10,7) NULL,
+			longitude decimal(10,7) NULL,
+			distance_m decimal(12,3) NULL,
+			heart_rate smallint(5) unsigned NULL,
+			cadence decimal(8,3) NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY workout_sequence (workout_id,sequence_no),
+			KEY workout_id (workout_id),
+			KEY workout_recorded_at (workout_id,recorded_at)
 		) $charset_collate;";
 
 		$sql[] = "CREATE TABLE $performances (
