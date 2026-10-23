@@ -32,8 +32,8 @@ final class Shortcodes {
 		return(string)$v==='1';
 	}
 	private static function attrs($atts,$defaults=array()){
-		$a=shortcode_atts(array_merge(array('user'=>'','course'=>'','stroke'=>'','distance'=>'','count'=>'','title'=>'yes'),$defaults),$atts);
-		$a['course']=strtolower(sanitize_key($a['course']));$a['stroke']=strtoupper(sanitize_key($a['stroke']));$a['distance']=absint($a['distance']);$a['count']=absint($a['count']);$title=sanitize_text_field((string)$a['title']);$a['title']=strtolower($title)==='no'?'no':(strtolower($title)==='yes'?'yes':$title);return$a;
+		$a=shortcode_atts(array_merge(array('user'=>'','course'=>'','stroke'=>'','distance'=>'','count'=>'','title'=>'yes','best'=>'LB','ag'=>''),$defaults),$atts);
+		$a['course']=strtolower(sanitize_key($a['course']));$a['stroke']=strtoupper(sanitize_key($a['stroke']));$a['distance']=absint($a['distance']);$a['count']=absint($a['count']);$a['best']=strtoupper(sanitize_key($a['best']));$a['ag']=sanitize_text_field((string)$a['ag']);$title=sanitize_text_field((string)$a['title']);$a['title']=strtolower($title)==='no'?'no':(strtolower($title)==='yes'?'yes':$title);return$a;
 	}
 	private static function stroke_name($s){return array('FR'=>__('Freestyle','chriss-swim-training-progress-evaluation'),'BR'=>__('Breaststroke','chriss-swim-training-progress-evaluation'),'BACK'=>__('Backstroke','chriss-swim-training-progress-evaluation'),'FLY'=>__('Butterfly','chriss-swim-training-progress-evaluation'),'MIXED'=>__('Mixed','chriss-swim-training-progress-evaluation'))[$s]??__('Unknown','chriss-swim-training-progress-evaluation');}
 	private static function unavailable(){return '<div class="swimlog-public"><p>'.esc_html__('Swim results are unavailable.','chriss-swim-training-progress-evaluation').'</p></div>';}
@@ -68,7 +68,9 @@ final class Shortcodes {
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$course=in_array($a['course'],array('m','yd'),true)?$a['course']:get_option('swimlog_default_course_unit','m');if(!in_array($course,array('m','yd'),true))$course='m';
 		$valid_strokes=array('FR','BR','BACK','FLY','MIXED');if($a['stroke']&&!in_array($a['stroke'],$valid_strokes,true))return self::unavailable();if($a['distance']&&!in_array($a['distance'],Evaluator::DISTANCES,true))return self::unavailable();
-		$pbs=Records::personal_bests($uid,$course);$o=self::styles().self::open(__('Personal Bests','chriss-swim-training-progress-evaluation'),$a['title']);$distances=$a['distance']?array($a['distance']):Evaluator::DISTANCES;
+		$best=$a['best']?:'LB';if($a['ag']!=='')$best='AG';if(!in_array($best,array('LB','AG'),true))return self::unavailable();
+		$age_group='';if($a['ag']!==''){if(!preg_match('/^(\\d{1,3})\\s*[-–]\\s*(\\d{1,3})$/u',$a['ag'],$m))return self::unavailable();$age_group=$m[1].'–'.$m[2];}
+		$pbs=$best==='AG'?Records::age_group_personal_bests($uid,$course,$age_group):Records::personal_bests($uid,$course);$o=self::styles().self::open(__('Personal Bests','chriss-swim-training-progress-evaluation'),$a['title']);$distances=$a['distance']?array($a['distance']):Evaluator::DISTANCES;
 		if($a['stroke']){$strokes=array($a['stroke']);}else{$strokes=array('OVERALL');foreach(array('FR','BR','BACK','FLY','MIXED') as$s){foreach($pbs as$distance_pbs){if(!empty($distance_pbs[$s])){$strokes[]=$s;break;}}}}
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th>';foreach($strokes as $s)$o.='<th scope="col">'.esc_html($s==='OVERALL'?__('Overall','chriss-swim-training-progress-evaluation'):self::stroke_name($s)).'</th>';$o.='</tr></thead><tbody>';
 		$any=false;foreach($distances as $d){$o.='<tr><th scope="row">'.esc_html(self::distance_label($d,$course)).'</th>';foreach($strokes as $s){$p=$pbs[$d][$s]??null;$any=$any||!!$p;$o.='<td>'.($p?esc_html(Workout::format_duration($p->duration_ms)).'<br><span class="swimlog-muted">'.esc_html(self::local_date('M j, Y',$p->achieved_at)).'</span>':'&mdash;').'</td>';}$o.='</tr>';}$o.='</tbody></table></div>';return$o.(!$any?'<p>'.esc_html__('No qualifying personal bests are available for this selection.','chriss-swim-training-progress-evaluation').'</p>':'').self::close();
