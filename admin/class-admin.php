@@ -567,7 +567,7 @@ final class Admin {
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
 					$error = __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' );
-				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityType']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityType']['typeKey'] ) {
+				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityTypeDTO']['typeKey'] ) {
 					$error = __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
 				} else {
 					$import_preflight = Garmin_Personal_API::preflight_activity_import( $user_id, $requested_activity_id );
@@ -662,7 +662,7 @@ final class Admin {
 
 				<?php if ( is_array( $activity_detail ) ) :
 					$summary = isset( $activity_detail['summaryDTO'] ) && is_array( $activity_detail['summaryDTO'] ) ? $activity_detail['summaryDTO'] : array();
-					$atype = isset( $activity_detail['activityType']['typeKey'] ) ? (string) $activity_detail['activityType']['typeKey'] : '';
+					$atype = isset( $activity_detail['activityTypeDTO']['typeKey'] ) ? (string) $activity_detail['activityTypeDTO']['typeKey'] : '';
 					$aname = isset( $activity_detail['activityName'] ) ? (string) $activity_detail['activityName'] : '';
 					$astart = isset( $activity_detail['startTimeLocal'] ) ? (string) $activity_detail['startTimeLocal'] : '';
 					$adistance = isset( $summary['distance'] ) && is_numeric( $summary['distance'] ) ? number_format_i18n( (float) $summary['distance'], 1 ) . ' m' : '—';
