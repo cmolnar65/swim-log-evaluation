@@ -56,6 +56,19 @@ final class Workout {
 		return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));
 	}
 
+
+	public static function trackpoints( $workout_id, $user_id ) {
+		global $wpdb;
+		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
+		$t = Database::table( 'trackpoints' );
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT sequence_no,recorded_at,latitude,longitude,distance_m,heart_rate,cadence FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$workout_id
+			)
+		);
+	}
+
 	public static function performances( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
