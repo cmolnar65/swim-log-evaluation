@@ -624,11 +624,15 @@ final class Admin {
 			<p><code>[swimlog_bests best="AG" ag="50-54"]</code> &mdash; <?php esc_html_e( 'Uses the explicitly selected 50–54 age group regardless of the page/post date or the swimmer\'s current age.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 
 			<h2><?php esc_html_e( 'Table Width and Page Layout', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<p><?php esc_html_e( 'The personal-bests table fills the width provided by the WordPress page and active theme. For pages containing several personal-best tables, use a Wide or Full Width Group block when your theme provides that option.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-			<p><?php esc_html_e( 'If the theme still constrains the content to a narrow column, place the shortcode sections inside a Group block with the additional CSS class swim-pb-page, then add the following example to the site\'s Additional CSS. Adjust the 1100px maximum width if needed for the site design.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-			<pre><code>.swim-pb-page {
-    width: min(1100px, calc(100vw - 32px)) !important;
-    max-width: 1100px !important;
+			<p><?php esc_html_e( 'The personal-bests table fills the width provided by the WordPress page and active theme. For pages containing several personal-best tables, first use a Wide or Full Width Group block when the theme provides that option.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'If the theme still constrains the shortcode output to a narrow content column, place the shortcode sections inside a Group block with the additional CSS class swim-pb-page. Set the Group block layout to Default rather than Constrained. In the WordPress code editor, the opening Group block can use the following markup:', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<pre><code>&lt;!-- wp:group {"className":"swim-pb-page","layout":{"type":"default"}} --&gt;
+&lt;div class="wp-block-group swim-pb-page"&gt;</code></pre>
+			<p><?php esc_html_e( 'Then add the following example to the site\'s Additional CSS. This expands the Group to the available viewport width and also removes a constrained theme width from the blocks inside the Group.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<pre><code>/* Swimming Personal Bests - full-width content area */
+.swim-pb-page {
+    width: calc(100vw - 32px) !important;
+    max-width: none !important;
     position: relative !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
@@ -639,11 +643,19 @@ final class Admin {
     clear: both !important;
 }
 
+/* Override the theme's constrained width on blocks inside this group */
+.swim-pb-page &gt; * {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
 .swim-pb-page,
 .swim-pb-page * {
     box-sizing: border-box;
 }</code></pre>
-			<p><?php esc_html_e( 'This CSS is an optional theme-layout workaround and is not required when the theme already provides an appropriate Wide or Full Width layout.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'This CSS is an optional theme-layout workaround and is not required when the theme already provides an appropriate Wide or Full Width layout. The 32px subtraction leaves approximately 16px of space on each side of the viewport.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 
 			<h2><?php esc_html_e( 'Examples', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><code>[swimlog_bests]</code><br>
