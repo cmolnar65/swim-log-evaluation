@@ -4,7 +4,7 @@ if(!defined('ABSPATH')){exit;}
 
 /** Minimal defensive FIT decoder for swimming Session/Lap/Length messages. */
 final class FIT_Importer {
-	const VERSION='0.1.1';
+	const VERSION='0.2';
 	private $defs=array();
 	private $last_timestamp=null;
 
@@ -18,7 +18,7 @@ final class FIT_Importer {
 		if($end>strlen($bin))return new \WP_Error('swimlog_fit_truncated',__('The FIT file is truncated.','chriss-swim-training-progress-evaluation'));
 		if(strlen($bin)>=$end+2){$stored=$this->u16(substr($bin,$end,2),0);$calc=$this->crc16(substr($bin,0,$end));if($stored!==$calc)return new \WP_Error('swimlog_fit_crc',__('FIT file checksum is invalid.','chriss-swim-training-progress-evaluation'));}
 		$this->defs=array();$this->last_timestamp=null;
-		$out=array('session'=>null,'laps'=>array(),'lengths'=>array(),'device'=>array());
+		$out=array('session'=>null,'laps'=>array(),'lengths'=>array(),'records'=>array(),'device'=>array());
 		$p=$hs;
 		while($p<$end){
 			$hdr=ord($bin[$p++]);
@@ -37,7 +37,7 @@ final class FIT_Importer {
 		}
 		if(!$out['session'])return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable swimming session.','chriss-swim-training-progress-evaluation'));
 		$workout_type=$this->workout_type($out['session'],$out['lengths']);
-		if('open_water'===$workout_type)return new \WP_Error('swimlog_fit_open_water_detected',__('Open-water swimming FIT file recognized. Open-water normalization is not enabled yet.','chriss-swim-training-progress-evaluation'));
+		if('open_water'===$workout_type)return $this->normalize_open_water($out);
 		if('pool'!==$workout_type)return new \WP_Error('swimlog_fit_swim_type',__('FIT swimming session could not be classified safely as pool or open-water swimming.','chriss-swim-training-progress-evaluation'));
 		if(empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain usable pool-swim lengths.','chriss-swim-training-progress-evaluation'));
 		return $this->normalize($out);
@@ -63,7 +63,7 @@ final class FIT_Importer {
 	private function crc16($data){$crc=0;$n=strlen($data);for($i=0;$i<$n;$i++){$byte=ord($data[$i]);for($b=0;$b<8;$b++){$bit=$crc&1;$crc>>=1;if(($byte>>$b)&1)$bit^=1;if($bit)$crc^=0xA001;}}return $crc&0xffff;}
 	private function u16($s,$a){return unpack($a?'n':'v',substr($s,0,2))[1];}
 	private function u32($s,$a){return unpack($a?'N':'V',substr($s,0,4))[1];}
-	private function collect(&$out,$m){if($m['global']===18)$out['session']=$m['fields'];elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];}
+	private function collect(&$out,$m){if($m['global']===18)$out['session']=$m['fields'];elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===20)$out['records'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];}
 	private function workout_type($session,$lengths){
 		// FIT Profile: sport 5 = swimming; sub_sport 17 = lap_swimming; 18 = open_water.
 		$sport=isset($session[5])&&is_numeric($session[5])?(int)$session[5]:null;
@@ -81,6 +81,27 @@ final class FIT_Importer {
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
 	private function device_info($devices){$manufacturer=null;$model=null;foreach($devices as $d){if($manufacturer===null&&isset($d[2])&&is_numeric($d[2])&&(int)$d[2]>0)$manufacturer=$this->manufacturer_name((int)$d[2]);if(isset($d[27])&&is_string($d[27])&&trim($d[27])!=='')$model=trim($d[27]);elseif($model===null&&isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];}return array($manufacturer,$model);}
 	private function manufacturer_name($id){$known=array(1=>'Garmin',15=>'Dynastream',255=>'Development');return $known[$id]??('FIT manufacturer '.$id);}
+	private function semicircles_to_degrees($value){return ((float)$value)*180.0/2147483648.0;}
+	private function normalize_open_water($o){
+		$s=$o['session'];list($device_manufacturer,$device_model)=$this->device_info($o['device']);
+		$start=isset($s[2])?$this->fit_time($s[2]):null;
+		$elapsed=isset($s[7])?(int)$s[7]:null;
+		$moving=isset($s[8])?(int)$s[8]:null;
+		$distance_m=isset($s[9])?$s[9]/100:null;
+		$avg_hr=isset($s[16])&&is_numeric($s[16])?(int)$s[16]:null;
+		$max_hr=isset($s[17])&&is_numeric($s[17])?(int)$s[17]:null;
+		$avg_cadence=isset($s[18])&&is_numeric($s[18])?(float)$s[18]:null;
+		$max_cadence=isset($s[19])&&is_numeric($s[19])?(float)$s[19]:null;
+		$laps=array();$i=1;
+		foreach($o['laps'] as $x){$laps[]=array('sequence_no'=>$i++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'moving_time_ms'=>isset($x[8])?(int)$x[8]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
+		$trackpoints=array();
+		foreach($o['records'] as $x){
+			$point=array('timestamp'=>isset($x[253])?$this->fit_time($x[253]):null,'latitude'=>null,'longitude'=>null,'distance_m'=>isset($x[5])&&is_numeric($x[5])?$x[5]/100:null,'heart_rate'=>isset($x[3])&&is_numeric($x[3])?(int)$x[3]:null,'cadence'=>isset($x[4])&&is_numeric($x[4])?(float)$x[4]:null);
+			if(isset($x[0])&&is_numeric($x[0])&&isset($x[1])&&is_numeric($x[1])){$point['latitude']=$this->semicircles_to_degrees($x[0]);$point['longitude']=$this->semicircles_to_degrees($x[1]);}
+			if(null!==$point['timestamp']||null!==$point['latitude']||null!==$point['heart_rate']||null!==$point['distance_m'])$trackpoints[]=$point;
+		}
+		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_type'=>'open_water','workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$distance_m,'original_distance'=>$distance_m,'original_distance_unit'=>'m','elapsed_time_ms'=>$elapsed,'moving_time_ms'=>$moving,'average_heart_rate'=>$avg_hr,'max_heart_rate'=>$max_hr,'average_cadence'=>$avg_cadence,'max_cadence'=>$max_cadence,'pool_length_m'=>null,'original_pool_length'=>null,'pool_length_unit'=>null,'device_manufacturer'=>$device_manufacturer,'device_model'=>$device_model),'laps'=>$laps,'lengths'=>array(),'trackpoints'=>$trackpoints,'metadata'=>array('fit_sport'=>isset($s[5])?(int)$s[5]:null,'fit_sub_sport'=>isset($s[6])?(int)$s[6]:null));
+	}
 	private function normalize($o){
 		$s=$o['session'];list($device_manufacturer,$device_model)=$this->device_info($o['device']); $pool_m=isset($s[44])?$s[44]/100:0; $unit=(isset($s[46])&&(int)$s[46]===1)?'yd':'m';
 		// FIT distance fields are stored in meters even when display/course units are yards.
