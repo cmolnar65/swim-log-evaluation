@@ -94,7 +94,7 @@ final class FIT_Importer {
 		$avg_cadence=isset($s[18])&&is_numeric($s[18])?(float)$s[18]:null;
 		$max_cadence=isset($s[19])&&is_numeric($s[19])?(float)$s[19]:null;
 		$laps=array();$i=1;
-		foreach($o['laps'] as $x){$laps[]=array('sequence_no'=>$i++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'moving_time_ms'=>isset($x[8])?(int)$x[8]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
+		foreach($o['laps'] as $x){$lap_start=isset($x[2])?$this->fit_time($x[2]):null;$lap_offset=null;if($start&&$lap_start){$lap_offset=max(0,((new \\DateTimeImmutable($lap_start,wp_timezone()))->getTimestamp()-(new \\DateTimeImmutable($start,wp_timezone()))->getTimestamp())*1000);}$laps[]=array('sequence_no'=>$i++,'start_time'=>$lap_start,'start_offset_ms'=>$lap_offset,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'moving_time_ms'=>isset($x[8])?(int)$x[8]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
 		$trackpoints=array();$track_seq=1;
 		foreach($o['records'] as $x){
 			$point=array('sequence_no'=>$track_seq++,'recorded_at'=>isset($x[253])?$this->fit_time($x[253]):null,'latitude'=>null,'longitude'=>null,'distance_m'=>isset($x[5])&&is_numeric($x[5])?$x[5]/100:null,'heart_rate'=>isset($x[3])&&is_numeric($x[3])?(int)$x[3]:null,'cadence'=>isset($x[4])&&is_numeric($x[4])?(float)$x[4]:null);
