@@ -696,7 +696,7 @@ final class Admin {
 				<tr><th scope="row"><?php esc_html_e( 'Status', 'chriss-swim-training-progress-evaluation' ); ?></th><td><strong><?php echo $configured ? esc_html__( 'Configured', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Not configured', 'chriss-swim-training-progress-evaluation' ); ?></strong></td></tr>
 			</table>
 
-			<?php if ( $configured ) : ?><details id="swimlog-garmin-key-settings"><summary><strong><?php esc_html_e( 'Replace Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px"><?php else : ?><h2><?php esc_html_e( 'Add Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></h2><?php endif; ?>
+			<?php if ( $configured ) : ?><div id="swimlog-garmin-configuration-options" style="margin-top:32px;padding-top:20px;border-top:1px solid #c3c4c7"><h2 style="margin-top:0"><?php esc_html_e( 'Configuration Options — Click to Expand', 'chriss-swim-training-progress-evaluation' ); ?></h2></div><details id="swimlog-garmin-key-settings"><summary><strong><?php esc_html_e( 'Replace Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px"><?php else : ?><h2><?php esc_html_e( 'Add Personal API Key', 'chriss-swim-training-progress-evaluation' ); ?></h2><?php endif; ?>
 			<form method="post">
 				<?php wp_nonce_field( 'swimlog_save_garmin_key' ); ?>
 				<input type="hidden" name="swimlog_garmin_action" value="save">
