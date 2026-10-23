@@ -95,11 +95,11 @@ final class FIT_Importer {
 		$max_cadence=isset($s[19])&&is_numeric($s[19])?(float)$s[19]:null;
 		$laps=array();$i=1;
 		foreach($o['laps'] as $x){$laps[]=array('sequence_no'=>$i++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'moving_time_ms'=>isset($x[8])?(int)$x[8]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
-		$trackpoints=array();
+		$trackpoints=array();$track_seq=1;
 		foreach($o['records'] as $x){
-			$point=array('timestamp'=>isset($x[253])?$this->fit_time($x[253]):null,'latitude'=>null,'longitude'=>null,'distance_m'=>isset($x[5])&&is_numeric($x[5])?$x[5]/100:null,'heart_rate'=>isset($x[3])&&is_numeric($x[3])?(int)$x[3]:null,'cadence'=>isset($x[4])&&is_numeric($x[4])?(float)$x[4]:null);
+			$point=array('sequence_no'=>$track_seq++,'recorded_at'=>isset($x[253])?$this->fit_time($x[253]):null,'latitude'=>null,'longitude'=>null,'distance_m'=>isset($x[5])&&is_numeric($x[5])?$x[5]/100:null,'heart_rate'=>isset($x[3])&&is_numeric($x[3])?(int)$x[3]:null,'cadence'=>isset($x[4])&&is_numeric($x[4])?(float)$x[4]:null);
 			if(isset($x[0])&&is_numeric($x[0])&&isset($x[1])&&is_numeric($x[1])){$point['latitude']=$this->semicircles_to_degrees($x[0]);$point['longitude']=$this->semicircles_to_degrees($x[1]);}
-			if(null!==$point['timestamp']||null!==$point['latitude']||null!==$point['heart_rate']||null!==$point['distance_m'])$trackpoints[]=$point;
+			if(null!==$point['recorded_at']||null!==$point['latitude']||null!==$point['heart_rate']||null!==$point['distance_m'])$trackpoints[]=$point;
 		}
 		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_type'=>'open_water','workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$distance_m,'original_distance'=>$distance_m,'original_distance_unit'=>'m','elapsed_time_ms'=>$elapsed,'moving_time_ms'=>$moving,'average_heart_rate'=>$avg_hr,'max_heart_rate'=>$max_hr,'average_cadence'=>$avg_cadence,'max_cadence'=>$max_cadence,'pool_length_m'=>null,'original_pool_length'=>null,'pool_length_unit'=>null,'device_manufacturer'=>$device_manufacturer,'device_model'=>$device_model),'laps'=>$laps,'lengths'=>array(),'trackpoints'=>$trackpoints,'metadata'=>array('fit_sport'=>isset($s[5])?(int)$s[5]:null,'fit_sub_sport'=>isset($s[6])?(int)$s[6]:null));
 	}
