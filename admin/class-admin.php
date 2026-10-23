@@ -623,6 +623,28 @@ final class Admin {
 			<p><code>[swimlog_bests best="AG" ag="current"]</code> &mdash; <?php esc_html_e( 'Uses the swimmer\'s chronological age today.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<p><code>[swimlog_bests best="AG" ag="50-54"]</code> &mdash; <?php esc_html_e( 'Uses the explicitly selected 50–54 age group regardless of the page/post date or the swimmer\'s current age.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 
+			<h2><?php esc_html_e( 'Table Width and Page Layout', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<p><?php esc_html_e( 'The personal-bests table fills the width provided by the WordPress page and active theme. For pages containing several personal-best tables, use a Wide or Full Width Group block when your theme provides that option.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'If the theme still constrains the content to a narrow column, place the shortcode sections inside a Group block with the additional CSS class swim-pb-page, then add the following example to the site\'s Additional CSS. Adjust the 1100px maximum width if needed for the site design.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<pre><code>.swim-pb-page {
+    width: min(1100px, calc(100vw - 32px)) !important;
+    max-width: 1100px !important;
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0 !important;
+    float: none !important;
+    clear: both !important;
+}
+
+.swim-pb-page,
+.swim-pb-page * {
+    box-sizing: border-box;
+}</code></pre>
+			<p><?php esc_html_e( 'This CSS is an optional theme-layout workaround and is not required when the theme already provides an appropriate Wide or Full Width layout.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+
 			<h2><?php esc_html_e( 'Examples', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><code>[swimlog_bests]</code><br>
 			<code>[swimlog_bests best="LB" course="m"]</code><br>
