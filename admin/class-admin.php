@@ -44,11 +44,12 @@ final class Admin {
 			return;
 		}
 
+		$admin_css = SWIMLOG_EVALUATION_DIR . 'assets/css/admin.css';
 		wp_enqueue_style(
 			'swimlog-admin',
 			SWIMLOG_EVALUATION_URL . 'assets/css/admin.css',
 			array(),
-			SWIMLOG_EVALUATION_VERSION
+			is_file( $admin_css ) ? SWIMLOG_EVALUATION_VERSION . '.' . filemtime( $admin_css ) : SWIMLOG_EVALUATION_VERSION
 		);
 	}
 	private function submenu( $parent, $title, $capability, $slug, $method ) {
@@ -757,7 +758,7 @@ final class Admin {
 							$duration = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $activity['duration'] ) ) ) : '—';
 						?>
 						<?php $match_status = $this->garmin_activity_match_status( $user_id, $activity ); ?>
-						<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><?php if ( $activity_id ) : ?><?php if ( $debugging ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?><?php echo esc_html( $activity_id ); ?><?php endif; ?><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
+						<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
 						<?php endforeach; ?>
 						</tbody></table>
 					<?php endif; ?>
