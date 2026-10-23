@@ -551,7 +551,7 @@ final class Admin {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
 		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
-		if ( $debugging && $detail_id ) {
+		if ( $detail_id ) {
 			$activity_detail = Garmin_Personal_API::activity( $user_id, $detail_id );
 			if ( is_wp_error( $activity_detail ) ) {
 				$error = $activity_detail->get_error_message();
@@ -645,7 +645,7 @@ final class Admin {
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
 
-				<?php if ( $debugging && is_array( $activity_detail ) ) :
+				<?php if ( is_array( $activity_detail ) ) :
 					$summary = isset( $activity_detail['summaryDTO'] ) && is_array( $activity_detail['summaryDTO'] ) ? $activity_detail['summaryDTO'] : array();
 					$atype = isset( $activity_detail['activityType']['typeKey'] ) ? (string) $activity_detail['activityType']['typeKey'] : '';
 					$aname = isset( $activity_detail['activityName'] ) ? (string) $activity_detail['activityName'] : '';
@@ -669,6 +669,7 @@ final class Admin {
 						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
 					</tbody></table>
+					<?php if ( $debugging ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:16px">
 						<?php wp_nonce_field( 'swimlog_garmin_download_fit' ); ?>
 						<input type="hidden" name="action" value="swimlog_garmin_download_fit">
@@ -681,7 +682,8 @@ final class Admin {
 						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
 						<?php submit_button( __( 'Get Activity Detail', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 					</form>
-					<?php if ( is_array( $activity_full_detail ) ) :
+					<?php endif; ?>
+					<?php if ( $debugging && is_array( $activity_full_detail ) ) :
 						$detail_sections = array(
 							'metadataDTO' => __( 'Metadata', 'chriss-swim-training-progress-evaluation' ),
 							'summaryDTO' => __( 'Summary / Measurements', 'chriss-swim-training-progress-evaluation' ),
