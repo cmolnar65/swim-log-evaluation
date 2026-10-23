@@ -82,6 +82,68 @@ final class Workout {
 		);
 	}
 
+
+	public static function open_water_analytics( $workout_id, $user_id ) {
+		$workout = self::get_for_user( $workout_id, $user_id );
+		if ( ! $workout || 'open_water' !== ( $workout->workout_type ?? 'pool' ) ) return array();
+
+		$distance = (float) ( $workout->total_distance_m ?? 0 );
+		$elapsed = (int) ( $workout->elapsed_time_ms ?? 0 );
+		$moving = (int) ( $workout->moving_time_ms ?? 0 );
+		$points = self::trackpoints( $workout_id, $user_id );
+		$gps_points = 0;
+		$cadence_points = 0;
+		$distance_points = array();
+
+		foreach ( $points as $point ) {
+			if ( null !== $point->latitude && null !== $point->longitude ) $gps_points++;
+			if ( null !== $point->cadence ) $cadence_points++;
+			if ( null !== $point->distance_m && null !== $point->recorded_at ) {
+				$distance_points[] = array(
+					'distance_m' => (float) $point->distance_m,
+					'time' => ( new \DateTimeImmutable( $point->recorded_at, wp_timezone() ) )->getTimestamp(),
+				);
+			}
+		}
+
+		$splits = array();
+		if ( count( $distance_points ) >= 2 ) {
+			$first = $distance_points[0];
+			$previous_target_time = (float) $first['time'];
+			for ( $target = 1000.0; $target <= $distance; $target += 1000.0 ) {
+				$target_time = null;
+				for ( $i = 1, $n = count( $distance_points ); $i < $n; $i++ ) {
+					$a = $distance_points[$i - 1];
+					$b = $distance_points[$i];
+					if ( $a['distance_m'] <= $target && $b['distance_m'] >= $target && $b['distance_m'] > $a['distance_m'] ) {
+						$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
+						$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
+						break;
+					}
+				}
+				if ( null !== $target_time ) {
+					$splits[] = array(
+						'distance_m' => (int) $target,
+						'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
+						'cumulative_time_ms' => (int) round( ( $target_time - $first['time'] ) * 1000 ),
+					);
+					$previous_target_time = $target_time;
+				}
+			}
+		}
+
+		return array(
+			'elapsed_pace_100m_ms' => $distance > 0 && $elapsed > 0 ? (int) round( $elapsed / ( $distance / 100 ) ) : null,
+			'moving_pace_100m_ms' => $distance > 0 && $moving > 0 ? (int) round( $moving / ( $distance / 100 ) ) : null,
+			'non_moving_time_ms' => $elapsed > 0 && $moving > 0 ? max( 0, $elapsed - $moving ) : null,
+			'active_percent' => $elapsed > 0 && $moving > 0 ? min( 100.0, ( $moving / $elapsed ) * 100 ) : null,
+			'trackpoint_count' => count( $points ),
+			'gps_point_count' => $gps_points,
+			'cadence_point_count' => $cadence_points,
+			'splits' => $splits,
+		);
+	}
+
 	public static function performances( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
