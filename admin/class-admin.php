@@ -120,6 +120,7 @@ final class Admin {
 			<?php if($metadata_error):?><div class="notice notice-error"><p><?php echo esc_html($metadata_error); ?></p></div><?php endif;?>
 			<?php if($edit):?>
 			<form method="post"><?php wp_nonce_field('swimlog_save_workout_metadata_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="save_metadata">
+			<?php if ( ! $activity_mode ) : ?>
 			<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-workout-location"><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></label></th><td><select id="swimlog-workout-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected((int)$w->location_id,(int)$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php esc_html_e('Changing the location does not change the pool length or course stored with this workout.','chriss-swim-training-progress-evaluation'); ?></p></td></tr>
 			<tr><th scope="row"><label for="swimlog-workout-notes"><?php esc_html_e('Notes','chriss-swim-training-progress-evaluation'); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-workout-notes" name="notes"><?php echo esc_textarea($w->notes??''); ?></textarea></td></tr></table>
 			<?php submit_button(__('Save Changes','chriss-swim-training-progress-evaluation'),'primary','',false); ?> <a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail),admin_url('admin.php'))); ?>"><?php esc_html_e('Cancel','chriss-swim-training-progress-evaluation'); ?></a></form>
@@ -632,6 +633,7 @@ final class Admin {
 		}
 
 		$configured = Garmin_Personal_API::is_configured( $user_id );
+		$activity_mode = $detail_id > 0 || is_array( $activities );
 		?>
 		<div class="wrap swimlog-admin">
 			<h1><?php esc_html_e( 'Garmin Connect Personal API', 'chriss-swim-training-progress-evaluation' ); ?></h1>
@@ -651,7 +653,10 @@ final class Admin {
 				<?php submit_button( $configured ? __( 'Replace API Key', 'chriss-swim-training-progress-evaluation' ) : __( 'Save API Key', 'chriss-swim-training-progress-evaluation' ) ); ?>
 			</form>
 
+			<?php endif; ?>
+
 			<?php if ( $configured ) : ?>
+				<?php if ( ! $activity_mode ) : ?>
 				<hr><h2><?php esc_html_e( 'Connection', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<p><?php esc_html_e( 'Test the saved credential by requesting a short-lived access token from Garmin Connect. The access token is not stored by this test.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
@@ -659,6 +664,7 @@ final class Admin {
 					<input type="hidden" name="swimlog_garmin_action" value="test">
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
+				<?php endif; ?>
 
 				<?php if ( is_array( $activity_detail ) ) :
 					$summary = isset( $activity_detail['summaryDTO'] ) && is_array( $activity_detail['summaryDTO'] ) ? $activity_detail['summaryDTO'] : array();
@@ -692,7 +698,7 @@ final class Admin {
 					</form>
 					<?php if ( is_array( $import_preflight ) ) : ?>
 						<?php if ( 'already_associated' === $import_preflight['status'] ) : ?>
-							<div class="notice notice-warning inline"><p><?php
+							<div class="notice notice-error inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
 									__( 'Activity Already Imported: Preflight stopped safely: Garmin activity %1$d is already associated with import #%2$d and workout #%3$d. No data was changed.', 'chriss-swim-training-progress-evaluation' ),
@@ -702,7 +708,7 @@ final class Admin {
 								) );
 							?></p></div>
 						<?php elseif ( 'associated' === $import_preflight['status'] ) : ?>
-							<div class="notice notice-success inline"><p><?php
+							<div class="notice notice-error inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
 									__( 'Activity Already Imported: Garmin activity %1$d was safely associated with existing import #%2$d / workout #%3$d after an exact FIT SHA-256 match. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ),
@@ -712,7 +718,7 @@ final class Admin {
 								) );
 							?></p></div>
 						<?php elseif ( 'file_exists' === $import_preflight['status'] ) : ?>
-							<div class="notice notice-warning inline"><p><?php
+							<div class="notice notice-error inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin filename, 2: existing import ID, 3: existing workout ID. */
 									__( 'Activity Already Imported: Preflight stopped safely: %1$s has the same SHA-256 fingerprint as existing import #%2$d / workout #%3$d. No association or data change was made.', 'chriss-swim-training-progress-evaluation' ),
@@ -829,12 +835,14 @@ final class Admin {
 					<?php endif; ?>
 				<?php endif; ?>
 
+				<?php if ( ! $activity_mode ) : ?>
 				<hr><h2><?php esc_html_e( 'Remove Garmin Connect Configuration', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_remove_garmin_key' ); ?>
 					<input type="hidden" name="swimlog_garmin_action" value="remove">
 					<?php submit_button( __( 'Remove API Key', 'chriss-swim-training-progress-evaluation' ), 'delete', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Remove your stored Garmin Connect Personal API key?', 'chriss-swim-training-progress-evaluation' ) ) . "');" ) ); ?>
 				</form>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 		<?php
