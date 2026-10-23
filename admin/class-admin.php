@@ -285,6 +285,7 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
 
 		$user_id = get_current_user_id();
+		$debugging = defined( 'WP_DEBUG' ) && WP_DEBUG;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_location_action'] ) );
 
 		if ( 'save' === $action ) {
@@ -506,6 +507,9 @@ final class Admin {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
 			wp_die( esc_html__( 'You do not have permission to download Garmin activity files.', 'chriss-swim-training-progress-evaluation' ) );
 		}
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			wp_die( esc_html__( 'Garmin activity file diagnostics are available only when WordPress debugging is enabled.', 'chriss-swim-training-progress-evaluation' ) );
+		}
 		check_admin_referer( 'swimlog_garmin_download_fit' );
 		$activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 		if ( ! $activity_id ) {
@@ -543,7 +547,7 @@ final class Admin {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
 		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
-		if ( $detail_id ) {
+		if ( $debugging && $detail_id ) {
 			$activity_detail = Garmin_Personal_API::activity( $user_id, $detail_id );
 			if ( is_wp_error( $activity_detail ) ) {
 				$error = $activity_detail->get_error_message();
@@ -553,7 +557,7 @@ final class Admin {
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
-			if ( 'activity_detail' === $action ) {
+			if ( 'activity_detail' === $action && $debugging ) {
 				check_admin_referer( 'swimlog_garmin_activity_detail' );
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
@@ -637,7 +641,7 @@ final class Admin {
 					<?php submit_button( __( 'Test Connection', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
 
-				<?php if ( is_array( $activity_detail ) ) :
+				<?php if ( $debugging && is_array( $activity_detail ) ) :
 					$summary = isset( $activity_detail['summaryDTO'] ) && is_array( $activity_detail['summaryDTO'] ) ? $activity_detail['summaryDTO'] : array();
 					$atype = isset( $activity_detail['activityType']['typeKey'] ) ? (string) $activity_detail['activityType']['typeKey'] : '';
 					$aname = isset( $activity_detail['activityName'] ) ? (string) $activity_detail['activityName'] : '';
@@ -750,7 +754,7 @@ final class Admin {
 							$duration = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $activity['duration'] ) ) ) : '—';
 						?>
 						<?php $match_status = $this->garmin_activity_match_status( $user_id, $activity ); ?>
-						<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
+						<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><?php if ( $activity_id ) : ?><?php if ( $debugging ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?><?php echo esc_html( $activity_id ); ?><?php endif; ?><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
 						<?php endforeach; ?>
 						</tbody></table>
 					<?php endif; ?>
