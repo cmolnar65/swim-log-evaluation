@@ -34,7 +34,7 @@ final class Garmin_Personal_API {
 		return is_wp_error( $token ) ? $token : true;
 	}
 
-	public static function recent_activities( $user_id, $limit = 50, $start_date = '', $end_date = '', $swimming_only = false ) {
+	public static function recent_activities( $user_id, $limit = 50, $start_date = '', $end_date = '', $activity_types = array() ) {
 		$token = self::access_token( $user_id );
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -64,9 +64,10 @@ final class Garmin_Personal_API {
 		if ( ! is_array( $activities ) ) {
 			return new \WP_Error( 'swimlog_garmin_activities_invalid', __( 'Garmin Connect returned an unexpected activity-list response.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		if ( $swimming_only ) {
-			$activities = array_values( array_filter( $activities, static function ( $activity ) {
-				return isset( $activity['activityType']['typeKey'] ) && 'lap_swimming' === (string) $activity['activityType']['typeKey'];
+		$activity_types = array_values( array_intersect( array( 'lap_swimming', 'open_water_swimming' ), array_map( 'sanitize_key', (array) $activity_types ) ) );
+		if ( ! empty( $activity_types ) ) {
+			$activities = array_values( array_filter( $activities, static function ( $activity ) use ( $activity_types ) {
+				return isset( $activity['activityType']['typeKey'] ) && in_array( (string) $activity['activityType']['typeKey'], $activity_types, true );
 			} ) );
 		}
 		return $activities;
@@ -443,7 +444,7 @@ final class Garmin_Personal_API {
 
 
 	/**
-	 * Import a genuinely new Garmin lap-swimming FIT through the existing
+	 * Import a genuinely new Garmin swimming FIT through the existing
 	 * normalized FIT importer. Exact-hash duplicates are associated safely.
 	 */
 	public static function import_activity( $user_id, $activity_id ) {
