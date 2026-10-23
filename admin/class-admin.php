@@ -470,6 +470,38 @@ final class Admin {
 		<p><?php esc_html_e('Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.','chriss-swim-training-progress-evaluation'); ?></p>
 		<form method="post"><?php wp_nonce_field('swimlog_save_privacy'); ?><input type="hidden" name="swimlog_privacy_action" value="save"><table class="form-table" role="presentation"><tr><th scope="row"><?php esc_html_e('Public Results','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked($value,'1'); ?>> <?php esc_html_e('Allow my swim results to be displayed by public swim shortcodes.','chriss-swim-training-progress-evaluation'); ?></label><p class="description"><?php esc_html_e('Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.','chriss-swim-training-progress-evaluation'); ?></p></td></tr></table><?php submit_button(__('Save Privacy','chriss-swim-training-progress-evaluation')); ?></form></div><?php
 	}
+	private function garmin_activity_match_status( $user_id, $activity ) {
+		if ( ! isset( $activity['activityType']['typeKey'] ) || 'lap_swimming' !== (string) $activity['activityType']['typeKey'] ) {
+			return 'none';
+		}
+		$start = isset( $activity['startTimeLocal'] ) ? (string) $activity['startTimeLocal'] : '';
+		if ( '' === $start ) {
+			return 'none';
+		}
+		$distance = isset( $activity['distance'] ) && is_numeric( $activity['distance'] ) ? (float) $activity['distance'] : 0.0;
+		$elapsed_ms = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? (int) round( (float) $activity['duration'] * 1000 ) : 0;
+		global $wpdb;
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		$table = Database::table( 'workouts' );
+		$exact = $wpdb->get_var( $wpdb->prepare(
+			"SELECT id FROM $table WHERE user_id=%d AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=2 AND ABS(COALESCE(total_distance_m,0)-%f)<=0.5 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=2000 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$user_id,
+			$start,
+			$distance,
+			$elapsed_ms
+		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( $exact ) {
+			return 'exact';
+		}
+		$date = substr( $start, 0, 10 );
+		$same_date = $wpdb->get_var( $wpdb->prepare(
+			"SELECT id FROM $table WHERE user_id=%d AND DATE(workout_start)=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$user_id,
+			$date
+		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $same_date ? 'similar' : 'none';
+	}
+
 	public function handle_garmin_fit_download() {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
 			wp_die( esc_html__( 'You do not have permission to download Garmin activity files.', 'chriss-swim-training-progress-evaluation' ) );
@@ -504,6 +536,10 @@ final class Admin {
 		$activities = null;
 		$activity_detail = null;
 		$activity_full_detail = null;
+		$garmin_today = wp_date( 'Y-m-d' );
+		$garmin_start_date = wp_date( 'Y-m-d', current_time( 'timestamp' ) - ( 10 * DAY_IN_SECONDS ) );
+		$garmin_end_date = $garmin_today;
+		$garmin_swimming_only = true;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
 		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
@@ -549,11 +585,21 @@ final class Admin {
 				}
 			} elseif ( 'activities' === $action ) {
 				check_admin_referer( 'swimlog_garmin_recent_activities' );
-				$result = Garmin_Personal_API::recent_activities( $user_id, 10 );
-				if ( is_wp_error( $result ) ) {
-					$error = $result->get_error_message();
+				$garmin_start_date = isset( $_POST['garmin_start_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_start_date'] ) ) : '';
+				$garmin_end_date = isset( $_POST['garmin_end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_end_date'] ) ) : '';
+				$garmin_swimming_only = isset( $_POST['garmin_swimming_only'] );
+				$start_ts = strtotime( $garmin_start_date . ' 00:00:00' );
+				$end_ts = strtotime( $garmin_end_date . ' 00:00:00' );
+				$valid_dates = (bool) preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/', $garmin_start_date ) && (bool) preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/', $garmin_end_date );
+				if ( ! $valid_dates || false === $start_ts || false === $end_ts || $end_ts < $start_ts || ( $end_ts - $start_ts ) > ( 30 * DAY_IN_SECONDS ) ) {
+					$error = __( 'Choose a valid Garmin activity date range of no more than 30 days.', 'chriss-swim-training-progress-evaluation' );
 				} else {
-					$activities = $result;
+					$result = Garmin_Personal_API::recent_activities( $user_id, 100, $garmin_start_date, $garmin_end_date, $garmin_swimming_only );
+					if ( is_wp_error( $result ) ) {
+						$error = $result->get_error_message();
+					} else {
+						$activities = $result;
+					}
 				}
 			} elseif ( 'remove' === $action ) {
 				check_admin_referer( 'swimlog_remove_garmin_key' );
@@ -680,12 +726,15 @@ final class Admin {
 					<?php endif; ?>
 				<?php endif; ?>
 
-				<hr><h2><?php esc_html_e( 'Recent Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-				<p><?php esc_html_e( 'Read the 10 most recent Garmin activities for inspection only. This does not download FIT files or change any swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<hr><h2><?php esc_html_e( 'Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'Retrieve Garmin activities for a date range of up to 30 days. This inspection does not import or change swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_garmin_recent_activities' ); ?>
 					<input type="hidden" name="swimlog_garmin_action" value="activities">
-					<?php submit_button( __( 'Show Recent Activities', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+					<p><label for="swimlog-garmin-start-date"><strong><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-start-date" type="date" name="garmin_start_date" value="<?php echo esc_attr( $garmin_start_date ); ?>" max="<?php echo esc_attr( $garmin_end_date ); ?>" required></p>
+					<p><label for="swimlog-garmin-end-date"><strong><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-end-date" type="date" name="garmin_end_date" value="<?php echo esc_attr( $garmin_end_date ); ?>" max="<?php echo esc_attr( $garmin_today ); ?>" required></p>
+					<p><label><input type="checkbox" name="garmin_swimming_only" value="1" <?php checked( $garmin_swimming_only ); ?>> <?php esc_html_e( 'Swimming only (lap_swimming)', 'chriss-swim-training-progress-evaluation' ); ?></label></p>
+					<?php submit_button( __( 'Retrieve Activities', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
 				<?php if ( is_array( $activities ) ) : ?>
 					<?php if ( empty( $activities ) ) : ?>
@@ -700,7 +749,8 @@ final class Admin {
 							$distance = isset( $activity['distance'] ) && is_numeric( $activity['distance'] ) ? number_format_i18n( (float) $activity['distance'], 1 ) . ' m' : '—';
 							$duration = isset( $activity['duration'] ) && is_numeric( $activity['duration'] ) ? gmdate( 'H:i:s', max( 0, (int) round( (float) $activity['duration'] ) ) ) : '—';
 						?>
-						<tr><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
+						<?php $match_status = $this->garmin_activity_match_status( $user_id, $activity ); ?>
+						<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td></tr>
 						<?php endforeach; ?>
 						</tbody></table>
 					<?php endif; ?>
