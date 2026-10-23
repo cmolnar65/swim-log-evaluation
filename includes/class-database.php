@@ -52,6 +52,8 @@ final class Database {
 			user_id bigint(20) unsigned NOT NULL,
 			workout_id bigint(20) unsigned NULL,
 			source_type varchar(20) NOT NULL,
+			source_provider varchar(20) NULL,
+			external_activity_id varchar(191) NULL,
 			original_filename varchar(255) NOT NULL,
 			stored_filename varchar(255) NULL,
 			stored_path text NULL,
@@ -66,6 +68,7 @@ final class Database {
 			KEY user_id (user_id),
 			KEY workout_id (workout_id),
 			UNIQUE KEY user_file_hash (user_id,file_hash),
+			UNIQUE KEY user_provider_activity (user_id,source_provider,external_activity_id),
 			KEY import_status (import_status)
 		) $charset_collate;";
 
