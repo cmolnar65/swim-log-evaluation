@@ -89,7 +89,7 @@ final class Evaluator {
 	public static function rebuild_user($user_id){
 		global $wpdb;$wt=Database::table('workouts');$pt=Database::table('performances');
 		$user_id=absint($user_id);if(!$user_id)return new \WP_Error('swimlog_rebuild_user',__('Invalid swimmer.','chriss-swim-training-progress-evaluation'));
-		$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d ORDER BY workout_start ASC,id ASC",$user_id));
+		$ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $wt WHERE user_id=%d AND workout_type='pool' ORDER BY workout_start ASC,id ASC",$user_id));
 		// Rebuild derived rows atomically for the swimmer. If any workout fails,
 		// rollback restores the complete pre-rebuild performance history.
 		if($wpdb->query('START TRANSACTION')===false)return new \WP_Error('swimlog_rebuild_start',__('Performance rebuild could not start. No workout history was changed.','chriss-swim-training-progress-evaluation'));
