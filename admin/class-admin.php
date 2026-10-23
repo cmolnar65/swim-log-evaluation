@@ -617,6 +617,35 @@ final class Admin {
 							<tr><th><?php echo esc_html( $detail_label ); ?></th><td><?php echo $returned ? esc_html__( 'Yes', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'No', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php echo esc_html( number_format_i18n( $count ) ); ?></td></tr>
 						<?php endforeach; ?>
 						</tbody></table>
+						<?php foreach ( array( 'metadataDTO' => __( 'Metadata Fields', 'chriss-swim-training-progress-evaluation' ), 'summaryDTO' => __( 'Summary / Measurement Fields', 'chriss-swim-training-progress-evaluation' ) ) as $field_section_key => $field_section_label ) :
+							$field_section = isset( $activity_full_detail[ $field_section_key ] ) && is_array( $activity_full_detail[ $field_section_key ] ) ? $activity_full_detail[ $field_section_key ] : array();
+							if ( empty( $field_section ) ) {
+								continue;
+							}
+						?>
+							<h4><?php echo esc_html( $field_section_label ); ?></h4>
+							<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Field', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Value', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+							<?php foreach ( $field_section as $field_name => $field_value ) :
+								if ( is_array( $field_value ) ) {
+									$display_value = sprintf(
+										/* translators: %d: number of nested items. */
+										__( '[nested structure: %d items]', 'chriss-swim-training-progress-evaluation' ),
+										count( $field_value )
+									);
+								} elseif ( is_bool( $field_value ) ) {
+									$display_value = $field_value ? __( 'true', 'chriss-swim-training-progress-evaluation' ) : __( 'false', 'chriss-swim-training-progress-evaluation' );
+								} elseif ( null === $field_value || '' === $field_value ) {
+									$display_value = '—';
+								} elseif ( is_scalar( $field_value ) ) {
+									$display_value = (string) $field_value;
+								} else {
+									$display_value = __( '[non-scalar value]', 'chriss-swim-training-progress-evaluation' );
+								}
+							?>
+								<tr><th><code><?php echo esc_html( (string) $field_name ); ?></code></th><td><?php echo esc_html( $display_value ); ?></td></tr>
+							<?php endforeach; ?>
+							</tbody></table>
+						<?php endforeach; ?>
 						<h4><?php esc_html_e( 'Top-level Garmin fields returned', 'chriss-swim-training-progress-evaluation' ); ?></h4>
 						<p><code><?php echo esc_html( implode( ', ', array_keys( $activity_full_detail ) ) ); ?></code></p>
 					<?php endif; ?>
