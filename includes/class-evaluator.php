@@ -11,6 +11,8 @@ final class Evaluator {
 	public static function evaluate_workout($workout_id,$user_id){
 		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');$pt=Database::table('performances');
 		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','chriss-swim-training-progress-evaluation'));
+		if(($w->workout_type??'pool')!=='pool')return 0;
+		if(($w->workout_type??'pool')!=='pool')return 0;
 		$course=$w->pool_length_unit;if(!in_array($course,array('m','yd'),true))return new \WP_Error('swimlog_eval_course',__('Workout has no valid native course.','chriss-swim-training-progress-evaluation'));
 		$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM $lt WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));
 		$candidates=!empty($rows)?self::from_lengths($rows,$w,$course):array();
