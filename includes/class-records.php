@@ -55,6 +55,31 @@ final class Records {
 		return $rows ? $rows[0] : null;
 	}
 
+
+	public static function age_groups_with_performances( $user_id, $course ) {
+		global $wpdb;
+		if ( ! in_array( $course, array( 'm', 'yd' ), true ) ) {
+			$course = 'm';
+		}
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-age-group.php';
+		$t = Database::table( 'performances' );
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT achieved_at FROM $t WHERE user_id=%d AND course_unit=%s ORDER BY achieved_at DESC,id DESC",
+				absint( $user_id ),
+				$course
+			)
+		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$groups = array();
+		foreach ( $rows as $row ) {
+			$group = Age_Group::for_user( $user_id, substr( (string) $row->achieved_at, 0, 10 ) );
+			if ( $group ) {
+				$groups[ $group['label'] ] = $group['label'];
+			}
+		}
+		return array_values( $groups );
+	}
+
 	private static function resolve_age_group_label( $user_id, $age_group_label ) {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-age-group.php';
 		if ( '' === $age_group_label ) {
