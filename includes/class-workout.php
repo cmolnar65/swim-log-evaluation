@@ -49,6 +49,19 @@ final class Workout {
 		return $wpdb->get_results($wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM $w WHERE user_id=%d AND workout_start >= %s AND workout_start < %s GROUP BY MONTH(workout_start) ORDER BY month_num ASC",$user_id,$start,$end));
 	}
 
+
+	public static function laps( $workout_id, $user_id ) {
+		global $wpdb;
+		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
+		$t = Database::table( 'laps' );
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT sequence_no,start_time,start_offset_ms,distance_m,elapsed_time_ms,moving_time_ms,stroke,source_lap_index FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$workout_id
+			)
+		);
+	}
+
 	public static function lengths( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
