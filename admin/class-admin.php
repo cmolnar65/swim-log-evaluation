@@ -505,6 +505,8 @@ final class Admin {
 			$value = get_option( 'swimlog_public_results_default', '0' );
 		}
 		$birthdate = (string) get_user_meta( $uid, 'swimlog_birthdate', true );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-age-group.php';
+		$current_age_group = Age_Group::for_user( $uid );
 		?>
 		<div class="wrap swimlog-admin">
 			<h1><?php esc_html_e( 'Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ); ?></h1>
@@ -517,7 +519,7 @@ final class Admin {
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><label for="swimlog-birthdate"><?php esc_html_e( 'Date of Birth', 'chriss-swim-training-progress-evaluation' ); ?></label></th>
-						<td><input id="swimlog-birthdate" type="date" name="birthdate" value="<?php echo esc_attr( $birthdate ); ?>" max="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>"><p class="description"><?php esc_html_e( 'Private. Used only to calculate your swimming age group. Your date of birth is not displayed by public swim output.', 'chriss-swim-training-progress-evaluation' ); ?></p></td>
+						<td><input id="swimlog-birthdate" type="date" name="birthdate" value="<?php echo esc_attr( $birthdate ); ?>" max="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>"><p class="description"><?php esc_html_e( 'Private. Used only to calculate your swimming age group. Your date of birth is not displayed by public swim output.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php if ( $current_age_group ) : ?><p><strong><?php esc_html_e( 'Current Age Group:', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php echo esc_html( $current_age_group['label'] ); ?></p><?php endif; ?></td>
 					</tr>
 				</table>
 				<hr>
