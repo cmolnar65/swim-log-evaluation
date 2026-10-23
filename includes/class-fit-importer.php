@@ -55,7 +55,8 @@ final class FIT_Importer {
 		if(in_array($t,array(0,2,10,13),true))return ord($raw[0]);
 		if(in_array($t,array(1),true))return unpack('c',$raw)[1];
 		if(in_array($t,array(3,4,11),true)&&$n>=2)return $this->u16($raw,$arch);
-		if(in_array($t,array(5,6,12),true)&&$n>=4)return $this->u32($raw,$arch);
+		if($t===5&&$n>=4){$v=$this->u32($raw,$arch);return $v>=2147483648?$v-4294967296:$v;}
+		if(in_array($t,array(6,12),true)&&$n>=4)return $this->u32($raw,$arch);
 		if($t===7)return rtrim($raw,"\0");
 		return bin2hex($raw);
 	}
