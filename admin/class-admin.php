@@ -544,6 +544,7 @@ final class Admin {
 		$activities = null;
 		$activity_detail = null;
 		$activity_full_detail = null;
+		$import_preflight = null;
 		$garmin_today = wp_date( 'Y-m-d' );
 		$garmin_start_date = wp_date( 'Y-m-d', current_time( 'timestamp' ) - ( 10 * DAY_IN_SECONDS ) );
 		$garmin_end_date = $garmin_today;
@@ -561,7 +562,21 @@ final class Admin {
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
-			if ( 'activity_detail' === $action && $debugging ) {
+			if ( 'import_preflight' === $action ) {
+				check_admin_referer( 'swimlog_garmin_import_preflight' );
+				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
+				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
+					$error = __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' );
+				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityType']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityType']['typeKey'] ) {
+					$error = __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
+				} else {
+					$import_preflight = Garmin_Personal_API::preflight_activity_import( $user_id, $requested_activity_id );
+					if ( is_wp_error( $import_preflight ) ) {
+						$error = $import_preflight->get_error_message();
+						$import_preflight = null;
+					}
+				}
+			} elseif ( 'activity_detail' === $action && $debugging ) {
 				check_admin_referer( 'swimlog_garmin_activity_detail' );
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
@@ -669,6 +684,44 @@ final class Admin {
 						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
 					</tbody></table>
+					<form method="post" style="margin-top:16px">
+						<?php wp_nonce_field( 'swimlog_garmin_import_preflight' ); ?>
+						<input type="hidden" name="swimlog_garmin_action" value="import_preflight">
+						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
+						<?php submit_button( __( 'Import Activity', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
+					</form>
+					<?php if ( is_array( $import_preflight ) ) : ?>
+						<?php if ( 'activity_exists' === $import_preflight['status'] ) : ?>
+							<div class="notice notice-warning inline"><p><?php
+								echo esc_html( sprintf(
+									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
+									__( 'Preflight stopped safely: Garmin activity %1$d is already associated with import #%2$d and workout #%3$d. No data was changed.', 'chriss-swim-training-progress-evaluation' ),
+									(int) $import_preflight['activity_id'],
+									(int) $import_preflight['import_id'],
+									(int) $import_preflight['workout_id']
+								) );
+							?></p></div>
+						<?php elseif ( 'file_exists' === $import_preflight['status'] ) : ?>
+							<div class="notice notice-warning inline"><p><?php
+								echo esc_html( sprintf(
+									/* translators: 1: Garmin filename, 2: existing import ID, 3: existing workout ID. */
+									__( 'Preflight stopped safely: %1$s has the same SHA-256 fingerprint as existing import #%2$d / workout #%3$d. No association or data change was made.', 'chriss-swim-training-progress-evaluation' ),
+									(string) $import_preflight['filename'],
+									(int) $import_preflight['existing_import_id'],
+									(int) $import_preflight['existing_workout_id']
+								) );
+							?></p></div>
+						<?php elseif ( 'new_candidate' === $import_preflight['status'] ) : ?>
+							<div class="notice notice-success inline"><p><?php
+								echo esc_html( sprintf(
+									/* translators: 1: Garmin filename, 2: file size in bytes. */
+									__( 'Preflight complete: %1$s is a validated new FIT candidate (%2$s bytes). Stage 3 stopped before preserving, importing, associating, or changing workout data.', 'chriss-swim-training-progress-evaluation' ),
+									(string) $import_preflight['filename'],
+									number_format_i18n( (int) $import_preflight['file_size'] )
+								) );
+							?></p></div>
+						<?php endif; ?>
+					<?php endif; ?>
 					<?php if ( $debugging ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:16px">
 						<?php wp_nonce_field( 'swimlog_garmin_download_fit' ); ?>
