@@ -90,21 +90,69 @@ final class Importer {
 	}
 	public static function validate($p){$w=$p['workout'];if(empty($w['workout_start']))return new \WP_Error('swimlog_start',__('Workout start time is missing.','chriss-swim-training-progress-evaluation'));$type=$w['workout_type']??'pool';if($type==='open_water'){if(empty($w['total_distance_m'])||(float)$w['total_distance_m']<=0)return new \WP_Error('swimlog_open_water_distance',__('Open-water workout distance is missing or invalid.','chriss-swim-training-progress-evaluation'));return true;}if($type!=='pool')return new \WP_Error('swimlog_workout_type',__('Workout type is not supported.','chriss-swim-training-progress-evaluation'));if(empty($w['pool_length_unit'])||!in_array($w['pool_length_unit'],array('m','yd'),true))return new \WP_Error('swimlog_course',__('Pool course could not be determined.','chriss-swim-training-progress-evaluation'));if(empty($p['lengths'])){if(($p['source']??'')==='csv')return new \WP_Error('swimlog_csv_incomplete',__('This FORM CSV contains workout information but no swim-length data or workout distance. It cannot be imported as a complete workout.','chriss-swim-training-progress-evaluation'));return new \WP_Error('swimlog_lengths',__('No usable swim lengths were found.','chriss-swim-training-progress-evaluation'));}$sum=0;foreach($p['lengths'] as $l){if($l['length_type']==='active')$sum+=(float)$l['distance_m'];}if(isset($w['total_distance_m'])&&$w['total_distance_m']!==null&&abs($sum-(float)$w['total_distance_m'])>max(1.0,(float)$w['pool_length_m']))return new \WP_Error('swimlog_totals',__('Workout distance and normalized active lengths disagree. Import stopped for review.','chriss-swim-training-progress-evaluation'));return true;}
 	private static function find_match($uid,$w){$m=self::classify_match($uid,$w);return $m['status']==='exact'?$m['workout']:null;}
+
+	/**
+	 * Normalize an incoming workout start for matching against the local
+	 * WordPress datetime stored in the workouts table.
+	 *
+	 * Parser-produced local datetimes are preserved. ISO-8601 values carrying
+	 * an explicit offset (or Z) are converted to the WordPress timezone first.
+	 */
+	public static function normalize_match_start($start){
+		$start=trim((string)$start);
+		if($start==='')return '';
+		if(preg_match('/(?:Z|[+-]\\d{2}:?\\d{2})$/i',$start)){
+			try{
+				$dt=new \\DateTimeImmutable($start);
+				$tz=function_exists('wp_timezone')?wp_timezone():new \\DateTimeZone('UTC');
+				return $dt->setTimezone($tz)->format('Y-m-d H:i:s');
+			}catch(\\Exception $e){return $start;}
+		}
+		try{return (new \\DateTimeImmutable($start))->format('Y-m-d H:i:s');}catch(\\Exception $e){return $start;}
+	}
+
 	public static function classify_match($uid,$w){
-		global $wpdb;$t=Database::table('workouts');$start=$w['workout_start'];$dist=(float)($w['total_distance_m']??0);$elapsed=(int)($w['elapsed_time_ms']??0);$type=$w['workout_type']??'pool';
+		global $wpdb;
+		$t=Database::table('workouts');
+		$start=self::normalize_match_start($w['workout_start']??'');
+		if($start==='')return array('status'=>'none','workout'=>null);
+		$dist=(float)($w['total_distance_m']??0);
+		$elapsed=(int)($w['elapsed_time_ms']??0);
+		$type=$w['workout_type']??'pool';
+
 		if($type==='open_water'){
-			$moving=(int)($w['moving_time_ms']??0);$date=substr((string)$start,0,10);$distance_tolerance=max(25.0,$dist*0.02);
-			$exact=$wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='open_water' AND DATE(workout_start)=%s AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND ((%d>0 AND (ABS(COALESCE(elapsed_time_ms,0)-%d)<=15000 OR ABS(COALESCE(moving_time_ms,0)-%d)<=15000)) OR (%d>0 AND (ABS(COALESCE(elapsed_time_ms,0)-%d)<=15000 OR ABS(COALESCE(moving_time_ms,0)-%d)<=15000))) ORDER BY ABS(COALESCE(total_distance_m,0)-%f) ASC,id ASC LIMIT 1",$uid,$date,$dist,$distance_tolerance,$elapsed,$elapsed,$elapsed,$moving,$moving,$moving,$dist));
-			if($exact)return array('status'=>'exact','workout'=>$exact);
+			$moving=(int)($w['moving_time_ms']??0);
+			$date=substr($start,0,10);
+			$distance_tolerance=max(25.0,$dist*0.02);
+			$exact_candidates=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='open_water' AND DATE(workout_start)=%s AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND ((%d>0 AND (ABS(COALESCE(elapsed_time_ms,0)-%d)<=15000 OR ABS(COALESCE(moving_time_ms,0)-%d)<=15000)) OR (%d>0 AND (ABS(COALESCE(elapsed_time_ms,0)-%d)<=15000 OR ABS(COALESCE(moving_time_ms,0)-%d)<=15000))) ORDER BY ABS(COALESCE(total_distance_m,0)-%f) ASC,id ASC",$uid,$date,$dist,$distance_tolerance,$elapsed,$elapsed,$elapsed,$moving,$moving,$moving,$dist));
+			if(count((array)$exact_candidates)===1)return array('status'=>'exact','workout'=>$exact_candidates[0]);
+			if(count((array)$exact_candidates)>1)return array('status'=>'probable','workout'=>$exact_candidates[0]);
+
 			$candidates=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='open_water' AND DATE(workout_start)=%s AND ABS(COALESCE(total_distance_m,0)-%f)<=%f ORDER BY ABS(COALESCE(total_distance_m,0)-%f) ASC,id ASC",$uid,$date,$dist,max(100.0,$dist*0.05),$dist));
-			foreach((array)$candidates as $candidate){$candidate_elapsed=(int)($candidate->elapsed_time_ms??0);$candidate_moving=(int)($candidate->moving_time_ms??0);$time_close=($elapsed>0&&($candidate_elapsed>0&&abs($candidate_elapsed-$elapsed)<=120000||$candidate_moving>0&&abs($candidate_moving-$elapsed)<=120000))||($moving>0&&($candidate_elapsed>0&&abs($candidate_elapsed-$moving)<=120000||$candidate_moving>0&&abs($candidate_moving-$moving)<=120000));if($time_close)return array('status'=>'probable','workout'=>$candidate);}
+			foreach((array)$candidates as $candidate){
+				$candidate_elapsed=(int)($candidate->elapsed_time_ms??0);
+				$candidate_moving=(int)($candidate->moving_time_ms??0);
+				$time_close=($elapsed>0&&(($candidate_elapsed>0&&abs($candidate_elapsed-$elapsed)<=120000)||($candidate_moving>0&&abs($candidate_moving-$elapsed)<=120000)))||($moving>0&&(($candidate_elapsed>0&&abs($candidate_elapsed-$moving)<=120000)||($candidate_moving>0&&abs($candidate_moving-$moving)<=120000)));
+				if($time_close)return array('status'=>'probable','workout'=>$candidate);
+			}
 			return array('status'=>'none','workout'=>null);
 		}
-		$exact=$wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=2 AND ABS(COALESCE(total_distance_m,0)-%f)<=0.5 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=2000 ORDER BY id ASC LIMIT 1",$uid,$start,$dist,$elapsed));
+
+		$exact=$wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='pool' AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=2 AND ABS(COALESCE(total_distance_m,0)-%f)<=0.5 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=2000 ORDER BY id ASC LIMIT 1",$uid,$start,$dist,$elapsed));
 		if($exact)return array('status'=>'exact','workout'=>$exact);
-		$course=$w['pool_length_unit']??'';$pool=(float)($w['pool_length_m']??0);if(!in_array($course,array('m','yd'),true)||$pool<=0)return array('status'=>'none','workout'=>null);
-		$near=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$uid,$start,$elapsed,$start));foreach((array)$near as $candidate){$candidate_course=$candidate->pool_length_unit??'';$candidate_pool=(float)($candidate->pool_length_m??0);if($candidate_course!==$course||($candidate_pool>0&&abs($candidate_pool-$pool)>0.02))return array('status'=>'disagreement','workout'=>$candidate);}
-		$candidates=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND pool_length_unit=%s AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$uid,$course,$start,$dist,$pool,$elapsed,$start));
+
+		$course=$w['pool_length_unit']??'';
+		$pool=(float)($w['pool_length_m']??0);
+		if(!in_array($course,array('m','yd'),true)||$pool<=0)return array('status'=>'none','workout'=>null);
+
+		$near=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='pool' AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$uid,$start,$elapsed,$start));
+		foreach((array)$near as $candidate){
+			$candidate_course=$candidate->pool_length_unit??'';
+			$candidate_pool=(float)($candidate->pool_length_m??0);
+			if($candidate_course!==$course||($candidate_pool>0&&abs($candidate_pool-$pool)>0.02))return array('status'=>'disagreement','workout'=>$candidate);
+		}
+
+		$candidates=$wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE user_id=%d AND workout_type='pool' AND pool_length_unit=%s AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$uid,$course,$start,$dist,$pool,$elapsed,$start));
 		foreach((array)$candidates as $candidate){if(abs((float)$candidate->pool_length_m-$pool)<=0.02)return array('status'=>'probable','workout'=>$candidate);}
 		return array('status'=>'none','workout'=>null);
 	}
