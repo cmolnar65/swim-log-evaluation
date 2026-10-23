@@ -26,7 +26,10 @@
 			}
 
 			form.querySelectorAll('.swimlog-garmin-select').forEach(function (checkbox) {
-				checkbox.disabled = true;
+				checkbox.addEventListener('click', function (event) {
+					event.preventDefault();
+				});
+				checkbox.setAttribute('aria-disabled', 'true');
 			});
 			form.querySelectorAll('[data-swimlog-garmin-import-selected="1"]').forEach(function (button) {
 				button.disabled = true;
