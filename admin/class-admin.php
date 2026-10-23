@@ -570,7 +570,7 @@ final class Admin {
 				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityTypeDTO']['typeKey'] ) {
 					$error = __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
 				} else {
-					$import_preflight = Garmin_Personal_API::associate_existing_activity( $user_id, $requested_activity_id );
+					$import_preflight = Garmin_Personal_API::import_activity( $user_id, $requested_activity_id );
 					if ( is_wp_error( $import_preflight ) ) {
 						$error = $import_preflight->get_error_message();
 						$import_preflight = null;
@@ -727,15 +727,25 @@ final class Admin {
 									(int) $import_preflight['existing_workout_id']
 								) );
 							?></p></div>
-						<?php elseif ( 'new_candidate' === $import_preflight['status'] ) : ?>
+						<?php elseif ( 'imported' === $import_preflight['status'] ) : ?>
 							<div class="notice notice-success inline"><p><?php
 								echo esc_html( sprintf(
-									/* translators: 1: Garmin filename, 2: file size in bytes. */
-									__( 'Preflight complete: %1$s is a validated new FIT candidate (%2$s bytes). Stage 3 stopped before preserving, importing, associating, or changing workout data.', 'chriss-swim-training-progress-evaluation' ),
-									(string) $import_preflight['filename'],
-									number_format_i18n( (int) $import_preflight['file_size'] )
+									/* translators: 1: Garmin activity ID, 2: imported workout ID. */
+									__( 'Activity Imported: Garmin activity %1$d was successfully imported as workout #%2$d.', 'chriss-swim-training-progress-evaluation' ),
+									(int) $import_preflight['activity_id'],
+									(int) $import_preflight['workout_id']
 								) );
-							?></p></div>
+							?> <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => (int) $import_preflight['workout_id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'View Activity', 'chriss-swim-training-progress-evaluation' ); ?></a></p></div>
+						<?php elseif ( 'pending_review' === $import_preflight['status'] ) : ?>
+							<div class="notice notice-warning inline"><p><?php
+								echo esc_html( sprintf(
+									/* translators: 1: Garmin activity ID, 2: pending import ID, 3: candidate workout ID. */
+									__( 'Import Review Required: Garmin activity %1$d was preserved as pending import #%2$d because it may match workout #%3$d. No automatic attachment or duplicate workout was created.', 'chriss-swim-training-progress-evaluation' ),
+									(int) $import_preflight['activity_id'],
+									(int) $import_preflight['import_id'],
+									(int) $import_preflight['candidate_workout_id']
+								) );
+							?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-upload' ) ); ?>"><?php esc_html_e( 'Review Pending Import', 'chriss-swim-training-progress-evaluation' ); ?></a></p></div>
 						<?php endif; ?>
 					<?php endif; ?>
 					<?php if ( $debugging ) : ?>
