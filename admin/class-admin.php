@@ -515,16 +515,19 @@ final class Admin {
 			wp_die( esc_html__( 'Invalid Garmin activity file request.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
-		$result = Garmin_Personal_API::download_activity_file( get_current_user_id(), $activity_id );
+		$result = Garmin_Personal_API::prepare_activity_fit( get_current_user_id(), $activity_id );
 		if ( is_wp_error( $result ) ) {
 			wp_die( esc_html( $result->get_error_message() ) );
 		}
-		$filename = 'garmin-activity-' . $activity_id . '.zip';
+
+		$fit_path = $result['tmp_name'];
+		$filename = $result['filename'];
 		nocache_headers();
-		header( 'Content-Type: application/zip' );
-		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-		header( 'Content-Length: ' . strlen( $result['body'] ) );
-		echo $result['body']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary Garmin activity archive.
+		header( 'Content-Type: application/octet-stream' );
+		header( 'Content-Disposition: attachment; filename="' . rawurlencode( $filename ) . '"' );
+		header( 'Content-Length: ' . (string) $result['size'] );
+		readfile( $fit_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- Validated temporary Garmin FIT download.
+		wp_delete_file( $fit_path );
 		exit;
 	}
 
