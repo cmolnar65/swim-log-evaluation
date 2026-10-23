@@ -731,7 +731,7 @@ final class Admin {
 				<form method="post">
 					<?php wp_nonce_field( 'swimlog_garmin_recent_activities' ); ?>
 					<input type="hidden" name="swimlog_garmin_action" value="activities">
-					<p><label for="swimlog-garmin-start-date"><strong><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-start-date" type="date" name="garmin_start_date" value="<?php echo esc_attr( $garmin_start_date ); ?>" max="<?php echo esc_attr( $garmin_end_date ); ?>" required></p>
+					<p><label for="swimlog-garmin-start-date"><strong><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-start-date" type="date" name="garmin_start_date" value="<?php echo esc_attr( $garmin_start_date ); ?>" required></p>
 					<p><label for="swimlog-garmin-end-date"><strong><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-end-date" type="date" name="garmin_end_date" value="<?php echo esc_attr( $garmin_end_date ); ?>" max="<?php echo esc_attr( $garmin_today ); ?>" required></p>
 					<p><label><input type="checkbox" name="garmin_swimming_only" value="1" <?php checked( $garmin_swimming_only ); ?>> <?php esc_html_e( 'Swimming only (lap_swimming)', 'chriss-swim-training-progress-evaluation' ); ?></label></p>
 					<?php submit_button( __( 'Retrieve Activities', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
