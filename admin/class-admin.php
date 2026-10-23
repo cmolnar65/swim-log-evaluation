@@ -695,7 +695,7 @@ final class Admin {
 							<div class="notice notice-warning inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin activity ID, 2: existing import ID, 3: existing workout ID. */
-									__( 'Preflight stopped safely: Garmin activity %1$d is already associated with import #%2$d and workout #%3$d. No data was changed.', 'chriss-swim-training-progress-evaluation' ),
+									__( 'Activity Already Imported: Preflight stopped safely: Garmin activity %1$d is already associated with import #%2$d and workout #%3$d. No data was changed.', 'chriss-swim-training-progress-evaluation' ),
 									(int) $import_preflight['activity_id'],
 									(int) $import_preflight['import_id'],
 									(int) $import_preflight['workout_id']
@@ -705,7 +705,7 @@ final class Admin {
 							<div class="notice notice-warning inline"><p><?php
 								echo esc_html( sprintf(
 									/* translators: 1: Garmin filename, 2: existing import ID, 3: existing workout ID. */
-									__( 'Preflight stopped safely: %1$s has the same SHA-256 fingerprint as existing import #%2$d / workout #%3$d. No association or data change was made.', 'chriss-swim-training-progress-evaluation' ),
+									__( 'Activity Already Imported: Preflight stopped safely: %1$s has the same SHA-256 fingerprint as existing import #%2$d / workout #%3$d. No association or data change was made.', 'chriss-swim-training-progress-evaluation' ),
 									(string) $import_preflight['filename'],
 									(int) $import_preflight['existing_import_id'],
 									(int) $import_preflight['existing_workout_id']
