@@ -40,3 +40,14 @@
 		max-width: 100%;
 	}
 }
+
+
+.swimlog-admin .swimlog-garmin-match-exact,
+.swimlog-admin .swimlog-garmin-match-exact a {
+	color: #b32d2e;
+}
+
+.swimlog-admin .swimlog-garmin-match-similar,
+.swimlog-admin .swimlog-garmin-match-similar a {
+	color: #b26200;
+}
