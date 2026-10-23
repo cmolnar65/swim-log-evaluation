@@ -875,7 +875,8 @@ final class Admin {
 		$garmin_today = wp_date( 'Y-m-d' );
 		$garmin_start_date = wp_date( 'Y-m-d', current_time( 'timestamp' ) - ( 10 * DAY_IN_SECONDS ) );
 		$garmin_end_date = $garmin_today;
-		$garmin_swimming_only = true;
+		$garmin_pool_swim = true;
+		$garmin_open_water = false;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Garmin activity detail selector.
 		$detail_id = isset( $_GET['garmin_activity_id'] ) ? absint( wp_unslash( $_GET['garmin_activity_id'] ) ) : 0;
@@ -894,8 +895,8 @@ final class Admin {
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
 				if ( ! $requested_activity_id || $requested_activity_id !== $detail_id ) {
 					$error = __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' );
-				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || 'lap_swimming' !== (string) $activity_detail['activityTypeDTO']['typeKey'] ) {
-					$error = __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
+				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || ! in_array( (string) $activity_detail['activityTypeDTO']['typeKey'], array( 'lap_swimming', 'open_water_swimming' ), true ) ) {
+					$error = __( 'Only Garmin pool-swimming and open-water-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
 				} else {
 					$import_preflight = Garmin_Personal_API::import_activity( $user_id, $requested_activity_id );
 					if ( is_wp_error( $import_preflight ) ) {
@@ -907,7 +908,8 @@ final class Admin {
 				check_admin_referer( 'swimlog_garmin_import_selected' );
 				$garmin_start_date = isset( $_POST['garmin_start_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_start_date'] ) ) : $garmin_start_date;
 				$garmin_end_date = isset( $_POST['garmin_end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_end_date'] ) ) : $garmin_end_date;
-				$garmin_swimming_only = isset( $_POST['garmin_swimming_only'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['garmin_swimming_only'] ) );
+				$garmin_pool_swim = isset( $_POST['garmin_pool_swim'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['garmin_pool_swim'] ) );
+				$garmin_open_water = isset( $_POST['garmin_open_water'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['garmin_open_water'] ) );
 				$selected = isset( $_POST['garmin_activity_ids'] ) && is_array( $_POST['garmin_activity_ids'] ) ? array_values( array_unique( array_filter( array_map( 'absint', wp_unslash( $_POST['garmin_activity_ids'] ) ) ) ) ) : array();
 				if ( empty( $selected ) ) {
 					$error = __( 'Select at least one Garmin activity to import.', 'chriss-swim-training-progress-evaluation' );
@@ -917,8 +919,8 @@ final class Admin {
 					$counts = array( 'imported' => 0, 'already' => 0, 'pending' => 0, 'failed' => 0 );
 					foreach ( $selected as $selected_id ) {
 						$detail = Garmin_Personal_API::activity( $user_id, $selected_id );
-						if ( is_wp_error( $detail ) || ! is_array( $detail ) || ! isset( $detail['activityTypeDTO']['typeKey'] ) || 'lap_swimming' !== (string) $detail['activityTypeDTO']['typeKey'] ) {
-							$batch_results[] = array( 'activity_id' => $selected_id, 'status' => 'failed', 'message' => is_wp_error( $detail ) ? $detail->get_error_message() : __( 'Only Garmin lap-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' ) );
+						if ( is_wp_error( $detail ) || ! is_array( $detail ) || ! isset( $detail['activityTypeDTO']['typeKey'] ) || ! in_array( (string) $detail['activityTypeDTO']['typeKey'], array( 'lap_swimming', 'open_water_swimming' ), true ) ) {
+							$batch_results[] = array( 'activity_id' => $selected_id, 'status' => 'failed', 'message' => is_wp_error( $detail ) ? $detail->get_error_message() : __( 'Only Garmin pool-swimming and open-water-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' ) );
 							$counts['failed']++;
 							continue;
 						}
@@ -938,7 +940,7 @@ final class Admin {
 					$batch_summary = array_merge( array( 'selected' => count( $selected ) ), $counts );
 					$start_ts = strtotime( $garmin_start_date . ' 00:00:00' );$end_ts = strtotime( $garmin_end_date . ' 00:00:00' );
 					if ( false !== $start_ts && false !== $end_ts && $end_ts >= $start_ts && ( $end_ts - $start_ts ) <= ( 30 * DAY_IN_SECONDS ) ) {
-						$list = Garmin_Personal_API::recent_activities( $user_id, 100, $garmin_start_date, $garmin_end_date, $garmin_swimming_only );
+						$list = Garmin_Personal_API::recent_activities( $user_id, 100, $garmin_start_date, $garmin_end_date, array_filter( array( $garmin_pool_swim ? 'lap_swimming' : '', $garmin_open_water ? 'open_water_swimming' : '' ) ) );
 						if ( ! is_wp_error( $list ) ) $activities = $list;
 					}
 				}
@@ -976,14 +978,15 @@ final class Admin {
 				check_admin_referer( 'swimlog_garmin_recent_activities' );
 				$garmin_start_date = isset( $_POST['garmin_start_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_start_date'] ) ) : '';
 				$garmin_end_date = isset( $_POST['garmin_end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['garmin_end_date'] ) ) : '';
-				$garmin_swimming_only = isset( $_POST['garmin_swimming_only'] );
+				$garmin_pool_swim = isset( $_POST['garmin_pool_swim'] );
+				$garmin_open_water = isset( $_POST['garmin_open_water'] );
 				$start_ts = strtotime( $garmin_start_date . ' 00:00:00' );
 				$end_ts = strtotime( $garmin_end_date . ' 00:00:00' );
 				$valid_dates = (bool) preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/', $garmin_start_date ) && (bool) preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/', $garmin_end_date );
 				if ( ! $valid_dates || false === $start_ts || false === $end_ts || $end_ts < $start_ts || ( $end_ts - $start_ts ) > ( 30 * DAY_IN_SECONDS ) ) {
 					$error = __( 'Choose a valid Garmin activity date range of no more than 30 days.', 'chriss-swim-training-progress-evaluation' );
 				} else {
-					$result = Garmin_Personal_API::recent_activities( $user_id, 100, $garmin_start_date, $garmin_end_date, $garmin_swimming_only );
+					$result = Garmin_Personal_API::recent_activities( $user_id, 100, $garmin_start_date, $garmin_end_date, array_filter( array( $garmin_pool_swim ? 'lap_swimming' : '', $garmin_open_water ? 'open_water_swimming' : '' ) ) );
 					if ( is_wp_error( $result ) ) {
 						$error = $result->get_error_message();
 					} else {
@@ -1190,7 +1193,10 @@ final class Admin {
 					<input type="hidden" name="swimlog_garmin_action" value="activities">
 					<p><label for="swimlog-garmin-start-date"><strong><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-start-date" type="date" name="garmin_start_date" value="<?php echo esc_attr( $garmin_start_date ); ?>" required></p>
 					<p><label for="swimlog-garmin-end-date"><strong><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br><input id="swimlog-garmin-end-date" type="date" name="garmin_end_date" value="<?php echo esc_attr( $garmin_end_date ); ?>" max="<?php echo esc_attr( $garmin_today ); ?>" required></p>
-					<p><label><input type="checkbox" name="garmin_swimming_only" value="1" <?php checked( $garmin_swimming_only ); ?>> <?php esc_html_e( 'Swimming only (lap_swimming)', 'chriss-swim-training-progress-evaluation' ); ?></label></p>
+					<fieldset><legend><strong><?php esc_html_e( 'Activity types', 'chriss-swim-training-progress-evaluation' ); ?></strong></legend>
+						<label><input type="checkbox" name="garmin_pool_swim" value="1" <?php checked( $garmin_pool_swim ); ?>> <?php esc_html_e( 'Pool Swim', 'chriss-swim-training-progress-evaluation' ); ?></label><br>
+						<label><input type="checkbox" name="garmin_open_water" value="1" <?php checked( $garmin_open_water ); ?>> <?php esc_html_e( 'Open Water', 'chriss-swim-training-progress-evaluation' ); ?></label>
+					</fieldset>
 					<?php submit_button( __( 'Retrieve Activities', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
 				</form>
 				<?php if ( is_array( $activities ) ) : ?>
@@ -1221,7 +1227,8 @@ final class Admin {
 							<input type="hidden" name="swimlog_garmin_action" value="import_selected">
 							<input type="hidden" name="garmin_start_date" value="<?php echo esc_attr( $garmin_start_date ); ?>">
 							<input type="hidden" name="garmin_end_date" value="<?php echo esc_attr( $garmin_end_date ); ?>">
-							<input type="hidden" name="garmin_swimming_only" value="<?php echo $garmin_swimming_only ? '1' : '0'; ?>">
+							<input type="hidden" name="garmin_pool_swim" value="<?php echo $garmin_pool_swim ? '1' : '0'; ?>">
+							<input type="hidden" name="garmin_open_water" value="<?php echo $garmin_open_water ? '1' : '0'; ?>">
 							<p><?php submit_button( __( 'Import Selected', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false, array( 'id' => 'swimlog-garmin-import-selected', 'data-swimlog-garmin-import-selected' => '1', 'disabled' => 'disabled' ) ); ?> <span class="description"><?php esc_html_e( 'Select up to 25 activities.', 'chriss-swim-training-progress-evaluation' ); ?></span></p>
 							<div id="swimlog-garmin-import-progress" hidden aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong class="swimlog-garmin-import-progress-text"></strong></div>
 							<table class="widefat striped"><thead><tr><th scope="col"><?php esc_html_e( 'Select', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Duration', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
