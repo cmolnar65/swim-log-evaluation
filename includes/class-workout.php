@@ -173,8 +173,17 @@ final class Workout {
 			return new \WP_Error( 'swimlog_workout_delete', __( 'The workout could not be deleted. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
+		$source_delete_failures = array();
 		foreach ( array_unique( array_filter( $source_paths ) ) as $source_path ) {
-			if ( is_file( $source_path ) ) wp_delete_file( $source_path );
+			if ( ! is_file( $source_path ) ) continue;
+			wp_delete_file( $source_path );
+			if ( is_file( $source_path ) ) $source_delete_failures[] = $source_path;
+		}
+		if ( $source_delete_failures ) {
+			return new \WP_Error(
+				'swimlog_source_delete_failed',
+				__( 'The workout data was deleted, but one or more preserved source files could not be removed from private storage. Check file permissions before reimporting.', 'chriss-swim-training-progress-evaluation' )
+			);
 		}
 		return true;
 	}
