@@ -797,7 +797,8 @@ final class Admin {
 		<?php
 	}
 	private function garmin_activity_match_status( $user_id, $activity ) {
-		if ( ! isset( $activity['activityType']['typeKey'] ) || 'lap_swimming' !== (string) $activity['activityType']['typeKey'] ) {
+		$type = isset( $activity['activityType']['typeKey'] ) ? (string) $activity['activityType']['typeKey'] : '';
+		if ( ! in_array( $type, array( 'lap_swimming', 'open_water_swimming' ), true ) ) {
 			return 'none';
 		}
 		$start = isset( $activity['startTimeLocal'] ) ? (string) $activity['startTimeLocal'] : '';
@@ -809,19 +810,43 @@ final class Admin {
 		global $wpdb;
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		$table = Database::table( 'workouts' );
+
+		if ( 'lap_swimming' === $type ) {
+			$exact = $wpdb->get_var( $wpdb->prepare(
+				"SELECT id FROM $table WHERE user_id=%d AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=2 AND ABS(COALESCE(total_distance_m,0)-%f)<=0.5 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=2000 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$user_id,
+				$start,
+				$distance,
+				$elapsed_ms
+			) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			if ( $exact ) {
+				return 'exact';
+			}
+			$date = substr( $start, 0, 10 );
+			$same_date = $wpdb->get_var( $wpdb->prepare(
+				"SELECT id FROM $table WHERE user_id=%d AND DATE(workout_start)=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$user_id,
+				$date
+			) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			return $same_date ? 'similar' : 'none';
+		}
+
+		$date = substr( $start, 0, 10 );
+		$distance_tolerance = max( 25.0, $distance * 0.02 );
 		$exact = $wpdb->get_var( $wpdb->prepare(
-			"SELECT id FROM $table WHERE user_id=%d AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=2 AND ABS(COALESCE(total_distance_m,0)-%f)<=0.5 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=2000 LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT id FROM $table WHERE user_id=%d AND workout_type='open_water' AND DATE(workout_start)=%s AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND (ABS(COALESCE(elapsed_time_ms,0)-%d)<=15000 OR ABS(COALESCE(moving_time_ms,0)-%d)<=15000) LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$user_id,
-			$start,
+			$date,
 			$distance,
+			$distance_tolerance,
+			$elapsed_ms,
 			$elapsed_ms
 		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		if ( $exact ) {
 			return 'exact';
 		}
-		$date = substr( $start, 0, 10 );
 		$same_date = $wpdb->get_var( $wpdb->prepare(
-			"SELECT id FROM $table WHERE user_id=%d AND DATE(workout_start)=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT id FROM $table WHERE user_id=%d AND workout_type='open_water' AND DATE(workout_start)=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$user_id,
 			$date
 		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
