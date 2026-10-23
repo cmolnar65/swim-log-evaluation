@@ -441,6 +441,71 @@ final class Garmin_Personal_API {
 		);
 	}
 
+
+	/**
+	 * Import a genuinely new Garmin lap-swimming FIT through the existing
+	 * normalized FIT importer. Exact-hash duplicates are associated safely.
+	 */
+	public static function import_activity( $user_id, $activity_id ) {
+		$user_id = absint( $user_id );
+		$activity_id = absint( $activity_id );
+		if ( ! $user_id || ! $activity_id ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		$existing = self::associate_existing_activity( $user_id, $activity_id );
+		if ( is_wp_error( $existing ) ) {
+			return $existing;
+		}
+		if ( 'new_candidate' !== $existing['status'] ) {
+			return $existing;
+		}
+
+		$prepared = self::prepare_activity_fit( $user_id, $activity_id );
+		if ( is_wp_error( $prepared ) ) {
+			return $prepared;
+		}
+		$fit_path = (string) $prepared['tmp_name'];
+		try {
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-fit-importer.php';
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-csv-importer.php';
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-importer.php';
+			$result = Importer::import_trusted_fit(
+				$user_id,
+				$fit_path,
+				(string) $prepared['filename'],
+				0,
+				'garmin',
+				(string) $activity_id
+			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+			if ( ! empty( $result['pending'] ) ) {
+				return array(
+					'status'                => 'pending_review',
+					'activity_id'           => $activity_id,
+					'import_id'             => (int) $result['import_id'],
+					'candidate_workout_id'  => (int) $result['candidate_workout_id'],
+					'filename'              => (string) $prepared['filename'],
+				);
+			}
+			return array(
+				'status'      => 'imported',
+				'activity_id' => $activity_id,
+				'import_id'   => (int) $result['import_id'],
+				'workout_id'  => (int) $result['workout_id'],
+				'filename'    => (string) $prepared['filename'],
+			);
+		} finally {
+			if ( is_file( $fit_path ) ) {
+				wp_delete_file( $fit_path );
+			}
+		}
+	}
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
