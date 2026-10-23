@@ -89,6 +89,39 @@ final class Garmin_Personal_API {
 		return $activity;
 	}
 
+
+	public static function download_activity_file( $user_id, $activity_id ) {
+		$activity_id = absint( $activity_id );
+		if ( ! $activity_id ) {
+			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity ID.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$token = self::access_token( $user_id );
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+		$response = wp_remote_get( self::API_BASE . 'download-service/files/activity/' . $activity_id, array(
+			'timeout' => 30,
+			'redirection' => 0,
+			'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+		) );
+		if ( is_wp_error( $response ) ) {
+			return new \WP_Error( 'swimlog_garmin_download_request_failed', __( 'Garmin Connect activity file could not be reached. Please try again.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status < 200 || $status >= 300 ) {
+			return new \WP_Error( 'swimlog_garmin_download_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the activity file request (HTTP %d).', 'chriss-swim-training-progress-evaluation' ), $status ) );
+		}
+		$body = wp_remote_retrieve_body( $response );
+		if ( '' === $body ) {
+			return new \WP_Error( 'swimlog_garmin_download_empty', __( 'Garmin Connect returned an empty activity file.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		return array(
+			'body' => $body,
+			'content_type' => (string) wp_remote_retrieve_header( $response, 'content-type' ),
+			'content_disposition' => (string) wp_remote_retrieve_header( $response, 'content-disposition' ),
+		);
+	}
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
