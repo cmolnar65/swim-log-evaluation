@@ -27,6 +27,7 @@ final class Admin {
 
 		if ( current_user_can( 'swimlog_manage_settings' ) ) {
 			$this->submenu( 'swimlog-dashboard', __( 'Shortcodes', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_settings', 'swimlog-shortcodes', 'shortcodes' );
+			add_submenu_page( null, __( 'swimlog_bests Shortcode', 'chriss-swim-training-progress-evaluation' ), __( 'swimlog_bests Shortcode', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_settings', 'swimlog-shortcode-bests', array( $this, 'shortcode_bests' ) );
 			$this->submenu( 'swimlog-dashboard', __( 'Settings', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_settings', 'swimlog-settings', 'settings' );
 		}
 	}
@@ -589,9 +590,55 @@ final class Admin {
 		if(!current_user_can('swimlog_manage_settings'))wp_die(esc_html__('You do not have permission to access this swim training page.','chriss-swim-training-progress-evaluation'));
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Shortcodes','chriss-swim-training-progress-evaluation'); ?></h1><p><?php esc_html_e('Public swim output is display-only and private by default. Without a user attribute, the current page or post author is used. There is no logged-in-viewer fallback.','chriss-swim-training-progress-evaluation'); ?></p>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Shortcode','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Purpose','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody>
-		<tr><td><code>[swimlog_latest]</code></td><td><?php esc_html_e('Latest swim summary. Supports count and title attributes.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_bests]</code></td><td><?php esc_html_e('Native-course personal best table. Supports user, course, stroke, distance, title, best, and ag attributes. best="LB" shows lifetime bests (default). best="AG" shows the age group for the current page/post published date. Use ag="current" for today's age group or ag="50-54" for a specific age group; supplying ag also implies age-group mode. Use title="no" to hide the heading or supply custom title text.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_upcoming_events]</code></td><td><?php esc_html_e('Upcoming events with exact matching current PB. Supports user, count, and title attributes. Use title="no" to hide the heading or supply custom title text.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_workout id="123"]</code></td><td><?php esc_html_e('One public workout summary and evaluated workout bests. Ownership is derived from the workout.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_log]</code></td><td><?php esc_html_e('Training log. With no period attribute it shows the current month. Use month="Sep" with optional year="2025" for a monthly workout list, or year="2026" by itself for monthly totals across a year. Meter and yard totals remain separate. Supports user and title attributes.','chriss-swim-training-progress-evaluation'); ?></td></tr>
+		<tr><td><code>[swimlog_latest]</code></td><td><?php esc_html_e('Latest swim summary. Supports count and title attributes.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-shortcode-bests' ) ); ?>"><code>[swimlog_bests]</code></a></td><td><?php esc_html_e('Native-course personal best table. Supports user, course, stroke, distance, title, best, and ag attributes. best="LB" shows lifetime bests (default). best="AG" shows the age group for the current page/post published date. Use ag="current" for today's age group or ag="50-54" for a specific age group; supplying ag also implies age-group mode. Use title="no" to hide the heading or supply custom title text.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_upcoming_events]</code></td><td><?php esc_html_e('Upcoming events with exact matching current PB. Supports user, count, and title attributes. Use title="no" to hide the heading or supply custom title text.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_workout id="123"]</code></td><td><?php esc_html_e('One public workout summary and evaluated workout bests. Ownership is derived from the workout.','chriss-swim-training-progress-evaluation'); ?></td></tr><tr><td><code>[swimlog_log]</code></td><td><?php esc_html_e('Training log. With no period attribute it shows the current month. Use month="Sep" with optional year="2025" for a monthly workout list, or year="2026" by itself for monthly totals across a year. Meter and yard totals remain separate. Supports user and title attributes.','chriss-swim-training-progress-evaluation'); ?></td></tr>
 		</tbody></table><h2><?php esc_html_e('Examples','chriss-swim-training-progress-evaluation'); ?></h2><p><code>[swimlog_bests course="m" stroke="BR" distance="200"]</code><br><code>[swimlog_bests best="AG" course="m"]</code><br><code>[swimlog_bests best="AG" ag="current" course="m"]</code><br><code>[swimlog_bests best="AG" ag="50-54" course="m"]</code><br><code>[swimlog_upcoming_events count="3" title="no"]</code><br><code>[swimlog_latest user="123" count="5" title="Recent Swims"]</code><br><code>[swimlog_log]</code><br><code>[swimlog_log month="Sep"]</code><br><code>[swimlog_log month="Sep" year="2025"]</code><br><code>[swimlog_log year="2026"]</code></p></div><?php
 	}
+	public function shortcode_bests() {
+		if ( ! current_user_can( 'swimlog_manage_settings' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this swim training page.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$return_url = admin_url( 'admin.php?page=swimlog-shortcodes' );
+		?>
+		<div class="wrap swimlog-admin">
+			<p><a href="<?php echo esc_url( $return_url ); ?>">&larr; <?php esc_html_e( 'Return to Shortcodes', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+			<h1><code>[swimlog_bests]</code></h1>
+			<p><?php esc_html_e( 'Displays a swimmer\'s personal bests. Lifetime Bests remain the default for backward compatibility. Age-Group Personal Bests can be selected for the age group associated with the page/post published date, the swimmer\'s current age group, or a specific age group.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+
+			<h2><?php esc_html_e( 'Options', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<table class="widefat striped">
+				<thead><tr><th><?php esc_html_e( 'Attribute', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Values', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Description', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead>
+				<tbody>
+					<tr><td><code>best</code></td><td><code>LB</code>, <code>AG</code></td><td><?php esc_html_e( 'Selects Lifetime Bests or Age-Group Personal Bests. LB is the default. With best="AG" and no ag attribute, the age group is determined from the swimmer\'s chronological age on the current page/post published date.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>ag</code></td><td><code>current</code> or an age group such as <code>50-54</code></td><td><?php esc_html_e( 'Selects an Age-Group Personal Best period. current uses the swimmer\'s age today. A specific group selects that historical age group. Supplying ag implies Age-Group mode. Hyphenated age groups are normalized to the plugin\'s internal age-group label.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>user</code></td><td><?php esc_html_e( 'WordPress numeric user ID', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php esc_html_e( 'Overrides swimmer resolution. When omitted, the swimmer is the current page/post author. There is no logged-in-viewer fallback.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>course</code></td><td><code>m</code>, <code>yd</code></td><td><?php esc_html_e( 'Selects meter or yard personal bests. Meter and yard records remain separate.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>stroke</code></td><td><code>FR</code>, <code>BR</code>, <code>BACK</code>, <code>FLY</code>, <code>MIXED</code></td><td><?php esc_html_e( 'Limits output to one stroke.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>distance</code></td><td><?php esc_html_e( 'Supported evaluation distance', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php esc_html_e( 'Limits output to one supported distance, such as 50, 100, or 200.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+					<tr><td><code>title</code></td><td><code>yes</code>, <code>no</code>, <?php esc_html_e( 'or custom text', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php esc_html_e( 'Controls the shortcode heading. yes uses the standard heading, no suppresses it, and any other text is used as a custom heading.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+				</tbody>
+			</table>
+
+			<h2><?php esc_html_e( 'Age-Group Behavior', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<p><code>[swimlog_bests best="AG"]</code> &mdash; <?php esc_html_e( 'Uses the swimmer\'s age on the current page/post published date. This keeps historical pages tied to the age group that applied when the page/post was published.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><code>[swimlog_bests best="AG" ag="current"]</code> &mdash; <?php esc_html_e( 'Uses the swimmer\'s chronological age today.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><code>[swimlog_bests best="AG" ag="50-54"]</code> &mdash; <?php esc_html_e( 'Uses the explicitly selected 50–54 age group regardless of the page/post date or the swimmer\'s current age.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+
+			<h2><?php esc_html_e( 'Examples', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<p><code>[swimlog_bests]</code><br>
+			<code>[swimlog_bests best="LB" course="m"]</code><br>
+			<code>[swimlog_bests best="AG" course="m"]</code><br>
+			<code>[swimlog_bests best="AG" ag="current" course="m"]</code><br>
+			<code>[swimlog_bests best="AG" ag="50-54" course="m"]</code><br>
+			<code>[swimlog_bests best="AG" ag="50-54" course="m" stroke="BR"]</code><br>
+			<code>[swimlog_bests best="AG" ag="50-54" course="m" stroke="BR" distance="200"]</code><br>
+			<code>[swimlog_bests course="yd" title="Yard Personal Bests"]</code><br>
+			<code>[swimlog_bests course="m" title="no"]</code></p>
+
+			<p><a href="<?php echo esc_url( $return_url ); ?>">&larr; <?php esc_html_e( 'Return to Shortcodes', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+		</div>
+		<?php
+	}
+
 	public function privacy() {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage swimmer configuration.', 'chriss-swim-training-progress-evaluation' ) );
