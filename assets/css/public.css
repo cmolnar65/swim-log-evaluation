@@ -11,6 +11,7 @@
 
 .swimlog-public table {
 	width: 100%;
+	min-width: 760px;
 	max-width: 100%;
 	border-collapse: collapse;
 	table-layout: auto;
@@ -35,6 +36,10 @@
 }
 
 @media (max-width: 782px) {
+	.swimlog-public table {
+		min-width: 640px;
+	}
+
 	.swimlog-public th,
 	.swimlog-public td {
 		padding: .4em .45em;
