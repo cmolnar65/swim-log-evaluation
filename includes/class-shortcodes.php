@@ -15,7 +15,7 @@ final class Shortcodes {
 	}
 	private static function load(){
 		if(self::$loaded)return;
-		foreach(array('class-database.php','class-workout.php','class-event.php','class-evaluator.php','class-records.php') as $f)require_once SWIMLOG_EVALUATION_DIR.'includes/'.$f;
+		foreach(array('class-database.php','class-workout.php','class-event.php','class-evaluator.php','class-age-group.php','class-records.php') as $f)require_once SWIMLOG_EVALUATION_DIR.'includes/'.$f;
 		self::$loaded=true;
 	}
 	private static function owner($atts,$workout=null){
@@ -69,7 +69,19 @@ final class Shortcodes {
 		$course=in_array($a['course'],array('m','yd'),true)?$a['course']:get_option('swimlog_default_course_unit','m');if(!in_array($course,array('m','yd'),true))$course='m';
 		$valid_strokes=array('FR','BR','BACK','FLY','MIXED');if($a['stroke']&&!in_array($a['stroke'],$valid_strokes,true))return self::unavailable();if($a['distance']&&!in_array($a['distance'],Evaluator::DISTANCES,true))return self::unavailable();
 		$best=$a['best']?:'LB';if($a['ag']!=='')$best='AG';if(!in_array($best,array('LB','AG'),true))return self::unavailable();
-		$age_group='';if($a['ag']!==''){if(!preg_match('/^(\\d{1,3})\\s*[-–]\\s*(\\d{1,3})$/u',$a['ag'],$m))return self::unavailable();$age_group=$m[1].'–'.$m[2];}
+		$age_group='';
+		if($best==='AG'){
+			if($a['ag']==='' ){
+				$post=get_post();if(!$post||empty($post->post_date))return self::unavailable();
+				$group=Age_Group::for_user($uid,substr((string)$post->post_date,0,10));if(!$group)return self::unavailable();$age_group=$group['label'];
+			}elseif(strtolower($a['ag'])==='current'){
+				$group=Age_Group::for_user($uid);if(!$group)return self::unavailable();$age_group=$group['label'];
+			}else{
+				if(!preg_match('/^(\\d{1,3})\\s*[-–]\\s*(\\d{1,3})$/u',$a['ag'],$m))return self::unavailable();
+				$age_group=$m[1].'–'.$m[2];
+				$start=(int)$m[1];$end=(int)$m[2];if($start>$end||Age_Group::label_for_age($start)!==$age_group||Age_Group::label_for_age($end)!==$age_group)return self::unavailable();
+			}
+		}
 		$pbs=$best==='AG'?Records::age_group_personal_bests($uid,$course,$age_group):Records::personal_bests($uid,$course);$o=self::styles().self::open(__('Personal Bests','chriss-swim-training-progress-evaluation'),$a['title']);$distances=$a['distance']?array($a['distance']):Evaluator::DISTANCES;
 		if($a['stroke']){$strokes=array($a['stroke']);}else{$strokes=array('OVERALL');foreach(array('FR','BR','BACK','FLY','MIXED') as$s){foreach($pbs as$distance_pbs){if(!empty($distance_pbs[$s])){$strokes[]=$s;break;}}}}
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th>';foreach($strokes as $s)$o.='<th scope="col">'.esc_html($s==='OVERALL'?__('Overall','chriss-swim-training-progress-evaluation'):self::stroke_name($s)).'</th>';$o.='</tr></thead><tbody>';
