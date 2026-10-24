@@ -243,6 +243,7 @@ final class Admin {
 			<?php endif;?>
 			<hr><h2><?php esc_html_e('Delete Workout','chriss-swim-training-progress-evaluation'); ?></h2>
 			<p><?php esc_html_e('Permanently remove this workout, its source files, normalized swim data, and derived performances. Personal bests will be recalculated from the remaining workouts.','chriss-swim-training-progress-evaluation'); ?></p>
+			<form method="post" style="margin-bottom:12px"><?php wp_nonce_field('swimlog_rebuild_workout_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="rebuild"><button type="submit" class="button" onclick="return confirm('<?php echo esc_js(__('Rebuild this workout from its preserved source files? Normalized workout data and derived performances will be regenerated while the original source files and import records are retained.','chriss-swim-training-progress-evaluation')); ?>');"><?php esc_html_e('Rebuild from Preserved Sources','chriss-swim-training-progress-evaluation'); ?></button><p class="description"><?php esc_html_e('Reparse the preserved FIT/CSV sources and regenerate normalized workout data and derived performances. The operation is transactional and does not delete the preserved source files.','chriss-swim-training-progress-evaluation'); ?></p></form>
 			<form method="post"><?php wp_nonce_field('swimlog_delete_workout_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="delete"><button type="submit" class="button button-link-delete" onclick="return confirm('<?php echo esc_js(__('Permanently delete this workout? The workout, source files, normalized swim data, and derived performances will be removed. This cannot be undone.','chriss-swim-training-progress-evaluation')); ?>');"><?php esc_html_e('Delete Workout','chriss-swim-training-progress-evaluation'); ?></button></form>
 			</div><?php return;
 		}
@@ -464,7 +465,7 @@ final class Admin {
 		if ( empty( $_GET['page'] ) || 'swimlog-workouts' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
 		if ( empty( $_POST['swimlog_workout_action'] ) ) return;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_workout_action'] ) );
-		if ( ! in_array( $action, array( 'save_metadata', 'delete' ), true ) ) return;
+		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete' ), true ) ) return;
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
@@ -473,6 +474,18 @@ final class Admin {
 		$detail = isset( $_GET['workout_id'] ) ? absint( wp_unslash( $_GET['workout_id'] ) ) : 0;
 		if ( ! $detail || ! Workout::get_for_user( $detail, $user_id ) ) {
 			wp_die( esc_html__( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		if ( 'rebuild' === $action ) {
+			check_admin_referer( 'swimlog_rebuild_workout_' . $detail );
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-importer.php';
+			$result = Importer::rebuild_workout( $detail, $user_id );
+			if ( is_wp_error( $result ) ) {
+				$this->workout_action_error = $result->get_error_message();
+				return;
+			}
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => $detail, 'rebuilt' => 1 ), admin_url( 'admin.php' ) ) );
+			exit;
 		}
 
 		if ( 'delete' === $action ) {
