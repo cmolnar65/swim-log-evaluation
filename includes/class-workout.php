@@ -58,16 +58,23 @@ final class Workout {
 
 
 
-	public static function stroke_volume_for_user( $user_id, $filters=array() ) {
+	public static function stroke_volume_for_user( $user_id, $lookback_months=3 ) {
 		global $wpdb;
+		$lookback_months=max(1,min(24,(int)$lookback_months));
+		$today=new \\DateTimeImmutable('today',wp_timezone());
+		$start=$today->modify('-'.$lookback_months.' months')->format('Y-m-d 00:00:00');
+		$end=$today->format('Y-m-d 23:59:59');
 		$w=Database::table('workouts'); $n=Database::table('lengths');
-		$where=array($wpdb->prepare('w.user_id=%d',$user_id), "w.workout_type='pool'", "n.length_type='active'", "n.distance_m>0");
-		if(!empty($filters['date_from']))$where[]=$wpdb->prepare('DATE(w.workout_start) >= %s',$filters['date_from']);
-		if(!empty($filters['date_to']))$where[]=$wpdb->prepare('DATE(w.workout_start) <= %s',$filters['date_to']);
-		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true))$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);
-		if(!empty($filters['stroke']))$where[]=$wpdb->prepare('n.stroke=%s',strtoupper((string)$filters['stroke']));
+		$where=array(
+			$wpdb->prepare('w.user_id=%d',$user_id),
+			"w.workout_type='pool'",
+			"n.length_type='active'",
+			"n.distance_m>0",
+			$wpdb->prepare('w.workout_start >= %s',$start),
+			$wpdb->prepare('w.workout_start <= %s',$end)
+		);
 		$sql_where=implode(' AND ',$where);
-		return $wpdb->get_results("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY w.pool_length_unit,stroke");
+		return $wpdb->get_results("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC");
 	}
 
 
