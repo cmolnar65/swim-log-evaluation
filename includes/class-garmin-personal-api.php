@@ -278,6 +278,7 @@ final class Garmin_Personal_API {
 		global $wpdb;
 		$user_id = absint( $user_id );
 		$activity_id = absint( $activity_id );
+		$location_id = absint( $location_id );
 		if ( ! $user_id || ! $activity_id ) {
 			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' ) );
 		}
@@ -448,7 +449,7 @@ final class Garmin_Personal_API {
 	 * Import a genuinely new Garmin swimming FIT through the existing
 	 * normalized FIT importer. Exact-hash duplicates are associated safely.
 	 */
-	public static function import_activity( $user_id, $activity_id ) {
+	public static function import_activity( $user_id, $activity_id, $location_id = 0 ) {
 		$user_id = absint( $user_id );
 		$activity_id = absint( $activity_id );
 		if ( ! $user_id || ! $activity_id ) {
@@ -478,7 +479,7 @@ final class Garmin_Personal_API {
 				$user_id,
 				$fit_path,
 				(string) $prepared['filename'],
-				0,
+				$location_id,
 				'garmin',
 				(string) $activity_id
 			);
