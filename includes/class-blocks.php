@@ -57,6 +57,19 @@ final class Blocks {
 			SWIMLOG_EVALUATION_DIR . 'blocks/workout',
 			array( 'render_callback' => array( __CLASS__, 'render_workout' ) )
 		);
+
+		wp_register_script(
+			'swimlog-block-training-log',
+			SWIMLOG_EVALUATION_URL . 'blocks/training-log/index.js',
+			array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-server-side-render' ),
+			SWIMLOG_EVALUATION_VERSION,
+			true
+		);
+
+		register_block_type(
+			SWIMLOG_EVALUATION_DIR . 'blocks/training-log',
+			array( 'render_callback' => array( __CLASS__, 'render_training_log' ) )
+		);
 	}
 
 	public static function render_latest_workouts( $attributes ) {
@@ -111,6 +124,25 @@ final class Blocks {
 				'title' => self::title_attribute( $attributes ),
 			)
 		);
+	}
+
+	public static function render_training_log( $attributes ) {
+		$mode = isset( $attributes['mode'] ) ? sanitize_key( $attributes['mode'] ) : 'monthly';
+		$atts = array(
+			'user'  => isset( $attributes['user'] ) ? absint( $attributes['user'] ) : '',
+			'title' => self::title_attribute( $attributes ),
+		);
+		if ( 'annual' === $mode ) {
+			$atts['year'] = isset( $attributes['year'] ) ? absint( $attributes['year'] ) : 0;
+		} else {
+			if ( ! empty( $attributes['month'] ) ) {
+				$atts['month'] = absint( $attributes['month'] );
+			}
+			if ( ! empty( $attributes['year'] ) ) {
+				$atts['year'] = absint( $attributes['year'] );
+			}
+		}
+		return Shortcodes::render_log( $atts );
 	}
 
 	private static function title_attribute( $attributes ) {

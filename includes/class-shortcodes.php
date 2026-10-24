@@ -137,7 +137,8 @@ final class Shortcodes {
 	private static function total_label($m,$y){
 		$p=array();if($m>0)$p[]=number_format_i18n($m,0).' m';if($y>0)$p[]=number_format_i18n($y,0).' yd';return$p?implode(' + ',$p):'—';
 	}
-	public static function log($atts){
+	public static function log($atts){return self::render_log($atts);}
+	public static function render_log($atts){
 		self::load();$raw=(array)$atts;$a=self::attrs($atts,array('month'=>'','year'=>''));$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$has_year=array_key_exists('year',$raw);$has_month=array_key_exists('month',$raw);$year=absint($a['year']??0);if(!$year)$year=(int)current_time('Y');
 		$annual=$has_year&&!$has_month;$o=self::styles();
