@@ -10,7 +10,7 @@ final class ShortcodeAdminDocumentationTest extends TestCase {
  }
  public function test_every_shortcode_has_a_drill_down_page(){
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
-  foreach(array('latest','upcoming_events','workout','log','progress')as$name)$this->assertStringContainsString('function shortcode_'.$name.'(',$admin);
+  foreach(array('latest','upcoming_events','workout','log','progress')as$name)$this->assertStringContainsString('function shortcode_'.$name.'()',$admin);
   $this->assertStringContainsString('function shortcode_bests()',$admin);
   foreach(array('latest','bests','upcoming-events','workout','log','progress')as$slug)$this->assertStringContainsString('swimlog-shortcode-'.$slug,$admin);
  }
