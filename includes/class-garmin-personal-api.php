@@ -512,13 +512,14 @@ final class Garmin_Personal_API {
 
 	public static function scheduled_sync( $user_id ) {
 		$user_id=absint($user_id);if(!$user_id||!self::is_configured($user_id))return new \WP_Error('swimlog_garmin_not_configured',__('No Garmin Connect Personal API key is configured.','chriss-swim-training-progress-evaluation'));
-		$end=wp_date('Y-m-d');$start=wp_date('Y-m-d',current_time('timestamp')-(7*DAY_IN_SECONDS));$activities=self::recent_activities($user_id,100,$start,$end,array('lap_swimming','open_water_swimming'));if(is_wp_error($activities))return $activities;
+		update_user_meta($user_id,'swimlog_garmin_sync_last_attempt',current_time('mysql'));
+		$end=wp_date('Y-m-d');$start=wp_date('Y-m-d',current_time('timestamp')-(7*DAY_IN_SECONDS));$activities=self::recent_activities($user_id,100,$start,$end,array('lap_swimming','open_water_swimming'));if(is_wp_error($activities)){update_user_meta($user_id,'swimlog_garmin_sync_last_error',array('code'=>$activities->get_error_code(),'message'=>$activities->get_error_message()));return $activities;}
 		$result=array('imported'=>0,'already'=>0,'pending'=>0,'open_water_review'=>0,'failed'=>0);
 		foreach((array)$activities as$activity){$id=absint($activity['activityId']??0);$type=(string)($activity['activityType']['typeKey']??'');if(!$id)continue;
 			if(!in_array($type,array('lap_swimming','open_water_swimming'),true))continue;$import=self::import_activity($user_id,$id,0,'open_water_swimming'===$type);if(is_wp_error($import)){if('swimlog_ows_location_review'===$import->get_error_code())$result['open_water_review']++;else$result['failed']++;continue;}$status=(string)($import['status']??'');
 			if('imported'===$status)$result['imported']++;elseif('pending_review'===$status)$result['pending']++;elseif(in_array($status,array('already_associated','associated','file_exists'),true))$result['already']++;else$result['failed']++;
 		}
-		update_user_meta($user_id,'swimlog_garmin_sync_last_run',current_time('mysql'));update_user_meta($user_id,'swimlog_garmin_sync_last_result',$result);return$result;
+		update_user_meta($user_id,'swimlog_garmin_sync_last_run',current_time('mysql'));update_user_meta($user_id,'swimlog_garmin_sync_last_success',current_time('mysql'));update_user_meta($user_id,'swimlog_garmin_sync_last_result',$result);delete_user_meta($user_id,'swimlog_garmin_sync_last_error');return$result;
 	}
 
 	private static function access_token( $user_id ) {
