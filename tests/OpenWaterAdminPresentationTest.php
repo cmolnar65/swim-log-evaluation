@@ -10,7 +10,7 @@ final class OpenWaterAdminPresentationTest extends TestCase {
   $this->assertStringContainsString("esc_html_e('GPS Route'",$source);
   $this->assertStringContainsString("esc_html_e('Source FIT Laps / Splits'",$source);
   $this->assertStringContainsString("analytics['gps_point_count']",$source);
-  $this->assertStringContainsString("count($laps)",$source);
+  $this->assertStringContainsString('count($laps)',$source);
  }
  public function test_open_water_summary_styles_are_present(){
   $css=file_get_contents(dirname(__DIR__).'/assets/css/admin.css');
