@@ -18,6 +18,12 @@ final class OpenWaterSplitTest extends TestCase {
   };
   return Workout::open_water_analytics(501,42);
  }
+ public function test_analytics_query_fetches_only_required_trackpoint_fields(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-workout.php');
+  $this->assertStringContainsString('SELECT recorded_at,latitude,longitude,distance_m,cadence FROM',$source);
+  $this->assertStringNotContainsString("distance_points = array()",$source);
+  $this->assertStringContainsString("timezone = wp_timezone()",$source);
+ }
  public function test_monotonic_track_produces_expected_kilometer_splits(){
   $a=$this->analytics(array(0,1000,2000,3000));
   $this->assertCount(3,$a['splits']);
