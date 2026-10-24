@@ -5,6 +5,16 @@ if(!function_exists('wp_json_encode')){function wp_json_encode($v){return json_e
 if(!function_exists('absint')){function absint($v){return abs((int)$v);}}
 if(!function_exists('get_date_from_gmt')){function get_date_from_gmt($s,$f='Y-m-d H:i:s'){return gmdate($f,strtotime($s.' UTC'));}}
 if(!function_exists('wp_timezone')){function wp_timezone(){return new DateTimeZone('America/Denver');}}
+if(!function_exists('sanitize_key')){function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));}}
+if(!function_exists('sanitize_text_field')){function sanitize_text_field($v){return trim((string)$v);}}
+if(!function_exists('shortcode_atts')){function shortcode_atts($pairs,$atts){return array_merge($pairs,(array)$atts);}}
+if(!function_exists('esc_html')){function esc_html($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}}
+if(!function_exists('esc_html__')){function esc_html__($s,$d=null){return esc_html($s);}}
+if(!function_exists('wp_enqueue_style')){function wp_enqueue_style(){return true;}}
+if(!function_exists('wp_date')){function wp_date($f,$ts=null,$tz=null){$d=new DateTimeImmutable('@'.($ts??time()));if($tz)$d=$d->setTimezone($tz);return $d->format($f);}}
+if(!function_exists('is_user_logged_in')){function is_user_logged_in(){return true;}}
+if(!function_exists('get_current_user_id')){function get_current_user_id(){return 42;}}
+if(!function_exists('current_user_can')){function current_user_can(){return false;}}
 if(!class_exists('WP_Error')){class WP_Error{private $code,$message;public function __construct($c='',$m=''){$this->code=$c;$this->message=$m;}public function get_error_message(){return$this->message;}public function get_error_code(){return$this->code;}}}
 if(!function_exists('is_wp_error')){function is_wp_error($v){return$v instanceof WP_Error;}}
 require_once dirname(__DIR__).'/includes/class-database.php';
@@ -14,3 +24,5 @@ require_once dirname(__DIR__).'/includes/class-evaluator.php';
 require_once dirname(__DIR__).'/includes/class-workout.php';
 
 require_once dirname(__DIR__).'/includes/class-importer.php';
+
+require_once dirname(__DIR__).'/includes/class-shortcodes.php';
