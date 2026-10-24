@@ -19,7 +19,7 @@ final class Importer {
 	 * Import a FIT file obtained by a trusted internal provider rather than PHP upload handling.
 	 * Browser uploads must continue to use import_upload(), which enforces is_uploaded_file().
 	 */
-	public static function import_trusted_fit($user_id,$tmp_path,$original_filename,$location_id=0,$source_provider='',$external_activity_id=''){
+	public static function import_trusted_fit($user_id,$tmp_path,$original_filename,$location_id=0,$source_provider='',$external_activity_id='',$require_ows_location=false){
 		$user_id=absint($user_id);$location_id=absint($location_id);$tmp_path=(string)$tmp_path;$original_filename=(string)$original_filename;
 		if(!$user_id||$tmp_path===''||!is_file($tmp_path))return new \WP_Error('swimlog_trusted_source',__('The trusted FIT source file could not be found.','chriss-swim-training-progress-evaluation'));
 		$size=(int)filesize($tmp_path);if($size<=0||$size>self::MAX_BYTES)return new \WP_Error('swimlog_upload_size',__('Workout files may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
@@ -27,7 +27,7 @@ final class Importer {
 		if($name!==$original_filename||sanitize_file_name($name)!==$name||'fit'!==strtolower(pathinfo($name,PATHINFO_EXTENSION)))return new \WP_Error('swimlog_trusted_name',__('The trusted FIT source filename is invalid.','chriss-swim-training-progress-evaluation'));
 		$provider=sanitize_key($source_provider);$external=trim((string)$external_activity_id);
 		if($provider!==''&&$external==='')return new \WP_Error('swimlog_external_identity',__('The external activity identity is incomplete.','chriss-swim-training-progress-evaluation'));
-		return self::import_file($user_id,$tmp_path,$name,$size,'fit',$location_id,array('source_provider'=>$provider,'external_activity_id'=>$external,'preserve_filename'=>$name));
+		return self::import_file($user_id,$tmp_path,$name,$size,'fit',$location_id,array('source_provider'=>$provider,'external_activity_id'=>$external,'preserve_filename'=>$name,'require_ows_location'=>(bool)$require_ows_location));
 	}
 
 	private static function import_file($user_id,$tmp_path,$name,$size,$ext,$location_id,$source_meta){
@@ -44,6 +44,7 @@ final class Importer {
 		$v=self::validate($parsed);if(is_wp_error($v))return$v;
 		if(!$location_id&&$ext==='csv')$location_id=self::location_from_csv($user_id,$parsed);
 		if(!$location_id&&'open_water'===($parsed['workout']['workout_type']??'pool'))$location_id=self::location_from_open_water_track($user_id,$parsed);
+		if(!empty($source_meta['require_ows_location'])&&'open_water'===($parsed['workout']['workout_type']??'pool')&&!$location_id)return new \WP_Error('swimlog_ows_location_review',__('Open-water GPS did not match a saved location within 500 meters. Review this activity and assign a location manually.','chriss-swim-training-progress-evaluation'));
 		$match_info=self::classify_match($user_id,$parsed['workout']);
 		$now=current_time('mysql');
 		if($match_info['status']==='disagreement')return new \WP_Error('swimlog_source_disagreement',__('A nearby existing workout has incompatible course or pool-length information. Import stopped for explicit review rather than attaching or creating a duplicate.','chriss-swim-training-progress-evaluation'));
