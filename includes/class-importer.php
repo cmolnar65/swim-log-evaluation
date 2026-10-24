@@ -10,8 +10,8 @@ final class Importer {
 		if(!empty($file['error']))return new \WP_Error('swimlog_upload',__('The upload failed before import.','chriss-swim-training-progress-evaluation'));
 		if((int)$file['size']>self::MAX_BYTES)return new \WP_Error('swimlog_upload_size',__('Workout files may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
 		$name=sanitize_file_name($file['name']);$ext=strtolower(pathinfo($name,PATHINFO_EXTENSION));
-		$allowed=(array)get_option('swimlog_allowed_upload_types',array('fit','csv'));
-		if(!in_array($ext,array('fit','csv'),true)||!in_array($ext,$allowed,true))return new \WP_Error('swimlog_upload_type',__('This workout file type is not currently allowed.','chriss-swim-training-progress-evaluation'));
+		$allowed=(array)get_option('swimlog_allowed_upload_types',array('fit','csv','gpx','tcx'));
+		if(!in_array($ext,array('fit','csv','gpx','tcx'),true)||!in_array($ext,$allowed,true))return new \WP_Error('swimlog_upload_type',__('This workout file type is not currently allowed.','chriss-swim-training-progress-evaluation'));
 		return self::import_file($user_id,$file['tmp_name'],$name,(int)$file['size'],$ext,$location_id,array());
 	}
 
@@ -40,7 +40,7 @@ final class Importer {
 		if($provider!==''&&$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s",$user_id,$provider,$external)))return new \WP_Error('swimlog_external_duplicate',__('This external activity has already been imported.','chriss-swim-training-progress-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$user_id))return new \WP_Error('swimlog_location',__('Select one of your own locations.','chriss-swim-training-progress-evaluation'));
 
-		$parser=$ext==='fit'?new FIT_Importer():new CSV_Importer();$parsed=$parser->parse($tmp_path);if(is_wp_error($parsed))return $parsed;
+		$parser=self::parser_for_source($ext);if(is_wp_error($parser))return$parser;$parsed=$ext==='gpx'||$ext==='tcx'?$parser->parse($tmp_path,$ext):$parser->parse($tmp_path);if(is_wp_error($parsed))return $parsed;
 		$v=self::validate($parsed);if(is_wp_error($v))return$v;
 		if(!$location_id&&$ext==='csv')$location_id=self::location_from_csv($user_id,$parsed);
 		$match_info=self::classify_match($user_id,$parsed['workout']);
@@ -164,7 +164,7 @@ final class Importer {
 		if(!in_array($choice,array('attach','separate'),true))return new \WP_Error('swimlog_pending_choice',__('Choose whether to attach or import separately.','chriss-swim-training-progress-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$uid))return new \WP_Error('swimlog_location',__('Select one of your own locations.','chriss-swim-training-progress-evaluation'));
 		if(!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('The preserved source file could not be found.','chriss-swim-training-progress-evaluation'));
-		$parser=$row->source_type==='fit'?new FIT_Importer():new CSV_Importer();$parsed=$parser->parse($row->stored_path);if(is_wp_error($parsed))return $parsed;$v=self::validate($parsed);if(is_wp_error($v))return $v;
+		$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);if(is_wp_error($parsed))return $parsed;$v=self::validate($parsed);if(is_wp_error($v))return $v;
 		$candidate_id=(int)$row->workout_id;if($choice==='attach'){$classification=self::classify_match($uid,$parsed['workout']);if($classification['status']==='none'||(int)$classification['workout']->id!==$candidate_id)return new \WP_Error('swimlog_pending_changed',__('The candidate workout no longer qualifies for attachment. Review the upload again.','chriss-swim-training-progress-evaluation'));}
 		$wpdb->query('START TRANSACTION');try{
 			$workout_id=$choice==='attach'?$candidate_id:self::insert_workout($uid,$location_id,$parsed['workout']);if(!$workout_id)throw new \Exception('workout');
@@ -192,13 +192,13 @@ final class Importer {
 		if(!$sources)return new \WP_Error('swimlog_rebuild_source',__('No completed preserved source is attached to this workout.','chriss-swim-training-progress-evaluation'));
 		$parsed_sources=array();
 		foreach($sources as$row){
-			if(!in_array($row->source_type,array('fit','csv'),true))continue;
+			if(!in_array($row->source_type,array('fit','csv','gpx','tcx'),true))continue;
 			if(!$row->stored_path||!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('A preserved source file required for this rebuild could not be found. No workout data was changed.','chriss-swim-training-progress-evaluation'));
-			$parser=$row->source_type==='fit'?new FIT_Importer():new CSV_Importer();$parsed=$parser->parse($row->stored_path);
+			$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);
 			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(__('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
 			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
 		}
-		if(!$parsed_sources)return new \WP_Error('swimlog_rebuild_source',__('No supported preserved FIT or CSV source is available for this workout.','chriss-swim-training-progress-evaluation'));
+		if(!$parsed_sources)return new \WP_Error('swimlog_rebuild_source',__('No supported preserved FIT, CSV, GPX, or TCX source is available for this workout.','chriss-swim-training-progress-evaluation'));
 		$authority=$parsed_sources[0];foreach($parsed_sources as$item){if('fit'===$item['row']->source_type){$authority=$item;break;}}
 		$location_id=absint($existing->location_id??0);
 		if(false===$wpdb->query('START TRANSACTION'))return new \WP_Error('swimlog_rebuild_transaction',__('The rebuild transaction could not be started. No workout data was changed.','chriss-swim-training-progress-evaluation'));
@@ -216,6 +216,7 @@ final class Importer {
 	public static function pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);return absint($map[(int)$import_id]??0);}
 	private static function remember_pending_location($uid,$import_id,$location_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);if($location_id)$map[(int)$import_id]=absint($location_id);else unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
+	private static function parser_for_source($source){$source=strtolower((string)$source);if('fit'===$source)return new FIT_Importer();if('csv'===$source)return new CSV_Importer();if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function is_form_fit($parsed,$filename=''){$w=(array)($parsed['workout']??array());$identity=strtolower(trim((string)($w['device_manufacturer']??'')).' '.trim((string)($w['device_model']??'')));if(strpos($identity,'form swim')!==false||preg_match('/(^|[^a-z])form([^a-z]|$)/',$identity))return true;return(bool)preg_match('/^FORM[_-].*\\.fit$/i',basename((string)$filename));}
 	private static function workout_has_form_authority($workout_id){global $wpdb;$wt=Database::table('workouts');$it=Database::table('imports');$w=$wpdb->get_row($wpdb->prepare("SELECT device_manufacturer,device_model FROM $wt WHERE id=%d",$workout_id),ARRAY_A);if($w&&self::is_form_fit(array('workout'=>$w)))return true;$names=$wpdb->get_col($wpdb->prepare("SELECT original_filename FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));foreach((array)$names as $name){if(self::is_form_fit(array('workout'=>array()),(string)$name))return true;}return false;}
