@@ -29,6 +29,8 @@ require_once dirname(__DIR__).'/includes/class-xml-importer.php';
 require_once dirname(__DIR__).'/includes/class-evaluator.php';
 require_once dirname(__DIR__).'/includes/class-workout.php';
 
+require_once dirname(__DIR__).'/includes/class-location.php';
+
 require_once dirname(__DIR__).'/includes/class-importer.php';
 
 require_once dirname(__DIR__).'/includes/class-shortcodes.php';
