@@ -13,7 +13,7 @@ v0.6 expands the plugin with:
 - hardened canonical pool/open-water matching, timestamp handling, type-aware queries, annual totals, administration filters, and public presentation;
 - expanded open-water analytics including 1 km splits, estimated moving-time splits, heart-rate/cadence charts, sparse/corrected GPS handling, and more efficient trackpoint processing;
 - transactional workout rebuilds from preserved FIT, CSV, GPX, and TCX sources;
-- pool stroke training-volume analytics and current event-readiness summaries;
+- configurable rolling pool stroke training-volume analytics with a per-swimmer 1–24 month period (3-month default), separate meter/yard sections ranked by total distance, and current event-readiness summaries;
 - explicit opt-in public open-water route privacy controls plus improved self-contained geographic route context;
 - scheduled Garmin synchronization, including automatic open-water import when the first valid GPS fix safely matches a saved location;
 - saved open-water location reference coordinates with conservative 500 m proximity matching and ambiguity protection;
