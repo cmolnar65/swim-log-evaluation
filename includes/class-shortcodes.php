@@ -80,7 +80,8 @@ final class Shortcodes {
 		if($type==='pool'&&$w->primary_stroke)$o.='<dt>'.esc_html__('Primary stroke','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(self::stroke_name($w->primary_stroke)).'</dd>';$o.='</dl>';}
 		if($count>1)$o.='</tbody></table></div>';return$o.self::close();
 	}
-	public static function bests($atts){
+	public static function bests($atts){return self::render_bests($atts);}
+	public static function render_bests($atts){
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$course=in_array($a['course'],array('m','yd'),true)?$a['course']:get_option('swimlog_default_course_unit','m');if(!in_array($course,array('m','yd'),true))$course='m';
 		$valid_strokes=array('FR','BR','BACK','FLY','MIXED');if($a['stroke']&&!in_array($a['stroke'],$valid_strokes,true))return self::unavailable();if($a['distance']&&!in_array($a['distance'],Evaluator::DISTANCES,true))return self::unavailable();

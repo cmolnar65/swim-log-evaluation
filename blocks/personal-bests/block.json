@@ -1,0 +1,23 @@
+{
+  "apiVersion": 2,
+  "name": "swimlog/personal-bests",
+  "version": "0.7.0",
+  "title": "Personal Bests",
+  "category": "widgets",
+  "icon": "awards",
+  "description": "Display a swimmer's personal best times with optional course, stroke, distance, and age-group filters.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "user": { "type": "integer", "default": 0 },
+    "course": { "type": "string", "default": "" },
+    "stroke": { "type": "string", "default": "" },
+    "distance": { "type": "integer", "default": 0 },
+    "best": { "type": "string", "default": "LB" },
+    "ageGroupMode": { "type": "string", "default": "post-date" },
+    "ageGroup": { "type": "string", "default": "" },
+    "titleMode": { "type": "string", "default": "default" },
+    "customTitle": { "type": "string", "default": "" }
+  },
+  "editorScript": "swimlog-block-personal-bests",
+  "supports": { "html": false }
+}
