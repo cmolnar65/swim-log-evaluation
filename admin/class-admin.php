@@ -978,6 +978,12 @@ final class Admin {
 
 		if ( isset( $_POST['swimlog_garmin_action'] ) ) {
 			$action = sanitize_key( wp_unslash( $_POST['swimlog_garmin_action'] ) );
+
+			if ( 'save_sync' === $action ) {
+				check_admin_referer( 'swimlog_save_garmin_sync' );
+				$enabled=isset($_POST['garmin_sync_enabled']);require_once SWIMLOG_EVALUATION_DIR.'includes/class-plugin.php';Plugin::set_garmin_sync_schedule($user_id,$enabled);
+				$notice=$enabled?__('Scheduled Garmin pool-swim synchronization enabled.','chriss-swim-training-progress-evaluation'):__('Scheduled Garmin synchronization disabled.','chriss-swim-training-progress-evaluation');
+			}
 			if ( 'import_preflight' === $action ) {
 				check_admin_referer( 'swimlog_garmin_import_preflight' );
 				$requested_activity_id = isset( $_POST['garmin_activity_id'] ) ? absint( wp_unslash( $_POST['garmin_activity_id'] ) ) : 0;
@@ -1099,6 +1105,7 @@ final class Admin {
 		}
 
 		$configured = Garmin_Personal_API::is_configured( $user_id );
+		$sync_enabled='1'===(string)get_user_meta($user_id,'swimlog_garmin_sync_enabled',true);$sync_last=(string)get_user_meta($user_id,'swimlog_garmin_sync_last_run',true);$sync_result=(array)get_user_meta($user_id,'swimlog_garmin_sync_last_result',true);
 		$activity_mode = $detail_id > 0 || is_array( $activities );
 		?>
 		<div class="wrap swimlog-admin"<?php echo ( $configured && ! $activity_mode ) ? ' data-swimlog-garmin-configured="1"' : ''; ?>>
@@ -1124,7 +1131,9 @@ final class Admin {
 			<?php endif; ?>
 
 			<?php if ( $configured ) : ?>
-				<?php if ( ! $activity_mode ) : ?>
+	
+			<?php if ( $configured && ! $activity_mode ) : ?><hr><h2><?php esc_html_e('Scheduled Synchronization','chriss-swim-training-progress-evaluation'); ?></h2><form method="post"><?php wp_nonce_field('swimlog_save_garmin_sync'); ?><input type="hidden" name="swimlog_garmin_action" value="save_sync"><p><label><input type="checkbox" name="garmin_sync_enabled" value="1" <?php checked($sync_enabled); ?>> <?php esc_html_e('Check Garmin hourly for new pool-swimming activities.','chriss-swim-training-progress-evaluation'); ?></label></p><p class="description"><?php esc_html_e('The sync looks back seven days. Pool swims can import automatically. Open-water swims are left for manual review so a saved location can be chosen. Duplicate activities are skipped, and ambiguous matches remain pending for review.','chriss-swim-training-progress-evaluation'); ?></p><?php if($sync_last):?><p><strong><?php esc_html_e('Last run:','chriss-swim-training-progress-evaluation'); ?></strong> <?php echo esc_html($sync_last); ?><?php if($sync_result):?> — <?php echo esc_html(sprintf(__('Imported %1$d; already known %2$d; pending %3$d; open water for review %4$d; failed %5$d.','chriss-swim-training-progress-evaluation'),(int)($sync_result['imported']??0),(int)($sync_result['already']??0),(int)($sync_result['pending']??0),(int)($sync_result['open_water_review']??0),(int)($sync_result['failed']??0))); ?><?php endif;?></p><?php endif;?><?php submit_button(__('Save Synchronization Setting','chriss-swim-training-progress-evaluation'),'secondary'); ?></form><?php endif; ?>
+			<?php if ( ! $activity_mode ) : ?>
 				<details id="swimlog-garmin-connection"><summary><strong><?php esc_html_e( 'Test Connection', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary><div style="margin-top:12px">
 				<p><?php esc_html_e( 'Test the saved credential by requesting a short-lived access token from Garmin Connect. The access token is not stored by this test.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
