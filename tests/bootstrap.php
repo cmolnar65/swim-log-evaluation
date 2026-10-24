@@ -11,5 +11,6 @@ require_once dirname(__DIR__).'/includes/class-database.php';
 require_once dirname(__DIR__).'/includes/class-fit-importer.php';
 require_once dirname(__DIR__).'/includes/class-csv-importer.php';
 require_once dirname(__DIR__).'/includes/class-evaluator.php';
+require_once dirname(__DIR__).'/includes/class-workout.php';
 
 require_once dirname(__DIR__).'/includes/class-importer.php';
