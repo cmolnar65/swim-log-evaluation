@@ -27,14 +27,29 @@ final class StrokeTrainingVolumeTest extends TestCase {
   $this->assertStringContainsString('the default is 3 months.',$code);
  }
 
- public function test_admin_history_separates_courses_and_ignores_list_filters(){
+ public function test_training_volume_has_dedicated_admin_page(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
-  $this->assertStringContainsString('Pool Training Volume by Stroke — Last %d Months',$code);
+  $this->assertStringContainsString("'swimlog-training-volume', 'training_volume'",$code);
+  $this->assertStringContainsString('public function training_volume()',$code);
+  $this->assertStringContainsString("swimmer_selector(\$user_id,'swimlog-training-volume')",$code);
   $this->assertStringContainsString("Workout::stroke_volume_for_user(\$user_id,\$training_volume_months)",$code);
   $this->assertStringNotContainsString("Workout::stroke_volume_for_user(\$user_id,\$filters)",$code);
   $this->assertStringContainsString("\$stroke_volume_by_course=array('m'=>array(),'yd'=>array())",$code);
-  $this->assertStringContainsString("'open_water'!==\$filters['workout_type']",$code);
   $this->assertStringContainsString('Meter and yard courses are kept separate and strokes are ranked by total distance.',$code);
+  $this->assertStringContainsString('Change the period on Swimmer Configuration.',$code);
   $this->assertStringContainsString('Active swim time',$code);
+ }
+
+ public function test_workouts_page_no_longer_contains_training_volume_summary(){
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $start=strpos($code,'public function workouts()');
+  $end=strpos($code,'public function training_volume()',$start);
+  $this->assertNotFalse($start);
+  $this->assertNotFalse($end);
+  $workouts=substr($code,$start,$end-$start);
+  $this->assertStringNotContainsString('stroke_volume_for_user',$workouts);
+  $this->assertStringNotContainsString('Pool Training Volume by Stroke',$workouts);
+  $this->assertStringContainsString("submit_button(__('Filter'",$workouts);
+  $this->assertStringContainsString("if(!\$result['rows'])",$workouts);
  }
 }
