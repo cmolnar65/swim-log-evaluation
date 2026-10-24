@@ -33,7 +33,7 @@ The stable WordPress.org release remains version 0.5 until the v0.6 release proc
 * Add transactional workout rebuilds from preserved FIT, CSV, GPX, and TCX source files.
 * Add defensive GPX and TCX open-water import through the normalized importer.
 * Expand open-water analytics with 1 km splits, estimated moving-time splits, heart-rate/cadence charts, sparse/corrected GPS handling, and optimized trackpoint processing.
-* Add pool stroke training-volume analytics and current event-readiness summaries.
+* Add configurable rolling pool stroke training-volume analytics, with a per-swimmer 1–24 month period (3-month default), separate meter/yard rankings by total distance, and current event-readiness summaries.
 * Add explicit opt-in public open-water route sharing and improved self-contained geographic route context.
 * Add scheduled Garmin synchronization for pool swims and known-location open-water swims.
 * Add saved open-water location coordinates and conservative first-GPS-fix matching within 500 meters, with ambiguous matches left for review.
