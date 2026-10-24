@@ -22,7 +22,29 @@ with GPS-based saved-location matching and operational telemetry, rebuild and tr
 route privacy controls, a read-only integration API, complete shortcode documentation, and additional
 release hardening across authorization, upgrade safety, source authority, analytics provenance, and tests.
 
+= v0.7 development =
+
+The `develop` branch adds native Block Editor support for the six existing public display features while preserving their shortcodes for backward compatibility. The blocks are dynamic/server-rendered and share the same PHP rendering, authorization, and privacy logic as the shortcodes.
+
+* Latest Workouts — `[swimlog_latest]`: swimmer override, count, and heading controls.
+* Personal Bests — `[swimlog_bests]`: swimmer, course, stroke, distance, lifetime/age-group selection, age-group mode, and heading controls.
+* Upcoming Events — `[swimlog_upcoming_events]`: swimmer, event count/site default, and heading controls.
+* Workout — `[swimlog_workout]`: workout ID and heading controls; workout ownership determines the swimmer.
+* Training Log — `[swimlog_log]`: swimmer, monthly/annual mode, month/year, and heading controls.
+* Progress — `[swimlog_progress]`: swimmer, course, stroke, distance, and heading controls.
+
+Public-results authorization is unchanged. Applicable blocks use the page/post author when no swimmer override is supplied and never fall back to the logged-in viewer. Open-water GPS routes remain separately opt-in, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
+
 == Changelog ==
+
+= 0.7 - In development =
+* Add native dynamic WordPress blocks for Latest Workouts, Personal Bests, Upcoming Events, Workout, Training Log, and Progress while retaining all six legacy shortcodes.
+* Share the existing PHP rendering/query layer between blocks and shortcodes so public authorization, defaults, validation, and output semantics remain consistent.
+* Add InspectorControls for shortcode-equivalent options, including age-group personal bests, monthly/annual training logs, workout selection, and personal-best progression.
+* Preserve workout-record ownership, page/post-author swimmer resolution, no logged-in-viewer fallback, and separate open-water GPS route opt-in.
+* Keep progression calculations and chart data authoritative in PHP/front-end rendering rather than duplicating business logic in block editor JavaScript.
+* Add six-block integration, security/privacy, and release-packaging regression coverage across PHP 7.4 through 8.4.
+
 
 = 0.6 =
 * Harden canonical pool/open-water matching, timestamp handling, type-aware queries, annual totals, admin filtering, and public presentation.

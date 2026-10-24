@@ -6,7 +6,7 @@ The plugin supports FIT and supported CSV workout sources, normalized workout/la
 
 ## Current release: v0.6
 
-Version 0.6 is the current release candidate represented by this branch and is ready for the v0.6 tag/release process.
+Version 0.6 is the current released version. The `develop` branch contains unreleased v0.7 development work; `main` remains the released v0.6 line until the v0.7 release is explicitly authorized.
 
 v0.6 expands the plugin with:
 
@@ -30,6 +30,24 @@ v0.6 expands the plugin with:
 - explicit event-readiness policy and open-water analytics unit/provenance metadata.
 
 Open-water workouts remain isolated from pool personal-best evaluation.
+
+
+## v0.7 Block Editor support — in development
+
+v0.7 adds native WordPress Block Editor integration for all six existing public display features. The legacy shortcodes remain supported public API; the blocks do not replace or deprecate them. Each block is dynamic/server-rendered and uses the same PHP query, authorization, privacy, and rendering path as its corresponding shortcode.
+
+| Block | Legacy shortcode | Editor controls |
+| --- | --- | --- |
+| Latest Workouts | `[swimlog_latest]` | swimmer override, workout count (1–20), heading |
+| Personal Bests | `[swimlog_bests]` | swimmer, course, stroke, distance, lifetime/age-group bests, age-group mode, heading |
+| Upcoming Events | `[swimlog_upcoming_events]` | swimmer, site-default or explicit event count (1–50), heading |
+| Workout | `[swimlog_workout]` | workout ID and heading; workout ownership determines the swimmer |
+| Training Log | `[swimlog_log]` | swimmer, monthly/annual mode, month/year, heading |
+| Progress | `[swimlog_progress]` | swimmer, course, stroke, distance, heading |
+
+The Training Log block preserves the shortcode distinction between a monthly log and annual totals: annual mode supplies a year without a month. The Progress block continues to use the existing PHP progression calculation and front-end chart implementation rather than duplicating progression logic in editor JavaScript.
+
+Public-results privacy behavior is unchanged. When a swimmer override is not supplied, applicable blocks resolve the swimmer from the page/post author; there is no logged-in-viewer fallback. The Workout block does not accept a swimmer override because ownership comes from the selected workout. Open-water GPS routes remain separately opt-in through Public Open-Water Routes, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
 
 ## Private Workout File Storage
 
