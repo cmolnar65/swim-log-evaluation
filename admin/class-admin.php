@@ -994,6 +994,7 @@ final class Admin {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage your Garmin Connect configuration.', 'chriss-swim-training-progress-evaluation' ) );
 		}
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
 		$user_id = get_current_user_id();
