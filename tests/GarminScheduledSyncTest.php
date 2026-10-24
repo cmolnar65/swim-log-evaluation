@@ -19,6 +19,7 @@ final class GarminScheduledSyncTest extends TestCase {
  public function test_admin_explains_conservative_behavior(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   $this->assertStringContainsString('Scheduled Synchronization',$code);
+  $this->assertStringContainsString('The sync uses WordPress WP-Cron, so an hourly check runs when WordPress receives traffic after the scheduled time rather than at a guaranteed clock time.',$code);
   $this->assertStringContainsString('Open-water swims also import automatically when the first valid GPS fix matches a saved location within 500 meters; unmatched locations remain for manual review.',$code);
   $this->assertStringContainsString('Duplicate activities are skipped, and ambiguous workout matches remain pending for review.',$code);
  }
