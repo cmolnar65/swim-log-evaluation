@@ -12,7 +12,8 @@ final class ShortcodeAdminDocumentationTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   foreach(array('latest','upcoming_events','workout','log','progress')as$name)$this->assertStringContainsString('function shortcode_'.$name.'()',$admin);
   $this->assertStringContainsString('function shortcode_bests()',$admin);
-  foreach(array('latest','bests','upcoming-events','workout','log','progress')as$slug)$this->assertStringContainsString('swimlog-shortcode-'.$slug,$admin);
+  foreach(array('latest','upcoming-events','workout','log','progress')as$slug)$this->assertStringContainsString("'swimlog-shortcode-'.\$slug",$admin);
+  $this->assertStringContainsString("'swimlog-shortcode-bests'",$admin);
  }
  public function test_documented_attributes_follow_handlers(){
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
