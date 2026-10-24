@@ -80,9 +80,9 @@ final class Location {
 
 
 	public static function nearest_for_user($user_id,$latitude,$longitude,$max_m=500.0){
-		$latitude=(float)$latitude;$longitude=(float)$longitude;$max_m=max(1.0,(float)$max_m);$best=null;$best_distance=null;
-		foreach(self::all_for_user($user_id)as$location){if(null===$location->latitude||null===$location->longitude)continue;$d=self::distance_m($latitude,$longitude,(float)$location->latitude,(float)$location->longitude);if($d<=$max_m&&(null===$best_distance||$d<$best_distance)){$best=$location;$best_distance=$d;}}
-		return $best?array('location'=>$best,'distance_m'=>$best_distance):null;
+		$latitude=(float)$latitude;$longitude=(float)$longitude;$max_m=max(1.0,(float)$max_m);$candidates=array();
+		foreach(self::all_for_user($user_id)as$location){if(null===$location->latitude||null===$location->longitude)continue;$d=self::distance_m($latitude,$longitude,(float)$location->latitude,(float)$location->longitude);if($d<=$max_m)$candidates[]=array('location'=>$location,'distance_m'=>$d);}
+		usort($candidates,function($a,$b){return$a['distance_m']<=>$b['distance_m'];});if(!$candidates)return null;if(isset($candidates[1])&&($candidates[1]['distance_m']-$candidates[0]['distance_m'])<50.0)return null;return$candidates[0];
 	}
 	private static function distance_m($lat1,$lon1,$lat2,$lon2){$r=6371000.0;$p1=deg2rad($lat1);$p2=deg2rad($lat2);$dp=deg2rad($lat2-$lat1);$dl=deg2rad($lon2-$lon1);$a=sin($dp/2)*sin($dp/2)+cos($p1)*cos($p2)*sin($dl/2)*sin($dl/2);return$r*2*atan2(sqrt($a),sqrt(max(0,1-$a)));}
 
