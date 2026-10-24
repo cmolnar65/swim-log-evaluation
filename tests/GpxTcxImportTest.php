@@ -20,7 +20,7 @@ final class GpxTcxImportTest extends TestCase {
   $this->assertStringContainsString("array('fit','csv','gpx','tcx')",$importer);
   $this->assertStringContainsString('Importer::parse_source($row->source_type,$row->stored_path)',$admin);
   $this->assertStringContainsString('accept=".fit,.csv,.gpx,.tcx"',$admin);
-  $this->assertStringContainsString("$mimes['gpx'] = 'application/gpx+xml';",$plugin);
-  $this->assertStringContainsString("$mimes['tcx'] = 'application/vnd.garmin.tcx+xml';",$plugin);
+  $this->assertStringContainsString("\$mimes['gpx'] = 'application/gpx+xml';",$plugin);
+  $this->assertStringContainsString("\$mimes['tcx'] = 'application/vnd.garmin.tcx+xml';",$plugin);
  }
 }
