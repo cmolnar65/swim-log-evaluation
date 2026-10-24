@@ -1,0 +1,17 @@
+{
+  "apiVersion": 2,
+  "name": "swimlog/workout",
+  "version": "0.7.0",
+  "title": "Workout",
+  "category": "widgets",
+  "icon": "media-document",
+  "description": "Display one swim workout by its workout ID.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "workoutId": { "type": "integer", "default": 0 },
+    "titleMode": { "type": "string", "default": "default" },
+    "customTitle": { "type": "string", "default": "" }
+  },
+  "editorScript": "swimlog-block-workout",
+  "supports": { "html": false }
+}

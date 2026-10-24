@@ -44,6 +44,19 @@ final class Blocks {
 			SWIMLOG_EVALUATION_DIR . 'blocks/upcoming-events',
 			array( 'render_callback' => array( __CLASS__, 'render_upcoming_events' ) )
 		);
+
+		wp_register_script(
+			'swimlog-block-workout',
+			SWIMLOG_EVALUATION_URL . 'blocks/workout/index.js',
+			array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-server-side-render' ),
+			SWIMLOG_EVALUATION_VERSION,
+			true
+		);
+
+		register_block_type(
+			SWIMLOG_EVALUATION_DIR . 'blocks/workout',
+			array( 'render_callback' => array( __CLASS__, 'render_workout' ) )
+		);
 	}
 
 	public static function render_latest_workouts( $attributes ) {
@@ -86,6 +99,15 @@ final class Blocks {
 			array(
 				'user'  => isset( $attributes['user'] ) ? absint( $attributes['user'] ) : '',
 				'count' => isset( $attributes['count'] ) ? absint( $attributes['count'] ) : '',
+				'title' => self::title_attribute( $attributes ),
+			)
+		);
+	}
+
+	public static function render_workout( $attributes ) {
+		return Shortcodes::render_workout(
+			array(
+				'id'    => isset( $attributes['workoutId'] ) ? absint( $attributes['workoutId'] ) : 0,
 				'title' => self::title_attribute( $attributes ),
 			)
 		);
