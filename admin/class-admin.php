@@ -1078,6 +1078,7 @@ final class Admin {
 					$acalories = isset( $summary['calories'] ) && is_numeric( $summary['calories'] ) ? number_format_i18n( (float) $summary['calories'], 0 ) : '—';
 					$aavg_hr = isset( $summary['averageHR'] ) && is_numeric( $summary['averageHR'] ) ? number_format_i18n( (float) $summary['averageHR'], 0 ) . ' bpm' : '—';
 					$amax_hr = isset( $summary['maxHR'] ) && is_numeric( $summary['maxHR'] ) ? number_format_i18n( (float) $summary['maxHR'], 0 ) . ' bpm' : '—';
+					$detail_import_state = $this->garmin_activity_import_state( $user_id, $detail_id );
 				?>
 					<hr><h2><?php esc_html_e( 'Garmin Activity Details', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 					<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-garmin' ) ); ?>"><?php esc_html_e( 'Back to Garmin Connect', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
@@ -1092,12 +1093,18 @@ final class Admin {
 						<tr><th><?php esc_html_e( 'Average HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aavg_hr ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Maximum HR', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $amax_hr ); ?></td></tr>
 					</tbody></table>
+					<?php if ( 'imported' === $detail_import_state['status'] ) : ?>
+						<p style="margin-top:16px"><strong><?php esc_html_e( 'Already imported.', 'chriss-swim-training-progress-evaluation' ); ?></strong><?php if ( $detail_import_state['workout_id'] ) : ?> <a href="<?php echo esc_url( add_query_arg( array( 'page'=>'swimlog-workouts', 'workout_id'=>$detail_import_state['workout_id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'View Workout', 'chriss-swim-training-progress-evaluation' ); ?></a><?php endif; ?></p>
+					<?php elseif ( 'pending' === $detail_import_state['status'] ) : ?>
+						<p style="margin-top:16px"><strong><?php esc_html_e( 'Review required.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-upload' ) ); ?>"><?php esc_html_e( 'Review Pending Import', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+					<?php else : ?>
 					<form method="post" style="margin-top:16px">
 						<?php wp_nonce_field( 'swimlog_garmin_import_preflight' ); ?>
 						<input type="hidden" name="swimlog_garmin_action" value="import_preflight">
 						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
 						<?php submit_button( __( 'Import Activity', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
 					</form>
+					<?php endif; ?>
 					<?php if ( is_array( $import_preflight ) ) : ?>
 						<?php if ( 'already_associated' === $import_preflight['status'] ) : ?>
 							<div class="notice notice-error inline"><p><?php
