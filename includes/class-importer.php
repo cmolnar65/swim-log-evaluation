@@ -65,16 +65,16 @@ final class Importer {
 			$wpdb->insert($it,$row);$import_id=(int)$wpdb->insert_id;if(!$import_id)throw new \Exception('import row');
 			$match=$match_info['status']==='exact'?$match_info['workout']:null;$workout_id=$match?(int)$match->id:self::insert_workout($user_id,$location_id,$parsed['workout']);
 			if(!$workout_id)throw new \Exception('workout');
-			$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));
+			$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));$became_authority=false;
 			if($ext==='fit'){
 				$incoming_form=self::is_form_fit($parsed,$name);
 				$existing_form=$match?self::workout_has_form_authority($workout_id):false;
-				if(!$match||$incoming_form&&!$existing_form){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if(self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout update');}
+				if(!$match||$incoming_form&&!$existing_form){$became_authority=true;if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if(self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout update');}
 				elseif(self::supplement_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');
 			}
-			elseif(!$match||!$has_fit){if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if($match&&self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'],false)===false)throw new \Exception('workout update');}
+			elseif(!$match||!$has_fit){$became_authority=true;if(!self::replace_structure($workout_id,$parsed))throw new \Exception('structure');if($match&&self::update_workout($workout_id,$user_id,$location_id,$parsed['workout'],false)===false)throw new \Exception('workout update');}
 			else{if(self::supplement_workout($workout_id,$user_id,$location_id,$parsed['workout'])===false)throw new \Exception('workout supplement');}
-			if($wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id))===false)throw new \Exception('import completion');
+			if($wpdb->update($it,array('workout_id'=>$workout_id,'import_status'=>'complete','updated_at'=>current_time('mysql')),array('id'=>$import_id))===false)throw new \Exception('import completion');if($became_authority&&false===$wpdb->update($wt,array('authoritative_import_id'=>$import_id),array('id'=>$workout_id,'user_id'=>$user_id),array('%d'),array('%d','%d')))throw new \Exception('authority metadata');
 			if($wpdb->query('COMMIT')===false)throw new \Exception('commit');
 			$evaluated=0;
 			if(($parsed['workout']['workout_type']??'pool')==='pool'){
@@ -206,7 +206,7 @@ final class Importer {
 		if(false===$wpdb->query('START TRANSACTION'))return new \WP_Error('swimlog_rebuild_transaction',__('The rebuild transaction could not be started. No workout data was changed.','chriss-swim-training-progress-evaluation'));
 		try{
 			if(self::update_workout($workout_id,$uid,$location_id,$authority['parsed']['workout'])===false)throw new \Exception('workout update');
-			if(!self::replace_structure($workout_id,$authority['parsed']))throw new \Exception('structure');
+			if(!self::replace_structure($workout_id,$authority['parsed']))throw new \Exception('structure');if(false===$wpdb->update($wt,array('authoritative_import_id'=>(int)$authority['row']->id),array('id'=>$workout_id,'user_id'=>$uid),array('%d'),array('%d','%d')))throw new \Exception('authority metadata');
 			foreach($parsed_sources as$item){if($item===$authority)continue;if(self::supplement_workout($workout_id,$uid,$location_id,$item['parsed']['workout'])===false)throw new \Exception('workout supplement');}
 			if(false===$wpdb->delete($pt,array('workout_id'=>$workout_id,'user_id'=>$uid),array('%d','%d')))throw new \Exception('performances');
 			if(false===$wpdb->query('COMMIT'))throw new \Exception('commit');
