@@ -15,6 +15,9 @@ final class GarminScheduledSyncTest extends TestCase {
   $this->assertStringContainsString("self::import_activity(\$user_id,\$id,0,'open_water_swimming'===\$type)",$code);
   $this->assertStringContainsString("'swimlog_ows_location_review'===\$import->get_error_code()",$code);
   $this->assertStringContainsString("'pending_review'===\$status",$code);
+  $this->assertStringContainsString("'swimlog_garmin_sync_last_attempt'",$code);
+  $this->assertStringContainsString("'swimlog_garmin_sync_last_success'",$code);
+  $this->assertStringContainsString("'swimlog_garmin_sync_last_error'",$code);
  }
  public function test_admin_explains_conservative_behavior(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
@@ -22,5 +25,10 @@ final class GarminScheduledSyncTest extends TestCase {
   $this->assertStringContainsString('The sync uses WordPress WP-Cron, so an hourly check runs when WordPress receives traffic after the scheduled time rather than at a guaranteed clock time.',$code);
   $this->assertStringContainsString('Open-water swims also import automatically when the first valid GPS fix matches a saved location within 500 meters; unmatched locations remain for manual review.',$code);
   $this->assertStringContainsString('Duplicate activities are skipped, and ambiguous workout matches remain pending for review.',$code);
+  $this->assertStringContainsString('Last attempt:',$code);
+  $this->assertStringContainsString('Last successful sync:',$code);
+  $this->assertStringContainsString('Last error:',$code);
+  $this->assertStringContainsString('Next scheduled check:',$code);
+  $this->assertStringContainsString("wp_next_scheduled('swimlog_garmin_scheduled_sync',array(\$user_id))",$code);
  }
 }
