@@ -1,0 +1,32 @@
+{
+  "apiVersion": 2,
+  "name": "swimlog/latest-workouts",
+  "version": "0.7.0",
+  "title": "Latest Workouts",
+  "category": "widgets",
+  "icon": "analytics",
+  "description": "Display the swimmer's latest workout or recent workouts.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "count": {
+      "type": "integer",
+      "default": 1
+    },
+    "titleMode": {
+      "type": "string",
+      "default": "default"
+    },
+    "customTitle": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "editorScript": "swimlog-block-latest-workouts",
+  "supports": {
+    "html": false
+  }
+}

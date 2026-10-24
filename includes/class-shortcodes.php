@@ -64,7 +64,8 @@ final class Shortcodes {
 		return '';
 	}
 
-	public static function latest($atts){
+	public static function latest($atts){return self::render_latest($atts);}
+	public static function render_latest($atts){
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$count=$a['count']?max(1,min(20,$a['count'])):1;$r=Workout::recent_for_user($uid,$count);$o=self::styles().self::open($count===1?__('Latest Swim','chriss-swim-training-progress-evaluation'):__('Latest Swims','chriss-swim-training-progress-evaluation'),$a['title']);
 		if(!$r)return$o.'<p>'.esc_html__('No swim workouts are available yet.','chriss-swim-training-progress-evaluation').'</p>'.self::close();
