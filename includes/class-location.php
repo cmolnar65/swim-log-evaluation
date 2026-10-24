@@ -48,6 +48,10 @@ final class Location {
 			$length_m = 'yd' === $unit ? $length * 0.9144 : $length;
 		}
 
+		$latitude=isset($data['latitude'])&&''!==trim((string)$data['latitude'])?(float)$data['latitude']:null;$longitude=isset($data['longitude'])&&''!==trim((string)$data['longitude'])?(float)$data['longitude']:null;
+		if((null===$latitude)!==(null===$longitude))return new \WP_Error('swimlog_location_coordinates',__('Enter both latitude and longitude, or leave both blank.','chriss-swim-training-progress-evaluation'));
+		if(null!==$latitude&&($latitude < -90||$latitude > 90||$longitude < -180||$longitude > 180))return new \WP_Error('swimlog_location_coordinates',__('Location coordinates are outside the valid latitude/longitude range.','chriss-swim-training-progress-evaluation'));
+
 		$now = current_time( 'mysql' );
 		$values = array(
 			'user_id'       => (int) $user_id,
@@ -55,6 +59,8 @@ final class Location {
 			'pool_length'   => $length,
 			'pool_unit'     => $unit ?: null,
 			'pool_length_m' => null === $length_m ? null : round( $length_m, 3 ),
+			'latitude'      => null === $latitude ? null : round($latitude,7),
+			'longitude'     => null === $longitude ? null : round($longitude,7),
 			'notes'         => sanitize_textarea_field( $data['notes'] ?? '' ),
 			'updated_at'    => $now,
 		);
@@ -71,6 +77,14 @@ final class Location {
 		$result = $wpdb->insert( $table, $values );
 		return false === $result ? new \WP_Error( 'swimlog_location_save', __( 'The location could not be saved.', 'chriss-swim-training-progress-evaluation' ) ) : (int) $wpdb->insert_id;
 	}
+
+
+	public static function nearest_for_user($user_id,$latitude,$longitude,$max_m=500.0){
+		$latitude=(float)$latitude;$longitude=(float)$longitude;$max_m=max(1.0,(float)$max_m);$best=null;$best_distance=null;
+		foreach(self::all_for_user($user_id)as$location){if(null===$location->latitude||null===$location->longitude)continue;$d=self::distance_m($latitude,$longitude,(float)$location->latitude,(float)$location->longitude);if($d<=$max_m&&(null===$best_distance||$d<$best_distance)){$best=$location;$best_distance=$d;}}
+		return $best?array('location'=>$best,'distance_m'=>$best_distance):null;
+	}
+	private static function distance_m($lat1,$lon1,$lat2,$lon2){$r=6371000.0;$p1=deg2rad($lat1);$p2=deg2rad($lat2);$dp=deg2rad($lat2-$lat1);$dl=deg2rad($lon2-$lon1);$a=sin($dp/2)*sin($dp/2)+cos($p1)*cos($p2)*sin($dl/2)*sin($dl/2);return$r*2*atan2(sqrt($a),sqrt(max(0,1-$a)));}
 
 	public static function delete( $id, $user_id ) {
 		global $wpdb;
