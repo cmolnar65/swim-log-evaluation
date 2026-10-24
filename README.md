@@ -8,16 +8,21 @@ The plugin supports FIT and supported CSV workout sources, normalized workout/la
 
 The `develop` branch contains the v0.6 development line. The published/stable plugin remains version 0.5 until the release process is explicitly completed.
 
-v0.6 expands and hardens open-water swimming support with:
+v0.6 expands the plugin with:
 
-- canonical pool/open-water workout matching and timestamp handling;
-- type-aware workout queries, annual totals, administration filters, and public workout presentation;
-- Garmin Personal API import-state handling plus per-activity and batch open-water location assignment;
-- FIT device identity hardening and normalized recording-device presentation;
-- open-water summary analytics, 1 km splits, sparse/corrected GPS-distance handling, and more efficient analytics processing;
-- deterministic open-water FIT regression coverage while keeping private/original activity files out of the public repository; and
-- release-package workflow fixes and PHP 7.4–8.4 regression testing; and
-- an authenticated, read-only `swimlog/v1` REST API for external integrations, scoped to the current swimmer and excluding private source files and open-water GPS coordinates.
+- hardened canonical pool/open-water matching, timestamp handling, type-aware queries, annual totals, administration filters, and public presentation;
+- expanded open-water analytics including 1 km splits, estimated moving-time splits, heart-rate/cadence charts, sparse/corrected GPS handling, and more efficient trackpoint processing;
+- transactional workout rebuilds from preserved FIT, CSV, GPX, and TCX sources;
+- pool stroke training-volume analytics and current event-readiness summaries;
+- explicit opt-in public open-water route privacy controls plus improved self-contained geographic route context;
+- scheduled Garmin synchronization, including automatic open-water import when the first valid GPS fix safely matches a saved location;
+- saved open-water location reference coordinates with conservative 500 m proximity matching and ambiguity protection;
+- defensive GPX and TCX open-water import through the normalized importer;
+- hardened FIT recording-device identity and normalized device presentation;
+- an authenticated, read-only `swimlog/v1` REST API for external integrations that excludes private source data and open-water GPS coordinates;
+- complete admin documentation and drill-down help for all six registered public shortcodes, including `[swimlog_progress]`;
+- expanded deterministic regression coverage for open-water import and presentation while keeping private/original activity files out of the public repository; and
+- repaired release-package automation with PHP 7.4–8.4 regression testing.
 
 Open-water workouts remain isolated from pool personal-best evaluation.
 
