@@ -80,6 +80,8 @@ final class Database {
 			pool_length decimal(8,3) NULL,
 			pool_unit varchar(10) NULL,
 			pool_length_m decimal(8,3) NULL,
+			latitude decimal(10,7) NULL,
+			longitude decimal(10,7) NULL,
 			notes text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
