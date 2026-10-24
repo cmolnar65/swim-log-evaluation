@@ -14,11 +14,24 @@ final class OpenWaterLocationMatchingTest extends TestCase {
   $this->assertStringContainsString('Location::nearest_for_user',$code);
   $this->assertStringContainsString("'swimlog_ows_location_review'",$code);
  }
- public function test_location_matching_has_distance_and_ambiguity_guards(){
+ public function test_location_distance_geometry_at_499_500_and_501_meter_boundaries(){
+  $degrees_per_meter=180.0/(M_PI*6371000.0);
+  $this->assertEqualsWithDelta(499.0,\SwimLogEvaluation\Location::distance_m(0.0,0.0,499.0*$degrees_per_meter,0.0),0.01);
+  $this->assertEqualsWithDelta(500.0,\SwimLogEvaluation\Location::distance_m(0.0,0.0,500.0*$degrees_per_meter,0.0),0.01);
+  $this->assertEqualsWithDelta(501.0,\SwimLogEvaluation\Location::distance_m(0.0,0.0,501.0*$degrees_per_meter,0.0),0.01);
+ }
+ public function test_location_distance_handles_longitude_and_identical_coordinates(){
+  $degrees_per_meter=180.0/(M_PI*6371000.0);
+  $this->assertEqualsWithDelta(0.0,\SwimLogEvaluation\Location::distance_m(39.7294,-104.8319,39.7294,-104.8319),0.0001);
+  $equator=\SwimLogEvaluation\Location::distance_m(0.0,0.0,0.0,500.0*$degrees_per_meter);
+  $this->assertEqualsWithDelta(500.0,$equator,0.01);
+  $this->assertGreaterThan(0.0,\SwimLogEvaluation\Location::distance_m(39.7294,-104.8319,39.7295,-104.8319));
+ }
+ public function test_location_matching_keeps_inclusive_radius_and_strict_ambiguity_boundary(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-location.php');
-  $this->assertStringContainsString('public static function nearest_for_user',$code);
   $this->assertStringContainsString('$d<=$max_m',$code);
   $this->assertStringContainsString("<50.0)return null",$code);
+  $this->assertStringNotContainsString("<=50.0)return null",$code);
  }
  public function test_scheduled_garmin_sync_attempts_ows_with_required_location(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-garmin-personal-api.php');
