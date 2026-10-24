@@ -99,36 +99,11 @@ final class Admin {
 	}
 
 	private function open_water_route_svg( $trackpoints ) {
-		$points = array();
-		foreach ( (array) $trackpoints as $point ) {
-			if ( null === $point->latitude || null === $point->longitude ) continue;
-			$lat = (float) $point->latitude;
-			$lon = (float) $point->longitude;
-			if ( 0.0 === $lat && 0.0 === $lon ) continue;
-			$points[] = array( $lat, $lon );
-		}
-		if ( count( $points ) < 2 ) return '';
-
-		$lats = array_column( $points, 0 );
-		$lons = array_column( $points, 1 );
-		$min_lat = min( $lats ); $max_lat = max( $lats );
-		$min_lon = min( $lons ); $max_lon = max( $lons );
-		$lat_span = max( 0.000001, $max_lat - $min_lat );
-		$lon_span = max( 0.000001, $max_lon - $min_lon );
-		$width = 800.0; $height = 400.0; $pad = 20.0;
-		$scale = min( ( $width - 2 * $pad ) / $lon_span, ( $height - 2 * $pad ) / $lat_span );
-		$route_width = $lon_span * $scale; $route_height = $lat_span * $scale;
-		$x_offset = ( $width - $route_width ) / 2; $y_offset = ( $height - $route_height ) / 2;
-		$svg_points = array();
-		foreach ( $points as $point ) {
-			$x = $x_offset + ( $point[1] - $min_lon ) * $scale;
-			$y = $height - ( $y_offset + ( $point[0] - $min_lat ) * $scale );
-			$svg_points[] = number_format( $x, 2, '.', '' ) . ',' . number_format( $y, 2, '.', '' );
-		}
-		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="' . esc_attr__( 'Open-water GPS route', 'chriss-swim-training-progress-evaluation' ) . '" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff"><polyline points="' . esc_attr( implode( ' ', $svg_points ) ) . '" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
+		$points=array();foreach((array)$trackpoints as$point){if(null===$point->latitude||null===$point->longitude)continue;$points[]=array((float)$point->latitude,(float)$point->longitude);}if(count($points)<2)return '';
+		$lats=array_column($points,0);$lons=array_column($points,1);$min_lat=min($lats);$max_lat=max($lats);$min_lon=min($lons);$max_lon=max($lons);$lat_span=max(0.000001,$max_lat-$min_lat);$lon_span=max(0.000001,$max_lon-$min_lon);$width=800;$height=400;$padding=35;$scale=min(($width-2*$padding)/$lon_span,($height-2*$padding)/$lat_span);$route_width=$lon_span*$scale;$route_height=$lat_span*$scale;$x_offset=($width-$route_width)/2;$y_offset=($height-$route_height)/2;$svg_points=array();
+		foreach($points as$p){$x=$x_offset+($p[1]-$min_lon)*$scale;$y=$height-($y_offset+($p[0]-$min_lat)*$scale);$svg_points[]=number_format($x,2,'.','').','.number_format($y,2,'.','');}$start=explode(',',$svg_points[0]);$finish=explode(',',$svg_points[count($svg_points)-1]);$grid='';foreach(array(.25,.5,.75)as$ratio){$gx=round($padding+($width-2*$padding)*$ratio,1);$gy=round($padding+($height-2*$padding)*$ratio,1);$grid.='<line x1="'.$gx.'" y1="'.$padding.'" x2="'.$gx.'" y2="'.($height-$padding).'" stroke="currentColor" stroke-width="1" opacity=".14"/><line x1="'.$padding.'" y1="'.$gy.'" x2="'.($width-$padding).'" y2="'.$gy.'" stroke="currentColor" stroke-width="1" opacity=".14"/>';}
+		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="'.esc_attr__('Open-water GPS route map','chriss-swim-training-progress-evaluation').'" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff">'.$grid.'<text x="20" y="28" font-size="15" font-weight="600">N</text><polyline points="'.esc_attr(implode(' ',$svg_points)).'" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/><circle cx="'.esc_attr($start[0]).'" cy="'.esc_attr($start[1]).'" r="6" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="'.esc_attr($finish[0]).'" cy="'.esc_attr($finish[1]).'" r="6" fill="currentColor" stroke="currentColor" stroke-width="3"/><text x="'.esc_attr((float)$start[0]+9).'" y="'.esc_attr((float)$start[1]-9).'" font-size="15">'.esc_html__('Start','chriss-swim-training-progress-evaluation').'</text><text x="'.esc_attr((float)$finish[0]+9).'" y="'.esc_attr((float)$finish[1]+16).'" font-size="15">'.esc_html__('Finish','chriss-swim-training-progress-evaluation').'</text></svg>';
 	}
-
-
 	private function open_water_metric_svg( $trackpoints, $field, $label, $unit ) {
 		$samples = array();
 		$start = null;
@@ -270,7 +245,7 @@ final class Admin {
 			<?php endif;?>
 			<?php if($is_open_water):$route_svg=$this->open_water_route_svg($trackpoints);$gps_points=(int)($analytics['gps_point_count']??0);?>
 			<h2><?php esc_html_e('GPS Route','chriss-swim-training-progress-evaluation'); ?></h2>
-			<?php if($route_svg):?><p><?php /* translators: %d: number of GPS trackpoints used for the route. */ echo esc_html(sprintf(__('%d GPS trackpoints are stored for this route.','chriss-swim-training-progress-evaluation'),$gps_points)); ?></p><?php echo wp_kses($route_svg,array('svg'=>array('class'=>true,'viewbox'=>true,'role'=>true,'aria-label'=>true,'style'=>true),'polyline'=>array('points'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true,'vector-effect'=>true))); ?><?php else:?><p><?php esc_html_e('No usable GPS route is stored for this open-water workout.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?>
+			<?php if($route_svg):?><p><?php /* translators: %d: number of GPS trackpoints used for the route. */ echo esc_html(sprintf(__('%d GPS trackpoints are stored for this route.','chriss-swim-training-progress-evaluation'),$gps_points)); ?></p><?php echo wp_kses($route_svg,array('svg'=>array('class'=>true,'viewbox'=>true,'role'=>true,'aria-label'=>true,'style'=>true),'line'=>array('x1'=>true,'y1'=>true,'x2'=>true,'y2'=>true,'stroke'=>true,'stroke-width'=>true,'opacity'=>true),'polyline'=>array('points'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true,'vector-effect'=>true),'circle'=>array('cx'=>true,'cy'=>true,'r'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true),'text'=>array('x'=>true,'y'=>true,'font-size'=>true,'font-weight'=>true))); ?><?php else:?><p><?php esc_html_e('No usable GPS route is stored for this open-water workout.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?>
 			<?php endif;?>
 			<?php if($is_open_water):?>
 			<h2><?php esc_html_e('Source FIT Laps / Splits','chriss-swim-training-progress-evaluation'); ?></h2>
