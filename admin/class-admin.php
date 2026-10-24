@@ -893,7 +893,9 @@ final class Admin {
 			wp_die( esc_html__( 'You do not have permission to manage your Garmin Connect configuration.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
 		$user_id = get_current_user_id();
+		$garmin_locations = Location::all_for_user( $user_id );
 		$debugging = defined( 'WP_DEBUG' ) && WP_DEBUG;
 		$notice = '';
 		$error = '';
@@ -929,7 +931,12 @@ final class Admin {
 				} elseif ( ! is_array( $activity_detail ) || ! isset( $activity_detail['activityTypeDTO']['typeKey'] ) || ! in_array( (string) $activity_detail['activityTypeDTO']['typeKey'], array( 'lap_swimming', 'open_water_swimming' ), true ) ) {
 					$error = __( 'Only Garmin pool-swimming and open-water-swimming activities are eligible for swim workout import.', 'chriss-swim-training-progress-evaluation' );
 				} else {
-					$import_preflight = Garmin_Personal_API::import_activity( $user_id, $requested_activity_id );
+					$requested_location_id = isset( $_POST['location_id'] ) ? absint( wp_unslash( $_POST['location_id'] ) ) : 0;
+					if ( $requested_location_id && ! Location::get_for_user( $requested_location_id, $user_id ) ) {
+						$error = __( 'Select one of your own locations.', 'chriss-swim-training-progress-evaluation' );
+					} else {
+						$import_preflight = Garmin_Personal_API::import_activity( $user_id, $requested_activity_id, $requested_location_id );
+					}
 					if ( is_wp_error( $import_preflight ) ) {
 						$error = $import_preflight->get_error_message();
 						$import_preflight = null;
@@ -1102,6 +1109,11 @@ final class Admin {
 						<?php wp_nonce_field( 'swimlog_garmin_import_preflight' ); ?>
 						<input type="hidden" name="swimlog_garmin_action" value="import_preflight">
 						<input type="hidden" name="garmin_activity_id" value="<?php echo esc_attr( (string) $detail_id ); ?>">
+						<?php if ( 'open_water_swimming' === $atype ) : ?>
+							<p><label for="swimlog-garmin-location"><strong><?php esc_html_e( 'Open Water Location', 'chriss-swim-training-progress-evaluation' ); ?></strong></label><br>
+							<select id="swimlog-garmin-location" name="location_id"><option value="0"><?php esc_html_e( 'No location selected', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( $garmin_locations as $garmin_location ) : ?><option value="<?php echo esc_attr( $garmin_location->id ); ?>"><?php echo esc_html( $garmin_location->name ); ?></option><?php endforeach; ?></select></p>
+							<p class="description"><?php esc_html_e( 'Assign the saved swim location while importing. GPS track and distance data remain unchanged.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+						<?php endif; ?>
 						<?php submit_button( __( 'Import Activity', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
 					</form>
 					<?php endif; ?>
