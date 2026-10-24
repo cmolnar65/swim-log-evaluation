@@ -44,8 +44,8 @@ final class PersonalBestsBlockTest extends TestCase {
 
 	public function test_block_maps_age_group_modes_to_existing_shortcode_semantics() {
 		$blocks = file_get_contents( dirname( __DIR__ ) . '/includes/class-blocks.php' );
-		$this->assertStringContainsString( "'current' === \\$age_group_mode", $blocks );
-		$this->assertStringContainsString( "'custom' === \\$age_group_mode", $blocks );
-		$this->assertStringContainsString( "'ag'       => \\$ag", $blocks );
+		$this->assertStringContainsString( "'current' === \$age_group_mode", $blocks );
+		$this->assertStringContainsString( "'custom' === \$age_group_mode", $blocks );
+		$this->assertStringContainsString( "'ag'       => \$ag", $blocks );
 	}
 }
