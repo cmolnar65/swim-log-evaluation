@@ -278,7 +278,6 @@ final class Garmin_Personal_API {
 		global $wpdb;
 		$user_id = absint( $user_id );
 		$activity_id = absint( $activity_id );
-		$location_id = absint( $location_id );
 		if ( ! $user_id || ! $activity_id ) {
 			return new \WP_Error( 'swimlog_garmin_invalid_activity', __( 'Invalid Garmin activity import request.', 'chriss-swim-training-progress-evaluation' ) );
 		}
