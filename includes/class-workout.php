@@ -142,10 +142,16 @@ final class Workout {
 				$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
 				$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
 				if ( $target_time < $previous_target_time ) continue;
+				$split_time_ms = (int) round( ( $target_time - $previous_target_time ) * 1000 );
+				$cumulative_time_ms = (int) round( ( $target_time - $first['time'] ) * 1000 );
+				$moving_ratio = $elapsed > 0 && $moving > 0 && $moving <= $elapsed ? $moving / $elapsed : null;
 				$splits[] = array(
 					'distance_m' => (int) $target,
-					'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
-					'cumulative_time_ms' => (int) round( ( $target_time - $first['time'] ) * 1000 ),
+					'split_time_ms' => $split_time_ms,
+					'cumulative_time_ms' => $cumulative_time_ms,
+					'moving_split_time_ms' => null !== $moving_ratio ? (int) round( $split_time_ms * $moving_ratio ) : null,
+					'moving_cumulative_time_ms' => null !== $moving_ratio ? (int) round( $cumulative_time_ms * $moving_ratio ) : null,
+					'moving_estimated' => null !== $moving_ratio,
 				);
 				$previous_target_time = $target_time;
 			}
