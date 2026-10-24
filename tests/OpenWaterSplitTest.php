@@ -30,6 +30,12 @@ final class OpenWaterSplitTest extends TestCase {
   $this->assertSame(array(1000,2000,3000),array_column($a['splits'],'distance_m'));
   $this->assertSame(600000,$a['splits'][0]['split_time_ms']);
  }
+ public function test_moving_split_is_explicit_estimate_from_workout_ratio(){
+  $a=$this->analytics(array(0,1000,2000,3000));
+  $this->assertTrue($a['splits'][0]['moving_estimated']);
+  $this->assertSame(583333,$a['splits'][0]['moving_split_time_ms']);
+  $this->assertSame(583333,$a['splits'][0]['moving_cumulative_time_ms']);
+ }
  public function test_distance_plateau_does_not_create_duplicate_or_zero_split(){
   $a=$this->analytics(array(0,900,900,1100,2000,3000));
   $this->assertCount(3,$a['splits']);
