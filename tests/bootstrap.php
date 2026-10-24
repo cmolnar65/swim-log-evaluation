@@ -29,3 +29,5 @@ require_once dirname(__DIR__).'/includes/class-workout.php';
 require_once dirname(__DIR__).'/includes/class-importer.php';
 
 require_once dirname(__DIR__).'/includes/class-shortcodes.php';
+
+require_once dirname(__DIR__).'/admin/class-admin.php';
