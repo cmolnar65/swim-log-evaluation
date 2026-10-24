@@ -12,10 +12,10 @@ final class XML_Importer {
   if(false===$xml)return new \WP_Error('swimlog_xml_invalid',__('The GPX/TCX file is not valid XML.','chriss-swim-training-progress-evaluation'));
   $points='gpx'===$source?$this->gpx_points($xml):$this->tcx_points($xml);
   if(is_wp_error($points))return $points;if(count($points)<2)return new \WP_Error('swimlog_xml_track',__('The GPX/TCX file does not contain enough usable trackpoints.','chriss-swim-training-progress-evaluation'));
-  $distance=0.0;$prev=null;$start=null;$end=null;$hr=array();$cad=array();$seq=1;
+  $distance=0.0;$geo_distance=0.0;$source_distance=0.0;$prev=null;$start=null;$end=null;$hr=array();$cad=array();$seq=1;
   foreach($points as&$p){$p['sequence_no']=$seq++;if($p['recorded_at']&&null===$start)$start=$p['recorded_at'];if($p['recorded_at'])$end=$p['recorded_at'];
-   if(null!==$p['latitude']&&null!==$p['longitude']&&$prev)$distance+=$this->distance_m($prev[0],$prev[1],$p['latitude'],$p['longitude']);
-   if(null!==$p['distance_m']&&$p['distance_m']>$distance)$distance=(float)$p['distance_m'];else$p['distance_m']=$distance;
+   if(null!==$p['latitude']&&null!==$p['longitude']&&$prev)$geo_distance+=$this->distance_m($prev[0],$prev[1],$p['latitude'],$p['longitude']);
+   if(null!==$p['distance_m'])$source_distance=max($source_distance,(float)$p['distance_m']);$distance=max($geo_distance,$source_distance);$p['distance_m']=$distance;
    if(null!==$p['latitude']&&null!==$p['longitude'])$prev=array($p['latitude'],$p['longitude']);if(null!==$p['heart_rate'])$hr[]=$p['heart_rate'];if(null!==$p['cadence'])$cad[]=$p['cadence'];
   }unset($p);
   if(!$start||!$end||$distance<=0)return new \WP_Error('swimlog_xml_track',__('The GPX/TCX track is missing usable time or distance data.','chriss-swim-training-progress-evaluation'));
