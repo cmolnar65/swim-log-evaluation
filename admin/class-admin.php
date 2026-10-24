@@ -182,8 +182,6 @@ final class Admin {
 			<tr><th><?php esc_html_e('Elapsed','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->elapsed_time_ms)); ?></td></tr>
 			<tr><th><?php esc_html_e('Moving / active','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->moving_time_ms)); ?></td></tr>
 			<tr><th><?php esc_html_e('Average pace','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($this->open_water_pace_per_100m($w)); ?></td></tr>
-			<tr><th><?php esc_html_e('Heart rate','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(null!==$w->average_heart_rate?sprintf(__('%1$d bpm average / %2$d bpm max','chriss-swim-training-progress-evaluation'),(int)$w->average_heart_rate,(int)$w->max_heart_rate):'—'); ?></td></tr>
-			<tr><th><?php esc_html_e('Cadence','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(null!==$w->average_cadence?sprintf(__('%1$s average / %2$s max','chriss-swim-training-progress-evaluation'),$this->display_measurement($w->average_cadence,''),$this->display_measurement($w->max_cadence,'')):'—'); ?></td></tr>
 			<tr><th><?php esc_html_e('Recording device','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(trim((string)$w->device_manufacturer.' '.(string)$w->device_model)?:'—'); ?></td></tr>
 			<?php else:?>
 			<tr><th><?php esc_html_e('Pool','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(null!==$w->original_pool_length?$this->display_measurement($w->original_pool_length,$w->pool_length_unit):'—'); ?></td></tr>
