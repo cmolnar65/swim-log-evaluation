@@ -40,7 +40,7 @@ final class Importer {
 		if($provider!==''&&$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s",$user_id,$provider,$external)))return new \WP_Error('swimlog_external_duplicate',__('This external activity has already been imported.','chriss-swim-training-progress-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$user_id))return new \WP_Error('swimlog_location',__('Select one of your own locations.','chriss-swim-training-progress-evaluation'));
 
-		$parser=self::parser_for_source($ext);if(is_wp_error($parser))return$parser;$parsed=$ext==='gpx'||$ext==='tcx'?$parser->parse($tmp_path,$ext):$parser->parse($tmp_path);if(is_wp_error($parsed))return $parsed;
+		$parsed=self::parse_source($ext,$tmp_path);if(is_wp_error($parsed))return $parsed;
 		$v=self::validate($parsed);if(is_wp_error($v))return$v;
 		if(!$location_id&&$ext==='csv')$location_id=self::location_from_csv($user_id,$parsed);
 		$match_info=self::classify_match($user_id,$parsed['workout']);
@@ -164,7 +164,7 @@ final class Importer {
 		if(!in_array($choice,array('attach','separate'),true))return new \WP_Error('swimlog_pending_choice',__('Choose whether to attach or import separately.','chriss-swim-training-progress-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$uid))return new \WP_Error('swimlog_location',__('Select one of your own locations.','chriss-swim-training-progress-evaluation'));
 		if(!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('The preserved source file could not be found.','chriss-swim-training-progress-evaluation'));
-		$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);if(is_wp_error($parsed))return $parsed;$v=self::validate($parsed);if(is_wp_error($v))return $v;
+		$parsed=self::parse_source($row->source_type,$row->stored_path);if(is_wp_error($parsed))return $parsed;$v=self::validate($parsed);if(is_wp_error($v))return $v;
 		$candidate_id=(int)$row->workout_id;if($choice==='attach'){$classification=self::classify_match($uid,$parsed['workout']);if($classification['status']==='none'||(int)$classification['workout']->id!==$candidate_id)return new \WP_Error('swimlog_pending_changed',__('The candidate workout no longer qualifies for attachment. Review the upload again.','chriss-swim-training-progress-evaluation'));}
 		$wpdb->query('START TRANSACTION');try{
 			$workout_id=$choice==='attach'?$candidate_id:self::insert_workout($uid,$location_id,$parsed['workout']);if(!$workout_id)throw new \Exception('workout');
@@ -216,6 +216,7 @@ final class Importer {
 	public static function pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);return absint($map[(int)$import_id]??0);}
 	private static function remember_pending_location($uid,$import_id,$location_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);if($location_id)$map[(int)$import_id]=absint($location_id);else unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
+	public static function parse_source($source,$path){$parser=self::parser_for_source($source);if(is_wp_error($parser))return$parser;return in_array(strtolower((string)$source),array('gpx','tcx'),true)?$parser->parse($path,$source):$parser->parse($path);}
 	private static function parser_for_source($source){$source=strtolower((string)$source);if('fit'===$source)return new FIT_Importer();if('csv'===$source)return new CSV_Importer();if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function is_form_fit($parsed,$filename=''){$w=(array)($parsed['workout']??array());$identity=strtolower(trim((string)($w['device_manufacturer']??'')).' '.trim((string)($w['device_model']??'')));if(strpos($identity,'form swim')!==false||preg_match('/(^|[^a-z])form([^a-z]|$)/',$identity))return true;return(bool)preg_match('/^FORM[_-].*\\.fit$/i',basename((string)$filename));}
