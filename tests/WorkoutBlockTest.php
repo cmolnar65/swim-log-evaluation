@@ -27,7 +27,9 @@ final class WorkoutBlockTest extends TestCase {
 		$this->assertStringContainsString( 'SELECT id,user_id', $shortcodes );
 		$this->assertStringContainsString( 'self::owner($a,$base)', $shortcodes );
 		$this->assertStringContainsString( 'self::allowed($uid)', $shortcodes );
-		$this->assertStringNotContainsString( "'user'  =>", substr( $blocks, strpos( $blocks, 'public static function render_workout' ), strpos( $blocks, 'private static function title_attribute' ) - strpos( $blocks, 'public static function render_workout' ) ) );
+		$start = strpos( $blocks, 'public static function render_workout' );
+		$end = strpos( $blocks, 'public static function render_training_log', $start );
+		$this->assertStringNotContainsString( "'user'  =>", substr( $blocks, $start, $end - $start ) );
 	}
 
 	public function test_open_water_route_privacy_gate_remains_in_shared_renderer() {
