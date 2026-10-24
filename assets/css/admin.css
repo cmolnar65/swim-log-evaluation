@@ -42,12 +42,19 @@
 }
 
 
-.swimlog-admin .swimlog-garmin-match-exact,
-.swimlog-admin .swimlog-garmin-match-exact a {
-	color: #b32d2e;
+.swimlog-admin .swimlog-garmin-state-imported td:last-child,
+.swimlog-admin .swimlog-garmin-state-imported td:last-child a {
+	font-weight: 600;
 }
 
-.swimlog-admin .swimlog-garmin-match-similar,
-.swimlog-admin .swimlog-garmin-match-similar a {
-	color: #b26200;
+.swimlog-admin .swimlog-garmin-state-pending td:last-child,
+.swimlog-admin .swimlog-garmin-state-pending td:last-child a,
+.swimlog-admin .swimlog-garmin-state-possible-match td:last-child,
+.swimlog-admin .swimlog-garmin-state-possible-match td:last-child a {
+	font-weight: 600;
+}
+
+.swimlog-admin .swimlog-garmin-state-exact-match td:last-child,
+.swimlog-admin .swimlog-garmin-state-exact-match td:last-child a {
+	font-weight: 600;
 }
