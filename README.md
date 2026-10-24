@@ -4,6 +4,22 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources, normalized workout/lap/length storage, personal-best evaluation, events, locations, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+## Current development: v0.6
+
+The `develop` branch contains the v0.6 development line. The published/stable plugin remains version 0.5 until the release process is explicitly completed.
+
+v0.6 expands and hardens open-water swimming support with:
+
+- canonical pool/open-water workout matching and timestamp handling;
+- type-aware workout queries, annual totals, administration filters, and public workout presentation;
+- Garmin Personal API import-state handling plus per-activity and batch open-water location assignment;
+- FIT device identity hardening and normalized recording-device presentation;
+- open-water summary analytics, 1 km splits, sparse/corrected GPS-distance handling, and more efficient analytics processing;
+- deterministic open-water FIT regression coverage while keeping private/original activity files out of the public repository; and
+- release-package workflow fixes and PHP 7.4–8.4 regression testing.
+
+Open-water workouts remain isolated from pool personal-best evaluation.
+
 ## Private Workout File Storage
 
 Original uploaded FIT and CSV workout files are preserved in private server storage. These files may contain detailed workout history and must not be directly accessible from the public web.
