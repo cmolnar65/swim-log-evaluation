@@ -57,6 +57,20 @@ final class Workout {
 	}
 
 
+
+	public static function stroke_volume_for_user( $user_id, $filters=array() ) {
+		global $wpdb;
+		$w=Database::table('workouts'); $n=Database::table('lengths');
+		$where=array($wpdb->prepare('w.user_id=%d',$user_id), "w.workout_type='pool'", "n.length_type='active'", "n.distance_m>0");
+		if(!empty($filters['date_from']))$where[]=$wpdb->prepare('DATE(w.workout_start) >= %s',$filters['date_from']);
+		if(!empty($filters['date_to']))$where[]=$wpdb->prepare('DATE(w.workout_start) <= %s',$filters['date_to']);
+		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true))$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);
+		if(!empty($filters['stroke']))$where[]=$wpdb->prepare('n.stroke=%s',strtoupper((string)$filters['stroke']));
+		$sql_where=implode(' AND ',$where);
+		return $wpdb->get_results("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY w.pool_length_unit,stroke");
+	}
+
+
 	public static function laps( $workout_id, $user_id ) {
 		global $wpdb;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
