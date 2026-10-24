@@ -26,4 +26,19 @@ final class GarminActivityPresentationTest extends TestCase {
   $this->assertStringContainsString('New — not imported',$source);
   $this->assertStringNotContainsString('swimlog-garmin-match-',$source);
  }
+
+ public function test_garmin_admin_loads_database_before_location_model(){
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $start=strpos($code,'public function garmin()');
+  $this->assertNotFalse($start);
+  $garmin=substr($code,$start);
+  $database=strpos($garmin,"includes/class-database.php");
+  $location=strpos($garmin,"includes/class-location.php");
+  $location_query=strpos($garmin,'Location::all_for_user');
+  $this->assertNotFalse($database);
+  $this->assertNotFalse($location);
+  $this->assertNotFalse($location_query);
+  $this->assertLessThan($location,$database);
+  $this->assertLessThan($location_query,$location);
+ }
 }
