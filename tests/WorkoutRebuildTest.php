@@ -26,5 +26,9 @@ final class WorkoutRebuildTest extends TestCase {
   $this->assertStringContainsString("if(self::is_form_fit(\$item['parsed'],(string)\$item['row']->original_filename))", $code);
   $this->assertStringContainsString("if(null===\$first_fit)\$first_fit=\$item", $code);
   $this->assertStringContainsString("if(null!==\$first_fit)\$authority=\$first_fit", $code);
+  $schema=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $this->assertStringContainsString('authoritative_import_id bigint(20) unsigned NULL',$schema);
+  $this->assertStringContainsString("'authoritative_import_id'=>(int)\$authority['row']->id",$code);
+  $this->assertStringContainsString("'authoritative_import_id'=>\$import_id",$code);
  }
 }
