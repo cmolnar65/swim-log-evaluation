@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** User-owned normalized workout history service. */
 final class Workout {
+	const EVENT_READINESS_LOOKBACK_DAYS = 42;
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
