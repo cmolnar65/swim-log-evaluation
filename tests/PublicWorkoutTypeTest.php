@@ -39,7 +39,8 @@ final class PublicWorkoutTypeTest extends TestCase {
   $this->assertStringContainsString("esc_html__('Heart rate'",$source);
   $this->assertStringContainsString("esc_html__('Cadence'",$source);
   $this->assertStringContainsString("esc_html__('1 km Splits'",$source);
-  $this->assertStringNotContainsString("open_water_route_svg",$source);
+  $this->assertStringContainsString("self::public_routes_allowed(\$uid)",$source);
+  $this->assertStringContainsString("Workout::trackpoints(\$id,\$uid)",$source);
   $this->assertStringNotContainsString("gps_point_count",$source);
  }
  public function test_pool_workout_keeps_pool_field(){
