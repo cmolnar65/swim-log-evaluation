@@ -20,4 +20,11 @@ final class WorkoutRebuildTest extends TestCase {
   $this->assertStringContainsString('Rebuild from Preserved Sources',$code);
   $this->assertStringContainsString("check_admin_referer( 'swimlog_delete_workout_' . \$detail )",$code);
  }
+
+ public function test_rebuild_prefers_form_fit_authority_independent_of_import_order(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("if(self::is_form_fit(\$item['parsed'],(string)\$item['row']->original_filename))", $code);
+  $this->assertStringContainsString("if(null===\$first_fit)\$first_fit=\$item", $code);
+  $this->assertStringContainsString("if(null!==\$first_fit)\$authority=\$first_fit", $code);
+ }
 }
