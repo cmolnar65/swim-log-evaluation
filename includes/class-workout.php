@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** User-owned normalized workout history service. */
 final class Workout {
+	const EVENT_READINESS_LOOKBACK_DAYS = 42;
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
@@ -23,6 +24,7 @@ final class Workout {
 		if(!empty($filters['location_id'])){$where[]=$wpdb->prepare('w.location_id=%d',absint($filters['location_id']));}
 		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);}
 		if(!empty($filters['stroke'])){$where[]=$wpdb->prepare('w.primary_stroke=%s',$filters['stroke']);}
+		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
 		$sql_where=implode(' AND ',$where);
 		$total=(int)$wpdb->get_var("SELECT COUNT(*) FROM $w w WHERE $sql_where");
 		$offset=max(0,($page-1)*$per_page);
@@ -30,23 +32,74 @@ final class Workout {
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
-	public static function recent_for_user( $user_id, $limit=5 ) {
+	public static function recent_for_user( $user_id, $limit=5, $workout_type=null ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
 		$limit=max(1,min(20,(int)$limit));
-		return $wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$user_id,$limit));
+		$where=$wpdb->prepare('w.user_id=%d',$user_id);
+		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
+		return $wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$limit));
 	}
 
-	public static function for_month( $user_id, $year, $month ) {
+	public static function for_month( $user_id, $year, $month, $workout_type=null ) {
 		global $wpdb; $w=Database::table('workouts'); $l=Database::table('locations');
 		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=(new \DateTimeImmutable($start,wp_timezone()))->modify('+1 month')->format('Y-m-d H:i:s');
-		return $wpdb->get_results($wpdb->prepare("SELECT w.*,l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s ORDER BY w.workout_start ASC,w.id ASC",$user_id,$start,$end));
+		$where=$wpdb->prepare('w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s',$user_id,$start,$end);
+		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
+		return $wpdb->get_results("SELECT w.*,l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $where ORDER BY w.workout_start ASC,w.id ASC");
 	}
 
-	public static function totals_by_month_for_year( $user_id, $year ) {
+	public static function totals_by_month_for_year( $user_id, $year, $workout_type=null ) {
 		global $wpdb; $w=Database::table('workouts');
 		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
-		return $wpdb->get_results($wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM $w WHERE user_id=%d AND workout_start >= %s AND workout_start < %s GROUP BY MONTH(workout_start) ORDER BY month_num ASC",$user_id,$start,$end));
+		$where=$wpdb->prepare('user_id=%d AND workout_start >= %s AND workout_start < %s',$user_id,$start,$end);
+		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('workout_type=%s',$workout_type);
+		return $wpdb->get_results("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM $w WHERE $where GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
+	}
+
+
+
+	public static function stroke_volume_for_user( $user_id, $lookback_months=3 ) {
+		global $wpdb;
+		$lookback_months=max(1,min(24,(int)$lookback_months));
+		$today=new \DateTimeImmutable('today',wp_timezone());
+		$start=$today->modify('-'.$lookback_months.' months')->format('Y-m-d 00:00:00');
+		$end=$today->format('Y-m-d 23:59:59');
+		$w=Database::table('workouts'); $n=Database::table('lengths');
+		$where=array(
+			$wpdb->prepare('w.user_id=%d',$user_id),
+			"w.workout_type='pool'",
+			"n.length_type='active'",
+			"n.distance_m>0",
+			$wpdb->prepare('w.workout_start >= %s',$start),
+			$wpdb->prepare('w.workout_start <= %s',$end)
+		);
+		$sql_where=implode(' AND ',$where);
+		return $wpdb->get_results("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC");
+	}
+
+
+
+	public static function event_readiness( $user_id, $event, $lookback_days=42 ) {
+		global $wpdb;
+		$course=strtolower((string)($event->course_unit??'')); $stroke=strtoupper((string)($event->stroke??'')); $distance=absint($event->distance_value??0);
+		if(!in_array($course,array('m','yd'),true)||!in_array($stroke,array('FR','BR','BACK','FLY','MIXED'),true)||$distance<=0)return array();
+		$lookback_days=max(1,min(365,(int)$lookback_days)); $end=wp_date('Y-m-d 23:59:59',current_time('timestamp')); $start=wp_date('Y-m-d 00:00:00',current_time('timestamp')-($lookback_days-1)*DAY_IN_SECONDS);
+		$w=Database::table('workouts'); $n=Database::table('lengths'); $p=Database::table('performances');
+		$volume=$wpdb->get_row($wpdb->prepare("SELECT COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms,MAX(w.workout_start) last_workout_start FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE w.user_id=%d AND w.workout_type='pool' AND w.pool_length_unit=%s AND w.workout_start >= %s AND w.workout_start <= %s AND n.length_type='active' AND n.stroke=%s AND n.distance_m>0",$user_id,$course,$start,$end,$stroke));
+		$longest=$wpdb->get_row($wpdb->prepare("SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM $p p INNER JOIN $w w ON w.id=p.workout_id WHERE p.user_id=%d AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",$user_id,$course,$stroke,$start,$end));
+		return array(
+			'lookback_days'=>$lookback_days,
+			'workout_count'=>(int)($volume->workout_count??0),
+			'length_count'=>(int)($volume->length_count??0),
+			'distance_native'=>(float)($volume->distance_native??0),
+			'active_time_ms'=>(int)($volume->active_time_ms??0),
+			'last_workout_start'=>$volume->last_workout_start??null,
+			'longest_recent_distance'=>$longest?(int)$longest->distance_value:0,
+			'longest_recent_duration_ms'=>$longest?(int)$longest->duration_ms:null,
+			'longest_recent_workout_id'=>$longest?(int)$longest->workout_id:0,
+			'event_distance_or_longer'=>$longest?(int)$longest->distance_value >= $distance:false,
+		);
 	}
 
 
@@ -84,51 +137,69 @@ final class Workout {
 
 
 	public static function open_water_analytics( $workout_id, $user_id ) {
+		global $wpdb;
 		$workout = self::get_for_user( $workout_id, $user_id );
 		if ( ! $workout || 'open_water' !== ( $workout->workout_type ?? 'pool' ) ) return array();
 
 		$distance = (float) ( $workout->total_distance_m ?? 0 );
 		$elapsed = (int) ( $workout->elapsed_time_ms ?? 0 );
 		$moving = (int) ( $workout->moving_time_ms ?? 0 );
-		$points = self::trackpoints( $workout_id, $user_id );
+		$t = Database::table( 'trackpoints' );
+		$points = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT recorded_at,latitude,longitude,distance_m,cadence FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$workout_id
+			)
+		);
+		$trackpoint_count = count( $points );
 		$gps_points = 0;
 		$cadence_points = 0;
-		$distance_points = array();
+		$splits = array();
+		$progress_points = array();
+		$max_distance = null;
+		$last_time = null;
+		$timezone = wp_timezone();
 
 		foreach ( $points as $point ) {
 			if ( null !== $point->latitude && null !== $point->longitude ) $gps_points++;
 			if ( null !== $point->cadence ) $cadence_points++;
-			if ( null !== $point->distance_m && null !== $point->recorded_at ) {
-				$distance_points[] = array(
-					'distance_m' => (float) $point->distance_m,
-					'time' => ( new \DateTimeImmutable( $point->recorded_at, wp_timezone() ) )->getTimestamp(),
-				);
+			if ( null === $point->distance_m || null === $point->recorded_at ) continue;
+			$time = ( new \DateTimeImmutable( $point->recorded_at, $timezone ) )->getTimestamp();
+			if ( null !== $last_time && $time < $last_time ) continue;
+			$last_time = $time;
+			$point_distance = (float) $point->distance_m;
+			if ( null === $max_distance || $point_distance > $max_distance ) {
+				$progress_points[] = array( 'distance_m' => $point_distance, 'time' => $time );
+				$max_distance = $point_distance;
 			}
 		}
 
-		$splits = array();
-		if ( count( $distance_points ) >= 2 ) {
-			$first = $distance_points[0];
+		if ( count( $progress_points ) >= 2 ) {
+			$first = $progress_points[0];
 			$previous_target_time = (float) $first['time'];
-			for ( $target = 1000.0; $target <= $distance; $target += 1000.0 ) {
-				$target_time = null;
-				for ( $i = 1, $n = count( $distance_points ); $i < $n; $i++ ) {
-					$a = $distance_points[$i - 1];
-					$b = $distance_points[$i];
-					if ( $a['distance_m'] <= $target && $b['distance_m'] >= $target && $b['distance_m'] > $a['distance_m'] ) {
-						$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
-						$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
-						break;
-					}
-				}
-				if ( null !== $target_time ) {
-					$splits[] = array(
-						'distance_m' => (int) $target,
-						'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
-						'cumulative_time_ms' => (int) round( ( $target_time - $first['time'] ) * 1000 ),
-					);
-					$previous_target_time = $target_time;
-				}
+			$segment = 1;
+			$reachable_distance = (float) $progress_points[count($progress_points)-1]['distance_m'];
+			for ( $target = 1000.0; $target <= $distance && $target <= $reachable_distance; $target += 1000.0 ) {
+				while ( $segment < count( $progress_points ) && $progress_points[$segment]['distance_m'] < $target ) $segment++;
+				if ( $segment >= count( $progress_points ) ) break;
+				$a = $progress_points[$segment - 1];
+				$b = $progress_points[$segment];
+				if ( $b['distance_m'] <= $a['distance_m'] || $b['time'] < $a['time'] ) continue;
+				$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
+				$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
+				if ( $target_time < $previous_target_time ) continue;
+				$split_time_ms = (int) round( ( $target_time - $previous_target_time ) * 1000 );
+				$cumulative_time_ms = (int) round( ( $target_time - $first['time'] ) * 1000 );
+				$moving_ratio = $elapsed > 0 && $moving > 0 && $moving <= $elapsed ? $moving / $elapsed : null;
+				$splits[] = array(
+					'distance_m' => (int) $target,
+					'split_time_ms' => $split_time_ms,
+					'cumulative_time_ms' => $cumulative_time_ms,
+					'moving_split_time_ms' => null !== $moving_ratio ? (int) round( $split_time_ms * $moving_ratio ) : null,
+					'moving_cumulative_time_ms' => null !== $moving_ratio ? (int) round( $cumulative_time_ms * $moving_ratio ) : null,
+					'moving_estimated' => null !== $moving_ratio,
+				);
+				$previous_target_time = $target_time;
 			}
 		}
 
@@ -137,10 +208,19 @@ final class Workout {
 			'moving_pace_100m_ms' => $distance > 0 && $moving > 0 ? (int) round( $moving / ( $distance / 100 ) ) : null,
 			'non_moving_time_ms' => $elapsed > 0 && $moving > 0 ? max( 0, $elapsed - $moving ) : null,
 			'active_percent' => $elapsed > 0 && $moving > 0 ? min( 100.0, ( $moving / $elapsed ) * 100 ) : null,
-			'trackpoint_count' => count( $points ),
+			'trackpoint_count' => $trackpoint_count,
 			'gps_point_count' => $gps_points,
 			'cadence_point_count' => $cadence_points,
 			'splits' => $splits,
+			'metric_metadata' => array(
+				'elapsed_pace_100m_ms' => array( 'unit' => 'ms/100m', 'provenance' => 'derived', 'source' => 'workout elapsed time and distance' ),
+				'moving_pace_100m_ms' => array( 'unit' => 'ms/100m', 'provenance' => 'derived', 'source' => 'workout moving time and distance' ),
+				'non_moving_time_ms' => array( 'unit' => 'ms', 'provenance' => 'derived', 'source' => 'elapsed time minus moving time' ),
+				'active_percent' => array( 'unit' => 'percent', 'provenance' => 'derived', 'source' => 'moving time divided by elapsed time' ),
+				'gps_point_count' => array( 'unit' => 'points', 'provenance' => 'measured', 'source' => 'imported trackpoints with GPS coordinates' ),
+				'cadence_point_count' => array( 'unit' => 'points', 'provenance' => 'measured', 'source' => 'imported FIT cadence samples' ),
+				'splits' => array( 'unit' => 'ms', 'provenance' => 'interpolated', 'source' => 'recorded distance and timestamp trackpoints; moving split values are estimated when marked' ),
+			),
 		);
 	}
 

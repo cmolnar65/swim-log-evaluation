@@ -80,6 +80,8 @@ final class Database {
 			pool_length decimal(8,3) NULL,
 			pool_unit varchar(10) NULL,
 			pool_length_m decimal(8,3) NULL,
+			latitude decimal(10,7) NULL,
+			longitude decimal(10,7) NULL,
 			notes text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -92,6 +94,7 @@ final class Database {
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			user_id bigint(20) unsigned NOT NULL,
 			location_id bigint(20) unsigned NULL,
+			authoritative_import_id bigint(20) unsigned NULL,
 			workout_type varchar(20) NOT NULL DEFAULT 'pool',
 			workout_start datetime NOT NULL,
 			workout_end datetime NULL,
@@ -119,6 +122,7 @@ final class Database {
 			KEY user_workout_type (user_id,workout_type),
 			KEY user_workout_start (user_id,workout_start),
 			KEY location_id (location_id),
+			KEY authoritative_import_id (authoritative_import_id),
 			KEY user_source_activity (user_id,source_activity_id)
 		) $charset_collate;";
 

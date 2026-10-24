@@ -4,6 +4,33 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources, normalized workout/lap/length storage, personal-best evaluation, events, locations, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+## Current release: v0.6
+
+Version 0.6 is the current release candidate represented by this branch and is ready for the v0.6 tag/release process.
+
+v0.6 expands the plugin with:
+
+- hardened canonical pool/open-water matching, timestamp handling, type-aware queries, annual totals, administration filters, and public presentation;
+- expanded open-water analytics including 1 km splits, estimated moving-time splits, heart-rate/cadence charts, sparse/corrected GPS handling, and more efficient trackpoint processing;
+- transactional workout rebuilds from preserved FIT, CSV, GPX, and TCX sources;
+- configurable rolling pool stroke training-volume analytics with a per-swimmer 1–24 month period (3-month default), separate meter/yard sections ranked by total distance, and current event-readiness summaries;
+- explicit opt-in public open-water route privacy controls plus improved self-contained geographic route context;
+- scheduled Garmin synchronization, including automatic open-water import when the first valid GPS fix safely matches a saved location;
+- saved open-water location reference coordinates with conservative 500 m proximity matching and ambiguity protection;
+- defensive GPX and TCX open-water import through the normalized importer;
+- hardened FIT recording-device identity and normalized device presentation;
+- an authenticated, read-only `swimlog/v1` REST API for external integrations that excludes private source data and open-water GPS coordinates;
+- complete admin documentation and drill-down help for all six registered public shortcodes, including `[swimlog_progress]`;
+- expanded deterministic regression coverage for open-water import and presentation while keeping private/original activity files out of the public repository; and
+- repaired release-package automation with PHP 7.4–8.4 regression testing;
+- corrected REST swimmer authorization and hardened v0.5 upgrade behavior;
+- deterministic and persisted preserved-source authority for normalized workout rebuilds;
+- Garmin scheduled-sync health telemetry including attempts, successes, errors, and the next scheduled check;
+- corrected open-water chart time origin plus numeric location-matching boundary coverage; and
+- explicit event-readiness policy and open-water analytics unit/provenance metadata.
+
+Open-water workouts remain isolated from pool personal-best evaluation.
+
 ## Private Workout File Storage
 
 Original uploaded FIT and CSV workout files are preserved in private server storage. These files may contain detailed workout history and must not be directly accessible from the public web.
@@ -76,3 +103,12 @@ Do not move the source directory under `public_html`, `htdocs`, the WordPress in
 ## Development and Release Checks
 
 Development and release-candidate builds are checked with WordPress Plugin Check. See [PLUGIN-CHECK.md](PLUGIN-CHECK.md) for the reviewed Plugin Check baseline and the project's handling of expected custom-table database warnings.
+
+
+## External Integration API
+
+Authenticated WordPress clients may read normalized workout data through the `swimlog/v1` REST namespace. The API is read-only and always scopes results to the currently authenticated swimmer.
+
+Available routes are `GET /wp-json/swimlog/v1/workouts` and `GET /wp-json/swimlog/v1/workouts/{id}`. The collection supports pagination plus workout-type and date filters.
+
+The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication and the plugin's own-view capability are required.

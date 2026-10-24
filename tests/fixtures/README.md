@@ -80,3 +80,15 @@ v0.1 intentionally supports FORM swim-export CSV only. The regression must there
 ### Fixture 005 — clearly different FORM workout (private)
 
 Set `SWIMLOG_DIFFERENT_FIT_FIXTURE` to the unchanged September 18, 2026 FORM FIT file (`FORM_2026-09-18_110730.fit`). It is used against the September 19 reference workout to prove a clearly different real workout does not satisfy the automatic attachment fingerprint. Keep the binary outside the public repository.
+
+
+## Deterministic open-water FIT regression corpus
+
+Open-water parser regression coverage is generated in `OpenWaterRegressionTest.php` rather than committing personal activity binaries or GPS tracks.
+
+The synthetic FIT streams preserve the important real-world recording shapes:
+- normal open-water session with laps, GPS, heart rate, cadence, and distance progress;
+- sparse GPS/record stream with only start and finish samples;
+- device/GPS distance correction where cumulative distance briefly moves backwards before continuing.
+
+All variants must remain open-water workouts, retain raw trackpoint distance behavior, produce no pool lengths, and remain isolated from pool personal-best evaluation. Kilometer split monotonicity for corrected distance streams is covered separately by `OpenWaterSplitTest.php`.

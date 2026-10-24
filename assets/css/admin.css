@@ -42,12 +42,42 @@
 }
 
 
-.swimlog-admin .swimlog-garmin-match-exact,
-.swimlog-admin .swimlog-garmin-match-exact a {
-	color: #b32d2e;
+.swimlog-admin .swimlog-garmin-state-imported td:last-child,
+.swimlog-admin .swimlog-garmin-state-imported td:last-child a {
+	font-weight: 600;
 }
 
-.swimlog-admin .swimlog-garmin-match-similar,
-.swimlog-admin .swimlog-garmin-match-similar a {
-	color: #b26200;
+.swimlog-admin .swimlog-garmin-state-pending td:last-child,
+.swimlog-admin .swimlog-garmin-state-pending td:last-child a,
+.swimlog-admin .swimlog-garmin-state-possible-match td:last-child,
+.swimlog-admin .swimlog-garmin-state-possible-match td:last-child a {
+	font-weight: 600;
+}
+
+.swimlog-admin .swimlog-garmin-state-exact-match td:last-child,
+.swimlog-admin .swimlog-garmin-state-exact-match td:last-child a {
+	font-weight: 600;
+}
+
+.swimlog-admin .swimlog-ows-summary {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 12px;
+	margin: 12px 0 20px;
+}
+
+.swimlog-admin .swimlog-ows-summary > div {
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	padding: 12px;
+}
+
+.swimlog-admin .swimlog-ows-summary strong,
+.swimlog-admin .swimlog-ows-summary span {
+	display: block;
+}
+
+.swimlog-admin .swimlog-ows-summary span {
+	margin-top: 4px;
+	font-size: 1.15em;
 }

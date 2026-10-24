@@ -16,10 +16,21 @@ final class FitCorpusTest extends TestCase {
   foreach($files as$file){
    $r=(new FIT_Importer)->parse($file);
    $this->assertFalse(is_wp_error($r),basename($file).': '.(is_wp_error($r)?$r->get_error_message():''));
-   $w=$r['workout'];$this->assertContains($w['original_distance_unit'],array('m','yd'),basename($file));
+   $w=$r['workout'];$type=$w['workout_type']??'pool';
+   $this->assertContains($type,array('pool','open_water'),basename($file));
+   $this->assertGreaterThan(0,(float)$w['total_distance_m'],basename($file));
+   $this->assertGreaterThan(0,(int)$w['elapsed_time_ms'],basename($file));
+   if($type==='open_water'){
+    $this->assertSame('m',$w['original_distance_unit'],basename($file));
+    $this->assertNull($w['pool_length_m'],basename($file));
+    $this->assertNull($w['pool_length_unit'],basename($file));
+    $this->assertSame(array(),$r['lengths'],basename($file));
+    $this->assertArrayHasKey('trackpoints',$r,basename($file));
+    continue;
+   }
+   $this->assertContains($w['original_distance_unit'],array('m','yd'),basename($file));
    $this->assertGreaterThan(0,(float)$w['original_pool_length'],basename($file));
    $this->assertGreaterThan(0,(float)$w['original_distance'],basename($file));
-   $this->assertGreaterThan(0,(int)$w['elapsed_time_ms'],basename($file));
    $this->assertNotEmpty($r['lengths'],basename($file));
    $active=array_values(array_filter($r['lengths'],fn($x)=>$x['length_type']==='active'));
    $this->assertNotEmpty($active,basename($file));

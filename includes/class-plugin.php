@@ -7,6 +7,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Plugin {
 	public function run() {
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
+		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
+		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
 		if ( is_admin() ) {
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();
@@ -23,6 +25,27 @@ final class Plugin {
 	}
 
 
+
+	public function register_rest_api() {
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-rest-api.php';
+		REST_API::register();
+	}
+
+	public function run_garmin_scheduled_sync( $user_id ) {
+		$user_id=absint($user_id);if(!$user_id||'1'!==(string)get_user_meta($user_id,'swimlog_garmin_sync_enabled',true))return;
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-garmin-personal-api.php';
+		Garmin_Personal_API::scheduled_sync($user_id);
+	}
+
+	public static function set_garmin_sync_schedule( $user_id, $enabled ) {
+		$user_id=absint($user_id);$hook='swimlog_garmin_scheduled_sync';$args=array($user_id);$next=wp_next_scheduled($hook,$args);
+		if($enabled){update_user_meta($user_id,'swimlog_garmin_sync_enabled','1');if(!$next)wp_schedule_event(time()+300,'hourly',$hook,$args);}
+		else{delete_user_meta($user_id,'swimlog_garmin_sync_enabled');if($next)wp_clear_scheduled_hook($hook,$args);}
+	}
+
+
 	/**
 	 * Allow validated Garmin/FORM FIT source files to be preserved by WordPress.
 	 *
@@ -32,9 +55,20 @@ final class Plugin {
 	public function allow_fit_upload_mime( $mimes ) {
 		if ( current_user_can( 'swimlog_upload_workouts' ) ) {
 			$mimes['fit'] = 'application/octet-stream';
+			$mimes['gpx'] = 'application/gpx+xml';
+			$mimes['tcx'] = 'application/vnd.garmin.tcx+xml';
 		}
 
 		return $mimes;
+	}
+
+
+
+	private static function migrate_upgrade_settings( $installed_version ) {
+		$allowed = get_option( 'swimlog_allowed_upload_types', null );
+		if ( version_compare( (string) $installed_version, '0.7', '<' ) && array( 'fit', 'csv' ) === $allowed ) {
+			update_option( 'swimlog_allowed_upload_types', array( 'fit', 'csv', 'gpx', 'tcx' ) );
+		}
 	}
 
 
@@ -50,6 +84,7 @@ final class Plugin {
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		if ( Database::install_schema() ) {
+			self::migrate_upgrade_settings( $installed );
 			update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION );
 		}
 	}

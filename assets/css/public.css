@@ -45,3 +45,10 @@
 		font-size: .9em;
 	}
 }
+
+.swimlog-ows-route-map{width:100%;max-width:900px;height:auto;border:1px solid currentColor;background:Canvas;color:CanvasText}
+.swimlog-ows-map-grid line{stroke:currentColor;stroke-width:1;opacity:.14;vector-effect:non-scaling-stroke}
+.swimlog-ows-map-line{fill:none;stroke:currentColor;stroke-width:3;vector-effect:non-scaling-stroke}
+.swimlog-ows-map-start{fill:Canvas;stroke:currentColor;stroke-width:3;vector-effect:non-scaling-stroke}
+.swimlog-ows-map-finish{fill:currentColor;stroke:currentColor;stroke-width:3;vector-effect:non-scaling-stroke}
+.swimlog-ows-map-label,.swimlog-ows-map-north{fill:currentColor;font-size:15px;font-weight:600}
