@@ -15,7 +15,8 @@ final class EventReadinessTest extends TestCase {
  public function test_dashboard_labels_readiness_as_descriptive_not_predictive(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   $this->assertStringContainsString('Readiness is descriptive, not predictive.',$code);
-  $this->assertStringContainsString('Workout::event_readiness($user_id,$e,42)',$code);
+  $this->assertSame(42,\SwimLogEvaluation\Workout::EVENT_READINESS_LOOKBACK_DAYS);
+  $this->assertStringContainsString('Workout::event_readiness($user_id,$e,Workout::EVENT_READINESS_LOOKBACK_DAYS)',$code);
   $this->assertStringContainsString('Recent matching volume',$code);
   $this->assertStringContainsString('Recent distance evidence',$code);
   $this->assertStringContainsString('Event distance or longer recorded',$code);
