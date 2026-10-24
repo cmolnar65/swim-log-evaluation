@@ -61,7 +61,7 @@ final class Workout {
 	public static function stroke_volume_for_user( $user_id, $lookback_months=3 ) {
 		global $wpdb;
 		$lookback_months=max(1,min(24,(int)$lookback_months));
-		$today=new \\DateTimeImmutable('today',wp_timezone());
+		$today=new \DateTimeImmutable('today',wp_timezone());
 		$start=$today->modify('-'.$lookback_months.' months')->format('Y-m-d 00:00:00');
 		$end=$today->format('Y-m-d 23:59:59');
 		$w=Database::table('workouts'); $n=Database::table('lengths');
