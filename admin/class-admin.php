@@ -830,6 +830,7 @@ final class Admin {
 		if ( isset( $_POST['swimlog_privacy_action'] ) && 'save' === sanitize_key( wp_unslash( $_POST['swimlog_privacy_action'] ) ) ) {
 			check_admin_referer( 'swimlog_save_privacy' );
 			$public = isset( $_POST['public_results'] ) ? '1' : '0';
+			$public_routes = isset( $_POST['public_ows_routes'] ) ? '1' : '0';
 			$birthdate = isset( $_POST['birthdate'] ) ? sanitize_text_field( wp_unslash( $_POST['birthdate'] ) ) : '';
 			if ( '' !== $birthdate ) {
 				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
@@ -847,6 +848,7 @@ final class Admin {
 					update_user_meta( $uid, 'swimlog_birthdate', $birthdate );
 				}
 				update_user_meta( $uid, 'swimlog_public_results', $public );
+				update_user_meta( $uid, 'swimlog_public_ows_routes', $public_routes );
 				$saved = true;
 			}
 		}
@@ -855,6 +857,7 @@ final class Admin {
 			$value = get_option( 'swimlog_public_results_default', '0' );
 		}
 		$birthdate = (string) get_user_meta( $uid, 'swimlog_birthdate', true );
+		$public_routes = (string) get_user_meta( $uid, 'swimlog_public_ows_routes', true );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-age-group.php';
 		$current_age_group = Age_Group::for_user( $uid );
 		?>
@@ -877,6 +880,7 @@ final class Admin {
 				<p><?php esc_html_e( 'Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my swim results to be displayed by public swim shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Public Open-Water Routes', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_ows_routes" value="1" <?php checked( $public_routes, '1' ); ?>> <?php esc_html_e( 'Allow GPS route shapes from my open-water workouts to appear in public workout shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'GPS routes can reveal where you swim, including start and finish locations. This setting is separate from Public Results and must be enabled explicitly.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 				</table>
 				<?php submit_button( __( 'Save Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ) ); ?>
 			</form>
