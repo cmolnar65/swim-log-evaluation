@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Plugin {
 	public function run() {
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
+		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
 		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
 		if ( is_admin() ) {
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
@@ -24,6 +25,13 @@ final class Plugin {
 	}
 
 
+
+	public function register_rest_api() {
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-rest-api.php';
+		REST_API::register();
+	}
 
 	public function run_garmin_scheduled_sync( $user_id ) {
 		$user_id=absint($user_id);if(!$user_id||'1'!==(string)get_user_meta($user_id,'swimlog_garmin_sync_enabled',true))return;
