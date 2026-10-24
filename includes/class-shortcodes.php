@@ -130,13 +130,29 @@ final class Shortcodes {
 		$has_year=array_key_exists('year',$raw);$has_month=array_key_exists('month',$raw);$year=absint($a['year']??0);if(!$year)$year=(int)current_time('Y');
 		$annual=$has_year&&!$has_month;$o=self::styles();
 		if($annual){
-			if($year<1900||$year>2100)return self::unavailable();$rows=Workout::totals_by_month_for_year($uid,$year);/* translators: %d: four-digit year. */
-			$o.=self::open(sprintf(__('Training Log — %d','chriss-swim-training-progress-evaluation'),$year),$a['title']);
-			if(!$rows)return$o.'<p>'.esc_html__('No swim workouts are available for this year.','chriss-swim-training-progress-evaluation').'</p>'.self::close();
-			$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Month','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Workouts','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Total Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Total Elapsed Time','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';$wc=0;$tm=0;$ty=0;$te=0;
-			foreach($rows as$r){$wc+=(int)$r->workout_count;$tm+=(float)$r->meters;$ty+=(float)$r->yards;$te+=(int)$r->elapsed_ms;$month=wp_date('F',(new \DateTimeImmutable(sprintf('%04d-%02d-01 12:00:00',$year,(int)$r->month_num),wp_timezone()))->getTimestamp(),wp_timezone());$o.='<tr><th scope="row">'.esc_html($month.' '.$year).'</th><td>'.esc_html($r->workout_count).'</td><td>'.esc_html(self::total_label((float)$r->meters,(float)$r->yards)).'</td><td>'.esc_html(Workout::format_duration((int)$r->elapsed_ms)).'</td></tr>';}
+			if($year<1900||$year>2100)return self::unavailable();
+			$pool_rows=Workout::totals_by_month_for_year($uid,$year,'pool');
+			$open_water_rows=Workout::totals_by_month_for_year($uid,$year,'open_water');
 			/* translators: %d: four-digit year. */
-			$o.='<tr><th scope="row">'.esc_html(sprintf(__('%d Total','chriss-swim-training-progress-evaluation'),$year)).'</th><td>'.esc_html($wc).'</td><td>'.esc_html(self::total_label($tm,$ty)).'</td><td>'.esc_html(Workout::format_duration($te)).'</td></tr></tbody></table></div>';return$o.self::close();
+			$o.=self::open(sprintf(__('Training Log — %d','chriss-swim-training-progress-evaluation'),$year),$a['title']);
+			if(!$pool_rows&&!$open_water_rows)return$o.'<p>'.esc_html__('No swim workouts are available for this year.','chriss-swim-training-progress-evaluation').'</p>'.self::close();
+			$months=array();
+			foreach($pool_rows as$r)$months[(int)$r->month_num]['pool']=$r;
+			foreach($open_water_rows as$r)$months[(int)$r->month_num]['open_water']=$r;
+			ksort($months);
+			$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Month','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Pool Workouts','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Pool Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Open Water Workouts','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Open Water Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Total Elapsed Time','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';
+			$pool_count=0;$pool_m=0;$pool_yd=0;$ows_count=0;$ows_m=0;$elapsed=0;
+			foreach($months as$month_num=>$types){
+				$p=$types['pool']??null;$ow=$types['open_water']??null;
+				$pc=$p?(int)$p->workout_count:0;$pm=$p?(float)$p->meters:0;$py=$p?(float)$p->yards:0;
+				$oc=$ow?(int)$ow->workout_count:0;$om=$ow?(float)$ow->meters:0;
+				$month_elapsed=($p?(int)$p->elapsed_ms:0)+($ow?(int)$ow->elapsed_ms:0);
+				$pool_count+=$pc;$pool_m+=$pm;$pool_yd+=$py;$ows_count+=$oc;$ows_m+=$om;$elapsed+=$month_elapsed;
+				$month=wp_date('F',(new \DateTimeImmutable(sprintf('%04d-%02d-01 12:00:00',$year,$month_num),wp_timezone()))->getTimestamp(),wp_timezone());
+				$o.='<tr><th scope="row">'.esc_html($month.' '.$year).'</th><td>'.esc_html($pc).'</td><td>'.esc_html($pc?self::total_label($pm,$py):'—').'</td><td>'.esc_html($oc).'</td><td>'.esc_html($oc?self::total_label($om,0):'—').'</td><td>'.esc_html(Workout::format_duration($month_elapsed)).'</td></tr>';
+			}
+			/* translators: %d: four-digit year. */
+			$o.='<tr><th scope="row">'.esc_html(sprintf(__('%d Total','chriss-swim-training-progress-evaluation'),$year)).'</th><td>'.esc_html($pool_count).'</td><td>'.esc_html($pool_count?self::total_label($pool_m,$pool_yd):'—').'</td><td>'.esc_html($ows_count).'</td><td>'.esc_html($ows_count?self::total_label($ows_m,0):'—').'</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.self::close();
 		}
 		$month=self::month_number($a['month']??'');if(!$month||$year<1900||$year>2100)return self::unavailable();$rows=Workout::for_month($uid,$year,$month);$label=wp_date('F Y',(new \DateTimeImmutable(sprintf('%04d-%02d-01 12:00:00',$year,$month),wp_timezone()))->getTimestamp(),wp_timezone());
 		/* translators: %s: localized month and year label. */
