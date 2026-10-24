@@ -212,6 +212,15 @@ final class Workout {
 			'gps_point_count' => $gps_points,
 			'cadence_point_count' => $cadence_points,
 			'splits' => $splits,
+			'metric_metadata' => array(
+				'elapsed_pace_100m_ms' => array( 'unit' => 'ms/100m', 'provenance' => 'derived', 'source' => 'workout elapsed time and distance' ),
+				'moving_pace_100m_ms' => array( 'unit' => 'ms/100m', 'provenance' => 'derived', 'source' => 'workout moving time and distance' ),
+				'non_moving_time_ms' => array( 'unit' => 'ms', 'provenance' => 'derived', 'source' => 'elapsed time minus moving time' ),
+				'active_percent' => array( 'unit' => 'percent', 'provenance' => 'derived', 'source' => 'moving time divided by elapsed time' ),
+				'gps_point_count' => array( 'unit' => 'points', 'provenance' => 'measured', 'source' => 'imported trackpoints with GPS coordinates' ),
+				'cadence_point_count' => array( 'unit' => 'points', 'provenance' => 'measured', 'source' => 'imported FIT cadence samples' ),
+				'splits' => array( 'unit' => 'ms', 'provenance' => 'interpolated', 'source' => 'recorded distance and timestamp trackpoints; moving split values are estimated when marked' ),
+			),
 		);
 	}
 
