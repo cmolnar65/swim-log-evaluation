@@ -201,7 +201,7 @@ final class Importer {
 			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
 		}
 		if(!$parsed_sources)return new \WP_Error('swimlog_rebuild_source',__('No supported preserved FIT, CSV, GPX, or TCX source is available for this workout.','chriss-swim-training-progress-evaluation'));
-		$authority=$parsed_sources[0];foreach($parsed_sources as$item){if('fit'===$item['row']->source_type){$authority=$item;break;}}
+		$authority=$parsed_sources[0];$first_fit=null;foreach($parsed_sources as$item){if('fit'!==$item['row']->source_type)continue;if(null===$first_fit)$first_fit=$item;if(self::is_form_fit($item['parsed'],(string)$item['row']->original_filename)){$authority=$item;$first_fit=null;break;}}if(null!==$first_fit)$authority=$first_fit;
 		$location_id=absint($existing->location_id??0);
 		if(false===$wpdb->query('START TRANSACTION'))return new \WP_Error('swimlog_rebuild_transaction',__('The rebuild transaction could not be started. No workout data was changed.','chriss-swim-training-progress-evaluation'));
 		try{
