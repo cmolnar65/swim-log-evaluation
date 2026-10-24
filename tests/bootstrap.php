@@ -1,5 +1,8 @@
 <?php
 define('ABSPATH',__DIR__.'/');
+define('SWIMLOG_EVALUATION_DIR',dirname(__DIR__).'/');
+define('SWIMLOG_EVALUATION_URL','https://example.test/wp-content/plugins/chriss-swim-training-progress-evaluation/');
+define('SWIMLOG_EVALUATION_VERSION','0.6-test');
 if(!function_exists('__')){function __($s,$d=null){return$s;}}
 if(!function_exists('wp_json_encode')){function wp_json_encode($v){return json_encode($v);}}
 if(!function_exists('absint')){function absint($v){return abs((int)$v);}}
