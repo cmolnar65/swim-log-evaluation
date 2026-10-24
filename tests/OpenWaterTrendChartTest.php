@@ -10,7 +10,9 @@ final class OpenWaterTrendChartTest extends TestCase {
   $this->assertStringContainsString("count( \$samples ) < 2",$code);
   $this->assertStringContainsString('Missing samples are not estimated or filled in.',$code);
   $this->assertStringContainsString('Heart rate over elapsed recording time',$code);
-  $this->assertStringContainsString('Cadence over elapsed recording time',$code);
+  $this->assertStringContainsString('FIT cadence over elapsed recording time',$code);
+  $this->assertStringContainsString("__('FIT cadence','chriss-swim-training-progress-evaluation')",$code);
+  $this->assertStringNotContainsString("__('spm','chriss-swim-training-progress-evaluation')",$code);
  }
  public function test_trend_charts_remain_admin_only(){
   $public=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');
