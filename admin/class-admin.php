@@ -77,6 +77,20 @@ final class Admin {
 	}
 
 
+	private function recording_device_label( $workout ) {
+		$manufacturer = trim( (string) ( $workout->device_manufacturer ?? '' ) );
+		$model = trim( (string) ( $workout->device_model ?? '' ) );
+		$combined = trim( $manufacturer . ' ' . $model );
+
+		if ( false !== stripos( $combined, 'FORM' ) ) {
+			return false !== stripos( $model, 'FORM' ) ? $model : 'FORM Swim Goggles';
+		}
+		if ( '' === $manufacturer ) return '' !== $model ? $model : '—';
+		if ( '' === $model ) return $manufacturer;
+		if ( 0 === stripos( $model, $manufacturer ) ) return $model;
+		return $manufacturer . ' ' . $model;
+	}
+
 	private function open_water_pace_per_100m( $workout ) {
 		$distance_m = (float) ( $workout->total_distance_m ?? 0 );
 		$elapsed_ms = (int) ( $workout->elapsed_time_ms ?? 0 );
@@ -182,7 +196,7 @@ final class Admin {
 			<tr><th><?php esc_html_e('Elapsed','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->elapsed_time_ms)); ?></td></tr>
 			<tr><th><?php esc_html_e('Moving / active','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->moving_time_ms)); ?></td></tr>
 			<tr><th><?php esc_html_e('Average pace','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($this->open_water_pace_per_100m($w)); ?></td></tr>
-			<tr><th><?php esc_html_e('Recording device','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(trim((string)$w->device_manufacturer.' '.(string)$w->device_model)?:'—'); ?></td></tr>
+			<tr><th><?php esc_html_e('Recording device','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($this->recording_device_label($w)); ?></td></tr>
 			<?php else:?>
 			<tr><th><?php esc_html_e('Pool','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(null!==$w->original_pool_length?$this->display_measurement($w->original_pool_length,$w->pool_length_unit):'—'); ?></td></tr>
 			<tr><th><?php esc_html_e('Elapsed','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($w->elapsed_time_ms)); ?></td></tr>
