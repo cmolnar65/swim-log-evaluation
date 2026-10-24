@@ -128,6 +128,39 @@ final class Admin {
 		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="' . esc_attr__( 'Open-water GPS route', 'chriss-swim-training-progress-evaluation' ) . '" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff"><polyline points="' . esc_attr( implode( ' ', $svg_points ) ) . '" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
 	}
 
+
+	private function open_water_metric_svg( $trackpoints, $field, $label, $unit ) {
+		$samples = array();
+		$start = null;
+		foreach ( (array) $trackpoints as $point ) {
+			$value = $point->{$field} ?? null;
+			if ( null === $value || '' === $value ) continue;
+			try { $time = new \DateTimeImmutable( (string) $point->recorded_at, wp_timezone() ); } catch ( \Exception $e ) { continue; }
+			if ( null === $start ) $start = $time;
+			$seconds = max( 0, $time->getTimestamp() - $start->getTimestamp() );
+			$samples[] = array( $seconds, (float) $value );
+		}
+		if ( count( $samples ) < 2 ) return '';
+		$values = array_column( $samples, 1 ); $max_time = max( 1, max( array_column( $samples, 0 ) ) );
+		$min_value = min( $values ); $max_value = max( $values ); $span = max( 1.0, $max_value - $min_value );
+		$width = 800.0; $height = 240.0; $left = 55.0; $right = 20.0; $top = 20.0; $bottom = 38.0;
+		$plot_width = $width - $left - $right; $plot_height = $height - $top - $bottom; $svg_points = array();
+		foreach ( $samples as $sample ) {
+			$x = $left + ( $sample[0] / $max_time ) * $plot_width;
+			$y = $top + ( 1 - ( ( $sample[1] - $min_value ) / $span ) ) * $plot_height;
+			$svg_points[] = number_format( $x, 2, '.', '' ) . ',' . number_format( $y, 2, '.', '' );
+		}
+		$duration = Workout::format_duration( $max_time * 1000 );
+		return '<svg class="swimlog-ows-metric" viewBox="0 0 800 240" role="img" aria-label="' . esc_attr( $label ) . '" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff">'
+			. '<line x1="55" y1="20" x2="55" y2="202" stroke="currentColor" stroke-width="1"/><line x1="55" y1="202" x2="780" y2="202" stroke="currentColor" stroke-width="1"/>'
+			. '<polyline points="' . esc_attr( implode( ' ', $svg_points ) ) . '" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/>'
+			. '<text x="8" y="28" font-size="12">' . esc_html( number_format_i18n( $max_value, 0 ) . ' ' . $unit ) . '</text>'
+			. '<text x="8" y="202" font-size="12">' . esc_html( number_format_i18n( $min_value, 0 ) . ' ' . $unit ) . '</text>'
+			. '<text x="55" y="225" font-size="12">0:00</text><text x="780" y="225" text-anchor="end" font-size="12">' . esc_html( $duration ) . '</text>'
+			. '</svg>';
+	}
+
+
 	private function page( $title, $description, $capability ) {
 		if ( ! current_user_can( $capability ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this swim training page.', 'chriss-swim-training-progress-evaluation' ) );
@@ -226,6 +259,12 @@ final class Admin {
 			<tr><th><?php esc_html_e('Recorded samples','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(sprintf(__('%1$d total / %2$d GPS / %3$d cadence','chriss-swim-training-progress-evaluation'),(int)($analytics['trackpoint_count']??0),(int)($analytics['gps_point_count']??0),(int)($analytics['cadence_point_count']??0))); ?></td></tr>
 			<tr><th><?php esc_html_e('Source laps / splits','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(number_format_i18n(count($laps),0)); ?></td></tr>
 			</tbody></table>
+			<h3><?php esc_html_e('Recorded Trends','chriss-swim-training-progress-evaluation'); ?></h3>
+			<?php $hr_chart=$this->open_water_metric_svg($trackpoints,'heart_rate',__('Heart rate over elapsed recording time','chriss-swim-training-progress-evaluation'),'bpm'); $cadence_chart=$this->open_water_metric_svg($trackpoints,'cadence',__('Cadence over elapsed recording time','chriss-swim-training-progress-evaluation'),__('spm','chriss-swim-training-progress-evaluation')); ?>
+			<?php if(!$hr_chart&&!$cadence_chart):?><p><?php esc_html_e('No usable heart-rate or cadence trend series is stored for this workout.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?>
+			<?php if($hr_chart):?><h4><?php esc_html_e('Heart Rate','chriss-swim-training-progress-evaluation'); ?></h4><?php echo wp_kses($hr_chart,array('svg'=>array('class'=>true,'viewbox'=>true,'role'=>true,'aria-label'=>true,'style'=>true),'line'=>array('x1'=>true,'y1'=>true,'x2'=>true,'y2'=>true,'stroke'=>true,'stroke-width'=>true),'polyline'=>array('points'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true,'vector-effect'=>true),'text'=>array('x'=>true,'y'=>true,'font-size'=>true,'text-anchor'=>true))); ?><?php endif;?>
+			<?php if($cadence_chart):?><h4><?php esc_html_e('Cadence','chriss-swim-training-progress-evaluation'); ?></h4><?php echo wp_kses($cadence_chart,array('svg'=>array('class'=>true,'viewbox'=>true,'role'=>true,'aria-label'=>true,'style'=>true),'line'=>array('x1'=>true,'y1'=>true,'x2'=>true,'y2'=>true,'stroke'=>true,'stroke-width'=>true),'polyline'=>array('points'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true,'vector-effect'=>true),'text'=>array('x'=>true,'y'=>true,'font-size'=>true,'text-anchor'=>true))); ?><?php endif;?>
+			<p class="description"><?php esc_html_e('Charts use only recorded FIT samples. Missing samples are not estimated or filled in.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?>
 			<h3><?php esc_html_e('1 km Splits','chriss-swim-training-progress-evaluation'); ?></h3>
 			<?php if(empty($analytics['splits'])):?><p><?php esc_html_e('No complete 1 km splits can be derived from the stored distance/timestamp records.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?><p class="description"><?php esc_html_e('Splits are derived from FIT Record distance and timestamps using interpolation at each complete kilometer. They are open-water analytics only and are not pool performances or personal bests.','chriss-swim-training-progress-evaluation'); ?></p><table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Split','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Cumulative','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Pace / 100 m','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach($analytics['splits'] as$split):?><tr><td><?php echo esc_html(number_format_i18n($split['distance_m']/1000,0).' km'); ?></td><td><?php echo esc_html(Workout::format_duration($split['split_time_ms'])); ?></td><td><?php echo esc_html(Workout::format_duration($split['cumulative_time_ms'])); ?></td><td><?php echo esc_html(Workout::format_duration((int)round($split['split_time_ms']/10)).' / 100 m'); ?></td></tr><?php endforeach;?></tbody></table><?php endif;?>
 			<?php endif;?>
