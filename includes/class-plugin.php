@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Plugin {
 	public function run() {
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
+		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
 		if ( is_admin() ) {
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();
@@ -20,6 +21,20 @@ final class Plugin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';
 		Shortcodes::register();
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
+	}
+
+
+
+	public function run_garmin_scheduled_sync( $user_id ) {
+		$user_id=absint($user_id);if(!$user_id||'1'!==(string)get_user_meta($user_id,'swimlog_garmin_sync_enabled',true))return;
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-garmin-personal-api.php';
+		Garmin_Personal_API::scheduled_sync($user_id);
+	}
+
+	public static function set_garmin_sync_schedule( $user_id, $enabled ) {
+		$user_id=absint($user_id);$hook='swimlog_garmin_scheduled_sync';$args=array($user_id);$next=wp_next_scheduled($hook,$args);
+		if($enabled){update_user_meta($user_id,'swimlog_garmin_sync_enabled','1');if(!$next)wp_schedule_event(time()+300,'hourly',$hook,$args);}
+		else{delete_user_meta($user_id,'swimlog_garmin_sync_enabled');if($next)wp_clear_scheduled_hook($hook,$args);}
 	}
 
 
