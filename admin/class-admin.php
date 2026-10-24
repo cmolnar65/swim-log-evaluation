@@ -1292,7 +1292,12 @@ final class Admin {
 								$match_status = $this->garmin_activity_match_status( $user_id, $activity );
 								$import_state = $this->garmin_activity_import_state( $user_id, $activity_id );
 							?>
-							<tr class="<?php echo esc_attr( 'swimlog-garmin-match-' . $match_status ); ?>"><td><input class="swimlog-garmin-select" type="checkbox" name="garmin_activity_ids[]" value="<?php echo esc_attr( $activity_id ); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Select Garmin activity %s', 'chriss-swim-training-progress-evaluation' ), $activity_id ) ); ?>" <?php disabled( '' === $activity_id || in_array( $import_state['status'], array( 'imported', 'pending' ), true ) ); ?>></td><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td><td><?php
+							<?php
+								$row_state = in_array( $import_state['status'], array( 'imported', 'pending', 'recorded' ), true )
+									? $import_state['status']
+									: ( 'exact' === $match_status ? 'exact-match' : ( 'similar' === $match_status ? 'possible-match' : 'new' ) );
+							?>
+							<tr class="<?php echo esc_attr( 'swimlog-garmin-state-' . $row_state ); ?>"><td><input class="swimlog-garmin-select" type="checkbox" name="garmin_activity_ids[]" value="<?php echo esc_attr( $activity_id ); ?>" aria-label="<?php echo esc_attr( sprintf( __( 'Select Garmin activity %s', 'chriss-swim-training-progress-evaluation' ), $activity_id ) ); ?>" <?php disabled( '' === $activity_id || in_array( $import_state['status'], array( 'imported', 'pending' ), true ) ); ?>></td><td><?php if ( $activity_id ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $activity_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $activity_id ); ?></a><?php else : ?>—<?php endif; ?></td><td><?php echo esc_html( $date ?: '—' ); ?></td><td><?php echo esc_html( $name ?: '—' ); ?></td><td><?php echo esc_html( $type ?: '—' ); ?></td><td><?php echo esc_html( $distance ); ?></td><td><?php echo esc_html( $duration ); ?></td><td><?php
 								if ( 'imported' === $import_state['status'] ) {
 									esc_html_e( 'Imported', 'chriss-swim-training-progress-evaluation' );
 									if ( $import_state['workout_id'] ) echo ' — <a href="' . esc_url( add_query_arg( array( 'page'=>'swimlog-workouts', 'workout_id'=>$import_state['workout_id'] ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'View Workout', 'chriss-swim-training-progress-evaluation' ) . '</a>';
@@ -1301,11 +1306,11 @@ final class Admin {
 								} elseif ( 'recorded' === $import_state['status'] ) {
 									esc_html_e( 'Import recorded', 'chriss-swim-training-progress-evaluation' );
 								} elseif ( 'exact' === $match_status ) {
-									esc_html_e( 'Matching workout found', 'chriss-swim-training-progress-evaluation' );
+									esc_html_e( 'Exact match — not yet associated', 'chriss-swim-training-progress-evaluation' );
 								} elseif ( 'similar' === $match_status ) {
-									esc_html_e( 'Possible match — review on import', 'chriss-swim-training-progress-evaluation' );
+									esc_html_e( 'Possible match — not yet associated', 'chriss-swim-training-progress-evaluation' );
 								} else {
-									esc_html_e( 'Not imported', 'chriss-swim-training-progress-evaluation' );
+									esc_html_e( 'New — not imported', 'chriss-swim-training-progress-evaluation' );
 								}
 							?></td></tr>
 							<?php endforeach; ?></tbody></table>
