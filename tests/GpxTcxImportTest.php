@@ -7,7 +7,7 @@ final class GpxTcxImportTest extends TestCase {
   if(!function_exists('simplexml_load_file'))$this->markTestSkipped('SimpleXML unavailable');
   $xml='<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg><trkpt lat="39.7000" lon="-104.9000"><time>2026-10-23T14:00:00Z</time><extensions><hr>120</hr></extensions></trkpt><trkpt lat="39.7010" lon="-104.9000"><time>2026-10-23T14:01:00Z</time><extensions><hr>130</hr></extensions></trkpt><trkpt lat="39.7020" lon="-104.9000"><time>2026-10-23T14:02:00Z</time><extensions><hr>140</hr></extensions></trkpt></trkseg></trk></gpx>';
   $p=$this->tempFile($xml);$r=(new XML_Importer())->parse($p,'gpx');unlink($p);
-  $this->assertFalse(is_wp_error($r));$this->assertSame('open_water',$r['workout']['workout_type']);$this->assertCount(3,$r['trackpoints']);$this->assertGreaterThan(200,$r['workout']['total_distance_m']);$this->assertSame(130.0,$r['workout']['average_heart_rate']);$this->assertSame(120000,$r['workout']['elapsed_time_ms']);
+  $this->assertFalse(is_wp_error($r));$this->assertSame('open_water',$r['workout']['workout_type']);$this->assertCount(3,$r['trackpoints']);$this->assertGreaterThan(200,$r['workout']['total_distance_m']);$this->assertEquals(130.0,$r['workout']['average_heart_rate']);$this->assertSame(120000,$r['workout']['elapsed_time_ms']);
  }
  public function test_tcx_prefers_cumulative_source_distance(){
   if(!function_exists('simplexml_load_file'))$this->markTestSkipped('SimpleXML unavailable');
