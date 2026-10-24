@@ -104,7 +104,8 @@ final class Shortcodes {
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th>';foreach($strokes as $s)$o.='<th scope="col">'.esc_html($s==='OVERALL'?__('Overall','chriss-swim-training-progress-evaluation'):self::stroke_name($s)).'</th>';$o.='</tr></thead><tbody>';
 		$any=false;foreach($distances as $d){$o.='<tr><th scope="row">'.esc_html(self::distance_label($d,$course)).'</th>';foreach($strokes as $s){$p=$pbs[$d][$s]??null;$any=$any||!!$p;$o.='<td>'.($p?esc_html(Workout::format_duration($p->duration_ms)).'<br><span class="swimlog-muted">'.esc_html(self::local_date('M j, Y',$p->achieved_at)).'</span>':'&mdash;').'</td>';}$o.='</tr>';}$o.='</tbody></table></div>';return$o.(!$any?'<p>'.esc_html__('No qualifying personal bests are available for this selection.','chriss-swim-training-progress-evaluation').'</p>':'').self::close();
 	}
-	public static function progress($atts){
+	public static function progress($atts){return self::render_progress($atts);}
+	public static function render_progress($atts){
 		self::load();$a=self::attrs($atts);$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$course=in_array($a['course'],array('m','yd'),true)?$a['course']:get_option('swimlog_default_course_unit','m');if(!in_array($course,array('m','yd'),true))$course='m';
 		$valid_strokes=array('FR','BR','BACK','FLY','MIXED');if(!$a['distance']||!in_array($a['distance'],Evaluator::DISTANCES,true)||!in_array($a['stroke'],$valid_strokes,true))return self::unavailable();

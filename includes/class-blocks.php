@@ -70,6 +70,19 @@ final class Blocks {
 			SWIMLOG_EVALUATION_DIR . 'blocks/training-log',
 			array( 'render_callback' => array( __CLASS__, 'render_training_log' ) )
 		);
+
+		wp_register_script(
+			'swimlog-block-progress',
+			SWIMLOG_EVALUATION_URL . 'blocks/progress/index.js',
+			array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-server-side-render' ),
+			SWIMLOG_EVALUATION_VERSION,
+			true
+		);
+
+		register_block_type(
+			SWIMLOG_EVALUATION_DIR . 'blocks/progress',
+			array( 'render_callback' => array( __CLASS__, 'render_progress' ) )
+		);
 	}
 
 	public static function render_latest_workouts( $attributes ) {
@@ -143,6 +156,18 @@ final class Blocks {
 			}
 		}
 		return Shortcodes::render_log( $atts );
+	}
+
+	public static function render_progress( $attributes ) {
+		return Shortcodes::render_progress(
+			array(
+				'user'     => isset( $attributes['user'] ) ? absint( $attributes['user'] ) : '',
+				'course'   => isset( $attributes['course'] ) ? sanitize_key( $attributes['course'] ) : '',
+				'stroke'   => isset( $attributes['stroke'] ) ? strtoupper( sanitize_key( $attributes['stroke'] ) ) : '',
+				'distance' => isset( $attributes['distance'] ) ? absint( $attributes['distance'] ) : 0,
+				'title'    => self::title_attribute( $attributes ),
+			)
+		);
 	}
 
 	private static function title_attribute( $attributes ) {
