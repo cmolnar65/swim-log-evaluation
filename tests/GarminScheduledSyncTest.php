@@ -14,7 +14,7 @@ final class GarminScheduledSyncTest extends TestCase {
   $this->assertStringContainsString("array('lap_swimming','open_water_swimming')",$code);
   $this->assertStringContainsString("if('open_water_swimming'===\$type){\$result['open_water_review']++;continue;}",$code);
   $this->assertStringContainsString("self::import_activity(\$user_id,\$id,0)",$code);
-  $this->assertStringContainsString("'pending_review'===$status",$code);
+  $this->assertStringContainsString("'pending_review'===\$status",$code);
  }
  public function test_admin_explains_conservative_behavior(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
