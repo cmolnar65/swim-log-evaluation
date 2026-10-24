@@ -47,6 +47,8 @@ final class Plugin {
 	public function allow_fit_upload_mime( $mimes ) {
 		if ( current_user_can( 'swimlog_upload_workouts' ) ) {
 			$mimes['fit'] = 'application/octet-stream';
+			$mimes['gpx'] = 'application/gpx+xml';
+			$mimes['tcx'] = 'application/vnd.garmin.tcx+xml';
 		}
 
 		return $mimes;
