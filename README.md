@@ -16,7 +16,8 @@ v0.6 expands and hardens open-water swimming support with:
 - FIT device identity hardening and normalized recording-device presentation;
 - open-water summary analytics, 1 km splits, sparse/corrected GPS-distance handling, and more efficient analytics processing;
 - deterministic open-water FIT regression coverage while keeping private/original activity files out of the public repository; and
-- release-package workflow fixes and PHP 7.4–8.4 regression testing.
+- release-package workflow fixes and PHP 7.4–8.4 regression testing; and
+- an authenticated, read-only `swimlog/v1` REST API for external integrations, scoped to the current swimmer and excluding private source files and open-water GPS coordinates.
 
 Open-water workouts remain isolated from pool personal-best evaluation.
 
@@ -92,3 +93,12 @@ Do not move the source directory under `public_html`, `htdocs`, the WordPress in
 ## Development and Release Checks
 
 Development and release-candidate builds are checked with WordPress Plugin Check. See [PLUGIN-CHECK.md](PLUGIN-CHECK.md) for the reviewed Plugin Check baseline and the project's handling of expected custom-table database warnings.
+
+
+## External Integration API
+
+Authenticated WordPress clients may read normalized workout data through the `swimlog/v1` REST namespace. The API is read-only and always scopes results to the currently authenticated swimmer.
+
+Available routes are `GET /wp-json/swimlog/v1/workouts` and `GET /wp-json/swimlog/v1/workouts/{id}`. The collection supports pagination plus workout-type and date filters.
+
+The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication and the plugin's own-view capability are required.
