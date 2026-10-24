@@ -10,7 +10,7 @@ final class RestIntegrationApiTest extends TestCase {
   $code=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');
   $this->assertStringContainsString("const NS='swimlog/v1'",$code);
   $this->assertStringContainsString("'methods'=>\\WP_REST_Server::READABLE",$code);
-  $this->assertStringContainsString("is_user_logged_in()&&current_user_can('swimlog_view_own')",$code);
+  $this->assertStringContainsString("is_user_logged_in()&&current_user_can('swimlog_view_own_results')",$code);
   $this->assertStringContainsString('get_current_user_id()',$code);
   $this->assertStringContainsString('Workout::get_for_user($id,$uid)',$code);
   $this->assertStringNotContainsString('CREATABLE',$code);
