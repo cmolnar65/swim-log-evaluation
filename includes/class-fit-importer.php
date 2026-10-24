@@ -80,8 +80,35 @@ final class FIT_Importer {
 	}
 	private function fit_time($v){$gmt=gmdate('Y-m-d H:i:s',(int)$v+631065600);return get_date_from_gmt($gmt,'Y-m-d H:i:s');}
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
-	private function device_info($devices){$manufacturer=null;$model=null;foreach($devices as $d){if($manufacturer===null&&isset($d[2])&&is_numeric($d[2])&&(int)$d[2]>0)$manufacturer=$this->manufacturer_name((int)$d[2]);if(isset($d[27])&&is_string($d[27])&&trim($d[27])!=='')$model=trim($d[27]);elseif($model===null&&isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];}return array($manufacturer,$model);}
-	private function manufacturer_name($id){$known=array(1=>'Garmin',15=>'Dynastream',255=>'Development');return $known[$id]??('FIT manufacturer '.$id);}
+	private function device_info($devices){
+		$best=null;$best_score=-1;
+		foreach($devices as $d){
+			$manufacturer_id=isset($d[2])&&is_numeric($d[2])?(int)$d[2]:0;
+			$model='';
+			if(isset($d[27])&&is_string($d[27])&&trim($d[27])!=='')$model=trim($d[27]);
+			elseif(isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];
+			$score=0;
+			if($manufacturer_id>0)$score+=2;
+			if($model!=='')$score+=2;
+			// device_index 0 is normally the recording device. Prefer it over
+			// accessories such as HR straps when the FIT producer supplies it.
+			if(isset($d[0])&&is_numeric($d[0])&&(int)$d[0]===0)$score+=4;
+			if($score>$best_score){$best=array($manufacturer_id,$model);$best_score=$score;}
+		}
+		if(!$best)return array(null,null);
+		list($manufacturer_id,$model)=$best;
+		return array($this->manufacturer_name($manufacturer_id,$model),$model!==''?$model:null);
+	}
+	private function manufacturer_name($id,$model=''){
+		$known=array(1=>'Garmin',15=>'Dynastream');
+		if(isset($known[$id]))return $known[$id];
+		// FIT manufacturer 255 is development/developer use. It is not Apple by
+		// itself. Only promote it to Apple when the same Device Info record has
+		// explicit Apple Watch model text.
+		if(255===$id&&preg_match('/\\bapple\\s*watch\\b/i',(string)$model))return 'Apple';
+		if(255===$id)return 'Development';
+		return $id>0?('FIT manufacturer '.$id):null;
+	}
 	private function semicircles_to_degrees($value){return ((float)$value)*180.0/2147483648.0;}
 	private function normalize_open_water($o){
 		$s=$o['session'];list($device_manufacturer,$device_model)=$this->device_info($o['device']);
