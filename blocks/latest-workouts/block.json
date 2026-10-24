@@ -27,6 +27,10 @@
   },
   "editorScript": "swimlog-block-latest-workouts",
   "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
     "html": false
   }
 }

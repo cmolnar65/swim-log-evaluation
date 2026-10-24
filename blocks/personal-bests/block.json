@@ -8,16 +8,49 @@
   "description": "Display a swimmer's personal best times with optional course, stroke, distance, and age-group filters.",
   "textdomain": "chriss-swim-training-progress-evaluation",
   "attributes": {
-    "user": { "type": "integer", "default": 0 },
-    "course": { "type": "string", "default": "" },
-    "stroke": { "type": "string", "default": "" },
-    "distance": { "type": "integer", "default": 0 },
-    "best": { "type": "string", "default": "LB" },
-    "ageGroupMode": { "type": "string", "default": "post-date" },
-    "ageGroup": { "type": "string", "default": "" },
-    "titleMode": { "type": "string", "default": "default" },
-    "customTitle": { "type": "string", "default": "" }
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "course": {
+      "type": "string",
+      "default": ""
+    },
+    "stroke": {
+      "type": "string",
+      "default": ""
+    },
+    "distance": {
+      "type": "integer",
+      "default": 0
+    },
+    "best": {
+      "type": "string",
+      "default": "LB"
+    },
+    "ageGroupMode": {
+      "type": "string",
+      "default": "post-date"
+    },
+    "ageGroup": {
+      "type": "string",
+      "default": ""
+    },
+    "titleMode": {
+      "type": "string",
+      "default": "default"
+    },
+    "customTitle": {
+      "type": "string",
+      "default": ""
+    }
   },
   "editorScript": "swimlog-block-personal-bests",
-  "supports": { "html": false }
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  }
 }

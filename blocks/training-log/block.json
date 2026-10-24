@@ -8,13 +8,37 @@
   "description": "Display a monthly swim training log or annual monthly totals.",
   "textdomain": "chriss-swim-training-progress-evaluation",
   "attributes": {
-    "user": { "type": "integer", "default": 0 },
-    "mode": { "type": "string", "default": "monthly" },
-    "month": { "type": "integer", "default": 0 },
-    "year": { "type": "integer", "default": 0 },
-    "titleMode": { "type": "string", "default": "default" },
-    "customTitle": { "type": "string", "default": "" }
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "mode": {
+      "type": "string",
+      "default": "monthly"
+    },
+    "month": {
+      "type": "integer",
+      "default": 0
+    },
+    "year": {
+      "type": "integer",
+      "default": 0
+    },
+    "titleMode": {
+      "type": "string",
+      "default": "default"
+    },
+    "customTitle": {
+      "type": "string",
+      "default": ""
+    }
   },
   "editorScript": "swimlog-block-training-log",
-  "supports": { "html": false }
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  }
 }

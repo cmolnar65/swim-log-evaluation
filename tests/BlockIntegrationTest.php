@@ -22,6 +22,7 @@ final class BlockIntegrationTest extends TestCase {
 			$this->assertSame( 'widgets', $metadata['category'], $dir );
 			$this->assertSame( 'chriss-swim-training-progress-evaluation', $metadata['textdomain'], $dir );
 			$this->assertFalse( $metadata['supports']['html'], $dir );
+			$this->assertSame( array( 'wide', 'full' ), $metadata['supports']['align'], $dir );
 			$this->assertStringContainsString( "registerBlockType", $editor, $dir );
 			$this->assertStringContainsString( $name, $editor, $dir );
 			$this->assertStringContainsString( 'ServerSideRender', $editor, $dir );
@@ -29,6 +30,16 @@ final class BlockIntegrationTest extends TestCase {
 			$this->assertStringContainsString( 'return null', $editor, $dir );
 			$this->assertStringNotContainsString( '[swimlog_', $editor, $dir );
 		}
+	}
+
+	public function test_public_table_css_preserves_readable_words_and_scrolls_when_constrained() {
+		$css = file_get_contents( dirname( __DIR__ ) . '/assets/css/public.css' );
+		$this->assertStringContainsString( 'overflow-x: auto', $css );
+		$this->assertStringContainsString( 'min-width: 680px', $css );
+		$this->assertStringContainsString( 'font-size: .85em', $css );
+		$this->assertStringContainsString( 'overflow-wrap: normal', $css );
+		$this->assertStringContainsString( 'white-space: nowrap', $css );
+		$this->assertStringNotContainsString( 'overflow-wrap: anywhere', $css );
 	}
 
 	public function test_all_six_blocks_are_registered_with_php_render_callbacks() {
