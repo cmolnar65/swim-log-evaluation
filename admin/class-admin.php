@@ -110,10 +110,11 @@ final class Admin {
 		$samples = array();
 		$start = null;
 		foreach ( (array) $trackpoints as $point ) {
-			$value = $point->{$field} ?? null;
-			if ( null === $value || '' === $value ) continue;
+			if ( empty( $point->recorded_at ) ) continue;
 			try { $time = new \DateTimeImmutable( (string) $point->recorded_at, wp_timezone() ); } catch ( \Exception $e ) { continue; }
 			if ( null === $start ) $start = $time;
+			$value = $point->{$field} ?? null;
+			if ( null === $value || '' === $value ) continue;
 			$seconds = max( 0, $time->getTimestamp() - $start->getTimestamp() );
 			$samples[] = array( $seconds, (float) $value );
 		}
