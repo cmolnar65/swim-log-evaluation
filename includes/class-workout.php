@@ -115,20 +115,35 @@ final class Workout {
 
 		$splits = array();
 		if ( count( $distance_points ) >= 2 ) {
-			$first = $distance_points[0];
-			$previous_target_time = (float) $first['time'];
-			for ( $target = 1000.0; $target <= $distance; $target += 1000.0 ) {
-				$target_time = null;
-				for ( $i = 1, $n = count( $distance_points ); $i < $n; $i++ ) {
-					$a = $distance_points[$i - 1];
-					$b = $distance_points[$i];
-					if ( $a['distance_m'] <= $target && $b['distance_m'] >= $target && $b['distance_m'] > $a['distance_m'] ) {
-						$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
-						$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
-						break;
-					}
+			// FIT distance can pause on a plateau or briefly move backwards because
+			// of GPS/device corrections. Build a monotonic progress envelope: keep
+			// only points that establish a new maximum distance. This prevents a
+			// regression from being mistaken for a second crossing of a split.
+			$progress_points = array();
+			$max_distance = null;
+			$last_time = null;
+			foreach ( $distance_points as $point ) {
+				if ( null !== $last_time && $point['time'] < $last_time ) continue;
+				$last_time = $point['time'];
+				if ( null === $max_distance || $point['distance_m'] > $max_distance ) {
+					$progress_points[] = $point;
+					$max_distance = $point['distance_m'];
 				}
-				if ( null !== $target_time ) {
+			}
+			if ( count( $progress_points ) >= 2 ) {
+				$first = $progress_points[0];
+				$previous_target_time = (float) $first['time'];
+				$segment = 1;
+				$reachable_distance = (float) $progress_points[count($progress_points)-1]['distance_m'];
+				for ( $target = 1000.0; $target <= $distance && $target <= $reachable_distance; $target += 1000.0 ) {
+					while ( $segment < count( $progress_points ) && $progress_points[$segment]['distance_m'] < $target ) $segment++;
+					if ( $segment >= count( $progress_points ) ) break;
+					$a = $progress_points[$segment - 1];
+					$b = $progress_points[$segment];
+					if ( $b['distance_m'] <= $a['distance_m'] || $b['time'] < $a['time'] ) continue;
+					$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
+					$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
+					if ( $target_time < $previous_target_time ) continue;
 					$splits[] = array(
 						'distance_m' => (int) $target,
 						'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
