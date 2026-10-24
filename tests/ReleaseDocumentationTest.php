@@ -12,8 +12,16 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v06_changelog_covers_open_water_release_work(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
-  $this->assertStringContainsString('Garmin Personal API import-state presentation',$readme);
-  $this->assertStringContainsString('Optimize open-water trackpoint analytics processing.',$readme);
-  $this->assertStringContainsString('Expand deterministic open-water FIT regression coverage',$readme);
+  foreach(array(
+   'Garmin Personal API import-state presentation',
+   'optimized trackpoint processing',
+   'deterministic open-water/import regression coverage',
+   'transactional workout rebuilds',
+   'GPX and TCX open-water import',
+   'scheduled Garmin synchronization',
+   'first-GPS-fix matching within 500 meters',
+   'swimlog/v1 REST API',
+   'all registered public shortcodes'
+  )as$feature)$this->assertStringContainsString($feature,$readme);
  }
 }
