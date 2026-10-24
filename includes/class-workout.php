@@ -91,66 +91,63 @@ final class Workout {
 
 
 	public static function open_water_analytics( $workout_id, $user_id ) {
+		global $wpdb;
 		$workout = self::get_for_user( $workout_id, $user_id );
 		if ( ! $workout || 'open_water' !== ( $workout->workout_type ?? 'pool' ) ) return array();
 
 		$distance = (float) ( $workout->total_distance_m ?? 0 );
 		$elapsed = (int) ( $workout->elapsed_time_ms ?? 0 );
 		$moving = (int) ( $workout->moving_time_ms ?? 0 );
-		$points = self::trackpoints( $workout_id, $user_id );
+		$t = Database::table( 'trackpoints' );
+		$points = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT recorded_at,latitude,longitude,distance_m,cadence FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$workout_id
+			)
+		);
+		$trackpoint_count = count( $points );
 		$gps_points = 0;
 		$cadence_points = 0;
-		$distance_points = array();
+		$splits = array();
+		$progress_points = array();
+		$max_distance = null;
+		$last_time = null;
+		$timezone = wp_timezone();
 
 		foreach ( $points as $point ) {
 			if ( null !== $point->latitude && null !== $point->longitude ) $gps_points++;
 			if ( null !== $point->cadence ) $cadence_points++;
-			if ( null !== $point->distance_m && null !== $point->recorded_at ) {
-				$distance_points[] = array(
-					'distance_m' => (float) $point->distance_m,
-					'time' => ( new \DateTimeImmutable( $point->recorded_at, wp_timezone() ) )->getTimestamp(),
-				);
+			if ( null === $point->distance_m || null === $point->recorded_at ) continue;
+			$time = ( new \DateTimeImmutable( $point->recorded_at, $timezone ) )->getTimestamp();
+			if ( null !== $last_time && $time < $last_time ) continue;
+			$last_time = $time;
+			$point_distance = (float) $point->distance_m;
+			if ( null === $max_distance || $point_distance > $max_distance ) {
+				$progress_points[] = array( 'distance_m' => $point_distance, 'time' => $time );
+				$max_distance = $point_distance;
 			}
 		}
 
-		$splits = array();
-		if ( count( $distance_points ) >= 2 ) {
-			// FIT distance can pause on a plateau or briefly move backwards because
-			// of GPS/device corrections. Build a monotonic progress envelope: keep
-			// only points that establish a new maximum distance. This prevents a
-			// regression from being mistaken for a second crossing of a split.
-			$progress_points = array();
-			$max_distance = null;
-			$last_time = null;
-			foreach ( $distance_points as $point ) {
-				if ( null !== $last_time && $point['time'] < $last_time ) continue;
-				$last_time = $point['time'];
-				if ( null === $max_distance || $point['distance_m'] > $max_distance ) {
-					$progress_points[] = $point;
-					$max_distance = $point['distance_m'];
-				}
-			}
-			if ( count( $progress_points ) >= 2 ) {
-				$first = $progress_points[0];
-				$previous_target_time = (float) $first['time'];
-				$segment = 1;
-				$reachable_distance = (float) $progress_points[count($progress_points)-1]['distance_m'];
-				for ( $target = 1000.0; $target <= $distance && $target <= $reachable_distance; $target += 1000.0 ) {
-					while ( $segment < count( $progress_points ) && $progress_points[$segment]['distance_m'] < $target ) $segment++;
-					if ( $segment >= count( $progress_points ) ) break;
-					$a = $progress_points[$segment - 1];
-					$b = $progress_points[$segment];
-					if ( $b['distance_m'] <= $a['distance_m'] || $b['time'] < $a['time'] ) continue;
-					$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
-					$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
-					if ( $target_time < $previous_target_time ) continue;
-					$splits[] = array(
-						'distance_m' => (int) $target,
-						'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
-						'cumulative_time_ms' => (int) round( ( $target_time - $first['time'] ) * 1000 ),
-					);
-					$previous_target_time = $target_time;
-				}
+		if ( count( $progress_points ) >= 2 ) {
+			$first = $progress_points[0];
+			$previous_target_time = (float) $first['time'];
+			$segment = 1;
+			$reachable_distance = (float) $progress_points[count($progress_points)-1]['distance_m'];
+			for ( $target = 1000.0; $target <= $distance && $target <= $reachable_distance; $target += 1000.0 ) {
+				while ( $segment < count( $progress_points ) && $progress_points[$segment]['distance_m'] < $target ) $segment++;
+				if ( $segment >= count( $progress_points ) ) break;
+				$a = $progress_points[$segment - 1];
+				$b = $progress_points[$segment];
+				if ( $b['distance_m'] <= $a['distance_m'] || $b['time'] < $a['time'] ) continue;
+				$fraction = ( $target - $a['distance_m'] ) / ( $b['distance_m'] - $a['distance_m'] );
+				$target_time = $a['time'] + ( $b['time'] - $a['time'] ) * $fraction;
+				if ( $target_time < $previous_target_time ) continue;
+				$splits[] = array(
+					'distance_m' => (int) $target,
+					'split_time_ms' => (int) round( ( $target_time - $previous_target_time ) * 1000 ),
+					'cumulative_time_ms' => (int) round( ( $target_time - $first['time'] ) * 1000 ),
+				);
+				$previous_target_time = $target_time;
 			}
 		}
 
@@ -159,7 +156,7 @@ final class Workout {
 			'moving_pace_100m_ms' => $distance > 0 && $moving > 0 ? (int) round( $moving / ( $distance / 100 ) ) : null,
 			'non_moving_time_ms' => $elapsed > 0 && $moving > 0 ? max( 0, $elapsed - $moving ) : null,
 			'active_percent' => $elapsed > 0 && $moving > 0 ? min( 100.0, ( $moving / $elapsed ) * 100 ) : null,
-			'trackpoint_count' => count( $points ),
+			'trackpoint_count' => $trackpoint_count,
 			'gps_point_count' => $gps_points,
 			'cadence_point_count' => $cadence_points,
 			'splits' => $splits,
