@@ -71,6 +71,30 @@ final class Workout {
 	}
 
 
+
+	public static function event_readiness( $user_id, $event, $lookback_days=42 ) {
+		global $wpdb;
+		$course=strtolower((string)($event->course_unit??'')); $stroke=strtoupper((string)($event->stroke??'')); $distance=absint($event->distance_value??0);
+		if(!in_array($course,array('m','yd'),true)||!in_array($stroke,array('FR','BR','BACK','FLY','MIXED'),true)||$distance<=0)return array();
+		$lookback_days=max(1,min(365,(int)$lookback_days)); $end=wp_date('Y-m-d 23:59:59',current_time('timestamp')); $start=wp_date('Y-m-d 00:00:00',current_time('timestamp')-($lookback_days-1)*DAY_IN_SECONDS);
+		$w=Database::table('workouts'); $n=Database::table('lengths'); $p=Database::table('performances');
+		$volume=$wpdb->get_row($wpdb->prepare("SELECT COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms,MAX(w.workout_start) last_workout_start FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE w.user_id=%d AND w.workout_type='pool' AND w.pool_length_unit=%s AND w.workout_start >= %s AND w.workout_start <= %s AND n.length_type='active' AND n.stroke=%s AND n.distance_m>0",$user_id,$course,$start,$end,$stroke));
+		$longest=$wpdb->get_row($wpdb->prepare("SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM $p p INNER JOIN $w w ON w.id=p.workout_id WHERE p.user_id=%d AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",$user_id,$course,$stroke,$start,$end));
+		return array(
+			'lookback_days'=>$lookback_days,
+			'workout_count'=>(int)($volume->workout_count??0),
+			'length_count'=>(int)($volume->length_count??0),
+			'distance_native'=>(float)($volume->distance_native??0),
+			'active_time_ms'=>(int)($volume->active_time_ms??0),
+			'last_workout_start'=>$volume->last_workout_start??null,
+			'longest_recent_distance'=>$longest?(int)$longest->distance_value:0,
+			'longest_recent_duration_ms'=>$longest?(int)$longest->duration_ms:null,
+			'longest_recent_workout_id'=>$longest?(int)$longest->workout_id:0,
+			'event_distance_or_longer'=>$longest?(int)$longest->distance_value >= $distance:false,
+		);
+	}
+
+
 	public static function laps( $workout_id, $user_id ) {
 		global $wpdb;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
