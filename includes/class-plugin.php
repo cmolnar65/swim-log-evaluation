@@ -63,6 +63,15 @@ final class Plugin {
 	}
 
 
+
+	private static function migrate_upgrade_settings( $installed_version ) {
+		$allowed = get_option( 'swimlog_allowed_upload_types', null );
+		if ( version_compare( (string) $installed_version, '0.7', '<' ) && array( 'fit', 'csv' ) === $allowed ) {
+			update_option( 'swimlog_allowed_upload_types', array( 'fit', 'csv', 'gpx', 'tcx' ) );
+		}
+	}
+
+
 	public function maybe_upgrade_schema() {
 		if ( ! current_user_can( 'activate_plugins' ) ) {
 			return;
@@ -75,6 +84,7 @@ final class Plugin {
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		if ( Database::install_schema() ) {
+			self::migrate_upgrade_settings( $installed );
 			update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION );
 		}
 	}
