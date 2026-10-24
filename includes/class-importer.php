@@ -183,6 +183,36 @@ final class Importer {
 			self::forget_pending_location($uid,$import_id);return array('workout_id'=>$workout_id,'import_id'=>(int)$import_id,'attached'=>$choice==='attach','source'=>$row->source_type,'performances'=>$evaluated);
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');$wpdb->update(Database::table('imports'),array('error_message'=>substr((string)$e->getMessage(),0,2000),'updated_at'=>current_time('mysql')),array('id'=>$import_id,'user_id'=>$uid,'import_status'=>'pending'));return new \WP_Error('swimlog_import_failed',__('The pending workout could not be committed. The source remains pending for another review attempt; no normalized workout data was partially saved.','chriss-swim-training-progress-evaluation'));}
 	}
+	public static function rebuild_workout($workout_id,$uid){
+		global $wpdb;$workout_id=absint($workout_id);$uid=absint($uid);
+		$wt=Database::table('workouts');$it=Database::table('imports');$pt=Database::table('performances');
+		$existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$uid));
+		if(!$existing)return new \WP_Error('swimlog_rebuild_workout',__('Workout not found.','chriss-swim-training-progress-evaluation'));
+		$sources=$wpdb->get_results($wpdb->prepare("SELECT * FROM $it WHERE workout_id=%d AND user_id=%d AND import_status='complete' ORDER BY CASE WHEN source_type='fit' THEN 0 ELSE 1 END,id ASC",$workout_id,$uid));
+		if(!$sources)return new \WP_Error('swimlog_rebuild_source',__('No completed preserved source is attached to this workout.','chriss-swim-training-progress-evaluation'));
+		$parsed_sources=array();
+		foreach($sources as$row){
+			if(!in_array($row->source_type,array('fit','csv'),true))continue;
+			if(!$row->stored_path||!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('A preserved source file required for this rebuild could not be found. No workout data was changed.','chriss-swim-training-progress-evaluation'));
+			$parser=$row->source_type==='fit'?new FIT_Importer():new CSV_Importer();$parsed=$parser->parse($row->stored_path);
+			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(__('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
+			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
+		}
+		if(!$parsed_sources)return new \WP_Error('swimlog_rebuild_source',__('No supported preserved FIT or CSV source is available for this workout.','chriss-swim-training-progress-evaluation'));
+		$authority=$parsed_sources[0];foreach($parsed_sources as$item){if('fit'===$item['row']->source_type){$authority=$item;break;}}
+		$location_id=absint($existing->location_id??0);
+		if(false===$wpdb->query('START TRANSACTION'))return new \WP_Error('swimlog_rebuild_transaction',__('The rebuild transaction could not be started. No workout data was changed.','chriss-swim-training-progress-evaluation'));
+		try{
+			if(self::update_workout($workout_id,$uid,$location_id,$authority['parsed']['workout'])===false)throw new \Exception('workout update');
+			if(!self::replace_structure($workout_id,$authority['parsed']))throw new \Exception('structure');
+			foreach($parsed_sources as$item){if($item===$authority)continue;if(self::supplement_workout($workout_id,$uid,$location_id,$item['parsed']['workout'])===false)throw new \Exception('workout supplement');}
+			if(false===$wpdb->delete($pt,array('workout_id'=>$workout_id,'user_id'=>$uid),array('%d','%d')))throw new \Exception('performances');
+			if(false===$wpdb->query('COMMIT'))throw new \Exception('commit');
+		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_rebuild_failed',__('The workout rebuild failed and was rolled back. The preserved sources and existing workout remain available.','chriss-swim-training-progress-evaluation'));}
+		require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';$evaluated=Evaluator::evaluate_workout($workout_id,$uid);
+		if(is_wp_error($evaluated))return $evaluated;
+		return array('workout_id'=>$workout_id,'sources'=>count($parsed_sources),'performances'=>$evaluated);
+	}
 	public static function pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);return absint($map[(int)$import_id]??0);}
 	private static function remember_pending_location($uid,$import_id,$location_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);if($location_id)$map[(int)$import_id]=absint($location_id);else unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
