@@ -32,6 +32,14 @@ Version 0.7 adds native Block Editor support for the six existing public display
 
 Public-results authorization is unchanged. Applicable blocks use the page/post author when no swimmer override is supplied and never fall back to the logged-in viewer. Open-water GPS routes remain separately opt-in, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
 
+== Screenshots ==
+
+1. Swim Training Dashboard provides an overview of the latest workout, personal bests, upcoming events, and recent training activity.
+2. Workout Details displays imported workout information, detected performances, preserved source imports, and normalized swim data.
+3. Personal Bests tracks performances by age group, course, distance, and stroke, with lifetime personal bests identified.
+4. PB Progression shows the performance history for a selected distance and stroke over time.
+5. Six native WordPress blocks make it easy to add latest workouts, personal bests, upcoming events, individual workouts, training logs, and progress displays to pages and posts.
+
 == Changelog ==
 
 = 0.7 =
