@@ -229,14 +229,14 @@ final class Garmin_Personal_API {
 		}
 		$fit_path = wp_tempnam( basename( $fit_name ) );
 		if ( ! $fit_path ) {
-			fclose( $fit_stream );
+			fclose( $fit_stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close bounded ZipArchive stream.
 			$zip->close();
 			wp_delete_file( $archive_path );
 			return new \WP_Error( 'swimlog_garmin_temp_failed', __( 'A temporary Garmin FIT file could not be created.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$output = fopen( $fit_path, 'wb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Private temporary binary FIT.
 		if ( false === $output ) {
-			fclose( $fit_stream );
+			fclose( $fit_stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close bounded ZipArchive stream.
 			$zip->close();
 			wp_delete_file( $archive_path );
 			wp_delete_file( $fit_path );
@@ -244,8 +244,8 @@ final class Garmin_Personal_API {
 		}
 
 		$copied = stream_copy_to_stream( $fit_stream, $output, 10485761 );
-		fclose( $output );
-		fclose( $fit_stream );
+		fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close private temporary FIT output stream.
+		fclose( $fit_stream ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close bounded ZipArchive stream.
 		$zip->close();
 		wp_delete_file( $archive_path );
 		if ( false === $copied || $copied !== $fit_size || $copied > 10485760 ) {

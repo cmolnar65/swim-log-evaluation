@@ -1,0 +1,44 @@
+{
+  "apiVersion": 3,
+  "name": "swimlog/progress",
+  "version": "0.7.0",
+  "title": "Progress",
+  "category": "widgets",
+  "icon": "chart-line",
+  "description": "Display personal-best progression for one exact swim event.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "course": {
+      "type": "string",
+      "default": ""
+    },
+    "stroke": {
+      "type": "string",
+      "default": ""
+    },
+    "distance": {
+      "type": "integer",
+      "default": 0
+    },
+    "titleMode": {
+      "type": "string",
+      "default": "default"
+    },
+    "customTitle": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "editorScript": "swimlog-block-progress",
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  }
+}

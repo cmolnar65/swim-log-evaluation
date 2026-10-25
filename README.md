@@ -4,9 +4,9 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources, normalized workout/lap/length storage, personal-best evaluation, events, locations, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Current release: v0.6
+## Current release: v0.7
 
-Version 0.6 is the current release candidate represented by this branch and is ready for the v0.6 tag/release process.
+Version 0.7 is the release candidate represented by the current `develop` branch. It includes all v0.6 work plus the v0.7 Block Editor, administration, post-creation, presentation, and REST-permission enhancements.
 
 v0.6 expands the plugin with:
 
@@ -30,6 +30,24 @@ v0.6 expands the plugin with:
 - explicit event-readiness policy and open-water analytics unit/provenance metadata.
 
 Open-water workouts remain isolated from pool personal-best evaluation.
+
+
+## v0.7 Block Editor support
+
+v0.7 adds native WordPress Block Editor integration for all six existing public display features. The legacy shortcodes remain supported public API; the blocks do not replace or deprecate them. Each block is dynamic/server-rendered and uses the same PHP query, authorization, privacy, and rendering path as its corresponding shortcode.
+
+| Block | Legacy shortcode | Editor controls |
+| --- | --- | --- |
+| Latest Workouts | `[swimlog_latest]` | swimmer override, workout count (1–20), heading |
+| Personal Bests | `[swimlog_bests]` | swimmer, course, stroke, distance, lifetime/age-group bests, age-group mode, heading |
+| Upcoming Events | `[swimlog_upcoming_events]` | swimmer, site-default or explicit event count (1–50), heading |
+| Workout | `[swimlog_workout]` | workout ID and heading; workout ownership determines the swimmer |
+| Training Log | `[swimlog_log]` | swimmer, monthly/annual mode, month/year, heading |
+| Progress | `[swimlog_progress]` | swimmer, course, stroke, distance, heading |
+
+The Training Log block preserves the shortcode distinction between a monthly log and annual totals: annual mode supplies a year without a month. The Progress block continues to use the existing PHP progression calculation and front-end chart implementation rather than duplicating progression logic in editor JavaScript.
+
+Version 0.7 also adds workout-number visibility in administration, a Create Post/Edit Post workflow from Workout Details that creates a draft containing the native Workout block, and improved responsive public tables. All six native blocks advertise Wide and Full alignment support.\n\nPublic-results privacy behavior is unchanged. When a swimmer override is not supplied, applicable blocks resolve the swimmer from the page/post author; there is no logged-in-viewer fallback. The Workout block does not accept a swimmer override because ownership comes from the selected workout. Open-water GPS routes remain separately opt-in through Public Open-Water Routes, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
 
 ## Private Workout File Storage
 
@@ -111,4 +129,4 @@ Authenticated WordPress clients may read normalized workout data through the `sw
 
 Available routes are `GET /wp-json/swimlog/v1/workouts` and `GET /wp-json/swimlog/v1/workouts/{id}`. The collection supports pagination plus workout-type and date filters.
 
-The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication and the plugin's own-view capability are required.
+The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication, the plugin's own-view capability, and the swimmer's explicit **REST API Access** opt-in are required. REST API Access is configured per swimmer under **Swim Training → Swimmer Configuration**, defaults to OFF, and is independent of Public Results and Public Open-Water Routes. The configuration screen links to an in-plugin API documentation page with authentication guidance, routes, filters, returned fields, privacy exclusions, examples, and errors.

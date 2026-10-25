@@ -6,24 +6,26 @@ It is developer and release documentation. It is not intended to suppress Plugin
 
 ## Baseline
 
-Baseline build: **RC8**
+Baseline build: **v0.7 release candidate**
 
 Plugin Check result:
 
 - Errors: **0**
-- Warnings: **253**
+- Warnings: **372**
 
-RC8 is the first baseline established after targeted remediation of actionable Plugin Check findings. The remaining warnings were reviewed by warning family and by the SQL patterns that produce them.
+RC8 was the first baseline established after targeted remediation of actionable Plugin Check findings. The v0.7 release candidate was rechecked against the actual distribution ZIP after resolving all error-level findings plus the new nonce-verification and unsanitized Garmin-key warnings. The remaining warnings were reviewed by warning family and by the code paths that produce them.
 
-### RC8 warning families
+### v0.7 warning families
 
 | Warning | Count | Baseline disposition |
 | --- | ---: | --- |
-| `WordPress.DB.DirectDatabaseQuery.DirectQuery` | 84 | Reviewed / accepted custom-table architecture |
-| `WordPress.DB.DirectDatabaseQuery.NoCaching` | 74 | Reviewed / accepted for current architecture |
-| `WordPress.DB.PreparedSQL.InterpolatedNotPrepared` | 52 | Reviewed only where interpolation is an internally generated custom-table identifier or already-prepared internal SQL fragment |
-| `PluginCheck.Security.DirectDB.UnescapedDBParameter` | 43 | Reviewed only where the reported value is an internally generated custom-table identifier |
-| **Total** | **253** | |
+| `WordPress.DB.DirectDatabaseQuery.DirectQuery` | 121 | Reviewed / accepted custom-table architecture |
+| `WordPress.DB.DirectDatabaseQuery.NoCaching` | 110 | Reviewed / accepted for current architecture |
+| `WordPress.DB.PreparedSQL.InterpolatedNotPrepared` | 74 | Reviewed only where interpolation is an internally generated custom-table identifier or already-prepared internal SQL fragment |
+| `PluginCheck.Security.DirectDB.UnescapedDBParameter` | 63 | Reviewed only where the reported value is an internally generated custom-table identifier |
+| `WordPress.DB.SlowDBQuery.slow_db_query_meta_key` | 2 | Reviewed / accepted only for bounded admin-only workout-to-post lookups |
+| `WordPress.DB.SlowDBQuery.slow_db_query_meta_value` | 2 | Reviewed / accepted only for bounded admin-only workout-to-post lookups |
+| **Total** | **372** | |
 
 No RC8 finding in the baseline is automatically considered safe merely because it has one of these codes. The specific source and data flow must continue to satisfy the conditions documented below.
 
@@ -66,6 +68,14 @@ User-controlled table names, column names, operators, ordering expressions, arbi
 
 The workout filtering code is an example of the second situation: Plugin Check can still report the assembled `$sql_where` fragment even though optional predicates are individually prepared before the fragment is combined.
 
+### SlowDBQuery meta_key / meta_value
+
+Version 0.7 adds two bounded WordPress post lookups that associate a normal post with a swim workout through the internal post-meta key `_swimlog_workout_id`. Plugin Check reports these as `WordPress.DB.SlowDBQuery.slow_db_query_meta_key` and `WordPress.DB.SlowDBQuery.slow_db_query_meta_value`.
+
+These warnings are accepted only for the two reviewed Workout Details/Create Post lookups. Both calls use WordPress `get_posts()`, are restricted to `post_type=post`, request only IDs, set `posts_per_page=1`, use a fixed internal meta key, and compare against the integer workout ID already authorized for the current swimmer. They run only in administrative workout-detail/create-post flows, not on public page rendering or bulk queries.
+
+A dedicated custom mapping table or duplicated option/index solely to eliminate these two low-frequency warnings would add synchronization and upgrade complexity without improving correctness. If workout-to-post lookup becomes high-volume or moves into public rendering, this exception must be revisited.
+
 ### DirectDB.UnescapedDBParameter
 
 Plugin Check can report a custom table variable such as `$table`, `$t`, `$wt`, or `$lt` as an unescaped database parameter because static analysis does not establish that it came from `Database::table()`.
@@ -86,6 +96,7 @@ The following must be investigated when they appear, even if Plugin Check otherw
 - Missing capability or nonce validation on state-changing administrative actions
 - Filesystem findings involving unsafe source-file handling
 - New error-level Plugin Check findings
+- New slow post-meta query warnings outside the specifically reviewed `_swimlog_workout_id` lookups
 - A new warning family not documented in this baseline
 
 A warning that resembles an accepted warning must still be reviewed if its source location or data flow changes.
@@ -112,6 +123,7 @@ A lower warning count is useful only when it results from a legitimate remediati
 | RC6 | 0 | 258 | Administrative/input cleanup in progress |
 | RC7 | 0 | 255 | Prepare and administrative warning cleanup |
 | **RC8** | **0** | **253** | **Reviewed baseline; remaining findings classified as architectural/static-analysis warnings** |
+| **v0.7 release candidate** | **0** | **372** | **All error-level findings cleared; nonce and Garmin input warnings corrected; bounded `_swimlog_workout_id` post-meta lookup warnings reviewed and documented.** |
 
 ## Maintenance rule
 

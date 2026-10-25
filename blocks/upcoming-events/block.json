@@ -1,0 +1,36 @@
+{
+  "apiVersion": 3,
+  "name": "swimlog/upcoming-events",
+  "version": "0.7.0",
+  "title": "Upcoming Events",
+  "category": "widgets",
+  "icon": "calendar-alt",
+  "description": "Display upcoming swim events and the swimmer's current exact personal best for each event.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "count": {
+      "type": "integer",
+      "default": 0
+    },
+    "titleMode": {
+      "type": "string",
+      "default": "default"
+    },
+    "customTitle": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "editorScript": "swimlog-block-upcoming-events",
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  }
+}

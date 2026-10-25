@@ -9,7 +9,7 @@ final class REST_API {
   register_rest_route(self::NS,'/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workouts'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('page'=>array('sanitize_callback'=>'absint'),'per_page'=>array('sanitize_callback'=>'absint'),'workout_type'=>array('sanitize_callback'=>'sanitize_key'),'date_from'=>array('sanitize_callback'=>'sanitize_text_field'),'date_to'=>array('sanitize_callback'=>'sanitize_text_field'))));
   register_rest_route(self::NS,'/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workout'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('id'=>array('sanitize_callback'=>'absint'))));
  }
- public static function permission(){return is_user_logged_in()&&current_user_can('swimlog_view_own_results');}
+ public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}
  public static function workouts($request){
   $uid=get_current_user_id();$page=max(1,(int)$request->get_param('page'));$per=max(1,min(100,(int)($request->get_param('per_page')?:20)));$filters=array();
   foreach(array('workout_type','date_from','date_to')as$key){$v=$request->get_param($key);if(null!==$v&&''!==$v)$filters[$key]=$v;}

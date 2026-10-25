@@ -21,6 +21,8 @@ final class Plugin {
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';
 		Shortcodes::register();
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';
+		add_action( 'init', array( 'SwimLogEvaluation\\Blocks', 'register' ) );
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
 	}
 
