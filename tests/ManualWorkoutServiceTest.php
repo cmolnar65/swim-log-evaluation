@@ -90,6 +90,6 @@ final class ManualWorkoutServiceTest extends TestCase {
  }
  public function test_phase9_evaluator_can_join_callers_transaction_without_nested_commit_or_rollback(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-evaluator.php');
-  $this->assertStringContainsString('evaluate_manual_measured_repetitions( \$workout_id, \$user_id, \$document, \$manage_transaction = true )',$code);$this->assertStringContainsString("\$manage_transaction && false === \$wpdb->query( 'START TRANSACTION' )",$code);$this->assertStringContainsString("if ( \$manage_transaction && false === \$wpdb->query( 'COMMIT' ) )",$code);$this->assertStringContainsString("if ( \$manage_transaction ) \$wpdb->query( 'ROLLBACK' )",$code);
+  $this->assertStringContainsString('evaluate_manual_measured_repetitions( $workout_id, $user_id, $document, $manage_transaction = true )',$code);$this->assertStringContainsString("\$manage_transaction && false === \$wpdb->query( 'START TRANSACTION' )",$code);$this->assertStringContainsString("if ( \$manage_transaction && false === \$wpdb->query( 'COMMIT' ) )",$code);$this->assertStringContainsString("if ( \$manage_transaction ) \$wpdb->query( 'ROLLBACK' )",$code);
  }
 }
