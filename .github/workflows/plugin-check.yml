@@ -1,0 +1,33 @@
+name: Plugin Check Release Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+    paths:
+      - '.github/workflows/plugin-check.yml'
+      - 'build-release.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build clean release package
+        run: |
+          set -euo pipefail
+          chmod +x ./build-release.sh
+          ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation.zip"
+          mkdir -p "$RUNNER_TEMP/plugin-build"
+          unzip -q "$RUNNER_TEMP/chriss-swim-training-progress-evaluation.zip" -d "$RUNNER_TEMP/plugin-build"
+
+      - name: Run WordPress Plugin Check against packaged plugin
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
+          mode: update
