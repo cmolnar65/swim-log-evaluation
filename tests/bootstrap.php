@@ -32,6 +32,7 @@ require_once dirname(__DIR__).'/includes/class-workout.php';
 require_once dirname(__DIR__).'/includes/class-location.php';
 
 require_once dirname(__DIR__).'/includes/class-importer.php';
+require_once dirname(__DIR__).'/includes/class-manual-workout.php';
 
 require_once dirname(__DIR__).'/includes/class-shortcodes.php';
 require_once dirname(__DIR__).'/includes/class-blocks.php';
