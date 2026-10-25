@@ -197,7 +197,7 @@ final class Admin {
 			<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-workout-location"><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></label></th><td><select id="swimlog-workout-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected((int)$w->location_id,(int)$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php echo esc_html($is_open_water?__('Changing the location does not change imported open-water distance or GPS track data.','chriss-swim-training-progress-evaluation'):__('Changing the location does not change the pool length or course stored with this workout.','chriss-swim-training-progress-evaluation')); ?></p></td></tr>
 			<tr><th scope="row"><label for="swimlog-workout-notes"><?php esc_html_e('Notes','chriss-swim-training-progress-evaluation'); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-workout-notes" name="notes"><?php echo esc_textarea($w->notes??''); ?></textarea></td></tr></table>
 			<?php submit_button(__('Save Changes','chriss-swim-training-progress-evaluation'),'primary','',false); ?> <a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail),admin_url('admin.php'))); ?>"><?php esc_html_e('Cancel','chriss-swim-training-progress-evaluation'); ?></a></form>
-			<?php else:?><p><a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit Workout','chriss-swim-training-progress-evaluation'); ?></a></p>
+			<?php else:?><?php $linked_posts=get_posts(array('post_type'=>'post','post_status'=>array('draft','pending','future','publish','private'),'posts_per_page'=>1,'fields'=>'ids','meta_key'=>'_swimlog_workout_id','meta_value'=>$detail)); ?><p><a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit Workout','chriss-swim-training-progress-evaluation'); ?></a> <?php if($linked_posts):?><a class="button button-primary" href="<?php echo esc_url(get_edit_post_link((int)$linked_posts[0],'raw')); ?>"><?php esc_html_e('Edit Post','chriss-swim-training-progress-evaluation'); ?></a><?php elseif(current_user_can('edit_posts')):?><form method="post" style="display:inline"><?php wp_nonce_field('swimlog_create_workout_post_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="create_post"><?php submit_button(__('Create Post','chriss-swim-training-progress-evaluation'),'primary','',false); ?></form><?php endif;?></p>
 			<table class="widefat striped"><tbody>
 			<tr><th><?php esc_html_e('Date','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(mysql2date('F j, Y g:i a',$w->workout_start,false)); ?></td></tr>
 			<tr><th><?php esc_html_e('Workout type','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($is_open_water?__('Open water','chriss-swim-training-progress-evaluation'):__('Pool','chriss-swim-training-progress-evaluation')); ?></td></tr>
@@ -501,7 +501,7 @@ final class Admin {
 		if ( empty( $_GET['page'] ) || 'swimlog-workouts' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
 		if ( empty( $_POST['swimlog_workout_action'] ) ) return;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_workout_action'] ) );
-		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete' ), true ) ) return;
+		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete', 'create_post' ), true ) ) return;
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
@@ -510,6 +510,46 @@ final class Admin {
 		$detail = isset( $_GET['workout_id'] ) ? absint( wp_unslash( $_GET['workout_id'] ) ) : 0;
 		if ( ! $detail || ! Workout::get_for_user( $detail, $user_id ) ) {
 			wp_die( esc_html__( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+
+		if ( 'create_post' === $action ) {
+			check_admin_referer( 'swimlog_create_workout_post_' . $detail );
+			if ( ! current_user_can( 'edit_posts' ) ) {
+				wp_die( esc_html__( 'You do not have permission to create posts.', 'chriss-swim-training-progress-evaluation' ) );
+			}
+			$workout = Workout::get_for_user( $detail, $user_id );
+			$existing = get_posts( array(
+				'post_type'      => 'post',
+				'post_status'    => array( 'draft', 'pending', 'future', 'publish', 'private' ),
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'meta_key'       => '_swimlog_workout_id',
+				'meta_value'     => $detail,
+			) );
+			if ( $existing ) {
+				wp_safe_redirect( get_edit_post_link( (int) $existing[0], 'raw' ) );
+				exit;
+			}
+			$date = mysql2date( 'F j, Y', $workout->workout_start, false );
+			$type = 'open_water' === ( $workout->workout_type ?? 'pool' ) ? __( 'Open Water Swim', 'chriss-swim-training-progress-evaluation' ) : __( 'Pool Swim', 'chriss-swim-training-progress-evaluation' );
+			$descriptor = trim( (string) ( $workout->location_name ?? '' ) );
+			if ( '' === $descriptor ) $descriptor = $type;
+			$title = sprintf( __( 'Swim — %1$s — %2$s', 'chriss-swim-training-progress-evaluation' ), $date, $descriptor );
+			$content = '<!-- wp:swimlog/workout {"workoutId":' . (int) $detail . '} /-->';
+			$post_id = wp_insert_post( array(
+				'post_type'    => 'post',
+				'post_status'  => 'draft',
+				'post_author'  => $user_id,
+				'post_title'   => $title,
+				'post_content' => $content,
+			), true );
+			if ( is_wp_error( $post_id ) ) {
+				$this->workout_action_error = $post_id->get_error_message();
+				return;
+			}
+			update_post_meta( $post_id, '_swimlog_workout_id', $detail );
+			wp_safe_redirect( get_edit_post_link( $post_id, 'raw' ) );
+			exit;
 		}
 
 		if ( 'rebuild' === $action ) {
