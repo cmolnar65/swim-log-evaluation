@@ -1,5 +1,5 @@
 {
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "swimlog/training-log",
   "version": "0.7.0",
   "title": "Training Log",

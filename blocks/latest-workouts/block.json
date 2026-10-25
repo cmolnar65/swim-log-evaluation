@@ -1,5 +1,5 @@
 {
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "swimlog/latest-workouts",
   "version": "0.7.0",
   "title": "Latest Workouts",
