@@ -59,7 +59,8 @@ final class BlockSecurityPrivacyTest extends TestCase {
 
 	public function test_rest_api_remains_authenticated_and_excludes_trackpoints() {
 		$r = file_get_contents( dirname( __DIR__ ) . '/includes/class-rest-api.php' );
-		$this->assertStringContainsString( "is_user_logged_in()&&current_user_can('swimlog_view_own_results')", $r );
+		$this->assertStringContainsString( "!is_user_logged_in()||!current_user_can('swimlog_view_own_results')", $r );
+		$this->assertStringContainsString( "get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true)", $r );
 		$this->assertStringContainsString( 'Workout::get_for_user($id,$uid)', $r );
 		$this->assertStringNotContainsString( 'Workout::trackpoints', $r );
 		$this->assertStringNotContainsString( "'latitude'", $r );
