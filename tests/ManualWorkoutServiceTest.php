@@ -80,4 +80,16 @@ final class ManualWorkoutServiceTest extends TestCase {
   $this->assertStringContainsString("Database::table( 'performances' )",$code);
   $this->assertStringContainsString("Evaluator::evaluate_manual_measured_repetitions",$code);
  }
+ public function test_phase9_save_keeps_structure_source_and_performance_evaluation_in_one_transaction(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-manual-workout.php');$start=strpos($code,"query( 'START TRANSACTION' )");$commit=strpos($code,"query( 'COMMIT' )",$start);$eval=strpos($code,"Evaluator::evaluate_manual_measured_repetitions( \$workout_id, \$user_id, \$normalized['document'], false )",$start);
+  $this->assertNotFalse($eval);$this->assertGreaterThan($start,$eval);$this->assertLessThan($commit,$eval);$this->assertStringContainsString("throw new \\Exception( 'evaluation' )",$code);
+ }
+ public function test_phase9_edit_and_rebuild_are_owner_scoped_and_imports_remain_protected(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-manual-workout.php');
+  $this->assertStringContainsString("WHERE id=%d AND user_id=%d",$code);$this->assertStringContainsString("'manual' !== (string) \$existing->source_type",$code);$this->assertStringContainsString("WHERE workout_id=%d AND user_id=%d",$code);$this->assertStringNotContainsString("Database::table( 'imports' )",$code);
+ }
+ public function test_phase9_evaluator_can_join_callers_transaction_without_nested_commit_or_rollback(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-evaluator.php');
+  $this->assertStringContainsString('evaluate_manual_measured_repetitions( \$workout_id, \$user_id, \$document, \$manage_transaction = true )',$code);$this->assertStringContainsString("\$manage_transaction && false === \$wpdb->query( 'START TRANSACTION' )",$code);$this->assertStringContainsString("if ( \$manage_transaction && false === \$wpdb->query( 'COMMIT' ) )",$code);$this->assertStringContainsString("if ( \$manage_transaction ) \$wpdb->query( 'ROLLBACK' )",$code);
+ }
 }

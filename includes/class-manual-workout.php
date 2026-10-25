@@ -223,14 +223,14 @@ final class Manual_Workout {
 			if ( false === $wpdb->delete( $pt, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
 			foreach ( $normalized['laps'] as $row ) { $row['workout_id'] = $workout_id; $row['created_at'] = $now; if ( ! $wpdb->insert( $lt, $row ) ) throw new \Exception( 'lap' ); }
 			foreach ( $normalized['lengths'] as $row ) { $row['workout_id'] = $workout_id; $row['lap_id'] = null; $row['created_at'] = $now; if ( ! $wpdb->insert( $nt, $row ) ) throw new \Exception( 'length' ); }
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
+			$evaluated = Evaluator::evaluate_manual_measured_repetitions( $workout_id, $user_id, $normalized['document'], false );
+			if ( is_wp_error( $evaluated ) ) throw new \Exception( 'evaluation' );
 			if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' );
 		} catch ( \Throwable $e ) {
 			$wpdb->query( 'ROLLBACK' );
 			return new \WP_Error( 'swimlog_manual_save_failed', __( 'The manual workout could not be saved and all changes were rolled back.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
-		$evaluated = Evaluator::evaluate_manual_measured_repetitions( $workout_id, $user_id, $normalized['document'] );
-		if ( is_wp_error( $evaluated ) ) return $evaluated;
 		return array( 'workout_id' => $workout_id, 'source_type' => 'manual', 'laps' => count( $normalized['laps'] ), 'lengths' => count( $normalized['lengths'] ), 'performances' => (int) $evaluated );
 	}
 

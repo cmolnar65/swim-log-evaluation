@@ -34,7 +34,7 @@ final class Evaluator {
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_eval_save',__('Performance evaluation could not be saved.','chriss-swim-training-progress-evaluation'));}
 	}
 
-	public static function evaluate_manual_measured_repetitions( $workout_id, $user_id, $document ) {
+	public static function evaluate_manual_measured_repetitions( $workout_id, $user_id, $document, $manage_transaction = true ) {
 		global $wpdb;
 		$workout_id = absint( $workout_id ); $user_id = absint( $user_id );
 		$wt = Database::table( 'workouts' ); $pt = Database::table( 'performances' );
@@ -49,12 +49,12 @@ final class Evaluator {
 			foreach ( (array) ( $segment['rep_times_ms'] ?? array() ) as $duration ) $candidates[] = array( 'distance' => $target, 'course' => $course, 'stroke' => $stroke, 'duration' => (int) $duration, 'start_id' => null, 'end_id' => null, 'start_offset' => null, 'end_offset' => null );
 		}
 		$best = array(); foreach ( $candidates as $c ) { if ( ! self::is_plausible_performance( $c ) ) continue; $key = $c['distance'] . '|' . $c['course'] . '|' . $c['stroke']; if ( ! isset( $best[$key] ) || $c['duration'] < $best[$key]['duration'] ) $best[$key] = $c; }
-		if ( false === $wpdb->query( 'START TRANSACTION' ) ) return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( $manage_transaction && false === $wpdb->query( 'START TRANSACTION' ) ) return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) );
 		try {
 			if ( false === $wpdb->delete( $pt, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'clear' );
 			foreach ( $best as $candidate ) if ( ! self::insert_performance( $pt, $user_id, $workout_id, $w, $candidate ) ) throw new \Exception( 'performance' );
-			self::recalculate_personal_bests( $user_id ); if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' ); return count( $best );
-		} catch ( \Throwable $exception ) { $wpdb->query( 'ROLLBACK' ); return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) ); }
+			self::recalculate_personal_bests( $user_id ); if ( $manage_transaction && false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' ); return count( $best );
+		} catch ( \Throwable $exception ) { if ( $manage_transaction ) $wpdb->query( 'ROLLBACK' ); return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) ); }
 	}
 
 	private static function evaluate_candidates($workout_id,$user_id){
