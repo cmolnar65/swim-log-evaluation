@@ -51,6 +51,24 @@ final class ManualWorkoutServiceTest extends TestCase {
   $this->assertTrue(is_wp_error($e));
   $this->assertSame('swimlog_manual_rep_count',$e->get_error_code());
  }
+ public function test_phase4_untimed_sets_derive_volume_and_lengths_without_times(){
+  $d=$this->document();
+  $d['workout']['original_distance']=null;
+  $d['segments']=array(
+   array('type'=>'active','repetitions'=>1,'distance_per_rep'=>400,'stroke'=>'FR','timing_type'=>'unknown','notes'=>'Warm-up'),
+   array('type'=>'active','repetitions'=>8,'distance_per_rep'=>50,'stroke'=>'FR','timing_type'=>'unknown'),
+   array('type'=>'active','repetitions'=>4,'distance_per_rep'=>100,'stroke'=>'BR','timing_type'=>'unknown'),
+   array('type'=>'active','repetitions'=>1,'distance_per_rep'=>200,'stroke'=>'FR','timing_type'=>'unknown','notes'=>'Cool-down')
+  );
+  $n=Manual_Workout::normalize_document($d);
+  $this->assertFalse(is_wp_error($n));
+  $this->assertEqualsWithDelta(1400.0,$n['workout']['original_distance'],0.001);
+  $this->assertCount(4,$n['laps']);
+  $this->assertCount(56,$n['lengths']);
+  $this->assertSame('MIXED',$n['workout']['primary_stroke']);
+  foreach($n['laps'] as $lap)$this->assertNull($lap['elapsed_time_ms']);
+  foreach($n['lengths'] as $length)$this->assertNull($length['elapsed_time_ms']);
+ }
  public function test_service_contract_is_transactional_and_separate_from_importer(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-manual-workout.php');
   $this->assertStringContainsString("query( 'START TRANSACTION' )",$code);

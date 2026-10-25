@@ -319,6 +319,19 @@ final class Admin {
 			'elapsed_time_ms' => null === $duration_minutes ? null : (int) round( $duration_minutes * 60000 ),
 			'notes' => sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) ),
 		), 'segments' => array() );
+		$segment_reps = isset( $_POST['segment_repetitions'] ) ? (array) wp_unslash( $_POST['segment_repetitions'] ) : array();
+		$segment_distances = isset( $_POST['segment_distance'] ) ? (array) wp_unslash( $_POST['segment_distance'] ) : array();
+		$segment_strokes = isset( $_POST['segment_stroke'] ) ? (array) wp_unslash( $_POST['segment_stroke'] ) : array();
+		$segment_notes = isset( $_POST['segment_notes'] ) ? (array) wp_unslash( $_POST['segment_notes'] ) : array();
+		$segment_count = max( count( $segment_reps ), count( $segment_distances ), count( $segment_strokes ), count( $segment_notes ) );
+		for ( $i = 0; $i < $segment_count; $i++ ) {
+			$reps_raw = trim( (string) ( $segment_reps[$i] ?? '' ) );
+			$distance_raw = trim( (string) ( $segment_distances[$i] ?? '' ) );
+			$stroke_raw = sanitize_key( (string) ( $segment_strokes[$i] ?? '' ) );
+			$notes_raw = sanitize_textarea_field( (string) ( $segment_notes[$i] ?? '' ) );
+			if ( '' === $reps_raw && '' === $distance_raw && '' === $stroke_raw && '' === $notes_raw ) continue;
+			$document['segments'][] = array( 'type' => 'active', 'repetitions' => $reps_raw, 'distance_per_rep' => $distance_raw, 'stroke' => strtoupper( $stroke_raw ), 'timing_type' => 'unknown', 'notes' => $notes_raw );
+		}
 		$result = Manual_Workout::save( $user_id, $document );
 		if ( is_wp_error( $result ) ) { $this->manual_workout_action_error = $result->get_error_message(); return; }
 		wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => (int) $result['workout_id'], 'manual_created' => 1 ), admin_url( 'admin.php' ) ) );
@@ -334,7 +347,7 @@ final class Admin {
 		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? wp_date( 'Y-m-d' ) ) );
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e( 'Add Manual Workout', 'chriss-swim-training-progress-evaluation' ); ?></h1>
-		<p><?php esc_html_e( 'Record a pool workout without an uploaded device file. Phase 3 records workout-level totals only; sets, repetitions, strokes, and measured split times are added in later phases.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+		<p><?php esc_html_e( 'Record a pool workout without an uploaded device file. Add ordered sets when you know the workout structure, or leave the set rows blank for a totals-only workout. Set timing is intentionally not collected yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 		<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 		<form method="post"><?php wp_nonce_field( 'swimlog_create_manual_workout' ); ?><input type="hidden" name="swimlog_manual_workout_action" value="create">
 		<table class="form-table" role="presentation">
@@ -345,7 +358,13 @@ final class Admin {
 		<tr><th scope="row"><label for="swimlog-manual-distance"><?php esc_html_e( 'Total distance', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-manual-distance" name="total_distance" type="number" min="0" step="0.001" value="<?php echo esc_attr( sanitize_text_field( wp_unslash( $_POST['total_distance'] ?? '' ) ) ); ?>"> <span><?php esc_html_e( 'in the selected course unit', 'chriss-swim-training-progress-evaluation' ); ?></span></td></tr>
 		<tr><th scope="row"><label for="swimlog-manual-duration"><?php esc_html_e( 'Workout duration', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-manual-duration" name="duration_minutes" type="number" min="0" step="0.01" value="<?php echo esc_attr( sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ?? '' ) ) ); ?>"> <?php esc_html_e( 'minutes', 'chriss-swim-training-progress-evaluation' ); ?><p class="description"><?php esc_html_e( 'Overall elapsed workout time only. It is not treated as a race or personal-best time.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 		<tr><th scope="row"><label for="swimlog-manual-notes"><?php esc_html_e( 'Notes', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-manual-notes" name="notes"><?php echo esc_textarea( wp_unslash( $_POST['notes'] ?? '' ) ); ?></textarea></td></tr>
-		</table><?php submit_button( __( 'Create Manual Workout', 'chriss-swim-training-progress-evaluation' ) ); ?></form></div><?php
+		</table>
+		<h2><?php esc_html_e( 'Workout Sets', 'chriss-swim-training-progress-evaluation' ); ?></h2><p class="description"><?php esc_html_e( 'Optional. Enter sets in workout order. Distances use the workout course unit. Blank rows are ignored; no set times are inferred or stored.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+		<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Set', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Repetitions', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance per rep', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Set notes', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+		<?php for ( $set_row = 0; $set_row < 12; $set_row++ ) : $posted_reps=(array)wp_unslash($_POST['segment_repetitions']??array());$posted_distance=(array)wp_unslash($_POST['segment_distance']??array());$posted_stroke=(array)wp_unslash($_POST['segment_stroke']??array());$posted_notes=(array)wp_unslash($_POST['segment_notes']??array()); ?>
+		<tr><th scope="row"><?php echo esc_html( (string) ( $set_row + 1 ) ); ?></th><td><input name="segment_repetitions[]" type="number" min="1" step="1" value="<?php echo esc_attr( sanitize_text_field( $posted_reps[$set_row]??'' ) ); ?>"></td><td><input name="segment_distance[]" type="number" min="0.001" step="0.001" value="<?php echo esc_attr( sanitize_text_field( $posted_distance[$set_row]??'' ) ); ?>"></td><td><select name="segment_stroke[]"><option value=""><?php esc_html_e( 'Unknown', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach(array('FR'=>__('Freestyle','chriss-swim-training-progress-evaluation'),'BR'=>__('Breaststroke','chriss-swim-training-progress-evaluation'),'BACK'=>__('Backstroke','chriss-swim-training-progress-evaluation'),'FLY'=>__('Butterfly','chriss-swim-training-progress-evaluation'),'MIXED'=>__('Mixed','chriss-swim-training-progress-evaluation')) as $stroke_code=>$stroke_label):?><option value="<?php echo esc_attr($stroke_code); ?>" <?php selected(strtoupper(sanitize_key($posted_stroke[$set_row]??'')),$stroke_code); ?>><?php echo esc_html($stroke_label); ?></option><?php endforeach;?></select></td><td><input class="regular-text" name="segment_notes[]" type="text" value="<?php echo esc_attr( sanitize_text_field( $posted_notes[$set_row]??'' ) ); ?>"></td></tr>
+		<?php endfor; ?></tbody></table></div>
+		<?php submit_button( __( 'Create Manual Workout', 'chriss-swim-training-progress-evaluation' ) ); ?></form></div><?php
 	}
 
 	public function upload() {

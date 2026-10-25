@@ -16,6 +16,13 @@ final class ManualWorkoutAdminTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   foreach(array('workout_date','workout_time','location_id','pool_length','course_unit','total_distance','duration_minutes','notes') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
   $this->assertStringContainsString("elapsed_time_ms' => null === \$duration_minutes ? null : (int) round( \$duration_minutes * 60000 )",$admin);
-  $this->assertStringNotContainsString("timing_type\"",$admin);
+  $this->assertStringNotContainsString('name="segment_time',$admin);
+ }
+ public function test_phase4_form_builds_ordered_untimed_segments(){
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  foreach(array('segment_repetitions[]','segment_distance[]','segment_stroke[]','segment_notes[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
+  $this->assertStringContainsString("'timing_type' => 'unknown'",$admin);
+  $this->assertStringContainsString("for ( \$set_row = 0; \$set_row < 12; \$set_row++ )",$admin);
+  $this->assertStringContainsString("Blank rows are ignored; no set times are inferred or stored.",$admin);
  }
 }
