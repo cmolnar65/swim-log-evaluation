@@ -66,6 +66,14 @@ User-controlled table names, column names, operators, ordering expressions, arbi
 
 The workout filtering code is an example of the second situation: Plugin Check can still report the assembled `$sql_where` fragment even though optional predicates are individually prepared before the fragment is combined.
 
+### SlowDBQuery meta_key / meta_value
+
+Version 0.7 adds two bounded WordPress post lookups that associate a normal post with a swim workout through the internal post-meta key `_swimlog_workout_id`. Plugin Check reports these as `WordPress.DB.SlowDBQuery.slow_db_query_meta_key` and `WordPress.DB.SlowDBQuery.slow_db_query_meta_value`.
+
+These warnings are accepted only for the two reviewed Workout Details/Create Post lookups. Both calls use WordPress `get_posts()`, are restricted to `post_type=post`, request only IDs, set `posts_per_page=1`, use a fixed internal meta key, and compare against the integer workout ID already authorized for the current swimmer. They run only in administrative workout-detail/create-post flows, not on public page rendering or bulk queries.
+
+A dedicated custom mapping table or duplicated option/index solely to eliminate these two low-frequency warnings would add synchronization and upgrade complexity without improving correctness. If workout-to-post lookup becomes high-volume or moves into public rendering, this exception must be revisited.
+
 ### DirectDB.UnescapedDBParameter
 
 Plugin Check can report a custom table variable such as `$table`, `$t`, `$wt`, or `$lt` as an unescaped database parameter because static analysis does not establish that it came from `Database::table()`.
@@ -86,6 +94,7 @@ The following must be investigated when they appear, even if Plugin Check otherw
 - Missing capability or nonce validation on state-changing administrative actions
 - Filesystem findings involving unsafe source-file handling
 - New error-level Plugin Check findings
+- New slow post-meta query warnings outside the specifically reviewed `_swimlog_workout_id` lookups
 - A new warning family not documented in this baseline
 
 A warning that resembles an accepted warning must still be reviewed if its source location or data flow changes.
@@ -112,6 +121,7 @@ A lower warning count is useful only when it results from a legitimate remediati
 | RC6 | 0 | 258 | Administrative/input cleanup in progress |
 | RC7 | 0 | 255 | Prepare and administrative warning cleanup |
 | **RC8** | **0** | **253** | **Reviewed baseline; remaining findings classified as architectural/static-analysis warnings** |
+| v0.7 release candidate | 0 | Pending final count | Added reviewed bounded `_swimlog_workout_id` post-meta lookup warnings; nonce and Garmin input warnings corrected in code. |
 
 ## Maintenance rule
 

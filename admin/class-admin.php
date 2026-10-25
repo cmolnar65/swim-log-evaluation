@@ -409,6 +409,7 @@ final class Admin {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB history filters.
 		$history_distance = absint( wp_unslash( $_GET['history_distance'] ?? 0 ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB history filter.
 		$history_stroke = strtoupper( sanitize_key( wp_unslash( $_GET['history_stroke'] ?? '' ) ) );
 		$progression = ( $history_distance && in_array( $history_stroke, array( 'FR', 'BR', 'BACK', 'FLY', 'MIXED' ), true ) ) ? Records::progression( $user_id, $history_distance, $course, $history_stroke ) : array();
 
@@ -1184,7 +1185,7 @@ final class Admin {
 				}
 			} elseif ( 'save' === $action ) {
 				check_admin_referer( 'swimlog_save_garmin_key' );
-				$api_key = isset( $_POST['garmin_api_key'] ) ? trim( (string) wp_unslash( $_POST['garmin_api_key'] ) ) : '';
+				$api_key = isset( $_POST['garmin_api_key'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['garmin_api_key'] ) ) ) : '';
 				$result = Garmin_Personal_API::save_key( $user_id, $api_key );
 				if ( is_wp_error( $result ) ) {
 					$error = $result->get_error_message();
