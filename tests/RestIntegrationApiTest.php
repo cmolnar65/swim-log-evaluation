@@ -10,7 +10,8 @@ final class RestIntegrationApiTest extends TestCase {
   $code=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');
   $this->assertStringContainsString("const NS='swimlog/v1'",$code);
   $this->assertStringContainsString("'methods'=>\\WP_REST_Server::READABLE",$code);
-  $this->assertStringContainsString("is_user_logged_in()&&current_user_can('swimlog_view_own_results')",$code);
+  $this->assertStringContainsString("!is_user_logged_in()||!current_user_can('swimlog_view_own_results')",$code);
+  $this->assertStringContainsString("get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true)",$code);
   $this->assertStringContainsString('get_current_user_id()',$code);
   $this->assertStringContainsString('Workout::get_for_user($id,$uid)',$code);
   $this->assertStringNotContainsString('CREATABLE',$code);
@@ -27,6 +28,16 @@ final class RestIntegrationApiTest extends TestCase {
   $this->assertStringNotContainsString("'original_filename'",$code);
   $this->assertStringNotContainsString("'notes'",$code);
   $this->assertStringContainsString("'splits'=>\$a['splits']??array()",$code);
+ }
+ public function test_swimmer_configuration_has_explicit_default_off_api_permission_and_help(){
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $this->assertStringContainsString("name=\"rest_api_access\"",$code);
+  $this->assertStringContainsString("swimlog_rest_api_access",$code);
+  $this->assertStringContainsString("API Help / Documentation",$code);
+  $this->assertStringContainsString("page=swimlog-api-help",$code);
+  $this->assertStringContainsString("function api_help()",$code);
+  $this->assertStringContainsString("Privacy exclusions",$code);
+  $this->assertStringContainsString("Application Password",$code);
  }
  public function test_api_caps_pagination(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');

@@ -44,6 +44,7 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 * Preserve workout-record ownership, page/post-author swimmer resolution, no logged-in-viewer fallback, and separate open-water GPS route opt-in.
 * Keep progression calculations and chart data authoritative in PHP/front-end rendering rather than duplicating business logic in block editor JavaScript.
 * Add six-block integration, security/privacy, and release-packaging regression coverage across PHP 7.4 through 8.4.
+* Add explicit per-swimmer REST API permission (default OFF) plus an in-plugin REST API help/documentation screen linked from Swimmer Configuration.
 
 
 = 0.6 =
