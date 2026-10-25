@@ -21,8 +21,15 @@ final class ManualWorkoutAdminTest extends TestCase {
  public function test_phase4_form_builds_ordered_untimed_segments(){
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   foreach(array('segment_repetitions[]','segment_distance[]','segment_stroke[]','segment_notes[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
-  $this->assertStringContainsString("'timing_type' => 'unknown'",$admin);
+  $this->assertStringContainsString("'timing_type' => \$timing_raw",$admin);
   $this->assertStringContainsString("for ( \$set_row = 0; \$set_row < 12; \$set_row++ )",$admin);
-  $this->assertStringContainsString("Blank rows are ignored; no set times are inferred or stored.",$admin);
+  $this->assertStringContainsString("Blank rows are ignored.",$admin);
+ }
+ public function test_phase5_collects_explicit_timing_provenance_without_deriving_length_times(){
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  foreach(array('segment_timing_type[]','segment_rep_times[]','segment_set_time[]','segment_interval[]','segment_rest[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
+  $this->assertStringContainsString("manual_time_to_ms",$admin);
+  $this->assertStringContainsString("'rep_times_ms' => \$rep_times_ms",$admin);
+  $this->assertStringContainsString("'interval_ms' => self::manual_time_to_ms( \$interval_raw )",$admin);
  }
 }
