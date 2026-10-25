@@ -6,7 +6,7 @@ final class ManualWorkoutAdminTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("'swimlog-manual-workout', 'manual_workout'",$admin);
-  $this->assertStringContainsString("check_admin_referer( 'swimlog_create_manual_workout' )",$admin);
+  $this->assertStringContainsString("'update' === \$action ? 'swimlog_update_manual_workout_' . \$workout_id : 'swimlog_create_manual_workout'",$admin);
   $this->assertStringContainsString('Manual_Workout::save( $user_id, $document, $workout_id )',$admin);
   $this->assertStringContainsString("'segments' => array()",$admin);
   $this->assertStringContainsString("'page' => 'swimlog-workouts', 'workout_id' => (int) \$result['workout_id']",$admin);
@@ -23,7 +23,7 @@ final class ManualWorkoutAdminTest extends TestCase {
   foreach(array('segment_repetitions[]','segment_distance[]','segment_stroke[]','segment_notes[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
   $this->assertStringContainsString("'timing_type' => \$timing_raw",$admin);
   $this->assertStringContainsString("max(12,count(\$posted_reps))",$admin);
-  $this->assertStringContainsString("Blank rows are ignored.",$admin);
+  $this->assertStringContainsString("if ( '' === \$reps_raw && '' === \$distance_raw && '' === \$stroke_raw && '' === \$notes_raw && '' === \$rep_times_raw && '' === \$set_time_raw && '' === \$interval_raw && '' === \$rest_raw ) continue;",$admin);
  }
  public function test_phase5_collects_explicit_timing_provenance_without_deriving_length_times(){
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
