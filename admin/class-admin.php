@@ -20,6 +20,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Workouts', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-workouts', 'workouts' );
 		$this->submenu( 'swimlog-dashboard', __( 'Training Volume', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-training-volume', 'training_volume' );
 		$this->submenu( 'swimlog-dashboard', __( 'Upload Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_upload_workouts', 'swimlog-upload', 'upload' );
+		$this->submenu( 'swimlog-dashboard', __( 'Add Manual Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-manual-workout', 'manual_workout' );
 		$this->submenu( 'swimlog-dashboard', __( 'Personal Bests', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-personal-bests', 'personal_bests' );
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
 		$this->submenu( 'swimlog-dashboard', __( 'Locations', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_locations', 'swimlog-locations', 'locations' );
@@ -163,7 +164,7 @@ final class Admin {
 		$recent=Workout::recent_for_user($user_id,5);$latest=$recent[0]??null;$pbs=Records::personal_bests($user_id,$course);$event_count=max(1,min(50,(int)get_option('swimlog_default_event_count',5)));$events=Event::upcoming_for_user($user_id,$event_count);
 		$strokes=array('FR'=>__('Freestyle','chriss-swim-training-progress-evaluation'),'BR'=>__('Breaststroke','chriss-swim-training-progress-evaluation'),'BACK'=>__('Backstroke','chriss-swim-training-progress-evaluation'),'FLY'=>__('Butterfly','chriss-swim-training-progress-evaluation'),'MIXED'=>__('Mixed','chriss-swim-training-progress-evaluation'),'UNKNOWN'=>__('Unknown','chriss-swim-training-progress-evaluation'));
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Swim Training Dashboard','chriss-swim-training-progress-evaluation'); ?></h1>
-		<p><a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-upload')); ?>"><?php esc_html_e('Upload Workout','chriss-swim-training-progress-evaluation'); ?></a> <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events')); ?>"><?php esc_html_e('Add Event','chriss-swim-training-progress-evaluation'); ?></a></p>
+		<p><a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-upload')); ?>"><?php esc_html_e('Upload Workout','chriss-swim-training-progress-evaluation'); ?></a> <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-manual-workout')); ?>"><?php esc_html_e('Add Manual Workout','chriss-swim-training-progress-evaluation'); ?></a> <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events')); ?>"><?php esc_html_e('Add Event','chriss-swim-training-progress-evaluation'); ?></a></p>
 		<h2><?php esc_html_e('Latest Swim','chriss-swim-training-progress-evaluation'); ?></h2><?php if(!$latest):?><p><?php esc_html_e('No workouts have been imported yet.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?><table class="widefat striped"><tbody><tr><th><?php esc_html_e('Date','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(mysql2date('F j, Y g:i a',$latest->workout_start,false)); ?></td></tr><tr><th><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($latest->location_name?:'—'); ?></td></tr><tr><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(null!==$latest->original_distance?$latest->original_distance.' '.$latest->original_distance_unit:($latest->total_distance_m?$latest->total_distance_m.' m':'—')); ?></td></tr><tr><th><?php esc_html_e('Elapsed','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(Workout::format_duration($latest->elapsed_time_ms)); ?></td></tr></tbody></table><p><a href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$latest->id),admin_url('admin.php'))); ?>"><?php esc_html_e('View latest workout','chriss-swim-training-progress-evaluation'); ?></a></p><?php endif;?>
 		<h2><?php esc_html_e('Personal Best Summary','chriss-swim-training-progress-evaluation'); ?></h2><p><a class="button <?php echo $course==='m'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-dashboard&course=m')); ?>"><?php esc_html_e('Meters','chriss-swim-training-progress-evaluation'); ?></a> <a class="button <?php echo $course==='yd'?'button-primary':''; ?>" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-dashboard&course=yd')); ?>"><?php esc_html_e('Yards','chriss-swim-training-progress-evaluation'); ?></a> <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-personal-bests&course='.$course)); ?>"><?php esc_html_e('View all personal bests','chriss-swim-training-progress-evaluation'); ?></a></p>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Overall','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Freestyle','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Breaststroke','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach(array(50,100,200,500,800,1500) as $d):?><tr><th><?php echo esc_html($d.' '.$course); ?></th><?php foreach(array('OVERALL','FR','BR') as $s):$p=$pbs[$d][$s]??null;?><td><?php echo $p?esc_html(Workout::format_duration($p->duration_ms)):'—'; ?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table>
@@ -294,6 +295,57 @@ final class Admin {
 		<h2><?php echo esc_html($course_label); ?></h2>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Workouts','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active lengths','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active swim time','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach($stroke_volume_by_course[$course_unit] as$volume):?><tr><td><?php echo esc_html($strokes[$volume->stroke]??$volume->stroke); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->workout_count)); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->length_count)); ?></td><td><?php echo esc_html($this->display_measurement((float)$volume->distance_native,$volume->course_unit)); ?></td><td><?php echo esc_html(Workout::format_duration((int)$volume->active_time_ms)); ?></td></tr><?php endforeach;?></tbody></table>
 		<?php endforeach;endif;?></div><?php
+	}
+
+	private $manual_workout_action_error = null;
+
+	public function handle_manual_workout_actions() {
+		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+		if ( empty( $_GET['page'] ) || 'swimlog-manual-workout' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
+		if ( empty( $_POST['swimlog_manual_workout_action'] ) || 'create' !== sanitize_key( wp_unslash( $_POST['swimlog_manual_workout_action'] ) ) ) return;
+		check_admin_referer( 'swimlog_create_manual_workout' );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-manual-workout.php';
+		$user_id = $this->selected_user_id();
+		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? '' ) );
+		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
+		$duration_minutes = isset( $_POST['duration_minutes'] ) && '' !== trim( (string) wp_unslash( $_POST['duration_minutes'] ) ) ? (float) wp_unslash( $_POST['duration_minutes'] ) : null;
+		$document = array( 'workout' => array(
+			'workout_start' => trim( $date . ' ' . ( '' !== $time ? $time . ':00' : '12:00:00' ) ),
+			'location_id' => absint( wp_unslash( $_POST['location_id'] ?? 0 ) ),
+			'original_pool_length' => isset( $_POST['pool_length'] ) ? (float) wp_unslash( $_POST['pool_length'] ) : 0,
+			'pool_length_unit' => sanitize_key( wp_unslash( $_POST['course_unit'] ?? '' ) ),
+			'original_distance' => isset( $_POST['total_distance'] ) && '' !== trim( (string) wp_unslash( $_POST['total_distance'] ) ) ? (float) wp_unslash( $_POST['total_distance'] ) : null,
+			'elapsed_time_ms' => null === $duration_minutes ? null : (int) round( $duration_minutes * 60000 ),
+			'notes' => sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) ),
+		), 'segments' => array() );
+		$result = Manual_Workout::save( $user_id, $document );
+		if ( is_wp_error( $result ) ) { $this->manual_workout_action_error = $result->get_error_message(); return; }
+		wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => (int) $result['workout_id'], 'manual_created' => 1 ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	public function manual_workout() {
+		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'You do not have permission to create workouts.', 'chriss-swim-training-progress-evaluation' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php';
+		$user_id = $this->selected_user_id(); $locations = Location::all_for_user( $user_id ); $error = $this->manual_workout_action_error;
+		$this->swimmer_selector( $user_id, 'swimlog-manual-workout' );
+		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? wp_date( 'Y-m-d' ) ) );
+		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
+		?><div class="wrap swimlog-admin"><h1><?php esc_html_e( 'Add Manual Workout', 'chriss-swim-training-progress-evaluation' ); ?></h1>
+		<p><?php esc_html_e( 'Record a pool workout without an uploaded device file. Phase 3 records workout-level totals only; sets, repetitions, strokes, and measured split times are added in later phases.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+		<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+		<form method="post"><?php wp_nonce_field( 'swimlog_create_manual_workout' ); ?><input type="hidden" name="swimlog_manual_workout_action" value="create">
+		<table class="form-table" role="presentation">
+		<tr><th scope="row"><label for="swimlog-manual-date"><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-manual-date" name="workout_date" type="date" value="<?php echo esc_attr( $date ); ?>"></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-time"><?php esc_html_e( 'Start time', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-manual-time" name="workout_time" type="time" value="<?php echo esc_attr( $time ); ?>"><p class="description"><?php esc_html_e( 'Optional. If omitted, noon is stored so the workout remains on the selected local date without inventing a precise start time.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-location"><?php esc_html_e( 'Location', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><select id="swimlog-manual-location" name="location_id"><option value="0"><?php esc_html_e( 'No location selected', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( $locations as $loc ) : ?><option value="<?php echo esc_attr( $loc->id ); ?>" <?php selected( absint( wp_unslash( $_POST['location_id'] ?? 0 ) ), (int) $loc->id ); ?>><?php echo esc_html( $loc->name ); ?></option><?php endforeach; ?></select></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-pool-length"><?php esc_html_e( 'Pool length', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-manual-pool-length" name="pool_length" type="number" min="1" step="0.001" value="<?php echo esc_attr( sanitize_text_field( wp_unslash( $_POST['pool_length'] ?? '25' ) ) ); ?>"> <select required name="course_unit" aria-label="<?php esc_attr_e( 'Course unit', 'chriss-swim-training-progress-evaluation' ); ?>"><option value="yd" <?php selected( sanitize_key( wp_unslash( $_POST['course_unit'] ?? 'yd' ) ), 'yd' ); ?>><?php esc_html_e( 'Yards', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="m" <?php selected( sanitize_key( wp_unslash( $_POST['course_unit'] ?? 'yd' ) ), 'm' ); ?>><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></option></select><p class="description"><?php esc_html_e( 'This is the historical pool/course snapshot for the workout; it is not inferred from the selected location.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-distance"><?php esc_html_e( 'Total distance', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-manual-distance" name="total_distance" type="number" min="0" step="0.001" value="<?php echo esc_attr( sanitize_text_field( wp_unslash( $_POST['total_distance'] ?? '' ) ) ); ?>"> <span><?php esc_html_e( 'in the selected course unit', 'chriss-swim-training-progress-evaluation' ); ?></span></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-duration"><?php esc_html_e( 'Workout duration', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-manual-duration" name="duration_minutes" type="number" min="0" step="0.01" value="<?php echo esc_attr( sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ?? '' ) ) ); ?>"> <?php esc_html_e( 'minutes', 'chriss-swim-training-progress-evaluation' ); ?><p class="description"><?php esc_html_e( 'Overall elapsed workout time only. It is not treated as a race or personal-best time.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+		<tr><th scope="row"><label for="swimlog-manual-notes"><?php esc_html_e( 'Notes', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-manual-notes" name="notes"><?php echo esc_textarea( wp_unslash( $_POST['notes'] ?? '' ) ); ?></textarea></td></tr>
+		</table><?php submit_button( __( 'Create Manual Workout', 'chriss-swim-training-progress-evaluation' ) ); ?></form></div><?php
 	}
 
 	public function upload() {
