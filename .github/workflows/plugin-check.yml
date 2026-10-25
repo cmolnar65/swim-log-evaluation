@@ -30,4 +30,3 @@ jobs:
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
-          mode: update
