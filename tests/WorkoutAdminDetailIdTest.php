@@ -23,6 +23,7 @@ final class WorkoutAdminDetailIdTest extends TestCase {
 		$this->assertStringContainsString( "get_edit_post_link", $admin );
 		$this->assertStringContainsString( "Create Post", $admin );
 		$this->assertStringContainsString( "Edit Post", $admin );
+		$this->assertStringContainsString( 'style="display:inline-block;margin-left:4px"', $admin );
 	}
 
 	public function test_public_workout_renderer_still_does_not_gain_admin_workout_number_heading() {
