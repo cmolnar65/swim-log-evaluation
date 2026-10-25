@@ -78,5 +78,6 @@ final class ManualWorkoutServiceTest extends TestCase {
   $this->assertStringContainsString("Database::table( 'manual_workouts' )",$code);
   $this->assertStringNotContainsString("Database::table( 'imports' )",$code);
   $this->assertStringContainsString("Database::table( 'performances' )",$code);
+  $this->assertStringContainsString("Evaluator::evaluate_manual_measured_repetitions",$code);
  }
 }

@@ -34,6 +34,29 @@ final class Evaluator {
 		}catch(\Throwable $e){$wpdb->query('ROLLBACK');return new \WP_Error('swimlog_eval_save',__('Performance evaluation could not be saved.','chriss-swim-training-progress-evaluation'));}
 	}
 
+	public static function evaluate_manual_measured_repetitions( $workout_id, $user_id, $document ) {
+		global $wpdb;
+		$workout_id = absint( $workout_id ); $user_id = absint( $user_id );
+		$wt = Database::table( 'workouts' ); $pt = Database::table( 'performances' );
+		$w = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $wt WHERE id=%d AND user_id=%d", $workout_id, $user_id ) );
+		if ( ! $w || 'manual' !== (string) ( $w->source_type ?? '' ) ) return new \WP_Error( 'swimlog_eval_manual_workout', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$course = (string) ( $w->pool_length_unit ?? '' ); if ( ! in_array( $course, array( 'm', 'yd' ), true ) ) return new \WP_Error( 'swimlog_eval_course', __( 'Workout has no valid native course.', 'chriss-swim-training-progress-evaluation' ) );
+		$candidates = array();
+		foreach ( (array) ( $document['segments'] ?? array() ) as $segment ) {
+			if ( 'active' !== ( $segment['type'] ?? '' ) || 'measured_rep' !== ( $segment['timing_type'] ?? '' ) ) continue;
+			$distance = (float) ( $segment['distance_per_rep'] ?? 0 ); $target = null; foreach ( self::DISTANCES as $d ) if ( abs( $distance - $d ) < 0.001 ) { $target = $d; break; }
+			$stroke = strtoupper( (string) ( $segment['stroke'] ?? 'UNKNOWN' ) ); if ( null === $target || ! self::known_stroke( $stroke ) ) continue;
+			foreach ( (array) ( $segment['rep_times_ms'] ?? array() ) as $duration ) $candidates[] = array( 'distance' => $target, 'course' => $course, 'stroke' => $stroke, 'duration' => (int) $duration, 'start_id' => null, 'end_id' => null, 'start_offset' => null, 'end_offset' => null );
+		}
+		$best = array(); foreach ( $candidates as $c ) { if ( ! self::is_plausible_performance( $c ) ) continue; $key = $c['distance'] . '|' . $c['course'] . '|' . $c['stroke']; if ( ! isset( $best[$key] ) || $c['duration'] < $best[$key]['duration'] ) $best[$key] = $c; }
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) );
+		try {
+			if ( false === $wpdb->delete( $pt, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'clear' );
+			foreach ( $best as $candidate ) if ( ! self::insert_performance( $pt, $user_id, $workout_id, $w, $candidate ) ) throw new \Exception( 'performance' );
+			self::recalculate_personal_bests( $user_id ); if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' ); return count( $best );
+		} catch ( \Throwable $exception ) { $wpdb->query( 'ROLLBACK' ); return new \WP_Error( 'swimlog_eval_save', __( 'Performance evaluation could not be saved.', 'chriss-swim-training-progress-evaluation' ) ); }
+	}
+
 	private static function evaluate_candidates($workout_id,$user_id){
 		global $wpdb;$wt=Database::table('workouts');$lt=Database::table('lengths');$lapt=Database::table('laps');
 		$w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $wt WHERE id=%d AND user_id=%d",$workout_id,$user_id));if(!$w)return new \WP_Error('swimlog_eval_workout',__('Workout not found.','chriss-swim-training-progress-evaluation'));

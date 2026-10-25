@@ -52,5 +52,17 @@ final class EvaluatorRulesTest extends TestCase {
  public function test_overshoot_does_not_create_interpolated_target(){
   $rows=[$this->row(1,1,'active','FR',20000,30),$this->row(2,2,'active','FR',20000,30)];$c=$this->candidates($rows,'m',0);$this->assertEmpty(array_filter($c,fn($x)=>$x['distance']===50));
  }
+ public function test_phase6_manual_evaluator_accepts_only_explicit_measured_repetitions(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-evaluator.php');
+  $this->assertStringContainsString("evaluate_manual_measured_repetitions",$code);
+  $this->assertStringContainsString("'measured_rep' !== ( \$segment['timing_type'] ?? '' )",$code);
+  $this->assertStringContainsString("self::is_plausible_performance( \$c )",$code);
+  $this->assertStringContainsString("! self::known_stroke( \$stroke )",$code);
+  $this->assertStringNotContainsString("set_time_ms ??",$code);
+ }
+ public function test_phase6_manual_evaluator_requires_exact_supported_distance(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-evaluator.php');
+  $this->assertStringContainsString("abs( \$distance - \$d ) < 0.001",$code);
+  $this->assertStringContainsString("rep_times_ms",$code);
+ }
 }
-

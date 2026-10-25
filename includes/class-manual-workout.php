@@ -228,7 +228,10 @@ final class Manual_Workout {
 			$wpdb->query( 'ROLLBACK' );
 			return new \WP_Error( 'swimlog_manual_save_failed', __( 'The manual workout could not be saved and all changes were rolled back.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		return array( 'workout_id' => $workout_id, 'source_type' => 'manual', 'laps' => count( $normalized['laps'] ), 'lengths' => count( $normalized['lengths'] ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
+		$evaluated = Evaluator::evaluate_manual_measured_repetitions( $workout_id, $user_id, $normalized['document'] );
+		if ( is_wp_error( $evaluated ) ) return $evaluated;
+		return array( 'workout_id' => $workout_id, 'source_type' => 'manual', 'laps' => count( $normalized['laps'] ), 'lengths' => count( $normalized['lengths'] ), 'performances' => (int) $evaluated );
 	}
 
 	public static function rebuild( $workout_id, $user_id ) {
