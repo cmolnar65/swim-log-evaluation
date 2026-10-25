@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [develop]
-    paths:
-      - '.github/workflows/plugin-check.yml'
-      - 'build-release.sh'
 
 permissions:
   contents: read
