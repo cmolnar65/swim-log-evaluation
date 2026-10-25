@@ -6,7 +6,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  $this->assertStringContainsString('Stable tag: 0.7',$readme);
+  $this->assertStringContainsString('v0.8 development status',$readme);$this->assertStringContainsString('current public stable release remains v0.7',$readme);$this->assertStringContainsString('Stable tag: 0.7',$readme);
   $this->assertStringContainsString('= 0.7 =',$readme);
   $this->assertStringNotContainsString('0.7 - In development',$readme);
   $this->assertStringNotContainsString('v0.7 development',$readme);
@@ -45,7 +45,7 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v08_development_docs_cover_manual_workout_contract_without_advancing_release_metadata(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');$plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$github=file_get_contents(dirname(__DIR__).'/README.md');$admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
-  foreach(array('v0.8 manual workout entry — in development','first-class manual pool-workout','coarse workouts','measured repetition times','intervals/send-offs','transactional','REST API remains read-only')as$feature)$this->assertStringContainsString($feature,$github);
+  foreach(array('v0.8 development — complete, not yet released','first-class manual pool-workout','coarse workouts','measured repetition times','intervals/send-offs','transactional','REST API remains read-only')as$feature)$this->assertStringContainsString($feature,$github);
   foreach(array('Measured reps require one actual swim time per repetition','not split into personal-best times','Untimed sets still count toward training volume','does not create open-water GPS routes')as$help)$this->assertStringContainsString($help,$admin);
   $this->assertStringContainsString('Stable tag: 0.7',$readme);$this->assertStringContainsString('Version: 0.7',$plugin);$this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '0.7'",$plugin);
  }

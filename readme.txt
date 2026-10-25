@@ -8,16 +8,29 @@ Stable tag: 0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Import, preserve, evaluate, and display swimming workout history and personal bests.
+Import or manually record, preserve, evaluate, and display swimming workout history and personal bests.
 
 == Description ==
 
 Chris's Swim Training Progress and Evaluation is a multi-user WordPress plugin for importing FIT and
-CSV swimming workouts, preserving normalized workout history, evaluating native
+CSV swimming workouts, manually recording pool workouts, preserving normalized workout history, evaluating native
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
 Version 0.7 includes the open-water, Garmin, rebuild, training-analysis, privacy, and integration work introduced after v0.5, plus native Block Editor support for all six public display features, improved workout administration and post creation, responsive public tables, and per-swimmer REST API permissions and documentation.
+
+
+= v0.8 development status =
+
+The v0.8 manual-workout feature set is complete on the development branch but has not been released. The current public stable release remains v0.7.
+
+The completed v0.8 development work adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. A manual workout can contain only coarse totals such as distance and duration, or ordered sets with repetitions, distance, stroke, notes, and optional timing.
+
+Manual entry preserves timing meaning rather than manufacturing precision. Explicitly measured repetition times may qualify as personal-best evidence when the distance, course, stroke, plausibility, and other evaluator rules are satisfied. Measured whole-set times, intervals/send-offs, derived timing, overall workout duration, and unknown timing are not divided into invented performance times. Untimed sets still contribute training structure and volume.
+
+Manual workouts are stored as explicit manual sources rather than fake imports or device recordings. They use the same canonical workout history, Workout Details, workout numbers, Training Log, training totals, Personal Bests, Progress, public Workout display, Latest Workouts, blocks/shortcodes, Create/Edit Post workflow, and read-only REST API as appropriate. Editing/rebuilding is owner-scoped and transactional, and imported workouts are protected from being rewritten as manual workouts.
+
+Manual entry in v0.8 is limited to pool workouts and does not create manual open-water GPS routes. The REST API remains read-only.
 
 = v0.7 Block Editor support =
 
