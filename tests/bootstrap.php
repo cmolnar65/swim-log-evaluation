@@ -10,6 +10,7 @@ if(!function_exists('get_date_from_gmt')){function get_date_from_gmt($s,$f='Y-m-
 if(!function_exists('wp_timezone')){function wp_timezone(){return new DateTimeZone('America/Denver');}}
 if(!function_exists('sanitize_key')){function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/','',(string)$v));}}
 if(!function_exists('sanitize_text_field')){function sanitize_text_field($v){return trim((string)$v);}}
+if(!function_exists('sanitize_textarea_field')){function sanitize_textarea_field($v){return trim((string)$v);}}
 if(!function_exists('shortcode_atts')){function shortcode_atts($pairs,$atts){return array_merge($pairs,(array)$atts);}}
 if(!function_exists('esc_html')){function esc_html($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}}
 if(!function_exists('esc_html__')){function esc_html__($s,$d=null){return esc_html($s);}}
