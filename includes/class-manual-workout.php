@@ -51,30 +51,60 @@ final class Manual_Workout {
 	}
 
 	private static function validate_segment( $segment, $index ) {
-		if ( ! is_array( $segment ) ) return new \WP_Error( 'swimlog_manual_segment', sprintf( __( 'Segment %d is invalid.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( ! is_array( $segment ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_segment', sprintf( __( 'Segment %d is invalid.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 		$type = strtolower( trim( (string) ( $segment['type'] ?? 'active' ) ) );
-		if ( ! in_array( $type, array( 'active', 'rest' ), true ) ) return new \WP_Error( 'swimlog_manual_segment_type', sprintf( __( 'Segment %d has an unsupported type.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( ! in_array( $type, array( 'active', 'rest' ), true ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_segment_type', sprintf( __( 'Segment %d has an unsupported type.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 		$stroke = strtoupper( trim( (string) ( $segment['stroke'] ?? '' ) ) );
-		if ( '' !== $stroke && ! in_array( $stroke, array( 'FR', 'BR', 'BACK', 'FLY', 'MIXED', 'UNKNOWN' ), true ) ) return new \WP_Error( 'swimlog_manual_stroke', sprintf( __( 'Segment %d has an unsupported stroke.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( '' !== $stroke && ! in_array( $stroke, array( 'FR', 'BR', 'BACK', 'FLY', 'MIXED', 'UNKNOWN' ), true ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_stroke', sprintf( __( 'Segment %d has an unsupported stroke.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 		$reps = absint( $segment['repetitions'] ?? 1 );
 		$distance = self::positive_number_or_null( $segment['distance_per_rep'] ?? null );
-		if ( 'active' === $type && ( $reps < 1 || null === $distance ) ) return new \WP_Error( 'swimlog_manual_segment_distance', sprintf( __( 'Active segment %d requires repetitions and a positive distance.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( 'active' === $type && ( $reps < 1 || null === $distance ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_segment_distance', sprintf( __( 'Active segment %d requires repetitions and a positive distance.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 
 		$timing = strtolower( trim( (string) ( $segment['timing_type'] ?? 'unknown' ) ) );
-		if ( ! in_array( $timing, array( 'unknown', 'measured_rep', 'measured_set', 'derived', 'interval' ), true ) ) return new \WP_Error( 'swimlog_manual_timing', sprintf( __( 'Segment %d has an unsupported timing type.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( ! in_array( $timing, array( 'unknown', 'measured_rep', 'measured_set', 'derived', 'interval' ), true ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_timing', sprintf( __( 'Segment %d has an unsupported timing type.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 		$rep_times = array();
 		foreach ( (array) ( $segment['rep_times_ms'] ?? array() ) as $value ) {
 			$value = self::positive_int_or_null( $value );
-			if ( null === $value ) return new \WP_Error( 'swimlog_manual_rep_time', sprintf( __( 'Segment %d contains an invalid measured repetition time.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+			if ( null === $value ) {
+				/* translators: %d: one-based manual workout segment number. */
+				return new \WP_Error( 'swimlog_manual_rep_time', sprintf( __( 'Segment %d contains an invalid measured repetition time.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+			}
 			$rep_times[] = $value;
 		}
-		if ( 'measured_rep' === $timing && count( $rep_times ) !== $reps ) return new \WP_Error( 'swimlog_manual_rep_count', sprintf( __( 'Segment %d must contain one measured time for every repetition.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
-		if ( 'measured_rep' !== $timing && ! empty( $rep_times ) ) return new \WP_Error( 'swimlog_manual_rep_provenance', sprintf( __( 'Segment %d repetition times require measured-repetition timing.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( 'measured_rep' === $timing && count( $rep_times ) !== $reps ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_rep_count', sprintf( __( 'Segment %d must contain one measured time for every repetition.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
+		if ( 'measured_rep' !== $timing && ! empty( $rep_times ) ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_rep_provenance', sprintf( __( 'Segment %d repetition times require measured-repetition timing.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 
 		$set_time = self::positive_int_or_null( $segment['set_time_ms'] ?? null );
 		$interval = self::positive_int_or_null( $segment['interval_ms'] ?? null );
-		if ( 'measured_set' === $timing && null === $set_time ) return new \WP_Error( 'swimlog_manual_set_time', sprintf( __( 'Segment %d requires a measured set time.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
-		if ( 'interval' === $timing && null === $interval ) return new \WP_Error( 'swimlog_manual_interval', sprintf( __( 'Segment %d requires an interval/send-off.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		if ( 'measured_set' === $timing && null === $set_time ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_set_time', sprintf( __( 'Segment %d requires a measured set time.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
+		if ( 'interval' === $timing && null === $interval ) {
+			/* translators: %d: one-based manual workout segment number. */
+			return new \WP_Error( 'swimlog_manual_interval', sprintf( __( 'Segment %d requires an interval/send-off.', 'chriss-swim-training-progress-evaluation' ), $index + 1 ) );
+		}
 
 		return array(
 			'type' => $type,
