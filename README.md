@@ -6,7 +6,17 @@ The plugin supports FIT and supported CSV workout sources, normalized workout/la
 
 ## Current release: v0.7
 
-Version 0.7 is the release candidate represented by the current `develop` branch. It includes all v0.6 work plus the v0.7 Block Editor, administration, post-creation, presentation, and REST-permission enhancements.
+Version 0.7 is the current public release. Development for v0.8 is taking place on the `develop` branch; release metadata remains at v0.7 until the v0.8 release-candidate process.
+
+## v0.8 manual workout entry — in development
+
+v0.8 adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
+
+Manual entry supports coarse workouts with only distance and duration, or ordered sets with repetitions, distance, stroke, notes, and optional timing. Timing provenance is preserved: measured repetition times may qualify as performance evidence, while set totals, intervals/send-offs, derived values, overall workout duration, and unknown timing are never divided or treated as invented personal-best times. Untimed structure contributes training volume without manufacturing elapsed times.
+
+Manual workouts are explicitly identified as manual rather than inferred from missing import data. Their authoritative entered document is stored separately from normalized workout/lap/length projections, and they do not create import records or pretend to be device recordings. Editing and rebuilding are owner-scoped, imported workouts cannot be rewritten as manual workouts, and the complete manual save—including derived performance evaluation—is transactional so a failure rolls the edit back.
+
+v0.8 manual entry is currently limited to pool workouts; it does not create manual open-water GPS routes. The REST API remains read-only.
 
 v0.6 expands the plugin with:
 
