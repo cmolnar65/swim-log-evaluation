@@ -18,7 +18,7 @@ final class BlockIntegrationTest extends TestCase {
 			$metadata = json_decode( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ), true );
 			$editor = file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js' );
 			$this->assertSame( $name, $metadata['name'], $dir );
-			$this->assertSame( 2, $metadata['apiVersion'], $dir );
+			$this->assertSame( 3, $metadata['apiVersion'], $dir );
 			$this->assertSame( 'widgets', $metadata['category'], $dir );
 			$this->assertSame( 'chriss-swim-training-progress-evaluation', $metadata['textdomain'], $dir );
 			$this->assertFalse( $metadata['supports']['html'], $dir );
