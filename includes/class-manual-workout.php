@@ -234,6 +234,16 @@ final class Manual_Workout {
 		return array( 'workout_id' => $workout_id, 'source_type' => 'manual', 'laps' => count( $normalized['laps'] ), 'lengths' => count( $normalized['lengths'] ), 'performances' => (int) $evaluated );
 	}
 
+	public static function get_document( $workout_id, $user_id ) {
+		global $wpdb; $workout_id = absint( $workout_id ); $user_id = absint( $user_id );
+		$wt = Database::table( 'workouts' ); $mt = Database::table( 'manual_workouts' );
+		$source = $wpdb->get_var( $wpdb->prepare( "SELECT m.source_document FROM $mt m INNER JOIN $wt w ON w.id=m.workout_id WHERE m.workout_id=%d AND m.user_id=%d AND w.user_id=%d AND w.source_type='manual'", $workout_id, $user_id, $user_id ) );
+		if ( ! $source ) return new \WP_Error( 'swimlog_manual_not_found', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$document = json_decode( (string) $source, true );
+		if ( ! is_array( $document ) ) return new \WP_Error( 'swimlog_manual_source_invalid', __( 'The authoritative manual workout source is invalid.', 'chriss-swim-training-progress-evaluation' ) );
+		return $document;
+	}
+
 	public static function rebuild( $workout_id, $user_id ) {
 		global $wpdb;
 		$mt = Database::table( 'manual_workouts' );

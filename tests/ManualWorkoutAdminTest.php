@@ -7,7 +7,7 @@ final class ManualWorkoutAdminTest extends TestCase {
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("'swimlog-manual-workout', 'manual_workout'",$admin);
   $this->assertStringContainsString("check_admin_referer( 'swimlog_create_manual_workout' )",$admin);
-  $this->assertStringContainsString('Manual_Workout::save( $user_id, $document )',$admin);
+  $this->assertStringContainsString('Manual_Workout::save( $user_id, $document, $workout_id )',$admin);
   $this->assertStringContainsString("'segments' => array()",$admin);
   $this->assertStringContainsString("'page' => 'swimlog-workouts', 'workout_id' => (int) \$result['workout_id']",$admin);
   $this->assertStringContainsString("handle_manual_workout_actions",$plugin);
@@ -22,7 +22,7 @@ final class ManualWorkoutAdminTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   foreach(array('segment_repetitions[]','segment_distance[]','segment_stroke[]','segment_notes[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
   $this->assertStringContainsString("'timing_type' => \$timing_raw",$admin);
-  $this->assertStringContainsString("for ( \$set_row = 0; \$set_row < 12; \$set_row++ )",$admin);
+  $this->assertStringContainsString("max(12,count(\$posted_reps))",$admin);
   $this->assertStringContainsString("Blank rows are ignored.",$admin);
  }
  public function test_phase5_collects_explicit_timing_provenance_without_deriving_length_times(){
@@ -31,5 +31,14 @@ final class ManualWorkoutAdminTest extends TestCase {
   $this->assertStringContainsString("manual_time_to_ms",$admin);
   $this->assertStringContainsString("'rep_times_ms' => \$rep_times_ms",$admin);
   $this->assertStringContainsString("'interval_ms' => self::manual_time_to_ms( \$interval_raw )",$admin);
+ }
+ public function test_phase7_supports_owned_manual_edit_and_progressive_rows(){
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');$service=file_get_contents(dirname(__DIR__).'/includes/class-manual-workout.php');$js=file_get_contents(dirname(__DIR__).'/assets/js/admin.js');
+  $this->assertStringContainsString("array( 'create', 'update' )",$admin);
+  $this->assertStringContainsString("'swimlog_update_manual_workout_' . \$workout_id",$admin);
+  $this->assertStringContainsString("Manual_Workout::get_document( \$workout_id, \$user_id )",$admin);
+  $this->assertStringContainsString("w.source_type='manual'",$service);
+  $this->assertStringContainsString("id=\"swimlog-add-set-row\"",$admin);
+  $this->assertStringContainsString("cloneNode(true)",$js);
  }
 }
