@@ -4,9 +4,9 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources, normalized workout/lap/length storage, personal-best evaluation, events, locations, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Current release: v0.6
+## Current release: v0.7
 
-Version 0.6 is the current released version. The `develop` branch contains unreleased v0.7 development work; `main` remains the released v0.6 line until the v0.7 release is explicitly authorized.
+Version 0.7 is the release candidate represented by the current `develop` branch. It includes all v0.6 work plus the v0.7 Block Editor, administration, post-creation, presentation, and REST-permission enhancements.
 
 v0.6 expands the plugin with:
 
@@ -32,7 +32,7 @@ v0.6 expands the plugin with:
 Open-water workouts remain isolated from pool personal-best evaluation.
 
 
-## v0.7 Block Editor support — in development
+## v0.7 Block Editor support
 
 v0.7 adds native WordPress Block Editor integration for all six existing public display features. The legacy shortcodes remain supported public API; the blocks do not replace or deprecate them. Each block is dynamic/server-rendered and uses the same PHP query, authorization, privacy, and rendering path as its corresponding shortcode.
 
@@ -47,7 +47,7 @@ v0.7 adds native WordPress Block Editor integration for all six existing public 
 
 The Training Log block preserves the shortcode distinction between a monthly log and annual totals: annual mode supplies a year without a month. The Progress block continues to use the existing PHP progression calculation and front-end chart implementation rather than duplicating progression logic in editor JavaScript.
 
-Public-results privacy behavior is unchanged. When a swimmer override is not supplied, applicable blocks resolve the swimmer from the page/post author; there is no logged-in-viewer fallback. The Workout block does not accept a swimmer override because ownership comes from the selected workout. Open-water GPS routes remain separately opt-in through Public Open-Water Routes, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
+Version 0.7 also adds workout-number visibility in administration, a Create Post/Edit Post workflow from Workout Details that creates a draft containing the native Workout block, and improved responsive public tables. All six native blocks advertise Wide and Full alignment support.\n\nPublic-results privacy behavior is unchanged. When a swimmer override is not supplied, applicable blocks resolve the swimmer from the page/post author; there is no logged-in-viewer fallback. The Workout block does not accept a swimmer override because ownership comes from the selected workout. Open-water GPS routes remain separately opt-in through Public Open-Water Routes, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
 
 ## Private Workout File Storage
 

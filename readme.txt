@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.6
+Stable tag: 0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,14 +17,11 @@ CSV swimming workouts, preserving normalized workout history, evaluating native
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
-Version 0.6 expands open-water import and analytics, adds GPX/TCX support, scheduled Garmin synchronization
-with GPS-based saved-location matching and operational telemetry, rebuild and training-analysis tools,
-route privacy controls, a read-only integration API, complete shortcode documentation, and additional
-release hardening across authorization, upgrade safety, source authority, analytics provenance, and tests.
+Version 0.7 includes the open-water, Garmin, rebuild, training-analysis, privacy, and integration work introduced after v0.5, plus native Block Editor support for all six public display features, improved workout administration and post creation, responsive public tables, and per-swimmer REST API permissions and documentation.
 
-= v0.7 development =
+= v0.7 Block Editor support =
 
-The `develop` branch adds native Block Editor support for the six existing public display features while preserving their shortcodes for backward compatibility. The blocks are dynamic/server-rendered and share the same PHP rendering, authorization, and privacy logic as the shortcodes.
+Version 0.7 adds native Block Editor support for the six existing public display features while preserving their shortcodes for backward compatibility. The blocks are dynamic/server-rendered and share the same PHP rendering, authorization, and privacy logic as the shortcodes.
 
 * Latest Workouts — `[swimlog_latest]`: swimmer override, count, and heading controls.
 * Personal Bests — `[swimlog_bests]`: swimmer, course, stroke, distance, lifetime/age-group selection, age-group mode, and heading controls.
@@ -37,7 +34,7 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 
 == Changelog ==
 
-= 0.7 - In development =
+= 0.7 =
 * Add native dynamic WordPress blocks for Latest Workouts, Personal Bests, Upcoming Events, Workout, Training Log, and Progress while retaining all six legacy shortcodes.
 * Share the existing PHP rendering/query layer between blocks and shortcodes so public authorization, defaults, validation, and output semantics remain consistent.
 * Add InspectorControls for shortcode-equivalent options, including age-group personal bests, monthly/annual training logs, workout selection, and personal-best progression.
@@ -45,6 +42,10 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 * Keep progression calculations and chart data authoritative in PHP/front-end rendering rather than duplicating business logic in block editor JavaScript.
 * Add six-block integration, security/privacy, and release-packaging regression coverage across PHP 7.4 through 8.4.
 * Add explicit per-swimmer REST API permission (default OFF) plus an in-plugin REST API help/documentation screen linked from Swimmer Configuration.
+* Add workout numbers to the administrative Workouts list and Workout Details screen for easier workout identification.
+* Add Create Post/Edit Post workflow from Workout Details, creating a draft post with an automatically generated swim title and the native Workout block linked to that workout.
+* Improve public workout-table responsiveness and readability, including horizontal overflow handling, protected column headings/values, and more compact table typography.
+* Add Wide and Full alignment support metadata to all six native swim blocks.
 
 
 = 0.6 =
