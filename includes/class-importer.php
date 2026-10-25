@@ -197,7 +197,7 @@ final class Importer {
 			if(!in_array($row->source_type,array('fit','csv','gpx','tcx'),true))continue;
 			if(!$row->stored_path||!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('A preserved source file required for this rebuild could not be found. No workout data was changed.','chriss-swim-training-progress-evaluation'));
 			$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);
-			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(__('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
+			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(/* translators: 1: source format, 2: parsing detail. */ __('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
 			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
 		}
 		if(!$parsed_sources)return new \WP_Error('swimlog_rebuild_source',__('No supported preserved FIT, CSV, GPX, or TCX source is available for this workout.','chriss-swim-training-progress-evaluation'));
