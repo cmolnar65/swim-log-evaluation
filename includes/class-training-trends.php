@@ -19,8 +19,8 @@ final class Training_Trends {
 		$end = new \DateTimeImmutable( 'now', $tz );
 		$current_start = $end->modify( '-' . $months . ' months' );
 		$previous_start = $current_start->modify( '-' . $months . ' months' );
-		$w = Database::table( 'workouts' );
-		$n = Database::table( 'lengths' );
+		$w = esc_sql( Database::table( 'workouts' ) );
+		$n = esc_sql( Database::table( 'lengths' ) );
 
 		$workouts = $wpdb->get_results(
 			$wpdb->prepare(
