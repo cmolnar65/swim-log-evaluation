@@ -195,8 +195,8 @@ final class CalendarBlockTest extends TestCase {
  }
  public function test_calendar_block_does_not_add_shortcode_or_schema(){
   $shortcodes=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');
-  $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $database=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
   $this->assertStringNotContainsString('swimlog_calendar',$shortcodes);
-  $this->assertStringContainsString("define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.9' );",$plugin);
+  $this->assertStringNotContainsString("self::table( 'calendar' )",$database);
  }
 }
