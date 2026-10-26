@@ -30,7 +30,7 @@ final class RestIntegrationApiTest extends TestCase {
   $this->assertStringContainsString("'splits'=>\$a['splits']??array()",$code);
  }
  public function test_swimmer_configuration_has_explicit_default_off_api_permission_and_help(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-settings.php');
   $this->assertStringContainsString("name=\"rest_api_access\"",$code);
   $this->assertStringContainsString("swimlog_rest_api_access",$code);
   $this->assertStringContainsString("API Help / Documentation",$code);
