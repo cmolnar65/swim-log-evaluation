@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.7
+Stable tag: 0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,20 +17,23 @@ CSV swimming workouts, manually recording pool workouts, preserving normalized w
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
-Version 0.7 includes the open-water, Garmin, rebuild, training-analysis, privacy, and integration work introduced after v0.5, plus native Block Editor support for all six public display features, improved workout administration and post creation, responsive public tables, and per-swimmer REST API permissions and documentation.
+Version 0.8 adds first-class manual pool-workout creation and editing, compressed workout-source imports, improved FIT fidelity for Apple Watch, Garmin, and FORM recordings, and workout-photo support. It retains all v0.7 Block Editor, open-water, Garmin, rebuild, analysis, privacy, REST API, and integration features.
 
+= v0.8 =
 
-= v0.8 development status =
+Version 0.8 adds first-class manual pool-workout entry for swimmers who do not use an automatic recording device. Manual workouts may contain coarse totals or ordered sets with repetitions, distance, stroke, notes, and optional timing. Timing provenance is preserved: explicitly measured repetition times may qualify as personal-best evidence, while set totals, intervals/send-offs, derived timing, overall workout duration, and unknown timing are not divided into invented performance times. Untimed sets still contribute training structure and volume.
 
-The v0.8 manual-workout feature set is complete on the development branch but has not been released. The current public stable release remains v0.7.
+Manual workouts are explicit manual sources rather than fake imports or device recordings. They use the same canonical workout history, Workout Details, workout numbers, Training Log, training totals, Personal Bests, Progress, public Workout display, Latest Workouts, blocks/shortcodes, Create/Edit Post workflow, and read-only REST API as appropriate. Editing/rebuilding is owner-scoped and transactional, and imported workouts are protected from being rewritten as manual workouts. Manual entry is limited to pool workouts and does not create manual open-water GPS routes.
 
-The completed v0.8 development work adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. A manual workout can contain only coarse totals such as distance and duration, or ordered sets with repetitions, distance, stroke, notes, and optional timing.
-
-Manual entry preserves timing meaning rather than manufacturing precision. Explicitly measured repetition times may qualify as personal-best evidence when the distance, course, stroke, plausibility, and other evaluator rules are satisfied. Measured whole-set times, intervals/send-offs, derived timing, overall workout duration, and unknown timing are not divided into invented performance times. Untimed sets still contribute training structure and volume.
-
-Manual workouts are stored as explicit manual sources rather than fake imports or device recordings. They use the same canonical workout history, Workout Details, workout numbers, Training Log, training totals, Personal Bests, Progress, public Workout display, Latest Workouts, blocks/shortcodes, Create/Edit Post workflow, and read-only REST API as appropriate. Editing/rebuilding is owner-scoped and transactional, and imported workouts are protected from being rewritten as manual workouts.
-
-Manual entry in v0.8 is limited to pool workouts and does not create manual open-water GPS routes. The REST API remains read-only.
+Version 0.8 also improves source fidelity and workout administration:
+* Preserve per-length FIT stroke counts from compatible Apple Watch, Garmin, and FORM pool-swim files in normalized length data.
+* Show per-length stroke counts and an available Total Strokes value on Workout Details.
+* Preserve FIT session heart-rate and cadence metrics for pool workouts.
+* Improve Apple Watch FIT recording-device identification while retaining the device model.
+* Use FIT Activity local timestamps when available for historically correct workout-local times, with the configured WordPress timezone retained as a fallback.
+* Add transparent compressed-source handling for TrainingPeaks-style FIT gzip files and FORM ZIP exports while preserving the original archive in protected source storage.
+* Add up to three workout photos with upload, replacement, deletion, and workout-detail display.
+* Add private real-world FIT regression hooks and expanded deterministic regression coverage without publishing private workout files.
 
 = v0.7 Block Editor support =
 
@@ -54,6 +57,19 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 5. Six native WordPress blocks make it easy to add latest workouts, personal bests, upcoming events, individual workouts, training logs, and progress displays to pages and posts.
 
 == Changelog ==
+
+= 0.8 =
+* Add first-class manual pool-workout creation and editing with coarse totals or structured sets, repetitions, strokes, notes, and optional timing.
+* Preserve timing provenance so only explicitly measured repetition times can become performance evidence; do not manufacture personal-best times from set totals, intervals/send-offs, derived timing, or workout duration.
+* Keep manual workouts as explicit authoritative manual sources with transactional owner-scoped editing/rebuilding and protection against rewriting imported workouts as manual.
+* Add up to three workout photos with upload, replacement, deletion, and Workout Details presentation.
+* Preserve per-length FIT stroke counts from compatible Apple Watch, Garmin, and FORM pool-swim recordings and display per-length strokes plus available total strokes on Workout Details.
+* Preserve pool-session heart-rate and cadence metrics from FIT sources.
+* Improve Apple Watch FIT device identification while preserving the recorded model.
+* Use FIT Activity local timestamps for historical local workout times when available, with WordPress timezone fallback.
+* Add transparent gzip and ZIP workout-source extraction for supported TrainingPeaks/FORM exports while preserving the original archive in protected storage and enforcing expanded-size/path validation.
+* Advance the internal database schema to 0.9 for normalized per-length stroke counts, including existing-installation upgrade handling.
+* Expand private/deterministic FIT, compressed-import, schema-migration, and Workout Details regression coverage across supported PHP versions.
 
 = 0.7 =
 * Add native dynamic WordPress blocks for Latest Workouts, Personal Bests, Upcoming Events, Workout, Training Log, and Progress while retaining all six legacy shortcodes.
