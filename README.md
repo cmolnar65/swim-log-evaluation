@@ -4,9 +4,9 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Release candidate: v1.0
+## v1.0 release status
 
-The `develop` branch is the v1.0 release candidate. Version 0.9 remains the current GitHub release, while WordPress.org remains on v0.8 unless a separate deployment is explicitly authorized. v1.0 must be validated before any protected-`main` merge, tag, or GitHub release; WordPress.org deployment remains a separate decision.
+The `develop` branch contains the intended **v1.0 release code**. This is the version to release unless site validation identifies an additional issue that requires correction. Version 0.9 remains the current GitHub release until v1.0 is merged through protected `main`, tagged, and published. WordPress.org remains on v0.8 unless a separate deployment is explicitly authorized.
 
 ## v1.0
 

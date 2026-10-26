@@ -6,7 +6,7 @@ It is developer and release documentation. It is not intended to suppress Plugin
 
 ## Baseline
 
-Baseline build: **v1.0 release candidate**
+Baseline build: **v1.0 release**
 
 Plugin Check result:
 
@@ -103,7 +103,7 @@ A warning that resembles an accepted warning must still be reviewed if its sourc
 
 ## Release procedure
 
-For each release candidate:
+For each release or release candidate:
 
 1. Build the distribution ZIP rather than running the release check against development-only files.
 2. Run WordPress Plugin Check against the installed release package.
@@ -125,7 +125,7 @@ A lower warning count is useful only when it results from a legitimate remediati
 | **RC8** | **0** | **253** | **Reviewed baseline; remaining findings classified as architectural/static-analysis warnings** |
 | **v0.7 release candidate** | **0** | **372** | **All error-level findings cleared; nonce and Garmin input warnings corrected; bounded `_swimlog_workout_id` post-meta lookup warnings reviewed and documented.** |
 | **v0.8 release candidate** | **0** | **Pending historical count** | **Released baseline retained for history.** |
-| **v1.0 release candidate** | **Pending final check** | **Pending final check** | **Calendar release package; final package check and warning-family review required before tagging.** |
+| **v1.0 release** | **0** | **Reviewed by packaged Plugin Check workflow** | **Calendar release package passed the packaged Plugin Check workflow after v1.0 metadata and package audit updates.** |
 
 ## Maintenance rule
 
