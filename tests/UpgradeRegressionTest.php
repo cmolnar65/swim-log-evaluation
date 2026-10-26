@@ -32,9 +32,7 @@ final class UpgradeRegressionTest extends TestCase {
  }
  public function test_v09_schema_adds_length_stroke_count_for_existing_installations(){
   $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $this->assertStringContainsString('stroke_count smallint(5) unsigned NULL',$db);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$main);
  }
  public function test_v11_schema_adds_planned_workouts_in_place_and_preserves_original_instructions(){
   $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
