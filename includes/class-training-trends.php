@@ -60,6 +60,30 @@ final class Training_Trends {
 		);
 	}
 
+	/**
+	 * Summarize normalized workout rows using the same recorded/derived metrics
+	 * used by Training Trends. No physiological or unavailable metrics are added.
+	 */
+	public static function summarize_workouts( $workouts ) {
+		$summary = self::new_summary();
+		foreach ( (array) $workouts as $row ) {
+			self::add_workout( $summary, $row );
+		}
+		return self::finalize_summary( $summary );
+	}
+
+	/**
+	 * Metadata for workout-level metrics shared by analytics and calendars.
+	 */
+	public static function workout_metric_metadata() {
+		return array(
+			'distance_m' => array( 'unit' => 'm', 'provenance' => 'recorded/normalized', 'source' => 'workout total_distance_m' ),
+			'active_time_ms' => array( 'unit' => 'ms', 'provenance' => 'derived', 'source' => 'moving time when present, otherwise elapsed time' ),
+			'pool_distance_m' => array( 'unit' => 'm', 'provenance' => 'derived', 'source' => 'workout total_distance_m for pool workouts' ),
+			'open_water_distance_m' => array( 'unit' => 'm', 'provenance' => 'derived', 'source' => 'workout total_distance_m for open-water workouts' ),
+		);
+	}
+
 	public static function aggregate_rows( $workouts, $lengths, $window ) {
 		$current_start = strtotime( $window['current_start'] );
 		$previous_start = strtotime( $window['previous_start'] );
@@ -165,11 +189,12 @@ final class Training_Trends {
 			'monthly' => $monthly_rows,
 			'stroke_volume' => $stroke,
 			'pool_course' => $pool_course,
-			'metric_metadata' => array(
-				'distance_m' => array( 'unit' => 'm', 'provenance' => 'recorded/normalized', 'source' => 'workout total_distance_m' ),
-				'active_time_ms' => array( 'unit' => 'ms', 'provenance' => 'derived', 'source' => 'pool moving time when present, otherwise elapsed time; open-water moving time when present, otherwise elapsed time' ),
-				'stroke_volume' => array( 'unit' => 'native course units', 'provenance' => 'derived', 'source' => 'normalized active pool lengths' ),
-				'rolling_4_week_avg_distance_m' => array( 'unit' => 'm/week', 'provenance' => 'derived', 'source' => 'up to four displayed weekly buckets' ),
+			'metric_metadata' => array_merge(
+				self::workout_metric_metadata(),
+				array(
+					'stroke_volume' => array( 'unit' => 'native course units', 'provenance' => 'derived', 'source' => 'normalized active pool lengths' ),
+					'rolling_4_week_avg_distance_m' => array( 'unit' => 'm/week', 'provenance' => 'derived', 'source' => 'up to four displayed weekly buckets' ),
+				)
 			),
 		);
 	}

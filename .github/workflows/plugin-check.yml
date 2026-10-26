@@ -19,9 +19,33 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./build-release.sh
-          ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation.zip"
+          ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.0.zip"
           mkdir -p "$RUNNER_TEMP/plugin-build"
-          unzip -q "$RUNNER_TEMP/chriss-swim-training-progress-evaluation.zip" -d "$RUNNER_TEMP/plugin-build"
+          unzip -q "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.0.zip" -d "$RUNNER_TEMP/plugin-build"
+
+      - name: Audit v1.0 release package
+        run: |
+          set -euo pipefail
+          ZIP="$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.0.zip"
+          ROOT="chriss-swim-training-progress-evaluation"
+          unzip -t "$ZIP"
+          unzip -Z1 "$ZIP" > "$RUNNER_TEMP/package-files.txt"
+          grep -qx "$ROOT/blocks/calendar/block.json" "$RUNNER_TEMP/package-files.txt"
+          grep -qx "$ROOT/blocks/calendar/index.js" "$RUNNER_TEMP/package-files.txt"
+          grep -qx "$ROOT/blocks/calendar/view.js" "$RUNNER_TEMP/package-files.txt"
+          grep -qx "$ROOT/assets/css/calendar.css" "$RUNNER_TEMP/package-files.txt"
+          grep -q "^ \* Version: 1.0$" "$RUNNER_TEMP/plugin-build/$ROOT/swim-log-evaluation.php"
+          grep -q "^Stable tag: 1.0$" "$RUNNER_TEMP/plugin-build/$ROOT/readme.txt"
+          ! grep -Eq "^$ROOT/(\.git|\.github|tests|wordpress-org-assets)(/|$)" "$RUNNER_TEMP/package-files.txt"
+          ! grep -Eq "^$ROOT/(composer\.json|composer\.lock|phpunit\.xml\.dist|build-release\.sh|build-release\.ps1|PLUGIN-CHECK\.md)$" "$RUNNER_TEMP/package-files.txt"
+
+      - name: Retain exact v1.0 validation package
+        uses: actions/upload-artifact@v4
+        with:
+          name: chriss-swim-training-progress-evaluation-1.0
+          path: ${{ runner.temp }}/chriss-swim-training-progress-evaluation-1.0.zip
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Run WordPress Plugin Check against packaged plugin
         uses: wordpress/plugin-check-action@v1

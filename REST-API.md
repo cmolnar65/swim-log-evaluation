@@ -14,13 +14,15 @@ All plugin REST routes are **GET-only**. There are no REST endpoints for creatin
 
 ## Authorization
 
-Every request must pass three checks:
+External/data-portability routes require three checks:
 
 1. WordPress authenticates the request as a user.
 2. That user has the `swimlog_view_own_results` capability.
 3. That swimmer has explicitly enabled **REST API Access** under **Swim Training → Swimmer Configuration**.
 
-REST API Access defaults to OFF and is independent of **Public Results** and **Public Open-Water Routes**. The API accepts no swimmer/user ID; ownership always comes from `get_current_user_id()`.
+REST API Access defaults to OFF and is independent of **Public Results** and **Public Open-Water Routes**. Those external routes derive ownership from `get_current_user_id()`.
+
+`GET /calendar` is an internal authenticated calendar-data route and deliberately uses a separate permission callback. A swimmer with `swimlog_view_own_results` can read their own calendar without enabling REST API Access. A different swimmer ID is accepted only for a user with `swimlog_manage_all_users`. Public Results, Public Open-Water Routes, and REST API Access do not make another swimmer's calendar accessible.
 
 ### Application Password example
 
@@ -175,6 +177,27 @@ The readiness object contains: `lookback_days`, `course_unit`, `stroke`, `event_
 
 Race Readiness is descriptive evidence, not a readiness score, race-time prediction, fitness estimate, or recovery assessment.
 
+## GET /calendar
+
+Returns the private calendar model for an inclusive local date range.
+
+| Parameter | Required | Values/default |
+| --- | --- | --- |
+| `start` | Yes | strict `YYYY-MM-DD` |
+| `end` | Yes | strict `YYYY-MM-DD`; on/after `start` |
+| `user` | No | swimmer ID; omitted means the authenticated swimmer; another swimmer requires `swimlog_manage_all_users` |
+
+The requested range is limited to 367 inclusive days. The response contains the normalized calendar `range`, `workouts`, `events`, `weeks`, and `metric_metadata` produced by the shared Calendar service. Week boundaries honor the swimmer's configured Saturday, Sunday, or Monday first day of week.
+
+Calendar workout data excludes notes, source/import details, device fields, coordinates, and GPS trackpoints. Public Results and Public Open-Water Routes do not grant calendar access.
+
+```bash
+curl --user "wordpress_username:APPLICATION_PASSWORD" \
+  "https://example.com/wp-json/swimlog/v1/calendar?start=2026-10-01&end=2026-10-31"
+```
+
+Invalid dates or reversed ranges return HTTP 400. Requests exceeding the range limit return code `swimlog_calendar_range_too_large`.
+
 ## GET /analytics/pool
 
 Returns pool performance/efficiency analytics from normalized active lengths.
@@ -232,7 +255,7 @@ Exact WordPress authentication error codes/messages can depend on WordPress and 
 | --- | --- |
 | `400 Bad Request` | Invalid route parameter or missing required REST parameter. |
 | `401 Unauthorized` | WordPress did not authenticate the request, such as an absent/invalid Application Password. |
-| `403 Forbidden` | Authenticated user failed the plugin permission callback, including missing capability or REST API Access being OFF. |
+| `403 Forbidden` | Authenticated user failed the route permission callback, such as a missing capability, REST API Access being OFF for portability routes, or attempting to read another swimmer's calendar without `swimlog_manage_all_users`. |
 | `404 Not Found` | Owned workout not found/not owned, or route unavailable. |
 
 Do not make client logic depend on a particular WordPress-generated authentication error message.
@@ -257,5 +280,6 @@ Do not make client logic depend on a particular WordPress-generated authenticati
 | GET | `/personal-bests` | Current personal bests. |
 | GET | `/progression` | PB progression. |
 | GET | `/events` | Upcoming events plus Race Readiness 2.0. |
+| GET | `/calendar` | Private calendar data and weekly summaries. |
 | GET | `/analytics/pool` | Pool performance/efficiency analytics. |
 | GET | `/analytics/training-trends` | Training-volume trends. |

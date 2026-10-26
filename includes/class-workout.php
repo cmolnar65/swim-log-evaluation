@@ -32,6 +32,30 @@ final class Workout {
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
+	/**
+	 * Return normalized workouts owned by one swimmer in a half-open date/time range.
+	 *
+	 * The end boundary is exclusive so callers can compose adjacent calendar
+	 * ranges without double-counting workouts that begin at midnight.
+	 */
+	public static function range_for_user( $user_id, $start, $end ) {
+		global $wpdb;
+		$w = Database::table( 'workouts' );
+		$l = Database::table( 'locations' );
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT w.*, l.name AS location_name
+				FROM $w w
+				LEFT JOIN $l l ON l.id = w.location_id AND l.user_id = w.user_id
+				WHERE w.user_id = %d AND w.workout_start >= %s AND w.workout_start < %s
+				ORDER BY w.workout_start ASC, w.id ASC",
+				absint( $user_id ),
+				$start,
+				$end
+			)
+		);
+	}
+
 	public static function recent_for_user( $user_id, $limit=5, $workout_type=null ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');

@@ -19,6 +19,9 @@ final class AdminSettingsExtractionTest extends TestCase {
   $this->assertStringContainsString("check_admin_referer('swimlog_save_settings')",$source);
   $this->assertStringContainsString("check_admin_referer('swimlog_rebuild_performances')",$source);
   $this->assertStringContainsString("rest_url( 'swimlog/v1' )",$source);
+  $this->assertStringContainsString("update_user_meta( \$uid, 'swimlog_calendar_first_day', \$calendar_first_day );",$source);
+  $this->assertStringContainsString('name="calendar_first_day"',$source);
+  foreach(array('saturday','sunday','monday') as $day){$this->assertStringContainsString('value="'.$day.'"',$source);}
   $this->assertStringContainsString('Importer::validate_storage_directory($storage_dir,true)',$source);
   $this->assertStringContainsString('Evaluator::rebuild_all_users()',$source);
   $this->assertLessThan(25000,strlen($admin));

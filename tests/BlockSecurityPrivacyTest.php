@@ -47,7 +47,7 @@ final class BlockSecurityPrivacyTest extends TestCase {
 	}
 
 	public function test_no_block_attribute_or_editor_script_contains_gps_data() {
-		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress' ) as $dir ) {
+		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress', 'calendar' ) as $dir ) {
 			$metadata = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ) );
 			$editor = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js' ) );
 			foreach ( array( 'latitude', 'longitude', 'trackpoint', 'gps route', 'coordinates' ) as $term ) {
@@ -55,6 +55,14 @@ final class BlockSecurityPrivacyTest extends TestCase {
 				$this->assertStringNotContainsString( $term, $editor, $dir . ' editor: ' . $term );
 			}
 		}
+	}
+
+	public function test_calendar_detail_script_does_not_request_private_workout_fields() {
+		$s = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/calendar/view.js' ) );
+		foreach ( array( 'latitude', 'longitude', 'trackpoint', 'notes', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
+			$this->assertStringNotContainsString( $term, $s, $term );
+		}
+		$this->assertStringNotContainsString( '/workouts/', $s );
 	}
 
 	public function test_rest_api_remains_authenticated_and_excludes_trackpoints() {

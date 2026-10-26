@@ -4,9 +4,23 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Release candidate: v0.9
+## v1.0 release status
 
-The `develop` branch is the v0.9 release candidate. Version 0.8 remains the current published release on GitHub and WordPress.org until v0.9 is validated, merged through protected `main`, tagged, and published on GitHub. WordPress.org deployment is a separate decision and is not implied by the GitHub v0.9 release.
+The `develop` branch contains the intended **v1.0 release code**. This is the version to release unless site validation identifies an additional issue that requires correction. Version 0.9 remains the current GitHub release until v1.0 is merged through protected `main`, tagged, and published. WordPress.org remains on v0.8 unless a separate deployment is explicitly authorized.
+
+## v1.0
+
+v1.0 adds the **Swim Training Calendar** as a native dynamic WordPress block. The calendar uses the existing normalized workout and event data rather than creating a duplicate calendar database.
+
+Swimmers can use Month and Week views with Previous, Next, and Today navigation. Each swimmer may configure Saturday, Sunday, or Monday as the first day of the calendar week; the same preference controls natural week boundaries and weekly summaries. Weekly summaries use defensible recorded metrics: workout count, distance, active time, pool distance, and open-water distance. The plugin does not manufacture calories, TSS, physiological load, recovery, fitness, or injury-risk metrics.
+
+Calendar access is intentionally private. The owner requires the existing own-results capability, while cross-user access requires the plugin's manage-all-users capability. Public Results, Public Open-Water Routes, and external REST API opt-in do not make the calendar public. The internal `GET /swimlog/v1/calendar` route follows the same calendar-specific authorization boundary and excludes GPS/trackpoints, notes, device/source metadata, and import details.
+
+Workout cards can expose useful recorded details inside the calendar without navigating away. Narrow screens switch from the seven-column grid to a date-grouped agenda while retaining Month/Week navigation and workout details. Accessibility refinements include keyboard-operable workout controls, Escape-to-close details, focus restoration, busy/status announcements, visible focus treatment, reduced-motion handling, and forced-colors support.
+
+v1.0 requires **no database schema migration**. The plugin release version advances to 1.0 while the internal database schema remains version 0.9.
+
+
 
 ## v0.9
 
