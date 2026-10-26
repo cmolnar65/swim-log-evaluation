@@ -31,6 +31,14 @@ final class AdminManualWorkoutExtractionTest extends TestCase {
 		$this->assertStringContainsString( "'rep_times_ms' => \$rep_times_ms", $source );
 	}
 
+	public function test_extracted_component_declares_each_method_only_once() {
+		$source = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-manual-workout.php' );
+		preg_match_all( '/\\bfunction\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\(/', $source, $matches );
+		$counts = array_count_values( $matches[1] );
+		$duplicates = array_filter( $counts, function ( $count ) { return $count > 1; } );
+		$this->assertSame( array(), $duplicates, 'Duplicate method declarations would cause a PHP fatal error.' );
+	}
+
 	public function test_menu_and_plugin_hooks_still_target_main_admin_callbacks() {
 		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
 		$plugin = file_get_contents( dirname( __DIR__ ) . '/includes/class-plugin.php' );
