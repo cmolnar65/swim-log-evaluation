@@ -1,0 +1,18 @@
+{
+  "apiVersion": 3,
+  "name": "swimlog/calendar",
+  "version": "1.0.0-dev",
+  "title": "Swim Training Calendar",
+  "category": "widgets",
+  "icon": "calendar-alt",
+  "description": "Display a private monthly calendar of the swimmer's workouts and scheduled events.",
+  "textdomain": "chriss-swim-training-progress-evaluation",
+  "attributes": {
+    "user": { "type": "integer", "default": 0 },
+    "month": { "type": "integer", "default": 0 },
+    "year": { "type": "integer", "default": 0 }
+  },
+  "editorScript": "swimlog-block-calendar",
+  "style": "swimlog-calendar",
+  "supports": { "align": ["wide", "full"], "html": false }
+}

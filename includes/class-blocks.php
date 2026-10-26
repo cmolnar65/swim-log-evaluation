@@ -83,6 +83,19 @@ final class Blocks {
 			SWIMLOG_EVALUATION_DIR . 'blocks/progress',
 			array( 'render_callback' => array( __CLASS__, 'render_progress' ) )
 		);
+
+		wp_register_script(
+			'swimlog-block-calendar',
+			SWIMLOG_EVALUATION_URL . 'blocks/calendar/index.js',
+			array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-server-side-render' ),
+			SWIMLOG_EVALUATION_VERSION,
+			true
+		);
+
+		register_block_type(
+			SWIMLOG_EVALUATION_DIR . 'blocks/calendar',
+			array( 'render_callback' => array( __CLASS__, 'render_calendar' ) )
+		);
 	}
 
 	public static function render_latest_workouts( $attributes ) {
@@ -168,6 +181,96 @@ final class Blocks {
 				'title'    => self::title_attribute( $attributes ),
 			)
 		);
+	}
+
+	public static function render_calendar( $attributes ) {
+		$user_id = self::calendar_owner( $attributes );
+		if ( ! self::calendar_allowed( $user_id ) ) {
+			return '<div class="swimlog-calendar swimlog-calendar-unavailable">' . esc_html__( 'Calendar unavailable.', 'chriss-swim-training-progress-evaluation' ) . '</div>';
+		}
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-calendar.php';
+		$timezone = wp_timezone();
+		$year = isset( $attributes['year'] ) ? absint( $attributes['year'] ) : 0;
+		$month = isset( $attributes['month'] ) ? absint( $attributes['month'] ) : 0;
+		if ( $year < 1970 || $year > 9999 || $month < 1 || $month > 12 ) {
+			$year = (int) wp_date( 'Y', null, $timezone );
+			$month = (int) wp_date( 'n', null, $timezone );
+		}
+		$first = new \DateTimeImmutable( sprintf( '%04d-%02d-01', $year, $month ), $timezone );
+		$last = $first->modify( 'last day of this month' );
+		$data = Calendar::for_user( $user_id, $first->format( 'Y-m-d' ), $last->format( 'Y-m-d' ) );
+		if ( is_wp_error( $data ) ) {
+			return '<div class="swimlog-calendar swimlog-calendar-unavailable">' . esc_html__( 'Calendar unavailable.', 'chriss-swim-training-progress-evaluation' ) . '</div>';
+		}
+		return self::calendar_month_html( $data, $first );
+	}
+
+	private static function calendar_owner( $attributes ) {
+		if ( ! empty( $attributes['user'] ) ) return absint( $attributes['user'] );
+		$post = get_post();
+		return ( $post && $post->post_author ) ? (int) $post->post_author : 0;
+	}
+
+	private static function calendar_allowed( $user_id ) {
+		if ( ! $user_id || ! is_user_logged_in() ) return false;
+		if ( get_current_user_id() === $user_id && current_user_can( 'swimlog_view_own_results' ) ) return true;
+		return current_user_can( 'swimlog_manage_all_users' );
+	}
+
+	private static function calendar_month_html( $data, $month ) {
+		$first_day = $data['range']['first_day'];
+		$labels = array(
+			'sunday' => array( 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ),
+			'monday' => array( 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' ),
+			'saturday' => array( 'Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri' ),
+		);
+		$target = array( 'sunday' => 0, 'monday' => 1, 'saturday' => 6 )[ $first_day ];
+		$days_back = ( (int) $month->format( 'w' ) - $target + 7 ) % 7;
+		$grid_start = $month->modify( '-' . $days_back . ' days' );
+		$grid_end = $month->modify( 'last day of this month' );
+		$days_forward = ( $target + 6 - (int) $grid_end->format( 'w' ) + 7 ) % 7;
+		$grid_end = $grid_end->modify( '+' . $days_forward . ' days' );
+		$items = array();
+		foreach ( $data['workouts'] as $workout ) {
+			$date = substr( $workout['workout_start'], 0, 10 );
+			$items[ $date ][] = self::calendar_workout_html( $workout );
+		}
+		foreach ( $data['events'] as $event ) {
+			$items[ $event['event_date'] ][] = self::calendar_event_html( $event );
+		}
+		$html = '<section class="swimlog-calendar" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
+		$html .= '<h2 class="swimlog-calendar-title">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
+		$html .= '<div class="swimlog-calendar-grid" role="grid">';
+		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
+		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {
+			$key = $date->format( 'Y-m-d' );$outside = $date->format( 'm' ) !== $month->format( 'm' );
+			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span>';
+			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
+			$html .= '</div>';
+		}
+		$html .= '</div></section>';
+		return $html;
+	}
+
+	private static function calendar_workout_html( $workout ) {
+		$type = 'open_water' === $workout['workout_type'] ? __( 'Open Water', 'chriss-swim-training-progress-evaluation' ) : __( 'Pool Swim', 'chriss-swim-training-progress-evaluation' );
+		$parts = array( esc_html( $type ) );
+		if ( null !== $workout['total_distance_m'] ) $parts[] = esc_html( number_format_i18n( $workout['total_distance_m'], 0 ) . ' m' );
+		$active = (int) ( $workout['moving_time_ms'] ?: $workout['elapsed_time_ms'] );
+		if ( $active > 0 ) $parts[] = esc_html( self::calendar_duration( $active ) );
+		return '<div class="swimlog-calendar-item swimlog-calendar-workout">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</div>';
+	}
+
+	private static function calendar_event_html( $event ) {
+		$name = '' !== trim( $event['event_name'] ) ? $event['event_name'] : __( 'Swim Event', 'chriss-swim-training-progress-evaluation' );
+		return '<div class="swimlog-calendar-item swimlog-calendar-event"><strong>' . esc_html( $name ) . '</strong></div>';
+	}
+
+	private static function calendar_duration( $milliseconds ) {
+		$minutes = (int) floor( $milliseconds / 60000 );
+		$hours = (int) floor( $minutes / 60 );$minutes %= 60;
+		return $hours > 0 ? sprintf( '%dh %02dm', $hours, $minutes ) : sprintf( '%dm', $minutes );
 	}
 
 	private static function title_attribute( $attributes ) {

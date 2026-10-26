@@ -47,7 +47,7 @@ final class BlockSecurityPrivacyTest extends TestCase {
 	}
 
 	public function test_no_block_attribute_or_editor_script_contains_gps_data() {
-		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress' ) as $dir ) {
+		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress', 'calendar' ) as $dir ) {
 			$metadata = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ) );
 			$editor = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js' ) );
 			foreach ( array( 'latitude', 'longitude', 'trackpoint', 'gps route', 'coordinates' ) as $term ) {

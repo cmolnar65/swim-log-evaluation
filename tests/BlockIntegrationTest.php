@@ -10,10 +10,11 @@ final class BlockIntegrationTest extends TestCase {
 			'workout' => 'swimlog/workout',
 			'training-log' => 'swimlog/training-log',
 			'progress' => 'swimlog/progress',
+			'calendar' => 'swimlog/calendar',
 		);
 	}
 
-	public function test_all_six_public_features_have_native_dynamic_blocks() {
+	public function test_all_public_features_have_native_dynamic_blocks() {
 		foreach ( $this->block_names() as $dir => $name ) {
 			$metadata = json_decode( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ), true );
 			$editor = file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js' );
@@ -42,7 +43,7 @@ final class BlockIntegrationTest extends TestCase {
 		$this->assertStringNotContainsString( 'overflow-wrap: anywhere', $css );
 	}
 
-	public function test_all_six_blocks_are_registered_with_php_render_callbacks() {
+	public function test_all_blocks_are_registered_with_php_render_callbacks() {
 		$blocks = file_get_contents( dirname( __DIR__ ) . '/includes/class-blocks.php' );
 		foreach ( array(
 			'latest-workouts' => 'render_latest_workouts',
@@ -51,6 +52,7 @@ final class BlockIntegrationTest extends TestCase {
 			'workout' => 'render_workout',
 			'training-log' => 'render_training_log',
 			'progress' => 'render_progress',
+			'calendar' => 'render_calendar',
 		) as $dir => $callback ) {
 			$this->assertStringContainsString( "blocks/{$dir}", $blocks );
 			$this->assertStringContainsString( "'{$callback}'", $blocks );
@@ -100,7 +102,7 @@ final class BlockIntegrationTest extends TestCase {
 	}
 
 	public function test_user_override_policy_is_consistent_except_workout_ownership() {
-		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'training-log', 'progress' ) as $dir ) {
+		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'training-log', 'progress', 'calendar' ) as $dir ) {
 			$metadata = json_decode( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ), true );
 			$editor = file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js' );
 			$this->assertArrayHasKey( 'user', $metadata['attributes'], $dir );

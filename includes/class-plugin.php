@@ -24,10 +24,13 @@ final class Plugin {
 		Shortcodes::register();
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';
 		add_action( 'init', array( 'SwimLogEvaluation\\Blocks', 'register' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'register_calendar_style' ) );
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
 	}
 
-
+	public function register_calendar_style() {
+		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), SWIMLOG_EVALUATION_VERSION );
+	}
 
 	public function register_rest_api() {
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
