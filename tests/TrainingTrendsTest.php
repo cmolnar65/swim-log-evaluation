@@ -84,7 +84,7 @@ final class TrainingTrendsTest extends TestCase {
 			array(),
 			$this->window()
 		);
-		$expected = 1 / ( ( strtotime( '2026-10-26 00:00:00' ) - strtotime( '2026-09-26 00:00:00' ) ) / WEEK_IN_SECONDS );
+		$expected = 1 / ( ( strtotime( '2026-10-26 00:00:00' ) - strtotime( '2026-09-26 00:00:00' ) ) / Training_Trends::WEEK_SECONDS );
 		$this->assertEqualsWithDelta( $expected, $data['current']['workouts_per_week'], 0.0001 );
 	}
 
