@@ -5,7 +5,7 @@ final class AdminSettingsExtractionTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   foreach(array('privacy','api_help','settings') as $method){$this->assertStringContainsString('public function '.$method.'()',$admin);$this->assertStringContainsString('Admin_Settings::'.$method.'();',$admin);}
   $this->assertStringContainsString("'swimlog-privacy', 'privacy'",$admin);
-  $this->assertStringContainsString("'swimlog-api-help', array( $this, 'api_help' )",$admin);
+  $this->assertStringContainsString("'swimlog-api-help', array( \$this, 'api_help' )",$admin);
   $this->assertStringContainsString("'swimlog-settings', 'settings'",$admin);
  }
  public function test_settings_implementation_is_extracted(){
