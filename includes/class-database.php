@@ -170,6 +170,7 @@ final class Database {
 			distance_m decimal(8,3) NOT NULL,
 			elapsed_time_ms bigint(20) unsigned NULL,
 			stroke varchar(20) NULL,
+			stroke_count smallint(5) unsigned NULL,
 			length_type varchar(20) NOT NULL,
 			source_length_index int(11) NULL,
 			raw_metadata longtext NULL,
