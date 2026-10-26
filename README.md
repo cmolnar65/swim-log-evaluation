@@ -24,6 +24,10 @@ The third v0.9 analytics milestone adds **Race Readiness 2.0** for upcoming even
 
 Race Readiness 2.0 is deliberately descriptive rather than predictive. It does not calculate a readiness score, forecast a race time, infer fitness or recovery, or state that a swimmer is ready or unready to race. Missing exact-distance performance evidence remains missing rather than being estimated. This milestone also uses the existing normalized workout/performance data and requires no database schema change.
 
+The fourth v0.9 milestone expands the authenticated, opt-in, read-only **REST API and data-portability surface**. Pool workout detail now exposes preserved normalized lap/length offsets and source indexes when available, including per-length stroke counts. New GET endpoints expose current personal bests, exact-distance progression, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends.
+
+The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. No write/create/delete REST methods are added, and this milestone requires no database schema change.
+
 ## v0.8
 
 Version 0.8 adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
