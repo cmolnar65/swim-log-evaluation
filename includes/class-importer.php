@@ -247,12 +247,6 @@ final class Importer {
 		if($matches[0]['size']<=0||$matches[0]['size']>self::MAX_BYTES)return new \WP_Error('swimlog_archive_size',__('The expanded workout file may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
 		return$matches[0]['source'];
 	}
-	private static function filesystem(){
-		global $wp_filesystem;
-		if(!function_exists('WP_Filesystem'))require_once ABSPATH.'wp-admin/includes/file.php';
-		if(!WP_Filesystem()||!$wp_filesystem)return new \WP_Error('swimlog_filesystem',__('WordPress could not initialize filesystem access.','chriss-swim-training-progress-evaluation'));
-		return$wp_filesystem;
-	}
 	private static function prepare_source_file($source,$path){
 		$fs=self::filesystem();if(is_wp_error($fs))return$fs;
 		$data=$fs->get_contents($path);if(false===$data)return new \WP_Error('swimlog_source_read',__('The workout source file could not be read.','chriss-swim-training-progress-evaluation'));
