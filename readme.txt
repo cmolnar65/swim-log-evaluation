@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.9
+Stable tag: 1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,21 @@ CSV swimming workouts, manually recording pool workouts, preserving normalized w
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
-Version 0.9 adds pool performance/efficiency analytics, longitudinal Training Trends, descriptive Race Readiness 2.0, expanded read-only REST/data portability with a standalone developer reference, and a major internal administration-code refactor. It retains the v0.8 manual-workout, compressed-import, FIT-fidelity, stroke-count, and workout-photo features.
+Version 1.0 adds the private Swim Training Calendar: month and week views, swimmer-configurable Saturday/Sunday/Monday week boundaries, defensible weekly training summaries, in-calendar workout details, responsive mobile agenda presentation, and accessibility-focused keyboard/focus behavior. It builds on the v0.9 analytics, REST/data-portability, and administration architecture without adding a database schema migration.
+
+= v1.0 =
+
+* Add the native dynamic Swim Training Calendar block with private owner/admin authorization independent of Public Results, Public Open-Water Routes, and external REST API opt-in.
+* Add Month and Week views with Previous, Next, and Today navigation.
+* Add per-swimmer Saturday, Sunday, or Monday first-day-of-week preference used consistently for week boundaries and weekly summaries.
+* Add weekly workout count, distance, active time, pool distance, and open-water distance summaries using recorded/defensible metrics only.
+* Add an internal authenticated `GET /swimlog/v1/calendar` route with strict owner/admin authorization, bounded date ranges, and no GPS, trackpoints, notes, device/source, or import metadata.
+* Add selectable workout cards with in-calendar details for recorded date/time, location, distance, active/elapsed time, pool length, and primary stroke when available.
+* Add responsive narrow-screen date-grouped agenda presentation while retaining the seven-column desktop/tablet calendar.
+* Add keyboard/focus refinements including Escape-to-close workout details, focus restoration, busy/status announcements, visible focus, reduced-motion handling, and forced-colors support.
+* Keep manual and imported workouts visually equivalent in the calendar; recording source does not dominate presentation.
+* Do not manufacture calories, TSS, physiological load, recovery, fitness, injury risk, or other unsupported metrics.
+* No v1.0 database schema change is required; the internal database schema remains 0.9.
 
 = v0.9 =
 
@@ -71,9 +85,17 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 2. Workout Details displays imported workout information, detected performances, preserved source imports, and normalized swim data.
 3. Personal Bests tracks performances by age group, course, distance, and stroke, with lifetime personal bests identified.
 4. PB Progression shows the performance history for a selected distance and stroke over time.
-5. Six native WordPress blocks make it easy to add latest workouts, personal bests, upcoming events, individual workouts, training logs, and progress displays to pages and posts.
+5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
 
 == Changelog ==
+
+= 1.0 =
+* Add the private Swim Training Calendar block with Month and Week views, Previous/Next/Today navigation, and swimmer-configurable Saturday/Sunday/Monday week starts.
+* Add defensible weekly summaries from recorded workout count, distance, active time, pool distance, and open-water distance without manufacturing physiological metrics.
+* Add a separately authorized internal calendar REST route that remains private regardless of Public Results, Public Open-Water Routes, or external REST API opt-in.
+* Add selectable in-calendar workout details using calendar-safe fields only; GPS, trackpoints, notes, device/source, and import metadata remain excluded.
+* Add responsive mobile date-grouped agenda presentation plus keyboard/focus, busy/status, reduced-motion, and forced-colors accessibility refinements.
+* Keep the internal database schema at 0.9; v1.0 requires no schema migration.
 
 = 0.9 =
 * Add Pool Analytics for pace, consistency, recorded stroke-count coverage, normalized stroke metrics, SWOLF, and monthly trends without estimating missing measurements.

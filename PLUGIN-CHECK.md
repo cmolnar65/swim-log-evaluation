@@ -6,7 +6,7 @@ It is developer and release documentation. It is not intended to suppress Plugin
 
 ## Baseline
 
-Baseline build: **v0.8 release candidate**
+Baseline build: **v1.0 release candidate**
 
 Plugin Check result:
 
@@ -124,7 +124,8 @@ A lower warning count is useful only when it results from a legitimate remediati
 | RC7 | 0 | 255 | Prepare and administrative warning cleanup |
 | **RC8** | **0** | **253** | **Reviewed baseline; remaining findings classified as architectural/static-analysis warnings** |
 | **v0.7 release candidate** | **0** | **372** | **All error-level findings cleared; nonce and Garmin input warnings corrected; bounded `_swimlog_workout_id` post-meta lookup warnings reviewed and documented.** |
-| **v0.8 release candidate** | **0** | **Pending final release-package count** | **Release metadata advanced to 0.8; final package check must complete before tagging.** |
+| **v0.8 release candidate** | **0** | **Pending historical count** | **Released baseline retained for history.** |
+| **v1.0 release candidate** | **Pending final check** | **Pending final check** | **Calendar release package; final package check and warning-family review required before tagging.** |
 
 ## Maintenance rule
 

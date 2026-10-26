@@ -27,8 +27,8 @@ final class ReleasePackagingBlockTest extends TestCase {
 		}
 	}
 
-	public function test_all_six_block_assets_exist_for_distribution() {
-		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress' ) as $dir ) {
+	public function test_all_seven_block_assets_exist_for_distribution() {
+		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress', 'calendar' ) as $dir ) {
 			$this->assertFileExists( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json', $dir );
 			$this->assertFileExists( dirname( __DIR__ ) . '/blocks/' . $dir . '/index.js', $dir );
 		}
