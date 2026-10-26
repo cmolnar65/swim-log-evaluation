@@ -30,6 +30,12 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString('source_document longtext NOT NULL',$db);
   $this->assertStringContainsString('user_id bigint(20) unsigned NOT NULL',$db);
  }
+ public function test_v09_schema_adds_length_stroke_count_for_existing_installations(){
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $this->assertStringContainsString('stroke_count smallint(5) unsigned NULL',$db);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$main);
+ }
  public function test_legacy_default_upload_types_gain_gpx_and_tcx_only_during_pre_07_upgrade(){
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("version_compare( (string) \$installed_version, '0.7', '<' )",$plugin);
