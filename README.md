@@ -6,7 +6,15 @@ The plugin supports FIT and supported CSV workout sources plus first-class manua
 
 ## Current release: v0.8
 
-Version 0.8 is the current release candidate on the `develop` branch. Release metadata has been advanced to v0.8 in preparation for tagging; it has not yet been merged to the protected `main` branch or published to WordPress.org.
+Version 0.8 is the current published release on GitHub and WordPress.org. The `develop` branch is now used for v0.9 development; `main` remains the protected stable/release branch.
+
+## v0.9 development
+
+v0.9 begins a pool performance and efficiency analytics layer built from the normalized active-length data the plugin already preserves. The first implementation adds a dedicated **Pool Analytics** administration screen with course, stroke, and rolling lookback filters.
+
+The analytics keep meter and yard courses, pool lengths, and strokes separate. They derive distance-weighted average pace per 100 native units, fastest single-length pace, per-length pace consistency, average recorded stroke count, normalized strokes per 25 native units, SWOLF, stroke-count coverage, and monthly trends. Missing timing or stroke-count data remains missing rather than being estimated. SWOLF is explicitly treated as pool-length dependent and should only be compared within the same pool length and similar recording conventions.
+
+These metrics are derived from existing normalized workout/length data, so this initial v0.9 analytics work requires no database schema change and applies to both imported and structured manual workouts when qualifying active-length data is available.
 
 ## v0.8
 
