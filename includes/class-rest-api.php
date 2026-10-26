@@ -14,9 +14,18 @@ final class REST_API {
   register_rest_route(self::NS,'/events',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'events'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('limit'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/analytics/pool',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'pool_analytics'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'),'stroke'=>array('sanitize_callback'=>'sanitize_key'),'months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/analytics/training-trends',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'training_trends'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('months'=>array('sanitize_callback'=>'absint'))));
+  register_rest_route(self::NS,'/calendar',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar'),'permission_callback'=>array(__CLASS__,'calendar_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
  }
 
  public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}
+
+ /** Internal calendar access is independent of the external REST opt-in. */
+ public static function calendar_permission($request){
+  if(!is_user_logged_in())return false;
+  $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$target=$requested?:$current;
+  if($target===$current)return current_user_can('swimlog_view_own_results');
+  return current_user_can('swimlog_manage_all_users');
+ }
 
  public static function workouts($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
@@ -59,6 +68,23 @@ final class REST_API {
   $uid=get_current_user_id();$limit=max(1,min(50,(int)($request->get_param('limit')?:10)));$rows=array();
   foreach(Event::upcoming_for_user($uid,$limit)as$event){$rows[]=array('id'=>(int)$event->id,'event_name'=>(string)$event->event_name,'event_date'=>$event->event_date,'event_time'=>$event->event_time,'location'=>$event->location_name??null,'distance_value'=>(int)$event->distance_value,'course_unit'=>$event->course_unit,'stroke'=>$event->stroke,'readiness'=>self::safe_readiness(Workout::event_readiness($uid,$event,Workout::EVENT_READINESS_LOOKBACK_DAYS)));}
   return rest_ensure_response(array('events'=>$rows,'lookback_days'=>Workout::EVENT_READINESS_LOOKBACK_DAYS));
+ }
+
+ public static function calendar($request){
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-calendar.php';
+  $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$uid=$requested?:$current;
+  if($uid!==$current&&!current_user_can('swimlog_manage_all_users'))return new \WP_Error('swimlog_calendar_forbidden',__('You cannot view this swimmer calendar.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  $start=trim((string)$request->get_param('start'));$end=trim((string)$request->get_param('end'));
+  $range_error=self::calendar_range_error($start,$end);if($range_error)return $range_error;
+  return rest_ensure_response(Calendar::for_user($uid,$start,$end));
+ }
+
+ private static function calendar_range_error($start,$end){
+  $tz=wp_timezone();$a=\DateTimeImmutable::createFromFormat('!Y-m-d',$start,$tz);$a_errors=\DateTimeImmutable::getLastErrors();$b=\DateTimeImmutable::createFromFormat('!Y-m-d',$end,$tz);$b_errors=\DateTimeImmutable::getLastErrors();
+  if(false===$a||false===$b||(false!==$a_errors&&($a_errors['warning_count']||$a_errors['error_count']))||(false!==$b_errors&&($b_errors['warning_count']||$b_errors['error_count']))||$a->format('Y-m-d')!==$start||$b->format('Y-m-d')!==$end)return new \WP_Error('swimlog_calendar_date',__('Calendar start and end must be valid dates in YYYY-MM-DD format.','chriss-swim-training-progress-evaluation'),array('status'=>400));
+  if($b<$a)return new \WP_Error('swimlog_calendar_range',__('Calendar end date cannot be before the start date.','chriss-swim-training-progress-evaluation'),array('status'=>400));
+  if((int)$a->diff($b)->format('%a')>366)return new \WP_Error('swimlog_calendar_range_too_large',__('Calendar date range cannot exceed 367 inclusive days.','chriss-swim-training-progress-evaluation'),array('status'=>400));
+  return null;
  }
 
  public static function pool_analytics($request){

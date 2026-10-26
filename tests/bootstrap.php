@@ -17,11 +17,11 @@ if(!function_exists('esc_html__')){function esc_html__($s,$d=null){return esc_ht
 if(!function_exists('wp_enqueue_style')){function wp_enqueue_style(){return true;}}
 if(!function_exists('wp_date')){function wp_date($f,$ts=null,$tz=null){$d=new DateTimeImmutable('@'.($ts??time()));if($tz)$d=$d->setTimezone($tz);return $d->format($f);}}
 if(!function_exists('number_format_i18n')){function number_format_i18n($number,$decimals=0){return number_format((float)$number,(int)$decimals,'.',',');}}
-if(!function_exists('is_user_logged_in')){function is_user_logged_in(){return true;}}
-if(!function_exists('get_current_user_id')){function get_current_user_id(){return 42;}}
-if(!function_exists('current_user_can')){function current_user_can(){return false;}}
+if(!function_exists('is_user_logged_in')){function is_user_logged_in(){global $swimlog_test_logged_in;return null===$swimlog_test_logged_in?true:(bool)$swimlog_test_logged_in;}}
+if(!function_exists('get_current_user_id')){function get_current_user_id(){global $swimlog_test_current_user_id;return $swimlog_test_current_user_id?:42;}}
+if(!function_exists('current_user_can')){function current_user_can($cap){global $swimlog_test_capabilities;return !empty($swimlog_test_capabilities[$cap]);}}
 if(!function_exists('get_user_meta')){function get_user_meta($uid,$key,$single=true){global $swimlog_test_user_meta;return $swimlog_test_user_meta[$uid][$key]??'';}}
-if(!class_exists('WP_Error')){class WP_Error{private $code,$message;public function __construct($c='',$m=''){$this->code=$c;$this->message=$m;}public function get_error_message(){return$this->message;}public function get_error_code(){return$this->code;}}}
+if(!class_exists('WP_Error')){class WP_Error{private $code,$message,$data;public function __construct($c='',$m='',$d=null){$this->code=$c;$this->message=$m;$this->data=$d;}public function get_error_message(){return$this->message;}public function get_error_code(){return$this->code;}public function get_error_data(){return$this->data;}}}
 if(!function_exists('is_wp_error')){function is_wp_error($v){return$v instanceof WP_Error;}}
 require_once dirname(__DIR__).'/includes/class-database.php';
 require_once dirname(__DIR__).'/includes/class-fit-importer.php';
@@ -43,3 +43,5 @@ require_once dirname(__DIR__).'/includes/class-shortcodes.php';
 require_once dirname(__DIR__).'/includes/class-blocks.php';
 
 require_once dirname(__DIR__).'/admin/class-admin.php';
+
+require_once dirname(__DIR__).'/includes/class-rest-api.php';
