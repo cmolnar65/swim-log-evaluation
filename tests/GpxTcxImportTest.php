@@ -16,7 +16,7 @@ final class GpxTcxImportTest extends TestCase {
   $this->assertFalse(is_wp_error($r));$this->assertEquals(1000.0,$r['workout']['total_distance_m']);$this->assertEquals(1000.0,$r['trackpoints'][2]['distance_m']);
  }
  public function test_importer_and_admin_support_both_formats(){
-  $importer=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');$admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');$plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
+  $importer=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');$admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');$plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("array('fit','csv','gpx','tcx')",$importer);
   $this->assertStringContainsString('Importer::parse_source($row->source_type,$row->stored_path)',$admin);
   $this->assertStringContainsString('accept=".fit,.fit.gz,.zip,.csv,.csv.gz,.gpx,.gpx.gz,.tcx,.tcx.gz"',$admin);
