@@ -40,6 +40,31 @@ final class Event {
 		);
 	}
 
+	/**
+	 * Return events owned by one swimmer in a half-open date range.
+	 *
+	 * The end date is exclusive to match the Calendar service range contract.
+	 */
+	public static function range_for_user( $user_id, $start, $end ) {
+		global $wpdb;
+		$table = Database::table( 'events' );
+		$locations = Database::table( 'locations' );
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT e.*, l.name AS location_name
+				FROM $table e
+				LEFT JOIN $locations l ON l.id = e.location_id AND l.user_id = e.user_id
+				WHERE e.user_id = %d AND e.event_date >= %s AND e.event_date < %s
+				ORDER BY e.event_date ASC,
+					CASE WHEN e.event_time IS NULL THEN 1 ELSE 0 END ASC,
+					e.event_time ASC, e.id ASC",
+				absint( $user_id ),
+				$start,
+				$end
+			)
+		);
+	}
+
 	public static function upcoming_for_user( $user_id, $limit=5 ) {
 		global $wpdb;
 		$table=Database::table('events'); $locations=Database::table('locations');
