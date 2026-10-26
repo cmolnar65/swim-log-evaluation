@@ -229,3 +229,4 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-settings.php';
 		Admin_Settings::settings();
 	}
+}
