@@ -10,7 +10,6 @@ final class ReleaseDocumentationTest extends TestCase {
   $this->assertStringContainsString('= 1.0 =',$readme);
   $this->assertStringContainsString("Version: 1.0",$plugin);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.0'",$plugin);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$plugin);
   $this->assertStringContainsString('## v1.0 release status',$github);
   foreach(array('## Release candidate: v1.0','The `develop` branch is the v1.0 release candidate.','Stable tag: 0.7','current public stable release remains v0.7','v0.8 development status','v0.8 development — complete, not yet released')as$stale)$this->assertStringNotContainsString($stale,$readme.$github);
  }
@@ -20,7 +19,6 @@ final class ReleaseDocumentationTest extends TestCase {
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly','mobile','GPS','database schema remains 0.9')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly summaries','date-grouped agenda','Escape-to-close','database schema remains version 0.9')as$feature)$this->assertStringContainsString($feature,$github);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.0'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v09_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');

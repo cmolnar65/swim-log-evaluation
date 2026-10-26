@@ -6,6 +6,8 @@ final class UpgradeRegressionTest extends TestCase {
   $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString('dbDelta( $statement )',$db);
+  $this->assertStringNotContainsString('DROP TABLE',$db);
+  $this->assertStringNotContainsString('TRUNCATE TABLE',$db);
   $this->assertStringContainsString('latitude decimal(10,7) NULL',$db);
   $this->assertStringContainsString('longitude decimal(10,7) NULL',$db);
   $this->assertStringContainsString("get_option( 'swimlog_db_version', '0.0.0' )",$plugin);
@@ -48,6 +50,7 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString('workout_instructions longtext NULL',$db);
   $this->assertStringContainsString("status varchar(20) NOT NULL DEFAULT 'planned'",$db);
   $this->assertStringContainsString('completed_workout_id bigint(20) unsigned NULL',$db);
+  $this->assertStringContainsString('UNIQUE KEY completed_workout_id (completed_workout_id)',$db);
   $this->assertStringContainsString('KEY user_planned_date (user_id,planned_date)',$db);
   $this->assertStringContainsString('KEY user_status_date (user_id,status,planned_date)',$db);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);

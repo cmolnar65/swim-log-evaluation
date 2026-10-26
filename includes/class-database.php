@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Database schema and table-name services.
  *
- * Schema v0.1 Revision 1. No SQL foreign keys are used; relationships are
- * maintained by plugin code for WordPress/dbDelta compatibility.
+ * Schema is upgraded in place with WordPress dbDelta. No SQL foreign keys are
+ * used; relationships are maintained by plugin code for WordPress/dbDelta compatibility.
  */
 final class Database {
 	public static function table( $name ) {
@@ -268,7 +268,7 @@ final class Database {
 			KEY user_id (user_id),
 			KEY user_planned_date (user_id,planned_date),
 			KEY user_status_date (user_id,status,planned_date),
-			KEY completed_workout_id (completed_workout_id)
+			UNIQUE KEY completed_workout_id (completed_workout_id)
 		) $charset_collate;";
 		foreach ( $sql as $statement ) {
 			dbDelta( $statement );
