@@ -132,7 +132,7 @@ final class CalendarBlockTest extends TestCase {
  public function test_phase_eight_agenda_is_used_by_month_and_week_without_new_data_source(){
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertSame(1,substr_count($view,'renderAgenda( root, data, first, last )'));
-  $this->assertSame(1,substr_count($view,'renderAgenda( root, data, start, end )'));
+  $this->assertSame(2,substr_count($view,'renderAgenda( root, data, start, end )'));
   $this->assertStringContainsString('renderAgenda( root, data, first, last )',$view);
   $this->assertStringContainsString('renderAgenda( root, data, start, end )',$view);
   $this->assertStringContainsString('agendaItemsByDate( data )',$view);
