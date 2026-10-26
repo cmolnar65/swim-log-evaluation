@@ -1,17 +1,10 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ui.php';
 /** Personal-best and progression administration. */
 final class Admin_Personal_Bests {
-	private static function selected_user_id() {
-		$uid = get_current_user_id();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin swimmer selector; no state is changed.
-		if ( current_user_can( 'swimlog_manage_all_users' ) && ! empty( $_GET['swimmer_id'] ) ) { $requested = absint( wp_unslash( $_GET['swimmer_id'] ) ); if ( $requested && get_userdata( $requested ) ) $uid = $requested; }
-		return $uid;
-	}
-	private static function swimmer_selector( $user_id, $page ) {
-		if ( ! current_user_can( 'swimlog_manage_all_users' ) ) return; $users = get_users( array( 'fields' => array( 'ID', 'display_name' ), 'orderby' => 'display_name' ) ); ?><form method="get" class="swimlog-swimmer-selector"><input type="hidden" name="page" value="<?php echo esc_attr( $page ); ?>"><label for="swimlog-swimmer"><?php esc_html_e( 'Swimmer', 'chriss-swim-training-progress-evaluation' ); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach ( $users as $u ) : ?><option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $user_id, $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option><?php endforeach; ?></select> <?php submit_button( __( 'View', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?></form><?php
-	}
 
 	public static function personal_bests() {
 		if ( ! current_user_can( 'swimlog_view_own_results' ) ) wp_die( esc_html__( 'You do not have permission to view these results.', 'chriss-swim-training-progress-evaluation' ) );
@@ -21,8 +14,8 @@ final class Admin_Personal_Bests {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-age-group.php';
 
-		$user_id = self::selected_user_id();
-		self::swimmer_selector( $user_id, 'swimlog-personal-bests' );
+		$user_id = Admin_UI::selected_user_id();
+		Admin_UI::swimmer_selector( $user_id, 'swimlog-personal-bests' );
 
 		$course = get_option( 'swimlog_default_course_unit', 'm' );
 		if ( isset( $_GET['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB course filter.
