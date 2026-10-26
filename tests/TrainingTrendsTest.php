@@ -127,13 +127,14 @@ final class TrainingTrendsTest extends TestCase {
 	public function test_queries_are_user_scoped_and_admin_explains_load_limits() {
 		$service = file_get_contents( dirname( __DIR__ ) . '/includes/class-training-trends.php' );
 		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$analytics_admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-analytics.php' );
 		$this->assertStringContainsString( 'WHERE user_id=%d', $service );
 		$this->assertStringContainsString( 'WHERE w.user_id=%d', $service );
 		$this->assertStringContainsString( "w.workout_type='pool'", $service );
 		$this->assertStringContainsString( "n.length_type='active'", $service );
 		$this->assertStringContainsString( "'swimlog-training-trends', 'training_trends'", $admin );
 		$this->assertStringContainsString( 'public function training_trends()', $admin );
-		$this->assertStringContainsString( 'does not estimate physiological stress, recovery, fitness, or injury risk', $admin );
-		$this->assertStringContainsString( 'Course and stroke tables preserve native meter/yard units.', $admin );
+		$this->assertStringContainsString( 'does not estimate physiological stress, recovery, fitness, or injury risk', $analytics_admin );
+		$this->assertStringContainsString( 'Course and stroke tables preserve native meter/yard units.', $analytics_admin );
 	}
 }
