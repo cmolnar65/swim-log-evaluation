@@ -36,6 +36,26 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString('stroke_count smallint(5) unsigned NULL',$db);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$main);
  }
+ public function test_v11_schema_adds_planned_workouts_in_place_and_preserves_original_instructions(){
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $this->assertStringContainsString("'planned_workouts'",$db);
+  $this->assertStringContainsString("self::table( 'planned_workouts' )",$db);
+  $this->assertStringContainsString('planned_date date NOT NULL',$db);
+  $this->assertStringContainsString('planned_start_time time NULL',$db);
+  $this->assertStringContainsString('title varchar(191) NOT NULL',$db);
+  $this->assertStringContainsString("workout_type varchar(20) NOT NULL DEFAULT 'pool'",$db);
+  $this->assertStringContainsString('planned_distance_m decimal(10,3) NULL',$db);
+  $this->assertStringContainsString('planned_duration_ms bigint(20) unsigned NULL',$db);
+  $this->assertStringContainsString('workout_instructions longtext NULL',$db);
+  $this->assertStringContainsString("status varchar(20) NOT NULL DEFAULT 'planned'",$db);
+  $this->assertStringContainsString('completed_workout_id bigint(20) unsigned NULL',$db);
+  $this->assertStringContainsString('KEY user_planned_date (user_id,planned_date)',$db);
+  $this->assertStringContainsString('KEY user_status_date (user_id,status,planned_date)',$db);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
+  $this->assertStringContainsString('dbDelta( $statement )',$db);
+ }
+
  public function test_legacy_default_upload_types_gain_gpx_and_tcx_only_during_pre_07_upgrade(){
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("version_compare( (string) \$installed_version, '0.7', '<' )",$plugin);

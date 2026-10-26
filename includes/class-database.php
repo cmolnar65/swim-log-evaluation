@@ -16,7 +16,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts' );
 	}
 
 	public static function schema_is_complete() {
@@ -46,6 +46,7 @@ final class Database {
 		$trackpoints  = self::table( 'trackpoints' );
 		$performances = self::table( 'performances' );
 		$events       = self::table( 'events' );
+		$planned_workouts = self::table( 'planned_workouts' );
 
 		$sql = array();
 
@@ -244,6 +245,31 @@ final class Database {
 			KEY location_id (location_id)
 		) $charset_collate;";
 
+
+		$sql[] = "CREATE TABLE $planned_workouts (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			planned_date date NOT NULL,
+			planned_start_time time NULL,
+			title varchar(191) NOT NULL,
+			workout_type varchar(20) NOT NULL DEFAULT 'pool',
+			planned_distance_m decimal(10,3) NULL,
+			planned_duration_ms bigint(20) unsigned NULL,
+			pool_length_m decimal(8,3) NULL,
+			pool_course varchar(10) NULL,
+			primary_stroke varchar(20) NULL,
+			workout_instructions longtext NULL,
+			notes text NULL,
+			status varchar(20) NOT NULL DEFAULT 'planned',
+			completed_workout_id bigint(20) unsigned NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY user_id (user_id),
+			KEY user_planned_date (user_id,planned_date),
+			KEY user_status_date (user_id,status,planned_date),
+			KEY completed_workout_id (completed_workout_id)
+		) $charset_collate;";
 		foreach ( $sql as $statement ) {
 			dbDelta( $statement );
 		}
