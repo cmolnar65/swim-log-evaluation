@@ -286,10 +286,23 @@ final class Admin {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-analytics.php';
 		Admin_Analytics::training_volume();
 	}
-
 	public function handle_manual_workout_actions() {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-manual-workout.php';
 		Admin_Manual_Workout::handle_manual_workout_actions();
+	}
+
+	public function manual_workout() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-manual-workout.php';
+		Admin_Manual_Workout::manual_workout();
+	}
+
+	public function training_trends() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-analytics.php';
+		Admin_Analytics::training_trends();
+	}
+	public function pool_analytics() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-analytics.php';
+		Admin_Analytics::pool_analytics();
 	}
 	public function upload() {
 		if(!current_user_can('swimlog_upload_workouts'))wp_die(esc_html__('You do not have permission to upload workouts.','chriss-swim-training-progress-evaluation'));
