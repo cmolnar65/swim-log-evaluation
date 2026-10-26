@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.8
+Stable tag: 0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,24 @@ CSV swimming workouts, manually recording pool workouts, preserving normalized w
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
-Version 0.8 adds first-class manual pool-workout creation and editing, compressed workout-source imports, improved FIT fidelity for Apple Watch, Garmin, and FORM recordings, and workout-photo support. It retains all v0.7 Block Editor, open-water, Garmin, rebuild, analysis, privacy, REST API, and integration features.
+Version 0.9 adds pool performance/efficiency analytics, longitudinal Training Trends, descriptive Race Readiness 2.0, expanded read-only REST/data portability with a standalone developer reference, and a major internal administration-code refactor. It retains the v0.8 manual-workout, compressed-import, FIT-fidelity, stroke-count, and workout-photo features.
+
+= v0.9 =
+
+Version 0.9 turns the normalized workout history added and refined in earlier releases into a broader swim-analytics and data-portability layer without manufacturing missing measurements.
+
+* Add Pool Analytics with course/stroke/lookback filters, distance-weighted pace, fastest recorded active-length pace, pace consistency, recorded stroke-count coverage, average strokes per length, normalized strokes per 25 native units, SWOLF, and monthly trends.
+* Keep meter/yard courses, pool lengths, and strokes separate where required; do not estimate missing timing or stroke-count data.
+* Add Training Trends with weekly/monthly volume, workout frequency, active time, pool/open-water splits, four-week rolling averages, equal-period comparisons, course volume, and stroke volume.
+* Keep Training Trends descriptive: recorded training volume is not presented as physiological stress, recovery, fitness, or injury risk.
+* Add Race Readiness 2.0 for upcoming events using current PBs, recent exact-distance performances/pace/change, matching course/stroke training, longest recent evaluated distance, and time to event.
+* Keep Race Readiness descriptive: no readiness score, predicted race time, fitness/recovery inference, or ready/unready conclusion is generated.
+* Expand the authenticated, owner-scoped, explicitly opt-in, read-only REST API with personal bests, progression, events/readiness, Pool Analytics, Training Trends, preserved lap/length offsets/source indexes, and per-length stroke counts.
+* Add a standalone REST-API.md developer reference covering Application Password authentication, authorization, routes, parameters, response fields, privacy boundaries, pagination, examples, and errors, plus regression coverage that requires registered routes to remain documented.
+* Continue excluding workout notes, preserved source files/paths, import records, original uploaded filenames, open-water coordinates, and GPS trackpoints from REST responses.
+* Refactor the large administration class into focused workout, manual-workout, analytics, personal-bests, events/locations, shortcode-help, Garmin, settings, Race Readiness, and shared UI components while preserving existing admin URLs, capabilities, nonces, and behavior.
+* Maintain PHP 7.4 through 8.4 compatibility and release-package Plugin Check coverage.
+* No v0.9 database schema change is required; the internal database schema remains at 0.9 from the v0.8 per-length stroke-count migration.
 
 = v0.8 =
 
@@ -57,6 +74,17 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 5. Six native WordPress blocks make it easy to add latest workouts, personal bests, upcoming events, individual workouts, training logs, and progress displays to pages and posts.
 
 == Changelog ==
+
+= 0.9 =
+* Add Pool Analytics for pace, consistency, recorded stroke-count coverage, normalized stroke metrics, SWOLF, and monthly trends without estimating missing measurements.
+* Add Training Trends for weekly/monthly volume, frequency, active time, pool/open-water splits, four-week rolling averages, equal-period comparisons, course volume, and stroke volume.
+* Add descriptive Race Readiness 2.0 evidence for upcoming events without readiness scores, race-time prediction, or fitness/recovery inference.
+* Expand the authenticated, owner-scoped, opt-in, read-only REST API with PBs, progression, events/readiness, Pool Analytics, Training Trends, and richer normalized workout detail including per-length stroke counts.
+* Add REST-API.md as a standalone developer reference with Application Password examples, endpoint/parameter/response documentation, privacy boundaries, and error handling, protected by route-documentation regression coverage.
+* Preserve REST privacy exclusions for notes, source files/paths, import records, original filenames, open-water coordinates, and GPS trackpoints.
+* Refactor administration code into focused components and shared UI helpers while preserving public/admin behavior and permissions.
+* Maintain PHP 7.4–8.4 regression and packaged Plugin Check coverage.
+* Keep the existing internal database schema version; v0.9 introduces no new schema migration.
 
 = 0.8 =
 * Add first-class manual pool-workout creation and editing with coarse totals or structured sets, repetitions, strokes, notes, and optional timing.
