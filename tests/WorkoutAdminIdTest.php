@@ -3,11 +3,11 @@ use PHPUnit\Framework\TestCase;
 
 final class WorkoutAdminIdTest extends TestCase {
 	public function test_workout_admin_list_displays_workout_number() {
-		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-workouts.php' );
 		$this->assertStringContainsString( "esc_html_e('Workout #'", $admin );
 		$this->assertStringContainsString( "esc_html((int)\$w->id)", $admin );
 		$list_start = strpos( $admin, "if(!\$result['rows'])" );
-		$list_end = strpos( $admin, "public function training_volume()", $list_start );
+		$list_end = strlen( $admin );
 		$list = substr( $admin, $list_start, $list_end - $list_start );
 		$this->assertSame( 1, substr_count( $list, "esc_html_e('Workout #'") );
 		$this->assertStringContainsString( "Workout #','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Date'", $list );
