@@ -197,7 +197,7 @@ final class Importer {
 		foreach($sources as$row){
 			if(!in_array($row->source_type,array('fit','csv','gpx','tcx'),true))continue;
 			if(!$row->stored_path||!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('A preserved source file required for this rebuild could not be found. No workout data was changed.','chriss-swim-training-progress-evaluation'));
-			$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);
+			$parsed=self::parse_source($row->source_type,$row->stored_path);
 			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(/* translators: 1: source format, 2: parsing detail. */ __('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
 			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
 		}
@@ -283,7 +283,13 @@ final class Importer {
 		return array('path'=>$tmp,'temporary'=>true);
 	}
 	private static function cleanup_prepared_source($prepared){if(!empty($prepared['temporary'])&&!empty($prepared['path']))wp_delete_file($prepared['path']);}
-	private static function parser_for_source($source){$source=strtolower((string)$source);if('fit'===$source)return new FIT_Importer();if('csv'===$source)return new CSV_Importer();if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));}
+	private static function parser_for_source($source){
+		$source=strtolower((string)$source);
+		if('fit'===$source){require_once SWIMLOG_EVALUATION_DIR.'includes/class-fit-importer.php';return new FIT_Importer();}
+		if('csv'===$source){require_once SWIMLOG_EVALUATION_DIR.'includes/class-csv-importer.php';return new CSV_Importer();}
+		if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}
+		return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));
+	}
 	public static function location_from_open_water_track($uid,$parsed,$max_m=500.0){foreach((array)($parsed['trackpoints']??array())as$p){if(!isset($p['latitude'],$p['longitude'])||null===$p['latitude']||null===$p['longitude'])continue;$match=Location::nearest_for_user($uid,(float)$p['latitude'],(float)$p['longitude'],$max_m);return$match?(int)$match['location']->id:0;}return 0;}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function is_form_fit($parsed,$filename=''){$w=(array)($parsed['workout']??array());$identity=strtolower(trim((string)($w['device_manufacturer']??'')).' '.trim((string)($w['device_model']??'')));if(strpos($identity,'form swim')!==false||preg_match('/(^|[^a-z])form([^a-z]|$)/',$identity))return true;return(bool)preg_match('/^FORM[_-].*\\.fit$/i',basename((string)$filename));}
