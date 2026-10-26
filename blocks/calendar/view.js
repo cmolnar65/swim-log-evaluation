@@ -26,9 +26,9 @@
 	}
 	function renderMonth( root, data, focus ) {
 		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday';
-		root.dataset.firstDay = firstDay; root.dataset.year = focus.getFullYear(); root.dataset.month = focus.getMonth() + 1;
+		root.dataset.firstDay = firstDay; root.dataset.year = focus.getFullYear(); root.dataset.month = focus.getMonth() + 1; root.dataset.focusDate = dateKey( focus );
 		root.querySelector( '.swimlog-calendar-title' ).textContent = monthName( focus );
-		var grid = root.querySelector( '.swimlog-calendar-grid' ); grid.textContent = '';
+		var grid = root.querySelector( '.swimlog-calendar-grid' ); grid.textContent = ''; grid.classList.remove( 'is-week-view' );
 		labelsFor( firstDay ).forEach( function ( label ) {
 			var h = document.createElement( 'div' ); h.className = 'swimlog-calendar-weekday'; h.setAttribute( 'role', 'columnheader' ); h.textContent = label; grid.appendChild( h );
 		} );
@@ -53,6 +53,56 @@
 			cursor.setDate( cursor.getDate() + 1 );
 		}
 	}
+	function weekStart( focus, firstDay ) {
+		var date = new Date( focus.getFullYear(), focus.getMonth(), focus.getDate() ), target = firstDayNumber( firstDay );
+		date.setDate( date.getDate() - ( ( date.getDay() - target + 7 ) % 7 ) ); return date;
+	}
+	function weekTitle( start, end ) {
+		var sameYear = start.getFullYear() === end.getFullYear(), sameMonth = sameYear && start.getMonth() === end.getMonth();
+		if ( sameMonth ) return start.toLocaleDateString( undefined, { month: 'long', day: 'numeric' } ) + '–' + end.getDate() + ', ' + end.getFullYear();
+		return start.toLocaleDateString( undefined, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' } ) + '–' + end.toLocaleDateString( undefined, { month: 'short', day: 'numeric', year: 'numeric' } );
+	}
+	function renderWeek( root, data, focus ) {
+		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday', start = weekStart( focus, firstDay ), end = new Date( start.getFullYear(), start.getMonth(), start.getDate() + 6 );
+		root.dataset.firstDay = firstDay; root.dataset.focusDate = dateKey( focus );
+		root.querySelector( '.swimlog-calendar-title' ).textContent = weekTitle( start, end );
+		var grid = root.querySelector( '.swimlog-calendar-grid' ); grid.textContent = ''; grid.classList.add( 'is-week-view' );
+		var byDate = {};
+		( data.workouts || [] ).forEach( function ( workout ) {
+			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workout.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' ];
+			if ( workout.total_distance_m !== null ) parts.push( Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
+			var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) parts.push( duration( active ) );
+			( byDate[ key ] = byDate[ key ] || [] ).push( item( 'swimlog-calendar-workout', parts, false ) );
+		} );
+		( data.events || [] ).forEach( function ( event ) { ( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true ) ); } );
+		for ( var i = 0; i < 7; i++ ) {
+			var date = new Date( start.getFullYear(), start.getMonth(), start.getDate() + i ), key = dateKey( date ), cell = document.createElement( 'div' );
+			cell.className = 'swimlog-calendar-day swimlog-calendar-week-day'; cell.setAttribute( 'role', 'gridcell' ); cell.dataset.date = key;
+			var heading = document.createElement( 'span' ); heading.className = 'swimlog-calendar-date'; heading.textContent = date.toLocaleDateString( undefined, { weekday: 'short', month: 'short', day: 'numeric' } ); cell.appendChild( heading );
+			( byDate[ key ] || [] ).forEach( function ( child ) { cell.appendChild( child ); } ); grid.appendChild( cell );
+		}
+		var summary = ( data.weeks || [] )[0];
+		if ( summary ) {
+			var totals = document.createElement( 'div' ); totals.className = 'swimlog-calendar-week-summary';
+			totals.textContent = summary.workout_count + ' workouts · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m · ' + duration( summary.active_time_ms || 0 );
+			grid.appendChild( totals );
+		}
+	}
+	function setViewButtons( root, viewName ) {
+		root.dataset.view = viewName;
+		root.querySelectorAll( '[data-calendar-view]' ).forEach( function ( button ) { var active = button.dataset.calendarView === viewName; button.classList.toggle( 'is-active', active ); button.setAttribute( 'aria-pressed', active ? 'true' : 'false' ); } );
+	}
+	function loadWeek( root, focus ) {
+		var firstDay = root.dataset.firstDay || 'sunday', startDate = weekStart( focus, firstDay ), endDate = new Date( startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6 );
+		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', dateKey( startDate ) ); url.searchParams.set( 'end', dateKey( endDate ) );
+		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
+		var status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Loading calendar…'; root.classList.add( 'is-loading' );
+		fetch( url.toString(), { credentials: 'same-origin', headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
+			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'calendar' ); return response.json(); } )
+			.then( function ( data ) { renderWeek( root, data, focus ); status.textContent = ''; } )
+			.catch( function () { status.textContent = 'Unable to load calendar.'; } )
+			.finally( function () { root.classList.remove( 'is-loading' ); } );
+	}
 	function loadMonth( root, focus ) {
 		var start = dateKey( new Date( focus.getFullYear(), focus.getMonth(), 1 ) ), end = dateKey( new Date( focus.getFullYear(), focus.getMonth() + 1, 0 ) );
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', start ); url.searchParams.set( 'end', end );
@@ -65,13 +115,21 @@
 			.finally( function () { root.classList.remove( 'is-loading' ); } );
 	}
 	function init( root ) {
+		root.dataset.view = 'month'; root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		root.addEventListener( 'click', function ( event ) {
+			var viewButton = event.target.closest( '[data-calendar-view]' );
+			if ( viewButton ) {
+				var viewName = viewButton.dataset.calendarView, focus = new Date( root.dataset.focusDate + 'T12:00:00' );
+				setViewButtons( root, viewName );
+				if ( viewName === 'week' ) loadWeek( root, focus ); else loadMonth( root, new Date( focus.getFullYear(), focus.getMonth(), 1 ) );
+				return;
+			}
 			var button = event.target.closest( '[data-calendar-action]' ); if ( ! button ) return;
-			var focus = new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 );
-			if ( button.dataset.calendarAction === 'previous' ) focus.setMonth( focus.getMonth() - 1 );
-			else if ( button.dataset.calendarAction === 'next' ) focus.setMonth( focus.getMonth() + 1 );
-			else { var now = new Date(); focus = new Date( now.getFullYear(), now.getMonth(), 1 ); }
-			loadMonth( root, focus );
+			var currentView = root.dataset.view || 'month', focus = new Date( root.dataset.focusDate + 'T12:00:00' );
+			if ( button.dataset.calendarAction === 'today' ) focus = new Date();
+			else if ( currentView === 'week' ) focus.setDate( focus.getDate() + ( button.dataset.calendarAction === 'previous' ? -7 : 7 ) );
+			else focus.setMonth( focus.getMonth() + ( button.dataset.calendarAction === 'previous' ? -1 : 1 ) );
+			if ( currentView === 'week' ) loadWeek( root, focus ); else loadMonth( root, new Date( focus.getFullYear(), focus.getMonth(), 1 ) );
 		} );
 	}
 	document.addEventListener( 'DOMContentLoaded', function () { document.querySelectorAll( '[data-swimlog-calendar="1"]' ).forEach( init ); } );

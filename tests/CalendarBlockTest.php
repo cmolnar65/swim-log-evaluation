@@ -61,14 +61,36 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString("credentials: 'same-origin'",$view);
   $this->assertStringContainsString("'X-WP-Nonce'",$view);
  }
- public function test_phase_five_exposes_month_week_switch_without_implementing_phase_six_week_renderer(){
+ public function test_phase_six_enables_month_week_switch_and_week_renderer(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertStringContainsString('data-calendar-view="month"',$blocks);
   $this->assertStringContainsString('data-calendar-view="week"',$blocks);
-  $this->assertStringContainsString('aria-pressed="true"',$blocks);
-  $this->assertStringContainsString('disabled title=',$blocks);
-  $this->assertStringNotContainsString('renderWeek',$view);
+  $this->assertStringNotContainsString('data-calendar-view="week" aria-pressed="false" disabled',$blocks);
+  $this->assertStringContainsString('function renderWeek',$view);
+  $this->assertStringContainsString('function loadWeek',$view);
+  $this->assertStringContainsString("setViewButtons( root, viewName )",$view);
+ }
+ public function test_phase_six_week_boundaries_follow_swimmer_first_day(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString('function weekStart( focus, firstDay )',$view);
+  $this->assertStringContainsString('firstDayNumber( firstDay )',$view);
+  $this->assertStringContainsString("value === 'monday' ? 1",$view);
+  $this->assertStringContainsString("value === 'saturday' ? 6",$view);
+  $this->assertStringContainsString('startDate.getDate() + 6',$view);
+ }
+ public function test_phase_six_week_navigation_moves_seven_days_and_today_uses_current_week(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString("currentView === 'week'",$view);
+  $this->assertStringContainsString("button.dataset.calendarAction === 'previous' ? -7 : 7",$view);
+  $this->assertStringContainsString("button.dataset.calendarAction === 'today'",$view);
+  $this->assertStringContainsString("loadWeek( root, focus )",$view);
+ }
+ public function test_phase_six_week_view_uses_calendar_week_summary_only(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString("( data.weeks || [] )[0]",$view);
+  foreach(array('workout_count','distance_m','active_time_ms') as $metric)$this->assertStringContainsString('summary.'.$metric,$view);
+  foreach(array('calories','tss','fitness','recovery','injury') as $metric)$this->assertStringNotContainsString($metric,$view);
  }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
