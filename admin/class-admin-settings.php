@@ -167,4 +167,3 @@ final class Admin_Settings {
 	}
 }
 
-}
