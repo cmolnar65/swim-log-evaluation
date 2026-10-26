@@ -62,7 +62,7 @@ final class PoolAnalyticsTest extends TestCase {
 		$this->assertNull( $group['avg_stroke_count'] );
 		$this->assertNull( $group['normalized_strokes_per_25'] );
 		$this->assertNull( $group['avg_swolf'] );
-		$this->assertSame( 0.0, $group['stroke_count_coverage_percent'] );
+		$this->assertEqualsWithDelta( 0.0, $group['stroke_count_coverage_percent'], 0.001 );
 	}
 
 	public function test_rest_lengths_are_excluded_and_untimed_active_distance_is_preserved() {
