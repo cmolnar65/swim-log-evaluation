@@ -20,6 +20,10 @@ The second v0.9 analytics milestone adds a **Training Trends / Training Load** a
 
 Training load in this dashboard means recorded training volume only. The plugin does not infer physiological stress, recovery status, fitness, or injury risk. Active time uses recorded moving time when available and otherwise recorded elapsed time; stroke-specific active time is derived only from normalized active pool lengths. This milestone also uses the existing schema and requires no database-version change.
 
+The third v0.9 analytics milestone adds **Race Readiness 2.0** for upcoming events. It combines the swimmer's current personal best, exact-distance recent best, exact-distance recent pace evidence, recent performance count and change, matching course/stroke training volume and session count, longest recent evaluated distance, and time remaining until the event. The default evidence window remains 42 days.
+
+Race Readiness 2.0 is deliberately descriptive rather than predictive. It does not calculate a readiness score, forecast a race time, infer fitness or recovery, or state that a swimmer is ready or unready to race. Missing exact-distance performance evidence remains missing rather than being estimated. This milestone also uses the existing normalized workout/performance data and requires no database schema change.
+
 ## v0.8
 
 Version 0.8 adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
