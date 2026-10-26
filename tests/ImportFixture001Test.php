@@ -130,10 +130,18 @@ final class ImportFixture001Test extends TestCase {
   $first=hash_file('sha256',$path);$second=hash_file('sha256',$path);
   $this->assertSame($first,$second);
   $this->assertSame(64,strlen($first));
-  // Importer duplicate protection is scoped to user_id + SHA-256 before parsing.
+  // Importer duplicate protection is scoped to user_id + SHA-256 before parsing, but failed attempts remain retryable.
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
-  $this->assertStringContainsString("SELECT id FROM \\$it WHERE user_id=%d AND file_hash=%s",$source);
+  $this->assertStringContainsString("SELECT id FROM \\$it WHERE user_id=%d AND file_hash=%s AND import_status<>'failed'",$source);
   $this->assertStringContainsString("swimlog_duplicate",$source);
+ }
+
+
+ public function test_failed_imports_do_not_block_file_or_external_activity_retry(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("file_hash=%s AND import_status<>'failed'",$source);
+  $this->assertStringContainsString("external_activity_id=%s AND import_status<>'failed'",$source);
+  $this->assertStringContainsString("'import_status'=>'failed'",$source);
  }
 
  public function test_september_18_fit_is_clearly_different_from_september_19(){
