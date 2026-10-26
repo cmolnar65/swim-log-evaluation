@@ -4,11 +4,11 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Current release: v0.8
+## Release candidate: v0.9
 
-Version 0.8 is the current published release on GitHub and WordPress.org. The `develop` branch is now used for v0.9 development; `main` remains the protected stable/release branch.
+The `develop` branch is the v0.9 release candidate. Version 0.8 remains the current published release on GitHub and WordPress.org until v0.9 is validated, merged through protected `main`, tagged, and published on GitHub. WordPress.org deployment is a separate decision and is not implied by the GitHub v0.9 release.
 
-## v0.9 development
+## v0.9
 
 v0.9 begins a pool performance and efficiency analytics layer built from the normalized active-length data the plugin already preserves. The first implementation adds a dedicated **Pool Analytics** administration screen with course, stroke, and rolling lookback filters.
 
@@ -27,6 +27,12 @@ Race Readiness 2.0 is deliberately descriptive rather than predictive. It does n
 The fourth v0.9 milestone expands the authenticated, opt-in, read-only **REST API and data-portability surface**. Pool workout detail now exposes preserved normalized lap/length offsets and source indexes when available, including per-length stroke counts. New GET endpoints expose current personal bests, exact-distance progression, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends.
 
 The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. No write/create/delete REST methods are added, and this milestone requires no database schema change.
+
+The v0.9 administration architecture was also refactored from the former monolithic Admin class into focused components for workouts, manual workouts, analytics, personal bests, events/locations, shortcode help, Garmin, settings, Race Readiness presentation, and shared UI helpers. The refactor preserves existing menu slugs, permissions, nonces, URLs, and behavior while making future development more maintainable.
+
+A standalone **[REST-API.md](REST-API.md)** developer reference documents the complete v0.9 REST surface, WordPress Application Password authentication, parameters, response fields, privacy boundaries, pagination, examples, and error handling. Regression coverage checks that every registered REST route remains represented in the reference.
+
+v0.9 requires **no new database schema migration**. The internal database schema remains version 0.9 from the v0.8 per-length stroke-count migration.
 
 ## v0.8
 
