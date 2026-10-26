@@ -2,21 +2,25 @@
 
 Chris's Swim Training Progress and Evaluation is a WordPress plugin for importing or manually recording, preserving, and evaluating swimming workout history.
 
-The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry on the development branch, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
+The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Current release: v0.7
+## Current release: v0.8
 
-Version 0.7 is the current public release. Development for v0.8 is taking place on the `develop` branch; release metadata remains at v0.7 until the v0.8 release-candidate process.
+Version 0.8 is the current release candidate on the `develop` branch. Release metadata has been advanced to v0.8 in preparation for tagging; it has not yet been merged to the protected `main` branch or published to WordPress.org.
 
-## v0.8 development — complete, not yet released
+## v0.8
 
-The completed v0.8 development work adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
+Version 0.8 adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
 
 Manual entry supports coarse workouts with only distance and duration, or ordered sets with repetitions, distance, stroke, notes, and optional timing. Timing provenance is preserved: measured repetition times may qualify as performance evidence, while set totals, intervals/send-offs, derived values, overall workout duration, and unknown timing are never divided or treated as invented personal-best times. Untimed structure contributes training volume without manufacturing elapsed times.
 
-Manual workouts are explicitly identified as manual rather than inferred from missing import data. Their authoritative entered document is stored separately from normalized workout/lap/length projections, and they do not create import records or pretend to be device recordings. Editing and rebuilding are owner-scoped, imported workouts cannot be rewritten as manual workouts, and the complete manual save—including derived performance evaluation—is transactional so a failure rolls the edit back.
+Manual workouts are explicitly identified as manual rather than inferred from missing import data. Their authoritative entered document is stored separately from normalized workout/lap/length projections, and they do not create import records or pretend to be device recordings. Editing and rebuilding are owner-scoped, imported workouts cannot be rewritten as manual workouts, and the complete manual save—including derived performance evaluation—is transactional.
 
-The v0.8 manual-entry feature is limited to pool workouts; it does not create manual open-water GPS routes. The REST API remains read-only. Development Phases 0–10 have passed the PHP 7.4–8.4 regression matrix and development package Plugin Check. v0.8 has not entered the release-candidate/release process and has not been merged to the protected `main` release branch.
+v0.8 also improves imported-workout fidelity and administration. Compatible Apple Watch, Garmin, and FORM FIT pool swims retain per-length stroke counts; Workout Details shows those counts and an available total-strokes value. Pool FIT session heart-rate/cadence metrics are preserved, Apple Watch device identification is improved, and FIT Activity local timestamps are used when available for historical local workout times.
+
+Compressed workout sources are supported transparently for FIT gzip and supported FORM ZIP exports, with expanded-size/path validation and preservation of the original archive in protected source storage. Workout Details also supports up to three photos with replacement and deletion.
+
+The v0.8 manual-entry feature remains limited to pool workouts; it does not create manual open-water GPS routes. The REST API remains read-only. The internal database schema is version 0.9 to add normalized per-length stroke counts with existing-installation upgrade handling.
 
 v0.6 expands the plugin with:
 
