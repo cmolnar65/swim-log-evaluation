@@ -15,7 +15,7 @@ final class AdminAnalyticsExtractionTest extends TestCase {
 		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
 		$this->assertStringNotContainsString( 'Pool Performance & Efficiency Analytics', $admin );
 		$this->assertStringNotContainsString( 'Training Trends / Training Load', $admin );
-		$this->assertStringNotContainsString( 'Pool Training Volume by Stroke', $admin );
+		$this->assertStringNotContainsString( 'Workout::stroke_volume_for_user(', $admin );
 		$this->assertLessThan( 140000, strlen( $admin ) );
 	}
 
