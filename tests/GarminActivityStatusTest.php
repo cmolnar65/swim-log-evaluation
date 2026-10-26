@@ -1,6 +1,8 @@
 <?php
 use PHPUnit\Framework\TestCase;
-use SwimLogEvaluation\Admin;
+use SwimLogEvaluation\Admin_Garmin;
+
+require_once dirname( __DIR__ ) . '/admin/class-admin-garmin.php';
 
 final class GarminActivityStatusTest extends TestCase {
  private function state($row,$activityId=12345){
@@ -11,10 +13,9 @@ final class GarminActivityStatusTest extends TestCase {
    public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
    public function get_row($query){return $this->row;}
   };
-  $admin=new Admin();
-  $method=new ReflectionMethod(Admin::class,'garmin_activity_import_state');
+  $method=new ReflectionMethod(Admin_Garmin::class,'garmin_activity_import_state');
   $method->setAccessible(true);
-  return $method->invoke($admin,42,$activityId);
+  return $method->invoke(null,42,$activityId);
  }
  public function test_complete_garmin_import_is_reported_as_imported(){
   $state=$this->state((object)array('workout_id'=>77,'import_status'=>'complete'));
