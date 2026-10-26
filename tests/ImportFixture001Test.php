@@ -222,6 +222,20 @@ final class ImportFixture001Test extends TestCase {
   $this->assertStringContainsString('if(!$ok){self::cleanup_unowned_source',$source);
  }
 
+
+ public function test_import_initializes_workouts_table_before_authority_update(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $method_start=strpos($source,'private static function import_file');
+  $method_end=strpos($source,'public static function validate',$method_start);
+  $this->assertNotFalse($method_start);$this->assertNotFalse($method_end);
+  $method=substr($source,$method_start,$method_end-$method_start);
+  $table_init=strpos($method,"\$wt=Database::table('workouts')");
+  $authority_update=strpos($method,"\$wpdb->update(\$wt,array('authoritative_import_id'=>\$import_id)");
+  $this->assertNotFalse($table_init,'import_file() must initialize the workouts table name.');
+  $this->assertNotFalse($authority_update,'The authoritative import update must target the initialized workouts table.');
+  $this->assertLessThan($authority_update,$table_init,'The workouts table must be initialized before it is used.');
+ }
+
  public function test_fit_device_metadata_is_not_generic_placeholder(){
   $r=(new FIT_Importer)->parse($this->fixture('form-2026-09-19.fit'));$this->assertFalse(is_wp_error($r));
   $manufacturer=$r['workout']['device_manufacturer'];$this->assertNotSame('FIT',$manufacturer);
