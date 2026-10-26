@@ -29,6 +29,7 @@ require_once dirname(__DIR__).'/includes/class-csv-importer.php';
 require_once dirname(__DIR__).'/includes/class-xml-importer.php';
 require_once dirname(__DIR__).'/includes/class-evaluator.php';
 require_once dirname(__DIR__).'/includes/class-workout.php';
+require_once dirname(__DIR__).'/includes/class-pool-analytics.php';
 
 require_once dirname(__DIR__).'/includes/class-location.php';
 
