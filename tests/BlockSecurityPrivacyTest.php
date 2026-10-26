@@ -57,6 +57,14 @@ final class BlockSecurityPrivacyTest extends TestCase {
 		}
 	}
 
+	public function test_calendar_detail_script_does_not_request_private_workout_fields() {
+		$s = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/calendar/view.js' ) );
+		foreach ( array( 'latitude', 'longitude', 'trackpoint', 'notes', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
+			$this->assertStringNotContainsString( $term, $s, $term );
+		}
+		$this->assertStringNotContainsString( '/workouts/', $s );
+	}
+
 	public function test_rest_api_remains_authenticated_and_excludes_trackpoints() {
 		$r = file_get_contents( dirname( __DIR__ ) . '/includes/class-rest-api.php' );
 		$this->assertStringContainsString( "!is_user_logged_in()||!current_user_can('swimlog_view_own_results')", $r );

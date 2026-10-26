@@ -92,6 +92,31 @@ final class CalendarBlockTest extends TestCase {
   foreach(array('workout_count','distance_m','active_time_ms') as $metric)$this->assertStringContainsString('summary.'.$metric,$view);
   foreach(array('calories','tss','fitness','recovery','injury') as $metric)$this->assertStringNotContainsString($metric,$view);
  }
+ public function test_phase_seven_workout_cards_open_in_calendar_detail_panel(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString('data-calendar-workout=',$blocks);
+  $this->assertStringContainsString('data-calendar-detail="1"',$blocks);
+  $this->assertStringContainsString('function showWorkoutDetail',$view);
+  $this->assertStringContainsString("event.target.closest( '[data-calendar-workout]' )",$view);
+  $this->assertStringContainsString('aria-expanded',$view);
+  $this->assertStringContainsString("data.calendarWorkout = JSON.stringify( workout )",$view);
+ }
+ public function test_phase_seven_detail_uses_only_calendar_safe_workout_fields(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $start=strpos($blocks,'$detail = wp_json_encode');
+  $end=strpos($blocks,'private static function calendar_event_html',$start);
+  $body=substr($blocks,$start,$end-$start);
+  foreach(array("'workout_type'","'workout_start'","'location'","'total_distance_m'","'elapsed_time_ms'","'moving_time_ms'","'pool_length_m'","'original_pool_length'","'pool_length_unit'","'primary_stroke'") as $field)$this->assertStringContainsString($field,$body);
+  foreach(array('latitude','longitude','trackpoint','notes','device_model','device_manufacturer','source_type') as $field)$this->assertStringNotContainsString($field,$body);
+ }
+ public function test_phase_seven_detail_exposes_useful_recorded_fields_without_leaving_calendar(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  foreach(array("'Date'","'Location'","'Distance'","'Active time'","'Elapsed time'","'Pool length'","'Primary stroke'") as $label)$this->assertStringContainsString($label,$view);
+  $this->assertStringContainsString("panel.scrollIntoView",$view);
+  $this->assertStringContainsString("data.calendarDetailClose = '1'",$view);
+  $this->assertStringNotContainsString('window.location.href',$view);
+ }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');

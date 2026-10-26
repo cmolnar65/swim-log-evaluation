@@ -263,7 +263,7 @@ final class Blocks {
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';
 		}
-		$html .= '</div></section>';
+		$html .= '</div><div class="swimlog-calendar-detail" data-calendar-detail="1" hidden aria-live="polite"></div></section>';
 		return $html;
 	}
 
@@ -273,7 +273,20 @@ final class Blocks {
 		if ( null !== $workout['total_distance_m'] ) $parts[] = esc_html( number_format_i18n( $workout['total_distance_m'], 0 ) . ' m' );
 		$active = (int) ( $workout['moving_time_ms'] ?: $workout['elapsed_time_ms'] );
 		if ( $active > 0 ) $parts[] = esc_html( self::calendar_duration( $active ) );
-		return '<div class="swimlog-calendar-item swimlog-calendar-workout">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</div>';
+		$detail = wp_json_encode( array(
+			'id' => (int) $workout['id'],
+			'workout_type' => $workout['workout_type'],
+			'workout_start' => $workout['workout_start'],
+			'location' => $workout['location'],
+			'total_distance_m' => $workout['total_distance_m'],
+			'elapsed_time_ms' => $workout['elapsed_time_ms'],
+			'moving_time_ms' => $workout['moving_time_ms'],
+			'pool_length_m' => $workout['pool_length_m'],
+			'original_pool_length' => $workout['original_pool_length'],
+			'pool_length_unit' => $workout['pool_length_unit'],
+			'primary_stroke' => $workout['primary_stroke'],
+		) );
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_event_html( $event ) {
