@@ -146,6 +146,10 @@ final class Training_Trends {
 
 		$current = self::finalize_summary( $current );
 		$previous = self::finalize_summary( $previous );
+		$current_weeks = max( 1.0, ( $end - $current_start ) / WEEK_IN_SECONDS );
+		$previous_weeks = max( 1.0, ( $current_start - $previous_start ) / WEEK_IN_SECONDS );
+		$current['workouts_per_week'] = $current['workout_count'] / $current_weeks;
+		$previous['workouts_per_week'] = $previous['workout_count'] / $previous_weeks;
 		return array(
 			'window' => $window,
 			'current' => $current,
