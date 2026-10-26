@@ -17,6 +17,7 @@ $OutputPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $Output))
 # Development/repository files that must not ship in the WordPress release package.
 $ExcludeTopLevel = @(
     ".git",
+    ".gitignore",
     ".github",
     "tests",
     "phpunit.xml.dist",
@@ -33,7 +34,7 @@ try {
     New-Item -ItemType Directory -Path $StageDir -Force | Out-Null
 
     Get-ChildItem -LiteralPath $RepoRoot -Force | ForEach-Object {
-        if ($ExcludeTopLevel -contains $_.Name) {
+        if (($ExcludeTopLevel -contains $_.Name) -or $_.Extension -eq ".zip") {
             return
         }
 

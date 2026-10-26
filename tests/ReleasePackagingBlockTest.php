@@ -21,10 +21,17 @@ final class ReleasePackagingBlockTest extends TestCase {
 		foreach ( array( 'build-release.sh', 'build-release.ps1' ) as $file ) {
 			$script = file_get_contents( dirname( __DIR__ ) . '/' . $file );
 			$section = $this->exclusion_section( $script );
-			foreach ( array( '.git', '.github', 'tests', 'phpunit.xml.dist', 'composer.json', 'composer.lock', 'build-release.ps1', 'build-release.sh', 'PLUGIN-CHECK.md', 'wordpress-org-assets', 'build' ) as $excluded ) {
+			foreach ( array( '.git', '.gitignore', '.github', 'tests', 'phpunit.xml.dist', 'composer.json', 'composer.lock', 'build-release.ps1', 'build-release.sh', 'PLUGIN-CHECK.md', 'wordpress-org-assets', 'build' ) as $excluded ) {
 				$this->assertStringContainsString( '"' . $excluded . '"', $section, $file . ' must exclude ' . $excluded );
 			}
 		}
+	}
+
+	public function test_release_builders_exclude_existing_top_level_zip_files() {
+		$bash = file_get_contents( dirname( __DIR__ ) . '/build-release.sh' );
+		$powershell = file_get_contents( dirname( __DIR__ ) . '/build-release.ps1' );
+		$this->assertStringContainsString( '"$name" != *.zip', $bash );
+		$this->assertStringContainsString( '$_.Extension -eq ".zip"', $powershell );
 	}
 
 	public function test_release_builders_default_to_build_directory() {
