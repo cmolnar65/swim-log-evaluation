@@ -19,6 +19,9 @@ final class FitDeviceIdentityTest extends TestCase {
  public function test_apple_watch_requires_apple_watch_model_evidence(){
   $this->assertSame(array('Apple','Apple Watch Ultra 2'),$this->identify(array(array(0=>0,2=>255,27=>'Apple Watch Ultra 2'))));
  }
+ public function test_apple_watch_descriptor_can_identify_development_manufacturer(){
+  $this->assertSame(array('Apple','Watch3,2'),$this->identify(array(array(0=>0,2=>255,19=>"Christopher's Apple Watch (4.3.1)",27=>'Watch3,2'))));
+ }
  public function test_recording_device_fields_are_not_mixed_with_accessory(){
   $devices=array(
    array(0=>0,2=>1,27=>'Forerunner 965'),
