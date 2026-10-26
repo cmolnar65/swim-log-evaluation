@@ -100,7 +100,7 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString('function showWorkoutDetail',$view);
   $this->assertStringContainsString("event.target.closest( '[data-calendar-workout]' )",$view);
   $this->assertStringContainsString('aria-expanded',$view);
-  $this->assertStringContainsString("data.calendarWorkout = JSON.stringify( workout )",$view);
+  $this->assertStringContainsString("div.dataset.calendarWorkout = JSON.stringify( workout )",$view);
  }
  public function test_phase_seven_detail_uses_only_calendar_safe_workout_fields(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
@@ -114,7 +114,7 @@ final class CalendarBlockTest extends TestCase {
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   foreach(array("'Date'","'Location'","'Distance'","'Active time'","'Elapsed time'","'Pool length'","'Primary stroke'") as $label)$this->assertStringContainsString($label,$view);
   $this->assertStringContainsString("panel.scrollIntoView",$view);
-  $this->assertStringContainsString("data.calendarDetailClose = '1'",$view);
+  $this->assertStringContainsString("close.dataset.calendarDetailClose = '1'",$view);
   $this->assertStringNotContainsString('window.location.href',$view);
  }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
