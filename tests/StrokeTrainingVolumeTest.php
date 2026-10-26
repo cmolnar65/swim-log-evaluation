@@ -21,7 +21,7 @@ final class StrokeTrainingVolumeTest extends TestCase {
  }
 
  public function test_swimmer_configuration_stores_training_volume_period(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-settings.php');
   $this->assertStringContainsString("'swimlog_training_volume_months'",$code);
   $this->assertStringContainsString('name="training_volume_months" min="1" max="24" step="1"',$code);
   $this->assertStringContainsString('the default is 3 months.',$code);
