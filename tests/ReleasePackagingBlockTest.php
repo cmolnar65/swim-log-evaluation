@@ -9,6 +9,14 @@ final class ReleasePackagingBlockTest extends TestCase {
 		}
 	}
 
+
+	public function test_release_builders_exclude_wordpress_org_listing_assets() {
+		foreach ( array( 'build-release.sh', 'build-release.ps1' ) as $file ) {
+			$script = file_get_contents( dirname( __DIR__ ) . '/' . $file );
+			$this->assertStringContainsString( '"wordpress-org-assets"', $this->exclusion_section( $script ), $file );
+		}
+	}
+
 	public function test_all_six_block_assets_exist_for_distribution() {
 		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress' ) as $dir ) {
 			$this->assertFileExists( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json', $dir );
