@@ -3,7 +3,7 @@ use PHPUnit\Framework\TestCase;
 
 final class OpenWaterAdminPresentationTest extends TestCase {
  public function test_open_water_detail_has_structured_analytics_sections(){
-  $source=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $source=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
   $this->assertStringContainsString("esc_html_e('Open Water Summary'",$source);
   $this->assertStringContainsString("esc_html_e('Timing and Recording'",$source);
   $this->assertStringContainsString("esc_html_e('1 km Splits'",$source);
