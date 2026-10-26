@@ -32,7 +32,7 @@ final class StrokeTrainingVolumeTest extends TestCase {
   $analytics=file_get_contents(dirname(__DIR__).'/admin/class-admin-analytics.php');
   $this->assertStringContainsString("'swimlog-training-volume', 'training_volume'",$code);
   $this->assertStringContainsString('public function training_volume()',$code);
-  $this->assertStringContainsString("swimmer_selector(\$user_id,'swimlog-training-volume')",$analytics);
+  $this->assertStringContainsString("Admin_UI::swimmer_selector(\$user_id,'swimlog-training-volume')",$analytics);
   $this->assertStringContainsString("Workout::stroke_volume_for_user(\$user_id,\$training_volume_months)",$analytics);
   $this->assertStringNotContainsString("Workout::stroke_volume_for_user(\$user_id,\$filters)",$analytics);
   $this->assertStringContainsString("\$stroke_volume_by_course=array('m'=>array(),'yd'=>array())",$analytics);
