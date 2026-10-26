@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Training_Trends {
 	const DEFAULT_LOOKBACK_MONTHS = 6;
 	const MAX_LOOKBACK_MONTHS = 24;
+	const WEEK_SECONDS = 604800;
 
 	public static function for_user( $user_id, $months = self::DEFAULT_LOOKBACK_MONTHS ) {
 		global $wpdb;
@@ -146,8 +147,8 @@ final class Training_Trends {
 
 		$current = self::finalize_summary( $current );
 		$previous = self::finalize_summary( $previous );
-		$current_weeks = max( 1.0, ( $end - $current_start ) / WEEK_IN_SECONDS );
-		$previous_weeks = max( 1.0, ( $current_start - $previous_start ) / WEEK_IN_SECONDS );
+		$current_weeks = max( 1.0, ( $end - $current_start ) / self::WEEK_SECONDS );
+		$previous_weeks = max( 1.0, ( $current_start - $previous_start ) / self::WEEK_SECONDS );
 		$current['workouts_per_week'] = $current['workout_count'] / $current_weeks;
 		$previous['workouts_per_week'] = $previous['workout_count'] / $previous_weeks;
 		return array(
@@ -201,7 +202,7 @@ final class Training_Trends {
 
 	private static function finalize_summary( $summary ) {
 		$weeks = 0.0;
-		if ( null !== $summary['first_ts'] && null !== $summary['last_ts'] ) $weeks = max( 1.0, ( $summary['last_ts'] - $summary['first_ts'] ) / WEEK_IN_SECONDS + 1.0 );
+		if ( null !== $summary['first_ts'] && null !== $summary['last_ts'] ) $weeks = max( 1.0, ( $summary['last_ts'] - $summary['first_ts'] ) / self::WEEK_SECONDS + 1.0 );
 		$summary['distance_m'] = round( $summary['distance_m'], 3 );
 		$summary['pool_distance_m'] = round( $summary['pool_distance_m'], 3 );
 		$summary['open_water_distance_m'] = round( $summary['open_water_distance_m'], 3 );
