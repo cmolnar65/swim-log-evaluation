@@ -21,6 +21,7 @@ $ExcludeTopLevel = @(
     "build-release.ps1",
     "build-release.sh",
     "PLUGIN-CHECK.md"
+    "wordpress-org-assets"
 )
 
 try {
