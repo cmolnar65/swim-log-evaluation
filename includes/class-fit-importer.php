@@ -84,20 +84,21 @@ final class FIT_Importer {
 		$best=null;$best_score=-1;
 		foreach($devices as $d){
 			$manufacturer_id=isset($d[2])&&is_numeric($d[2])?(int)$d[2]:0;
-			$model='';
+			$model='';$descriptor=isset($d[19])&&is_string($d[19])?trim($d[19]):'';
 			if(isset($d[27])&&is_string($d[27])&&trim($d[27])!=='')$model=trim($d[27]);
 			elseif(isset($d[4])&&$d[4]!==''&&$d[4]!==null)$model=(string)$d[4];
+			if(255===$manufacturer_id&&$descriptor!==''&&preg_match('/\\bapple\\s*watch\\b/i',$descriptor))$model_for_manufacturer=$model.' '.$descriptor;else$model_for_manufacturer=$model;
 			$score=0;
 			if($manufacturer_id>0)$score+=2;
 			if($model!=='')$score+=2;
 			// device_index 0 is normally the recording device. Prefer it over
 			// accessories such as HR straps when the FIT producer supplies it.
 			if(isset($d[0])&&is_numeric($d[0])&&(int)$d[0]===0)$score+=4;
-			if($score>$best_score){$best=array($manufacturer_id,$model);$best_score=$score;}
+			if($score>$best_score){$best=array($manufacturer_id,$model,$model_for_manufacturer);$best_score=$score;}
 		}
 		if(!$best)return array(null,null);
-		list($manufacturer_id,$model)=$best;
-		return array($this->manufacturer_name($manufacturer_id,$model),$model!==''?$model:null);
+		list($manufacturer_id,$model,$model_for_manufacturer)=$best;
+		return array($this->manufacturer_name($manufacturer_id,$model_for_manufacturer),$model!==''?$model:null);
 	}
 	private function manufacturer_name($id,$model=''){
 		$known=array(1=>'Garmin',15=>'Dynastream');
@@ -137,9 +138,11 @@ final class FIT_Importer {
 		$pool=$unit==='yd'?$pool_m/0.9144:$pool_m;
 		$start=isset($s[2])?$this->fit_time($s[2]):null; $elapsed=isset($s[7])?(int)$s[7]:null; // FIT total_elapsed_time has scale 1000 seconds; the decoded raw value is already milliseconds.
 		$distance_m=isset($s[9])?$s[9]/100:null; $distance=$distance_m!==null&&$unit==='yd'?$distance_m/0.9144:$distance_m;
+		$avg_hr=isset($s[16])&&is_numeric($s[16])?(int)$s[16]:null;$max_hr=isset($s[17])&&is_numeric($s[17])?(int)$s[17]:null;
+		$avg_cadence=isset($s[18])&&is_numeric($s[18])?(float)$s[18]:null;$max_cadence=isset($s[19])&&is_numeric($s[19])?(float)$s[19]:null;
 		$lengths=array();$seq=1;$offset=0;
 		foreach($o['lengths'] as $x){$type=(isset($x[12])&&(int)$x[12]===0)?'rest':'active';$ms=isset($x[3])?(int)$x[3]:null;$lengths[]=array('sequence_no'=>$seq++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'start_offset_ms'=>$offset,'distance_m'=>$type==='active'?$pool_m:0,'elapsed_time_ms'=>$ms,'stroke'=>$type==='active'?$this->stroke($x[7]??255):null,'length_type'=>$type,'source_length_index'=>$seq-2,'raw_metadata'=>wp_json_encode($x));if(null!==$ms)$offset+=$ms;}
 		$laps=array();$i=1;foreach($o['laps'] as $x){$laps[]=array('sequence_no'=>$i++,'start_time'=>isset($x[2])?$this->fit_time($x[2]):null,'distance_m'=>isset($x[9])?$x[9]/100:null,'elapsed_time_ms'=>isset($x[7])?(int)$x[7]:null,'stroke'=>isset($x[24])?$this->stroke($x[24]):null,'source_lap_index'=>$i-2,'raw_metadata'=>wp_json_encode($x));}
-		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$distance_m,'original_distance'=>$distance,'original_distance_unit'=>$unit,'elapsed_time_ms'=>$elapsed,'pool_length_m'=>$pool_m,'original_pool_length'=>$pool,'pool_length_unit'=>$unit,'device_manufacturer'=>$device_manufacturer,'device_model'=>$device_model),'laps'=>$laps,'lengths'=>$lengths,'metadata'=>array());
+		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_start'=>$start,'workout_end'=>$start&&$elapsed?gmdate('Y-m-d H:i:s',strtotime($start)+$elapsed/1000):null,'total_distance_m'=>$distance_m,'original_distance'=>$distance,'original_distance_unit'=>$unit,'elapsed_time_ms'=>$elapsed,'average_heart_rate'=>$avg_hr,'max_heart_rate'=>$max_hr,'average_cadence'=>$avg_cadence,'max_cadence'=>$max_cadence,'pool_length_m'=>$pool_m,'original_pool_length'=>$pool,'pool_length_unit'=>$unit,'device_manufacturer'=>$device_manufacturer,'device_model'=>$device_model),'laps'=>$laps,'lengths'=>$lengths,'metadata'=>array());
 	}
 }
