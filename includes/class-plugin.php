@@ -30,6 +30,7 @@ final class Plugin {
 
 	public function register_calendar_style() {
 		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), SWIMLOG_EVALUATION_VERSION );
+		wp_localize_script( 'swimlog-calendar-view', 'wpApiSettings', array( 'nonce' => wp_create_nonce( 'wp_rest' ) ) );
 	}
 
 	public function register_rest_api() {

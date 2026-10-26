@@ -85,6 +85,14 @@ final class Blocks {
 		);
 
 		wp_register_script(
+			'swimlog-calendar-view',
+			SWIMLOG_EVALUATION_URL . 'blocks/calendar/view.js',
+			array(),
+			SWIMLOG_EVALUATION_VERSION,
+			true
+		);
+
+		wp_register_script(
 			'swimlog-block-calendar',
 			SWIMLOG_EVALUATION_URL . 'blocks/calendar/index.js',
 			array( 'wp-blocks', 'wp-block-editor', 'wp-components', 'wp-element', 'wp-i18n', 'wp-server-side-render' ),
@@ -203,7 +211,7 @@ final class Blocks {
 		if ( is_wp_error( $data ) ) {
 			return '<div class="swimlog-calendar swimlog-calendar-unavailable">' . esc_html__( 'Calendar unavailable.', 'chriss-swim-training-progress-evaluation' ) . '</div>';
 		}
-		return self::calendar_month_html( $data, $first );
+		return self::calendar_month_html( $data, $first, $user_id );
 	}
 
 	private static function calendar_owner( $attributes ) {
@@ -218,7 +226,7 @@ final class Blocks {
 		return current_user_can( 'swimlog_manage_all_users' );
 	}
 
-	private static function calendar_month_html( $data, $month ) {
+	private static function calendar_month_html( $data, $month, $user_id ) {
 		$first_day = $data['range']['first_day'];
 		$labels = array(
 			'sunday' => array( 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ),
@@ -239,8 +247,14 @@ final class Blocks {
 		foreach ( $data['events'] as $event ) {
 			$items[ $event['event_date'] ][] = self::calendar_event_html( $event );
 		}
-		$html = '<section class="swimlog-calendar" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
-		$html .= '<h2 class="swimlog-calendar-title">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
+		wp_enqueue_script( 'swimlog-calendar-view' );
+		$rest_url = rest_url( 'swimlog/v1/calendar' );
+		$html = '<section class="swimlog-calendar" data-swimlog-calendar="1" data-rest-url="' . esc_url( $rest_url ) . '" data-user="' . esc_attr( $user_id ) . '" data-year="' . esc_attr( $month->format( 'Y' ) ) . '" data-month="' . esc_attr( $month->format( 'n' ) ) . '" data-first-day="' . esc_attr( $first_day ) . '" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
+		$html .= '<div class="swimlog-calendar-toolbar">';
+		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
+		$html .= '<div class="swimlog-calendar-view-switch" aria-label="' . esc_attr__( 'Calendar view', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button is-active" data-calendar-view="month" aria-pressed="true">' . esc_html__( 'Month', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-view="week" aria-pressed="false" disabled title="' . esc_attr__( 'Week view is added in the next calendar phase.', 'chriss-swim-training-progress-evaluation' ) . '">' . esc_html__( 'Week', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
+		$html .= '</div><h2 class="swimlog-calendar-title" aria-live="polite">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
+		$html .= '<div class="swimlog-calendar-status" role="status" aria-live="polite"></div>';
 		$html .= '<div class="swimlog-calendar-grid" role="grid">';
 		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
 		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {

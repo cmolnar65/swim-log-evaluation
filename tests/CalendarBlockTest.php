@@ -51,6 +51,32 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString('swimlog-calendar-workout',$blocks);
   $this->assertStringContainsString('swimlog-calendar-event',$blocks);
  }
+ public function test_phase_five_adds_private_month_navigation_and_today(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  foreach(array('data-calendar-action="previous"','data-calendar-action="today"','data-calendar-action="next"') as $needle)$this->assertStringContainsString($needle,$blocks);
+  $this->assertStringContainsString("url.searchParams.set( 'start', start )",$view);
+  $this->assertStringContainsString("url.searchParams.set( 'end', end )",$view);
+  $this->assertStringContainsString("url.searchParams.set( 'user', root.dataset.user )",$view);
+  $this->assertStringContainsString("credentials: 'same-origin'",$view);
+  $this->assertStringContainsString("'X-WP-Nonce'",$view);
+ }
+ public function test_phase_five_exposes_month_week_switch_without_implementing_phase_six_week_renderer(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString('data-calendar-view="month"',$blocks);
+  $this->assertStringContainsString('data-calendar-view="week"',$blocks);
+  $this->assertStringContainsString('aria-pressed="true"',$blocks);
+  $this->assertStringContainsString('disabled title=',$blocks);
+  $this->assertStringNotContainsString('renderWeek',$view);
+ }
+ public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
+  $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $this->assertSame('swimlog-calendar-view',$metadata['viewScript']);
+  $this->assertStringContainsString("rest_url( 'swimlog/v1/calendar' )",$blocks);
+  $this->assertStringContainsString("wp_enqueue_script( 'swimlog-calendar-view' )",$blocks);
+ }
  public function test_calendar_block_does_not_add_shortcode_or_schema(){
   $shortcodes=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');

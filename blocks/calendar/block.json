@@ -8,11 +8,27 @@
   "description": "Display a private monthly calendar of the swimmer's workouts and scheduled events.",
   "textdomain": "chriss-swim-training-progress-evaluation",
   "attributes": {
-    "user": { "type": "integer", "default": 0 },
-    "month": { "type": "integer", "default": 0 },
-    "year": { "type": "integer", "default": 0 }
+    "user": {
+      "type": "integer",
+      "default": 0
+    },
+    "month": {
+      "type": "integer",
+      "default": 0
+    },
+    "year": {
+      "type": "integer",
+      "default": 0
+    }
   },
   "editorScript": "swimlog-block-calendar",
   "style": "swimlog-calendar",
-  "supports": { "align": ["wide", "full"], "html": false }
+  "supports": {
+    "align": [
+      "wide",
+      "full"
+    ],
+    "html": false
+  },
+  "viewScript": "swimlog-calendar-view"
 }
