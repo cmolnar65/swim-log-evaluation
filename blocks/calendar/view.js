@@ -25,6 +25,31 @@
 		} );
 		return div;
 	}
+	function agendaItemsByDate( data ) {
+		var byDate = {};
+		( data.workouts || [] ).forEach( function ( workout ) {
+			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workout.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' ];
+			if ( workout.total_distance_m !== null ) parts.push( Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
+			var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) parts.push( duration( active ) );
+			( byDate[ key ] = byDate[ key ] || [] ).push( item( 'swimlog-calendar-workout', parts, false, workout ) );
+		} );
+		( data.events || [] ).forEach( function ( event ) { ( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null ) ); } );
+		return byDate;
+	}
+	function renderAgenda( root, data, start, end ) {
+		var agenda = root.querySelector( '[data-calendar-agenda]' ); if ( ! agenda ) return;
+		agenda.textContent = ''; var byDate = agendaItemsByDate( data ), cursor = new Date( start.getFullYear(), start.getMonth(), start.getDate() ), rendered = 0;
+		while ( cursor <= end ) {
+			var key = dateKey( cursor ), items = byDate[ key ] || [];
+			if ( items.length ) {
+				var group = document.createElement( 'section' ); group.className = 'swimlog-calendar-agenda-day'; group.dataset.date = key;
+				var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-agenda-date'; heading.textContent = cursor.toLocaleDateString( undefined, { weekday: 'long', month: 'long', day: 'numeric' } ); group.appendChild( heading );
+				items.forEach( function ( child ) { group.appendChild( child ); } ); agenda.appendChild( group ); rendered++;
+			}
+			cursor.setDate( cursor.getDate() + 1 );
+		}
+		if ( ! rendered ) { var empty = document.createElement( 'p' ); empty.className = 'swimlog-calendar-agenda-empty'; empty.textContent = 'No workouts or events in this period.'; agenda.appendChild( empty ); }
+	}
 	function renderMonth( root, data, focus ) {
 		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday';
 		root.dataset.firstDay = firstDay; root.dataset.year = focus.getFullYear(); root.dataset.month = focus.getMonth() + 1; root.dataset.focusDate = dateKey( focus );
@@ -53,6 +78,7 @@
 			( byDate[ key ] || [] ).forEach( function ( child ) { cell.appendChild( child ); } ); grid.appendChild( cell );
 			cursor.setDate( cursor.getDate() + 1 );
 		}
+		renderAgenda( root, data, first, last );
 	}
 	function detailRow( list, label, value ) {
 		if ( value === null || value === undefined || value === '' ) return;
@@ -123,6 +149,7 @@
 			totals.textContent = summary.workout_count + ' workouts · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m · ' + duration( summary.active_time_ms || 0 );
 			grid.appendChild( totals );
 		}
+		renderAgenda( root, data, start, end );
 	}
 	function setViewButtons( root, viewName ) {
 		root.dataset.view = viewName;

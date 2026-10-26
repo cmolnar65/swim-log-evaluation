@@ -117,6 +117,36 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString("close.dataset.calendarDetailClose = '1'",$view);
   $this->assertStringNotContainsString('window.location.href',$view);
  }
+ public function test_phase_eight_adds_narrow_screen_date_grouped_agenda(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $css=file_get_contents(dirname(__DIR__).'/assets/css/calendar.css');
+  $this->assertStringContainsString('data-calendar-agenda="1"',$blocks);
+  $this->assertStringContainsString('function renderAgenda',$view);
+  $this->assertStringContainsString('swimlog-calendar-agenda-day',$view);
+  $this->assertStringContainsString("weekday: 'long'",$view);
+  $this->assertStringContainsString('@media(max-width:700px)',$css);
+  $this->assertStringContainsString('.swimlog-calendar-grid{display:none}',$css);
+  $this->assertStringContainsString('.swimlog-calendar-agenda{display:block}',$css);
+ }
+ public function test_phase_eight_agenda_is_used_by_month_and_week_without_new_data_source(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertSame(2,substr_count($view,'renderAgenda( root, data,'));
+  $this->assertStringContainsString('renderAgenda( root, data, first, last )',$view);
+  $this->assertStringContainsString('renderAgenda( root, data, start, end )',$view);
+  $this->assertStringContainsString('agendaItemsByDate( data )',$view);
+  $this->assertStringNotContainsString('agendaUrl',$view);
+  $this->assertStringNotContainsString('/agenda',$view);
+ }
+ public function test_phase_eight_agenda_keeps_workout_details_and_events(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $start=strpos($view,'function agendaItemsByDate');
+  $end=strpos($view,'function renderMonth',$start);
+  $body=substr($view,$start,$end-$start);
+  $this->assertStringContainsString("item( 'swimlog-calendar-workout', parts, false, workout )",$body);
+  $this->assertStringContainsString("item( 'swimlog-calendar-event'",$body);
+  $this->assertStringContainsString('No workouts or events in this period.',$body);
+ }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');

@@ -263,7 +263,7 @@ final class Blocks {
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';
 		}
-		$html .= '</div><div class="swimlog-calendar-detail" data-calendar-detail="1" hidden aria-live="polite"></div></section>';
+		$html .= '</div><div class="swimlog-calendar-agenda" data-calendar-agenda="1" aria-label="' . esc_attr__( 'Calendar agenda', 'chriss-swim-training-progress-evaluation' ) . '"></div><div class="swimlog-calendar-detail" data-calendar-detail="1" hidden aria-live="polite"></div></section>';
 		return $html;
 	}
 
