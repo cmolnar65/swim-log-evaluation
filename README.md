@@ -16,6 +16,10 @@ The analytics keep meter and yard courses, pool lengths, and strokes separate. T
 
 These metrics are derived from existing normalized workout/length data, so this initial v0.9 analytics work requires no database schema change and applies to both imported and structured manual workouts when qualifying active-length data is available.
 
+The second v0.9 analytics milestone adds a **Training Trends / Training Load** administration dashboard. It provides weekly and monthly workout volume, workout frequency, active swim time, pool/open-water distance splits, four-week rolling averages, equal-period comparisons, pool course volume, and distance by stroke. Combined longitudinal distance is normalized to meters while course-specific pool analytics retain native meter/yard units.
+
+Training load in this dashboard means recorded training volume only. The plugin does not infer physiological stress, recovery status, fitness, or injury risk. Active time uses recorded moving time when available and otherwise recorded elapsed time; stroke-specific active time is derived only from normalized active pool lengths. This milestone also uses the existing schema and requires no database-version change.
+
 ## v0.8
 
 Version 0.8 adds first-class manual pool-workout creation and editing for swimmers who do not use an automatic recording device. Manual workouts use the same canonical workout history, training totals, public display, blocks, shortcodes, post workflow, personal-best records, progress views, and read-only REST API as imported workouts.
