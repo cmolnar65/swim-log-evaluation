@@ -18,6 +18,10 @@ final class Admin_Settings {
 			$birthdate = isset( $_POST['birthdate'] ) ? sanitize_text_field( wp_unslash( $_POST['birthdate'] ) ) : '';
 			$training_volume_months = isset( $_POST['training_volume_months'] ) ? absint( wp_unslash( $_POST['training_volume_months'] ) ) : 3;
 			$training_volume_months = max( 1, min( 24, $training_volume_months ) );
+			$calendar_first_day = isset( $_POST['calendar_first_day'] ) ? sanitize_key( wp_unslash( $_POST['calendar_first_day'] ) ) : 'sunday';
+			if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
+				$calendar_first_day = 'sunday';
+			}
 			if ( '' !== $birthdate ) {
 				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
 				$birthdate_errors = \DateTimeImmutable::getLastErrors();
@@ -37,6 +41,7 @@ final class Admin_Settings {
 				update_user_meta( $uid, 'swimlog_public_ows_routes', $public_routes );
 				update_user_meta( $uid, 'swimlog_rest_api_access', $rest_api );
 				update_user_meta( $uid, 'swimlog_training_volume_months', $training_volume_months );
+				update_user_meta( $uid, 'swimlog_calendar_first_day', $calendar_first_day );
 				$saved = true;
 			}
 		}
@@ -48,6 +53,10 @@ final class Admin_Settings {
 		$public_routes = (string) get_user_meta( $uid, 'swimlog_public_ows_routes', true );
 		$rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
 		$training_volume_months = (int) get_user_meta( $uid, 'swimlog_training_volume_months', true );
+		$calendar_first_day = sanitize_key( (string) get_user_meta( $uid, 'swimlog_calendar_first_day', true ) );
+		if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
+			$calendar_first_day = 'sunday';
+		}
 		if ( $training_volume_months < 1 || $training_volume_months > 24 ) {
 			$training_volume_months = 3;
 		}
@@ -66,6 +75,10 @@ final class Admin_Settings {
 					<tr>
 						<th scope="row"><label for="swimlog-birthdate"><?php esc_html_e( 'Date of Birth', 'chriss-swim-training-progress-evaluation' ); ?></label></th>
 						<td><input id="swimlog-birthdate" type="date" name="birthdate" value="<?php echo esc_attr( $birthdate ); ?>" max="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>"><p class="description"><?php esc_html_e( 'Private. Used only to calculate your swimming age group. Your date of birth is not displayed by public swim output.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php if ( $current_age_group ) : ?><p><strong><?php esc_html_e( 'Current Age Group:', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php echo esc_html( $current_age_group['label'] ); ?></p><?php endif; ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="swimlog-calendar-first-day"><?php esc_html_e( 'First Day of Calendar Week', 'chriss-swim-training-progress-evaluation' ); ?></label></th>
+						<td><select id="swimlog-calendar-first-day" name="calendar_first_day"><option value="saturday" <?php selected( $calendar_first_day, 'saturday' ); ?>><?php esc_html_e( 'Saturday', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="sunday" <?php selected( $calendar_first_day, 'sunday' ); ?>><?php esc_html_e( 'Sunday', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="monday" <?php selected( $calendar_first_day, 'monday' ); ?>><?php esc_html_e( 'Monday', 'chriss-swim-training-progress-evaluation' ); ?></option></select><p class="description"><?php esc_html_e( 'Controls which day begins each week in SwimLog calendars and week-based calendar summaries. The default is Sunday.', 'chriss-swim-training-progress-evaluation' ); ?></p></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="swimlog-training-volume-months"><?php esc_html_e( 'Training Volume Period', 'chriss-swim-training-progress-evaluation' ); ?></label></th>

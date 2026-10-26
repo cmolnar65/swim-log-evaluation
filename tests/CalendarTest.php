@@ -121,6 +121,20 @@ final class CalendarTest extends TestCase {
 		$this->assertSame( 'swimlog_calendar_range', $reversed->get_error_code() );
 	}
 
+	public function test_calendar_week_start_is_swimmer_specific_and_constrained() {
+		global $swimlog_test_user_meta;
+		$swimlog_test_user_meta = array(
+			42 => array( 'swimlog_calendar_first_day' => 'saturday' ),
+			43 => array( 'swimlog_calendar_first_day' => 'monday' ),
+			44 => array( 'swimlog_calendar_first_day' => 'tuesday' ),
+		);
+		$this->assertSame( 'saturday', Calendar::first_day_for_user( 42 ) );
+		$this->assertSame( 'monday', Calendar::first_day_for_user( 43 ) );
+		$this->assertSame( 'sunday', Calendar::first_day_for_user( 44 ) );
+		$this->assertSame( 'sunday', Calendar::first_day_for_user( 45 ) );
+		$swimlog_test_user_meta = array();
+	}
+
 	public function test_range_queries_are_owner_scoped_and_use_half_open_indexable_boundaries() {
 		$workout = file_get_contents( dirname( __DIR__ ) . '/includes/class-workout.php' );
 		$event = file_get_contents( dirname( __DIR__ ) . '/includes/class-event.php' );

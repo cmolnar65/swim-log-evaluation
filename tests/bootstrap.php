@@ -20,7 +20,7 @@ if(!function_exists('number_format_i18n')){function number_format_i18n($number,$
 if(!function_exists('is_user_logged_in')){function is_user_logged_in(){return true;}}
 if(!function_exists('get_current_user_id')){function get_current_user_id(){return 42;}}
 if(!function_exists('current_user_can')){function current_user_can(){return false;}}
-if(!function_exists('get_user_meta')){function get_user_meta($uid,$key,$single=true){return '';}}
+if(!function_exists('get_user_meta')){function get_user_meta($uid,$key,$single=true){global $swimlog_test_user_meta;return $swimlog_test_user_meta[$uid][$key]??'';}}
 if(!class_exists('WP_Error')){class WP_Error{private $code,$message;public function __construct($c='',$m=''){$this->code=$c;$this->message=$m;}public function get_error_message(){return$this->message;}public function get_error_code(){return$this->code;}}}
 if(!function_exists('is_wp_error')){function is_wp_error($v){return$v instanceof WP_Error;}}
 require_once dirname(__DIR__).'/includes/class-database.php';

@@ -12,6 +12,17 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class Calendar {
 	/**
+	 * Return the swimmer's configured first day of the calendar week.
+	 *
+	 * Stored as user metadata so the preference remains swimmer-specific without
+	 * adding plugin schema. Invalid or unset legacy values safely use Sunday.
+	 */
+	public static function first_day_for_user( $user_id ) {
+		$value = sanitize_key( (string) get_user_meta( absint( $user_id ), 'swimlog_calendar_first_day', true ) );
+		return in_array( $value, array( 'saturday', 'sunday', 'monday' ), true ) ? $value : 'sunday';
+	}
+
+	/**
 	 * Build calendar data for one swimmer and inclusive YYYY-MM-DD boundaries.
 	 *
 	 * @return array|\WP_Error
