@@ -28,6 +28,9 @@ final class RestIntegrationApiTest extends TestCase {
   $this->assertStringNotContainsString("'original_filename'",$code);
   $this->assertStringNotContainsString("'notes'",$code);
   $this->assertStringContainsString("'splits'=>\$a['splits']??array()",$code);
+  $this->assertStringContainsString("'stroke_count'=>null!==(",$code);
+  $this->assertStringContainsString("'source_length_index'=>null!==(",$code);
+  $this->assertStringContainsString("'source_lap_index'=>null!==(",$code);
  }
  public function test_swimmer_configuration_has_explicit_default_off_api_permission_and_help(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-settings.php');
