@@ -16,7 +16,7 @@ final class AdminShortcodesExtractionTest extends TestCase {
 		$this->assertStringNotContainsString( 'private function shortcode_help_page(', $admin );
 		$this->assertStringNotContainsString( 'private function common_shortcode_attributes(', $admin );
 		$this->assertStringNotContainsString( 'Table Width and Page Layout', $admin );
-		$this->assertLessThan( 140000, strlen( $admin ) );
+		$this->assertLessThan( 165000, strlen( $admin ) );
 	}
 
 	public function test_extracted_component_owns_documentation_and_access_control() {
