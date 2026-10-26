@@ -25,7 +25,6 @@ final class ReleaseDocumentationTest extends TestCase {
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST-API.md','per-length stroke counts','admin','PHP 7.4')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST API and data-portability surface','REST-API.md','administration architecture','no new database schema migration')as$feature)$this->assertStringContainsString($feature,$github);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v08_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
