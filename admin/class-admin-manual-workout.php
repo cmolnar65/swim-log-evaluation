@@ -78,19 +78,6 @@ final class Admin_Manual_Workout {
 	}
 
 
-	private static function manual_time_to_ms( $value ) {
-		$value = trim( (string) $value );
-		if ( '' === $value ) return null;
-		if ( preg_match( '/^(?:(\\d+):)?(\\d{1,2})(?:\\.(\\d{1,3}))?$/', $value, $m ) ) {
-			$minutes = isset( $m[1] ) && '' !== $m[1] ? (int) $m[1] : 0; $seconds = (int) $m[2];
-			if ( $seconds >= 60 ) return null;
-			$fraction = isset( $m[3] ) ? str_pad( $m[3], 3, '0' ) : '000';
-			return ( ( $minutes * 60 + $seconds ) * 1000 ) + (int) $fraction;
-		}
-		return null;
-	}
-
-
 	public static function manual_workout() {
 		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'You do not have permission to manage workouts.', 'chriss-swim-training-progress-evaluation' ) );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php'; require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php'; require_once SWIMLOG_EVALUATION_DIR . 'includes/class-manual-workout.php';
