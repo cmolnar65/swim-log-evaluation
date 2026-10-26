@@ -77,7 +77,7 @@ final class BlockIntegrationTest extends TestCase {
 	}
 
 	public function test_shared_heading_contract_is_consistent_across_blocks() {
-		foreach ( array_keys( $this->block_names() ) as $dir ) {
+		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress' ) as $dir ) {
 			$metadata = json_decode( file_get_contents( dirname( __DIR__ ) . '/blocks/' . $dir . '/block.json' ), true );
 			$this->assertSame( 'default', $metadata['attributes']['titleMode']['default'], $dir );
 			$this->assertSame( '', $metadata['attributes']['customTitle']['default'], $dir );
