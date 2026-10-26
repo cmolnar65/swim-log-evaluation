@@ -3,13 +3,13 @@ use PHPUnit\Framework\TestCase;
 
 final class WorkoutAdminDetailIdTest extends TestCase {
 	public function test_workout_admin_detail_heading_displays_workout_number() {
-		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-workouts.php' );
 		$this->assertStringContainsString( "Workout Details — Workout #%d", $admin );
 		$this->assertStringContainsString( "(int)\$detail", $admin );
 	}
 
 	public function test_workout_detail_can_create_one_linked_draft_post() {
-		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-workouts.php' );
 		$this->assertStringContainsString( "'create_post'", $admin );
 		$this->assertStringContainsString( "swimlog_create_workout_post_", $admin );
 		$this->assertStringContainsString( "current_user_can( 'edit_posts' )", $admin );
