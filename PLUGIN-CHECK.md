@@ -6,16 +6,16 @@ It is developer and release documentation. It is not intended to suppress Plugin
 
 ## Baseline
 
-Baseline build: **v0.7 release candidate**
+Baseline build: **v0.8 release candidate**
 
 Plugin Check result:
 
 - Errors: **0**
 - Warnings: **372**
 
-RC8 was the first baseline established after targeted remediation of actionable Plugin Check findings. The v0.7 release candidate was rechecked against the actual distribution ZIP after resolving all error-level findings plus the new nonce-verification and unsanitized Garmin-key warnings. The remaining warnings were reviewed by warning family and by the code paths that produce them.
+RC8 was the first baseline established after targeted remediation of actionable Plugin Check findings. The historical v0.7 release candidate established the reviewed warning-family baseline below. The v0.8 release package is checked against the actual distribution ZIP and must retain zero unresolved error-level findings; any new warning family or unexpected warning location must be investigated before release.
 
-### v0.7 warning families
+### Reviewed warning families
 
 | Warning | Count | Baseline disposition |
 | --- | ---: | --- |
@@ -70,7 +70,7 @@ The workout filtering code is an example of the second situation: Plugin Check c
 
 ### SlowDBQuery meta_key / meta_value
 
-Version 0.7 adds two bounded WordPress post lookups that associate a normal post with a swim workout through the internal post-meta key `_swimlog_workout_id`. Plugin Check reports these as `WordPress.DB.SlowDBQuery.slow_db_query_meta_key` and `WordPress.DB.SlowDBQuery.slow_db_query_meta_value`.
+Version 0.7 introduced two bounded WordPress post lookups that associate a normal post with a swim workout through the internal post-meta key `_swimlog_workout_id`. Plugin Check reports these as `WordPress.DB.SlowDBQuery.slow_db_query_meta_key` and `WordPress.DB.SlowDBQuery.slow_db_query_meta_value`.
 
 These warnings are accepted only for the two reviewed Workout Details/Create Post lookups. Both calls use WordPress `get_posts()`, are restricted to `post_type=post`, request only IDs, set `posts_per_page=1`, use a fixed internal meta key, and compare against the integer workout ID already authorized for the current swimmer. They run only in administrative workout-detail/create-post flows, not on public page rendering or bulk queries.
 
@@ -124,6 +124,7 @@ A lower warning count is useful only when it results from a legitimate remediati
 | RC7 | 0 | 255 | Prepare and administrative warning cleanup |
 | **RC8** | **0** | **253** | **Reviewed baseline; remaining findings classified as architectural/static-analysis warnings** |
 | **v0.7 release candidate** | **0** | **372** | **All error-level findings cleared; nonce and Garmin input warnings corrected; bounded `_swimlog_workout_id` post-meta lookup warnings reviewed and documented.** |
+| **v0.8 release candidate** | **0** | **Pending final release-package count** | **Release metadata advanced to 0.8; final package check must complete before tagging.** |
 
 ## Maintenance rule
 
