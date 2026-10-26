@@ -23,18 +23,18 @@ final class AdminManualWorkoutExtractionTest extends TestCase {
 		$source = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-manual-workout.php' );
 		$this->assertStringContainsString( 'final class Admin_Manual_Workout', $source );
 		$this->assertStringContainsString( "current_user_can( 'swimlog_manage_own_workouts' )", $source );
-		$this->assertStringContainsString( "'swimlog_update_manual_workout_' . $workout_id", $source );
+		$this->assertStringContainsString( "'swimlog_update_manual_workout_' . \$workout_id", $source );
 		$this->assertStringContainsString( "'swimlog_create_manual_workout'", $source );
 		$this->assertStringContainsString( 'Manual_Workout::save( $user_id, $document, $workout_id )', $source );
 		$this->assertStringContainsString( 'Manual_Workout::get_document( $workout_id, $user_id )', $source );
 		$this->assertStringContainsString( 'private static function manual_time_to_ms(', $source );
-		$this->assertStringContainsString( "'rep_times_ms' => $rep_times_ms", $source );
+		$this->assertStringContainsString( "'rep_times_ms' => \$rep_times_ms", $source );
 	}
 
 	public function test_menu_and_plugin_hooks_still_target_main_admin_callbacks() {
 		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
 		$plugin = file_get_contents( dirname( __DIR__ ) . '/includes/class-plugin.php' );
 		$this->assertStringContainsString( "'swimlog-manual-workout', 'manual_workout'", $admin );
-		$this->assertStringContainsString( "array( $admin, 'handle_manual_workout_actions' )", $plugin );
+		$this->assertStringContainsString( "array( \$admin, 'handle_manual_workout_actions' )", $plugin );
 	}
 }
