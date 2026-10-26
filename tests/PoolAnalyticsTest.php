@@ -110,9 +110,10 @@ final class PoolAnalyticsTest extends TestCase {
 
 	public function test_admin_page_documents_metric_provenance_and_comparison_limits() {
 		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$analytics_admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-analytics.php' );
 		$this->assertStringContainsString( "'swimlog-pool-analytics', 'pool_analytics'", $admin );
 		$this->assertStringContainsString( 'public function pool_analytics()', $admin );
-		$this->assertStringContainsString( 'Missing timing and stroke-count data are never estimated.', $admin );
-		$this->assertStringContainsString( 'SWOLF is elapsed seconds plus recorded strokes for the same length and is pool-length dependent', $admin );
+		$this->assertStringContainsString( 'Missing timing and stroke-count data are never estimated.', $analytics_admin );
+		$this->assertStringContainsString( 'SWOLF is elapsed seconds plus recorded strokes for the same length and is pool-length dependent', $analytics_admin );
 	}
 }
