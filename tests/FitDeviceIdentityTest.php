@@ -22,6 +22,17 @@ final class FitDeviceIdentityTest extends TestCase {
  public function test_apple_watch_descriptor_can_identify_development_manufacturer(){
   $this->assertSame(array('Apple','Watch3,2'),$this->identify(array(array(0=>0,2=>255,19=>"Christopher's Apple Watch (4.3.1)",27=>'Watch3,2'))));
  }
+ public function test_pool_normalizer_preserves_session_hr_and_cadence(){
+  $importer=new FIT_Importer();
+  $m=new ReflectionMethod(FIT_Importer::class,'normalize');$m->setAccessible(true);
+  $session=array(2=>1000000000,5=>5,6=>17,7=>3109970,9=>185000,16=>125,17=>148,18=>31,19=>42,44=>2500,46=>0);
+  $length=array(2=>1000000000,3=>17987,7=>0,12=>1);
+  $r=$m->invoke($importer,array('session'=>$session,'laps'=>array(),'lengths'=>array($length),'records'=>array(),'device'=>array()));
+  $this->assertSame(125,$r['workout']['average_heart_rate']);
+  $this->assertSame(148,$r['workout']['max_heart_rate']);
+  $this->assertSame(31.0,$r['workout']['average_cadence']);
+  $this->assertSame(42.0,$r['workout']['max_cadence']);
+ }
  public function test_recording_device_fields_are_not_mixed_with_accessory(){
   $devices=array(
    array(0=>0,2=>1,27=>'Forerunner 965'),
