@@ -159,8 +159,9 @@ Development and release-candidate builds are checked with WordPress Plugin Check
 
 ## External Integration API
 
-Authenticated WordPress clients may read normalized workout data through the `swimlog/v1` REST namespace. The API is read-only and always scopes results to the currently authenticated swimmer.
+Authenticated WordPress clients may read swimmer-owned normalized and derived data through the read-only `swimlog/v1` REST namespace. REST API Access is an explicit per-swimmer opt-in and is independent of Public Results and Public Open-Water Routes.
 
-Available routes are `GET /wp-json/swimlog/v1/workouts` and `GET /wp-json/swimlog/v1/workouts/{id}`. The collection supports pagination plus workout-type and date filters.
+See **[REST-API.md](REST-API.md)** for the complete developer reference, including WordPress Application Password authentication, authorization requirements, every endpoint and parameter, response fields, units/provenance, privacy exclusions, pagination, request examples, and error handling.
 
-The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication, the plugin's own-view capability, and the swimmer's explicit **REST API Access** opt-in are required. REST API Access is configured per swimmer under **Swim Training → Swimmer Configuration**, defaults to OFF, and is independent of Public Results and Public Open-Water Routes. The configuration screen links to an in-plugin API documentation page with authentication guidance, routes, filters, returned fields, privacy exclusions, examples, and errors.
+The API deliberately excludes preserved source files/paths, import records, workout notes, original uploaded filenames, and open-water GPS coordinates/trackpoints.
+
