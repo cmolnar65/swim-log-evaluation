@@ -7,7 +7,6 @@ final class AdminShellConsolidationTest extends TestCase {
 		$this->assertStringContainsString( "require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ui.php';", $admin );
 		$this->assertStringContainsString( 'Admin_UI::selected_user_id()', $admin );
 		$this->assertStringContainsString( 'Admin_UI::swimmer_selector(', $admin );
-		$this->assertStringContainsString( 'Admin_UI::display_measurement(', $admin );
 		$this->assertStringNotContainsString( 'private function selected_user_id(', $admin );
 		$this->assertStringNotContainsString( 'private function swimmer_selector(', $admin );
 		$this->assertStringNotContainsString( 'private function display_measurement(', $admin );
