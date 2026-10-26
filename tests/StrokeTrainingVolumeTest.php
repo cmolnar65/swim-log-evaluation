@@ -42,9 +42,9 @@ final class StrokeTrainingVolumeTest extends TestCase {
  }
 
  public function test_workouts_page_no_longer_contains_training_volume_summary(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
-  $start=strpos($code,'public function workouts()');
-  $end=strpos($code,'public function training_volume()',$start);
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
+  $start=strpos($code,'public static function workouts()');
+  $end=strlen($code);
   $this->assertNotFalse($start);
   $this->assertNotFalse($end);
   $workouts=substr($code,$start,$end-$start);
