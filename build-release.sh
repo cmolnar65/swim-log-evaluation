@@ -31,6 +31,7 @@ EXCLUDE_TOP_LEVEL=(
     "build-release.ps1"
     "build-release.sh"
     "PLUGIN-CHECK.md"
+    "wordpress-org-assets"
 )
 
 mkdir -p -- "$STAGE_DIR"
