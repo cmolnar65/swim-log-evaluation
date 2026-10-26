@@ -12,7 +12,7 @@ final class OpenWaterGeographicMapTest extends TestCase {
   $this->assertStringNotContainsString('tile.openstreetmap',$code);
  }
  public function test_admin_map_has_start_finish_and_grid(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
   $this->assertStringContainsString('Open-water GPS route map',$code);
   $this->assertStringContainsString("esc_html__('Start'",$code);
   $this->assertStringContainsString("esc_html__('Finish'",$code);
