@@ -35,7 +35,7 @@ final class ReleaseDocumentationTest extends TestCase {
   foreach(array('Garmin Personal API import-state presentation','optimized trackpoint processing','deterministic open-water/import regression coverage','transactional workout rebuilds','GPX and TCX open-water import','scheduled Garmin synchronization','first-GPS-fix matching within 500 meters','swimlog/v1 REST API','all registered public shortcodes','Garmin scheduled-sync operational telemetry','persist the authoritative import','analytics metric unit/provenance metadata')as$feature)$this->assertStringContainsString($feature,$readme);
  }
  public function test_manual_workout_help_preserves_v08_timing_contract(){
-  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-manual-workout.php');
   foreach(array('Measured reps require one actual swim time per repetition','not split into personal-best times','Untimed sets still count toward training volume','does not create open-water GPS routes')as$help)$this->assertStringContainsString($help,$admin);
  }
 }
