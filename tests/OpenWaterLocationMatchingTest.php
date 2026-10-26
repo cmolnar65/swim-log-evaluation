@@ -2,7 +2,7 @@
 use PHPUnit\Framework\TestCase;
 final class OpenWaterLocationMatchingTest extends TestCase {
  public function test_schema_and_location_editor_store_reference_coordinates(){
-  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');$loc=file_get_contents(dirname(__DIR__).'/includes/class-location.php');$admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');$loc=file_get_contents(dirname(__DIR__).'/includes/class-location.php');$admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-events-locations.php');
   $this->assertStringContainsString('latitude decimal(10,7) NULL',$db);$this->assertStringContainsString('longitude decimal(10,7) NULL',$db);
   $this->assertStringContainsString("'latitude'      => null === \$latitude ? null : round(\$latitude,7)",$loc);
   $this->assertStringContainsString('Open-water reference coordinates',$admin);$this->assertStringContainsString('within 500 meters',$admin);

@@ -20,6 +20,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Release packages are built from the checked-out commit.
 # Development/repository files that must not ship in the WordPress release package.
 EXCLUDE_TOP_LEVEL=(
     ".git"

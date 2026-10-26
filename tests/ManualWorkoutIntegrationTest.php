@@ -24,7 +24,7 @@ final class ManualWorkoutIntegrationTest extends TestCase {
   $this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);$this->assertStringNotContainsString("source_type='import'",$rest);
  }
  public function test_create_edit_post_workflow_embeds_shared_workout_block_for_manual_workouts(){
-  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
   $this->assertStringContainsString("'create_post'",$admin);$this->assertStringContainsString('wp:swimlog/workout',$admin);$this->assertStringContainsString('_swimlog_workout_id',$admin);$this->assertStringContainsString('get_edit_post_link',$admin);
  }
  public function test_dashboard_recent_workouts_keeps_workout_number_aligned_with_header(){

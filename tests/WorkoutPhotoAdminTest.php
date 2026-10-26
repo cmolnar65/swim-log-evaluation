@@ -3,7 +3,7 @@ use PHPUnit\Framework\TestCase;
 
 final class WorkoutPhotoAdminTest extends TestCase {
  public function test_workout_screen_supports_three_photo_slots(){
-  $src=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $src=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
   $this->assertStringContainsString('enctype="multipart/form-data"',$src);
   $this->assertStringContainsString('for($photo_slot=0;$photo_slot<3;$photo_slot++)',$src);
   $this->assertStringContainsString("name=\"delete_photo[]\"",$src);

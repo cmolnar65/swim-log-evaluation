@@ -2,17 +2,24 @@
 use PHPUnit\Framework\TestCase;
 
 final class ReleaseDocumentationTest extends TestCase {
- public function test_release_docs_publish_version_08_consistently(){
+ public function test_release_docs_prepare_version_09_consistently(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  $this->assertStringContainsString('Stable tag: 0.8',$readme);
-  $this->assertStringContainsString('= 0.8 =',$readme);
-  $this->assertStringContainsString("Version: 0.8",$plugin);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '0.8'",$plugin);
+  $this->assertStringContainsString('Stable tag: 0.9',$readme);
+  $this->assertStringContainsString('= 0.9 =',$readme);
+  $this->assertStringContainsString("Version: 0.9",$plugin);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '0.9'",$plugin);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$plugin);
-  $this->assertStringContainsString('## Current release: v0.8',$github);
+  $this->assertStringContainsString('## Release candidate: v0.9',$github);
   foreach(array('Stable tag: 0.7','current public stable release remains v0.7','v0.8 development status','v0.8 development — complete, not yet released')as$stale)$this->assertStringNotContainsString($stale,$readme.$github);
+ }
+ public function test_v09_docs_cover_release_features(){
+  $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $github=file_get_contents(dirname(__DIR__).'/README.md');
+  foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST-API.md','per-length stroke counts','admin','PHP 7.4')as$feature)$this->assertStringContainsString($feature,$readme);
+  foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST API and data-portability surface','REST-API.md','administration architecture','no new database schema migration')as$feature)$this->assertStringContainsString($feature,$github);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v08_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
@@ -35,7 +42,7 @@ final class ReleaseDocumentationTest extends TestCase {
   foreach(array('Garmin Personal API import-state presentation','optimized trackpoint processing','deterministic open-water/import regression coverage','transactional workout rebuilds','GPX and TCX open-water import','scheduled Garmin synchronization','first-GPS-fix matching within 500 meters','swimlog/v1 REST API','all registered public shortcodes','Garmin scheduled-sync operational telemetry','persist the authoritative import','analytics metric unit/provenance metadata')as$feature)$this->assertStringContainsString($feature,$readme);
  }
  public function test_manual_workout_help_preserves_v08_timing_contract(){
-  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-manual-workout.php');
   foreach(array('Measured reps require one actual swim time per repetition','not split into personal-best times','Untimed sets still count toward training volume','does not create open-water GPS routes')as$help)$this->assertStringContainsString($help,$admin);
  }
 }

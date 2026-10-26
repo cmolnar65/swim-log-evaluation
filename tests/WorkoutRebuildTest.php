@@ -23,7 +23,7 @@ final class WorkoutRebuildTest extends TestCase {
  }
 
  public function test_admin_rebuild_requires_nonce_and_preserves_delete_as_separate_action(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');
   $this->assertStringContainsString("check_admin_referer( 'swimlog_rebuild_workout_' . \$detail )",$code);
   $this->assertStringContainsString('Importer::rebuild_workout( $detail, $user_id )',$code);
   $this->assertStringContainsString('Rebuild from Preserved Sources',$code);

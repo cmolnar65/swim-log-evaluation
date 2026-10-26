@@ -4,9 +4,35 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## Current release: v0.8
+## Release candidate: v0.9
 
-Version 0.8 is the current release candidate on the `develop` branch. Release metadata has been advanced to v0.8 in preparation for tagging; it has not yet been merged to the protected `main` branch or published to WordPress.org.
+The `develop` branch is the v0.9 release candidate. Version 0.8 remains the current published release on GitHub and WordPress.org until v0.9 is validated, merged through protected `main`, tagged, and published on GitHub. WordPress.org deployment is a separate decision and is not implied by the GitHub v0.9 release.
+
+## v0.9
+
+v0.9 begins a pool performance and efficiency analytics layer built from the normalized active-length data the plugin already preserves. The first implementation adds a dedicated **Pool Analytics** administration screen with course, stroke, and rolling lookback filters.
+
+The analytics keep meter and yard courses, pool lengths, and strokes separate. They derive distance-weighted average pace per 100 native units, fastest single-length pace, per-length pace consistency, average recorded stroke count, normalized strokes per 25 native units, SWOLF, stroke-count coverage, and monthly trends. Missing timing or stroke-count data remains missing rather than being estimated. SWOLF is explicitly treated as pool-length dependent and should only be compared within the same pool length and similar recording conventions.
+
+These metrics are derived from existing normalized workout/length data, so this initial v0.9 analytics work requires no database schema change and applies to both imported and structured manual workouts when qualifying active-length data is available.
+
+The second v0.9 analytics milestone adds a **Training Trends / Training Load** administration dashboard. It provides weekly and monthly workout volume, workout frequency, active swim time, pool/open-water distance splits, four-week rolling averages, equal-period comparisons, pool course volume, and distance by stroke. Combined longitudinal distance is normalized to meters while course-specific pool analytics retain native meter/yard units.
+
+Training load in this dashboard means recorded training volume only. The plugin does not infer physiological stress, recovery status, fitness, or injury risk. Active time uses recorded moving time when available and otherwise recorded elapsed time; stroke-specific active time is derived only from normalized active pool lengths. This milestone also uses the existing schema and requires no database-version change.
+
+The third v0.9 analytics milestone adds **Race Readiness 2.0** for upcoming events. It combines the swimmer's current personal best, exact-distance recent best, exact-distance recent pace evidence, recent performance count and change, matching course/stroke training volume and session count, longest recent evaluated distance, and time remaining until the event. The default evidence window remains 42 days.
+
+Race Readiness 2.0 is deliberately descriptive rather than predictive. It does not calculate a readiness score, forecast a race time, infer fitness or recovery, or state that a swimmer is ready or unready to race. Missing exact-distance performance evidence remains missing rather than being estimated. This milestone also uses the existing normalized workout/performance data and requires no database schema change.
+
+The fourth v0.9 milestone expands the authenticated, opt-in, read-only **REST API and data-portability surface**. Pool workout detail now exposes preserved normalized lap/length offsets and source indexes when available, including per-length stroke counts. New GET endpoints expose current personal bests, exact-distance progression, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends.
+
+The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. No write/create/delete REST methods are added, and this milestone requires no database schema change.
+
+The v0.9 administration architecture was also refactored from the former monolithic Admin class into focused components for workouts, manual workouts, analytics, personal bests, events/locations, shortcode help, Garmin, settings, Race Readiness presentation, and shared UI helpers. The refactor preserves existing menu slugs, permissions, nonces, URLs, and behavior while making future development more maintainable.
+
+A standalone **[REST-API.md](REST-API.md)** developer reference documents the complete v0.9 REST surface, WordPress Application Password authentication, parameters, response fields, privacy boundaries, pagination, examples, and error handling. Regression coverage checks that every registered REST route remains represented in the reference.
+
+v0.9 requires **no new database schema migration**. The internal database schema remains version 0.9 from the v0.8 per-length stroke-count migration.
 
 ## v0.8
 
@@ -139,8 +165,9 @@ Development and release-candidate builds are checked with WordPress Plugin Check
 
 ## External Integration API
 
-Authenticated WordPress clients may read normalized workout data through the `swimlog/v1` REST namespace. The API is read-only and always scopes results to the currently authenticated swimmer.
+Authenticated WordPress clients may read swimmer-owned normalized and derived data through the read-only `swimlog/v1` REST namespace. REST API Access is an explicit per-swimmer opt-in and is independent of Public Results and Public Open-Water Routes.
 
-Available routes are `GET /wp-json/swimlog/v1/workouts` and `GET /wp-json/swimlog/v1/workouts/{id}`. The collection supports pagination plus workout-type and date filters.
+See **[REST-API.md](REST-API.md)** for the complete developer reference, including WordPress Application Password authentication, authorization requirements, every endpoint and parameter, response fields, units/provenance, privacy exclusions, pagination, request examples, and error handling.
 
-The integration API deliberately does not expose preserved source files, source paths, import records, workout notes, or open-water GPS coordinates/trackpoints. Open-water detail includes non-geographic summary analytics and splits only. WordPress authentication, the plugin's own-view capability, and the swimmer's explicit **REST API Access** opt-in are required. REST API Access is configured per swimmer under **Swim Training → Swimmer Configuration**, defaults to OFF, and is independent of Public Results and Public Open-Water Routes. The configuration screen links to an in-plugin API documentation page with authentication guidance, routes, filters, returned fields, privacy exclusions, examples, and errors.
+The API deliberately excludes preserved source files/paths, import records, workout notes, original uploaded filenames, and open-water GPS coordinates/trackpoints.
+

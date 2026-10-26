@@ -10,7 +10,7 @@ final class PublicOpenWaterRoutePrivacyTest extends TestCase {
   $this->assertStringContainsString('Open-water GPS route',$shortcodes);
  }
  public function test_privacy_ui_warns_that_routes_reveal_locations(){
-  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-settings.php');
   $this->assertStringContainsString("update_user_meta( \$uid, 'swimlog_public_ows_routes', \$public_routes )",$admin);
   $this->assertStringContainsString('Public Open-Water Routes',$admin);
   $this->assertStringContainsString('GPS routes can reveal where you swim, including start and finish locations.',$admin);
