@@ -253,9 +253,9 @@ final class Blocks {
 		$html .= '<div class="swimlog-calendar-toolbar">';
 		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
 		$html .= '<div class="swimlog-calendar-view-switch" aria-label="' . esc_attr__( 'Calendar view', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button is-active" data-calendar-view="month" aria-pressed="true">' . esc_html__( 'Month', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-view="week" aria-pressed="false">' . esc_html__( 'Week', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
-		$html .= '</div><h2 class="swimlog-calendar-title" aria-live="polite">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
+		$html .= '</div><h2 class="swimlog-calendar-title" id="swimlog-calendar-title-' . esc_attr( $user_id ) . '" tabindex="-1">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
 		$html .= '<div class="swimlog-calendar-status" role="status" aria-live="polite"></div>';
-		$html .= '<div class="swimlog-calendar-grid" role="grid">';
+		$html .= '<div class="swimlog-calendar-grid" role="grid" aria-labelledby="swimlog-calendar-title-' . esc_attr( $user_id ) . '">';
 		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
 		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {
 			$key = $date->format( 'Y-m-d' );$outside = $date->format( 'm' ) !== $month->format( 'm' );
@@ -263,7 +263,7 @@ final class Blocks {
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';
 		}
-		$html .= '</div><div class="swimlog-calendar-agenda" data-calendar-agenda="1" aria-label="' . esc_attr__( 'Calendar agenda', 'chriss-swim-training-progress-evaluation' ) . '"></div><div class="swimlog-calendar-detail" data-calendar-detail="1" hidden aria-live="polite"></div></section>';
+		$html .= '</div><div class="swimlog-calendar-agenda" data-calendar-agenda="1" aria-label="' . esc_attr__( 'Calendar agenda', 'chriss-swim-training-progress-evaluation' ) . '"></div><div class="swimlog-calendar-detail" data-calendar-detail="1" hidden role="region" aria-label="' . esc_attr__( 'Workout details', 'chriss-swim-training-progress-evaluation' ) . '"></div></section>';
 		return $html;
 	}
 
@@ -286,7 +286,7 @@ final class Blocks {
 			'pool_length_unit' => $workout['pool_length_unit'],
 			'primary_stroke' => $workout['primary_stroke'],
 		) );
-		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_event_html( $event ) {

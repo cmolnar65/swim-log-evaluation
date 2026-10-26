@@ -17,7 +17,7 @@
 	}
 	function item( className, parts, strong, workout ) {
 		var div = document.createElement( workout ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className;
-		if ( workout ) { div.type = 'button'; div.dataset.calendarWorkout = JSON.stringify( workout ); div.setAttribute( 'aria-expanded', 'false' ); }
+		if ( workout ) { div.type = 'button'; div.dataset.calendarWorkout = JSON.stringify( workout ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-' + workout.id ); }
 		parts.forEach( function ( part, index ) {
 			if ( index ) div.appendChild( document.createTextNode( ' · ' ) );
 			var node = strong && index === 0 ? document.createElement( 'strong' ) : document.createTextNode( part );
@@ -94,7 +94,7 @@
 		var workout; try { workout = JSON.parse( button.dataset.calendarWorkout || '{}' ); } catch ( error ) { return; }
 		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
 		button.setAttribute( 'aria-expanded', 'true' );
-		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
+		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = button.getAttribute( 'aria-controls' ) || ''; root.dataset.detailTrigger = workout.id || '';
 		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = workout.workout_type === 'open_water' ? 'Open Water Workout' : 'Pool Swim Workout'; panel.appendChild( heading );
 		var list = document.createElement( 'dl' ); list.className = 'swimlog-calendar-detail-list';
 		if ( workout.workout_start ) { var when = new Date( String( workout.workout_start ).replace( ' ', 'T' ) ); detailRow( list, 'Date', isNaN( when.getTime() ) ? String( workout.workout_start ) : when.toLocaleString() ); }
@@ -109,11 +109,13 @@
 		}
 		panel.appendChild( list );
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close );
-		panel.scrollIntoView( { block: 'nearest' } );
+		panel.scrollIntoView( { block: 'nearest' } ); close.focus();
 	}
-	function closeWorkoutDetail( root ) {
-		var panel = root.querySelector( '[data-calendar-detail]' ); if ( panel ) { panel.hidden = true; panel.textContent = ''; }
+	function closeWorkoutDetail( root, restoreFocus ) {
+		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"]' );
+		var panel = root.querySelector( '[data-calendar-detail]' ); if ( panel ) { panel.hidden = true; panel.textContent = ''; panel.removeAttribute( 'id' ); }
 		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
+		if ( restoreFocus && trigger ) trigger.focus();
 	}
 	function weekStart( focus, firstDay ) {
 		var date = new Date( focus.getFullYear(), focus.getMonth(), focus.getDate() ), target = firstDayNumber( firstDay );
@@ -159,12 +161,12 @@
 		var firstDay = root.dataset.firstDay || 'sunday', startDate = weekStart( focus, firstDay ), endDate = new Date( startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6 );
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', dateKey( startDate ) ); url.searchParams.set( 'end', dateKey( endDate ) );
 		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
-		var status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Loading calendar…'; root.classList.add( 'is-loading' );
+		var status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Loading calendar…'; root.classList.add( 'is-loading' ); root.setAttribute( 'aria-busy', 'true' ); root.setAttribute( 'aria-busy', 'true' );
 		fetch( url.toString(), { credentials: 'same-origin', headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
 			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'calendar' ); return response.json(); } )
 			.then( function ( data ) { renderWeek( root, data, focus ); status.textContent = ''; } )
 			.catch( function () { status.textContent = 'Unable to load calendar.'; } )
-			.finally( function () { root.classList.remove( 'is-loading' ); } );
+			.finally( function () { root.classList.remove( 'is-loading' ); root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function loadMonth( root, focus ) {
 		var start = dateKey( new Date( focus.getFullYear(), focus.getMonth(), 1 ) ), end = dateKey( new Date( focus.getFullYear(), focus.getMonth() + 1, 0 ) );
@@ -175,13 +177,16 @@
 			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'calendar' ); return response.json(); } )
 			.then( function ( data ) { renderMonth( root, data, focus ); status.textContent = ''; } )
 			.catch( function () { status.textContent = 'Unable to load calendar.'; } )
-			.finally( function () { root.classList.remove( 'is-loading' ); } );
+			.finally( function () { root.classList.remove( 'is-loading' ); root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function init( root ) {
-		root.dataset.view = 'month'; root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
+		root.dataset.view = 'month'; root.setAttribute( 'aria-busy', 'false' ); root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
+		root.addEventListener( 'keydown', function ( event ) {
+			if ( event.key === 'Escape' && ! root.querySelector( '[data-calendar-detail]' ).hidden ) { event.preventDefault(); closeWorkoutDetail( root, true ); }
+		} );
 		root.addEventListener( 'click', function ( event ) {
 			var workoutButton = event.target.closest( '[data-calendar-workout]' ); if ( workoutButton ) { showWorkoutDetail( root, workoutButton ); return; }
-			var closeButton = event.target.closest( '[data-calendar-detail-close]' ); if ( closeButton ) { closeWorkoutDetail( root ); return; }
+			var closeButton = event.target.closest( '[data-calendar-detail-close]' ); if ( closeButton ) { closeWorkoutDetail( root, true ); return; }
 			var viewButton = event.target.closest( '[data-calendar-view]' );
 			if ( viewButton ) {
 				closeWorkoutDetail( root );

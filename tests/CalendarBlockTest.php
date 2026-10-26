@@ -148,6 +148,36 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString("item( 'swimlog-calendar-event'",$body);
   $this->assertStringContainsString('No workouts or events in this period.',$body);
  }
+ public function test_phase_nine_adds_accessible_calendar_and_detail_relationships(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString('aria-labelledby="swimlog-calendar-title-',$blocks);
+  $this->assertStringContainsString('tabindex="-1"',$blocks);
+  $this->assertStringContainsString('aria-controls="swimlog-calendar-detail-',$blocks);
+  $this->assertStringContainsString('role="region"',$blocks);
+  $this->assertStringContainsString("div.setAttribute( 'aria-controls'",$view);
+ }
+ public function test_phase_nine_detail_supports_escape_and_focus_return(){
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString("event.key === 'Escape'",$view);
+  $this->assertStringContainsString('closeWorkoutDetail( root, true )',$view);
+  $this->assertStringContainsString('if ( restoreFocus && trigger ) trigger.focus()',$view);
+  $this->assertStringContainsString('close.focus()',$view);
+ }
+ public function test_phase_nine_announces_loading_and_busy_state(){
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $this->assertStringContainsString('role="status" aria-live="polite"',$blocks);
+  $this->assertStringContainsString("root.setAttribute( 'aria-busy', 'true' )",$view);
+  $this->assertStringContainsString("root.setAttribute( 'aria-busy', 'false' )",$view);
+  $this->assertStringContainsString('Unable to load calendar.',$view);
+ }
+ public function test_phase_nine_has_visible_focus_reduced_motion_and_forced_colors(){
+  $css=file_get_contents(dirname(__DIR__).'/assets/css/calendar.css');
+  $this->assertStringContainsString(':focus-visible',$css);
+  $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)',$css);
+  $this->assertStringContainsString('@media(forced-colors:active)',$css);
+ }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
