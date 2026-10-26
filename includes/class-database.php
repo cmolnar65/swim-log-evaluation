@@ -16,7 +16,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events' );
 	}
 
 	public static function schema_is_complete() {
@@ -40,6 +40,7 @@ final class Database {
 		$imports      = self::table( 'imports' );
 		$locations    = self::table( 'locations' );
 		$workouts     = self::table( 'workouts' );
+		$manual_workouts = self::table( 'manual_workouts' );
 		$laps         = self::table( 'laps' );
 		$lengths      = self::table( 'lengths' );
 		$trackpoints  = self::table( 'trackpoints' );
@@ -95,6 +96,7 @@ final class Database {
 			user_id bigint(20) unsigned NOT NULL,
 			location_id bigint(20) unsigned NULL,
 			authoritative_import_id bigint(20) unsigned NULL,
+			source_type varchar(20) NOT NULL DEFAULT 'import',
 			workout_type varchar(20) NOT NULL DEFAULT 'pool',
 			workout_start datetime NOT NULL,
 			workout_end datetime NULL,
@@ -119,11 +121,25 @@ final class Database {
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY user_id (user_id),
+			KEY user_source_type (user_id,source_type),
 			KEY user_workout_type (user_id,workout_type),
 			KEY user_workout_start (user_id,workout_start),
 			KEY location_id (location_id),
 			KEY authoritative_import_id (authoritative_import_id),
 			KEY user_source_activity (user_id,source_activity_id)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $manual_workouts (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			workout_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			schema_version varchar(32) NOT NULL,
+			source_document longtext NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY workout_id (workout_id),
+			KEY user_id (user_id)
 		) $charset_collate;";
 
 		$sql[] = "CREATE TABLE $laps (
@@ -154,6 +170,7 @@ final class Database {
 			distance_m decimal(8,3) NOT NULL,
 			elapsed_time_ms bigint(20) unsigned NULL,
 			stroke varchar(20) NULL,
+			stroke_count smallint(5) unsigned NULL,
 			length_type varchar(20) NOT NULL,
 			source_length_index int(11) NULL,
 			raw_metadata longtext NULL,

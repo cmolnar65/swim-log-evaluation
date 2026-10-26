@@ -64,4 +64,26 @@ final class FitCorpusTest extends TestCase {
   $this->assertCount(34,$fr);$this->assertCount(34,$br);
   $this->assertEqualsWithDelta(1554.48,array_sum(array_column($active,'distance_m')),0.01);
  }
+ public function test_private_apple_watch_2018_fixture(){
+  $path=getenv('SWIMLOG_APPLE_FIT_FIXTURE');
+  if(!$path||!is_file($path))$this->markTestSkipped('Set SWIMLOG_APPLE_FIT_FIXTURE to the unchanged private 2018 Apple Watch pool FIT file.');
+  $r=(new FIT_Importer)->parse($path);
+  $this->assertFalse(is_wp_error($r),is_wp_error($r)?$r->get_error_message():'');
+  $w=$r['workout'];
+  $this->assertEqualsWithDelta(25.0,(float)$w['original_pool_length'],0.001);
+  $this->assertEqualsWithDelta(1850.0,(float)$w['total_distance_m'],0.01);
+  $this->assertSame(125,(int)$w['average_heart_rate']);
+  $this->assertSame(148,(int)$w['max_heart_rate']);
+  $this->assertSame('Apple',$w['device_manufacturer']);
+  $this->assertSame('Watch3,2',$w['device_model']);
+  $this->assertCount(23,$r['laps']);
+  $active=array_values(array_filter($r['lengths'],fn($x)=>$x['length_type']==='active'));
+  $rest=array_values(array_filter($r['lengths'],fn($x)=>$x['length_type']==='rest'));
+  $this->assertCount(74,$active);$this->assertCount(11,$rest);
+  $this->assertCount(44,array_values(array_filter($active,fn($x)=>$x['stroke']==='FR')));
+  $this->assertCount(30,array_values(array_filter($active,fn($x)=>$x['stroke']==='BR')));
+  $this->assertSame(array(9,9,13,12),array_slice(array_map(fn($x)=>$x['stroke_count'], $active),0,4));
+  $this->assertSame('2018-07-10 08:51:49',$w['workout_start']);
+ }
+
 }

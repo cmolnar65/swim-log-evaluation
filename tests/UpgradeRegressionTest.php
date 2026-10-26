@@ -18,6 +18,24 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertLessThan($migration,$schema);
   $this->assertLessThan($version,$migration);
  }
+ public function test_v08_schema_adds_manual_workout_provenance_without_reclassifying_legacy_workouts(){
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $this->assertStringContainsString("'manual_workouts'",$db);
+  $this->assertStringContainsString("source_type varchar(20) NOT NULL DEFAULT 'import'",$db);
+  $this->assertStringContainsString('KEY user_source_type (user_id,source_type)',$db);
+  $this->assertStringContainsString("self::table( 'manual_workouts' )",$db);
+  $this->assertStringContainsString('workout_id bigint(20) unsigned NOT NULL',$db);
+  $this->assertStringContainsString('UNIQUE KEY workout_id (workout_id)',$db);
+  $this->assertStringContainsString('schema_version varchar(32) NOT NULL',$db);
+  $this->assertStringContainsString('source_document longtext NOT NULL',$db);
+  $this->assertStringContainsString('user_id bigint(20) unsigned NOT NULL',$db);
+ }
+ public function test_v09_schema_adds_length_stroke_count_for_existing_installations(){
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $this->assertStringContainsString('stroke_count smallint(5) unsigned NULL',$db);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$main);
+ }
  public function test_legacy_default_upload_types_gain_gpx_and_tcx_only_during_pre_07_upgrade(){
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("version_compare( (string) \$installed_version, '0.7', '<' )",$plugin);

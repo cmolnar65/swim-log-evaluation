@@ -9,7 +9,8 @@ final class Importer {
 		if(empty($file['tmp_name'])||!is_uploaded_file($file['tmp_name']))return new \WP_Error('swimlog_upload',__('No valid uploaded file was received.','chriss-swim-training-progress-evaluation'));
 		if(!empty($file['error']))return new \WP_Error('swimlog_upload',__('The upload failed before import.','chriss-swim-training-progress-evaluation'));
 		if((int)$file['size']>self::MAX_BYTES)return new \WP_Error('swimlog_upload_size',__('Workout files may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
-		$name=sanitize_file_name($file['name']);$ext=strtolower(pathinfo($name,PATHINFO_EXTENSION));
+		$name=sanitize_file_name($file['name']);$ext=self::uploaded_source_type($name,$file['tmp_name']);
+		if(is_wp_error($ext))return $ext;
 		$allowed=(array)get_option('swimlog_allowed_upload_types',array('fit','csv','gpx','tcx'));
 		if(!in_array($ext,array('fit','csv','gpx','tcx'),true)||!in_array($ext,$allowed,true))return new \WP_Error('swimlog_upload_type',__('This workout file type is not currently allowed.','chriss-swim-training-progress-evaluation'));
 		return self::import_file($user_id,$file['tmp_name'],$name,(int)$file['size'],$ext,$location_id,array());
@@ -49,7 +50,7 @@ final class Importer {
 		$now=current_time('mysql');
 		if($match_info['status']==='disagreement')return new \WP_Error('swimlog_source_disagreement',__('A nearby existing workout has incompatible course or pool-length information. Import stopped for explicit review rather than attaching or creating a duplicate.','chriss-swim-training-progress-evaluation'));
 
-		$upload=self::preserve_source($user_id,$ext,$tmp_path,$preserve_filename);
+		$archive_name=preg_match('/\.(?:gz|zip)$/i',$name)?$name:'';$storage_name=$preserve_filename!==''?$preserve_filename:$archive_name;$upload=self::preserve_source($user_id,$ext,$tmp_path,$storage_name);
 		if(is_wp_error($upload))return$upload;
 		$identity=array('source_provider'=>$provider!==''?$provider:null,'external_activity_id'=>$external!==''?$external:null);
 		if($match_info['status']==='probable'){
@@ -218,7 +219,70 @@ final class Importer {
 	public static function pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);return absint($map[(int)$import_id]??0);}
 	private static function remember_pending_location($uid,$import_id,$location_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);if($location_id)$map[(int)$import_id]=absint($location_id);else unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
 	private static function forget_pending_location($uid,$import_id){$map=(array)get_user_meta($uid,'swimlog_pending_locations',true);unset($map[(int)$import_id]);update_user_meta($uid,'swimlog_pending_locations',$map);}
-	public static function parse_source($source,$path){$parser=self::parser_for_source($source);if(is_wp_error($parser))return$parser;return in_array(strtolower((string)$source),array('gpx','tcx'),true)?$parser->parse($path,$source):$parser->parse($path);}
+	public static function parse_source($source,$path){
+		$source=strtolower((string)$source);$prepared=self::prepare_source_file($source,$path);if(is_wp_error($prepared))return$prepared;
+		$parser=self::parser_for_source($source);if(is_wp_error($parser)){self::cleanup_prepared_source($prepared);return$parser;}
+		$result=in_array($source,array('gpx','tcx'),true)?$parser->parse($prepared['path'],$source):$parser->parse($prepared['path']);
+		self::cleanup_prepared_source($prepared);return$result;
+	}
+	private static function uploaded_source_type($name,$path){
+		$lower=strtolower((string)$name);$supported=array('fit','csv','gpx','tcx');
+		if(substr($lower,-3)==='.gz'){
+			$inner=substr($lower,0,-3);$ext=strtolower(pathinfo($inner,PATHINFO_EXTENSION));
+			if(!in_array($ext,$supported,true))return new \WP_Error('swimlog_upload_type',__('The gzip archive does not contain a supported workout filename.','chriss-swim-training-progress-evaluation'));
+			return$ext;
+		}
+		if(substr($lower,-4)==='.zip')return self::zip_source_type($path);
+		$ext=strtolower(pathinfo($lower,PATHINFO_EXTENSION));return in_array($ext,$supported,true)?$ext:new \WP_Error('swimlog_upload_type',__('This workout file type is not currently allowed.','chriss-swim-training-progress-evaluation'));
+	}
+	private static function zip_source_type($path){
+		if(!class_exists('ZipArchive'))return new \WP_Error('swimlog_zip_unavailable',__('This server does not provide ZIP support required to import this workout archive.','chriss-swim-training-progress-evaluation'));
+		$zip=new \ZipArchive();if(true!==$zip->open($path))return new \WP_Error('swimlog_zip_invalid',__('The workout ZIP archive could not be opened.','chriss-swim-training-progress-evaluation'));
+		$matches=array();
+		for($i=0;$i<$zip->numFiles;$i++){$stat=$zip->statIndex($i);$entry=(string)($stat['name']??'');if($entry===''||substr($entry,-1)==='/')continue;
+			if(strpos($entry,"\\0")!==false||preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#',$entry)||preg_match('#^[\\\\/]#',$entry)){ $zip->close();return new \WP_Error('swimlog_zip_path',__('The workout ZIP archive contains an unsafe file path.','chriss-swim-training-progress-evaluation')); }
+			$ext=strtolower(pathinfo($entry,PATHINFO_EXTENSION));if(in_array($ext,array('fit','csv','gpx','tcx'),true))$matches[]=array('index'=>$i,'source'=>$ext,'size'=>(int)($stat['size']??0));
+		}
+		$zip->close();if(count($matches)!==1)return new \WP_Error('swimlog_zip_contents',__('The workout ZIP archive must contain exactly one supported FIT, CSV, GPX, or TCX workout file.','chriss-swim-training-progress-evaluation'));
+		if($matches[0]['size']<=0||$matches[0]['size']>self::MAX_BYTES)return new \WP_Error('swimlog_archive_size',__('The expanded workout file may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
+		return$matches[0]['source'];
+	}
+	private static function prepare_source_file($source,$path){
+		$fs=self::filesystem();if(is_wp_error($fs))return$fs;
+		$data=$fs->get_contents($path);if(false===$data)return new \WP_Error('swimlog_source_read',__('The workout source file could not be read.','chriss-swim-training-progress-evaluation'));
+		$magic=substr($data,0,4);
+		if(substr($magic,0,2)==="\x1f\x8b")return self::prepare_gzip_source($source,$path,$data);
+		if(substr($magic,0,2)==='PK')return self::prepare_zip_source($source,$path);
+		return array('path'=>$path,'temporary'=>false);
+	}
+	private static function prepare_gzip_source($source,$path,$compressed=null){
+		if(!function_exists('gzdecode'))return new \WP_Error('swimlog_gzip_unavailable',__('This server does not provide gzip support required to import this workout file.','chriss-swim-training-progress-evaluation'));
+		$fs=self::filesystem();if(is_wp_error($fs))return$fs;
+		if(null===$compressed)$compressed=$fs->get_contents($path);
+		if(false===$compressed||strlen($compressed)<18)return new \WP_Error('swimlog_gzip_invalid',__('The gzip workout file is corrupt or incomplete.','chriss-swim-training-progress-evaluation'));
+		$isize=unpack('V',substr($compressed,-4))[1];if($isize<=0||$isize>self::MAX_BYTES)return new \WP_Error('swimlog_archive_size',__('The expanded workout file may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
+		$decoded=@gzdecode($compressed,self::MAX_BYTES+1);
+		if(false===$decoded||strlen($decoded)<=0)return new \WP_Error('swimlog_gzip_invalid',__('The gzip workout file is corrupt or incomplete.','chriss-swim-training-progress-evaluation'));
+		if(strlen($decoded)>self::MAX_BYTES)return new \WP_Error('swimlog_archive_size',__('The expanded workout file may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
+		$tmp=wp_tempnam('swimlog-'.$source);if(!$tmp)return new \WP_Error('swimlog_temp',__('A temporary workout file could not be created.','chriss-swim-training-progress-evaluation'));
+		if(!$fs->put_contents($tmp,$decoded,FS_CHMOD_FILE)){wp_delete_file($tmp);return new \WP_Error('swimlog_temp',__('The temporary workout file could not be written.','chriss-swim-training-progress-evaluation'));}
+		return array('path'=>$tmp,'temporary'=>true);
+	}
+	private static function prepare_zip_source($source,$path){
+		if(!class_exists('ZipArchive'))return new \WP_Error('swimlog_zip_unavailable',__('This server does not provide ZIP support required to import this workout archive.','chriss-swim-training-progress-evaluation'));
+		$zip=new \ZipArchive();if(true!==$zip->open($path))return new \WP_Error('swimlog_zip_invalid',__('The workout ZIP archive could not be opened.','chriss-swim-training-progress-evaluation'));
+		$match=null;for($i=0;$i<$zip->numFiles;$i++){$stat=$zip->statIndex($i);$entry=(string)($stat['name']??'');if($entry===''||substr($entry,-1)==='/')continue;$ext=strtolower(pathinfo($entry,PATHINFO_EXTENSION));if($ext!==$source)continue;
+			if(strpos($entry,"\\0")!==false||preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#',$entry)||preg_match('#^[\\\\/]#',$entry)){ $zip->close();return new \WP_Error('swimlog_zip_path',__('The workout ZIP archive contains an unsafe file path.','chriss-swim-training-progress-evaluation')); }
+			if(null!==$match){$zip->close();return new \WP_Error('swimlog_zip_contents',__('The workout ZIP archive contains more than one supported workout file.','chriss-swim-training-progress-evaluation'));}$match=array('index'=>$i,'size'=>(int)($stat['size']??0));}
+		if(!$match||$match['size']<=0||$match['size']>self::MAX_BYTES){$zip->close();return new \WP_Error('swimlog_archive_size',__('The ZIP archive does not contain one valid workout file of 10 MB or less.','chriss-swim-training-progress-evaluation'));}
+		$decoded=$zip->getFromIndex($match['index'],self::MAX_BYTES+1);$zip->close();
+		if(false===$decoded||strlen($decoded)<=0)return new \WP_Error('swimlog_zip_invalid',__('The workout file inside the ZIP archive could not be read.','chriss-swim-training-progress-evaluation'));
+		if(strlen($decoded)>self::MAX_BYTES)return new \WP_Error('swimlog_archive_size',__('The expanded workout file may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));
+		$fs=self::filesystem();if(is_wp_error($fs))return$fs;$tmp=wp_tempnam('swimlog-'.$source);if(!$tmp)return new \WP_Error('swimlog_temp',__('A temporary workout file could not be created.','chriss-swim-training-progress-evaluation'));
+		if(!$fs->put_contents($tmp,$decoded,FS_CHMOD_FILE)){wp_delete_file($tmp);return new \WP_Error('swimlog_temp',__('The temporary workout file could not be written.','chriss-swim-training-progress-evaluation'));}
+		return array('path'=>$tmp,'temporary'=>true);
+	}
+	private static function cleanup_prepared_source($prepared){if(!empty($prepared['temporary'])&&!empty($prepared['path']))wp_delete_file($prepared['path']);}
 	private static function parser_for_source($source){$source=strtolower((string)$source);if('fit'===$source)return new FIT_Importer();if('csv'===$source)return new CSV_Importer();if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));}
 	public static function location_from_open_water_track($uid,$parsed,$max_m=500.0){foreach((array)($parsed['trackpoints']??array())as$p){if(!isset($p['latitude'],$p['longitude'])||null===$p['latitude']||null===$p['longitude'])continue;$match=Location::nearest_for_user($uid,(float)$p['latitude'],(float)$p['longitude'],$max_m);return$match?(int)$match['location']->id:0;}return 0;}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
@@ -262,7 +326,7 @@ final class Importer {
 	private static function preserve_source($uid,$ext,$tmp,$preserve_filename=''){
 		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$fs=self::filesystem();if(is_wp_error($fs))return$fs;
 		$filename=$preserve_filename!==''?basename($preserve_filename):'swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
-		if($preserve_filename!==''&&$fs->exists($path))return new \WP_Error('swimlog_store_collision',__('A protected workout source file with this Garmin filename already exists. Import stopped without overwriting it.','chriss-swim-training-progress-evaluation'));
+		if($preserve_filename!==''&&$fs->exists($path))return new \WP_Error('swimlog_store_collision',__('A protected workout source file with this filename already exists. Import stopped without overwriting it.','chriss-swim-training-progress-evaluation'));
 		if(!$fs->copy($tmp,$path,false,0640))return new \WP_Error('swimlog_store',__('The original workout file could not be preserved in protected storage.','chriss-swim-training-progress-evaluation'));$fs->chmod($path,0640);return array('file'=>$path,'url'=>'','error'=>false);
 	}
 	private static function filesystem(){

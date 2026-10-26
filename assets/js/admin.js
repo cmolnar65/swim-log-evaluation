@@ -28,6 +28,19 @@
 			updateApiKeySubmit();
 		}
 
+		var manualRows = document.getElementById('swimlog-manual-set-rows');
+		var addManualRow = document.getElementById('swimlog-add-set-row');
+		if (manualRows && addManualRow) {
+			addManualRow.addEventListener('click', function () {
+				var rows = manualRows.querySelectorAll('.swimlog-manual-set-row');
+				var clone = rows[rows.length - 1].cloneNode(true);
+				clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+				clone.querySelectorAll('select').forEach(function (select) { select.selectedIndex = 0; });
+				clone.querySelector('.swimlog-set-number').textContent = String(rows.length + 1);
+				manualRows.appendChild(clone);
+			});
+		}
+
 		var form = document.getElementById('swimlog-garmin-batch-form');
 		if (!form) {
 			return;
