@@ -239,6 +239,28 @@ final class Workout {
 	}
 
 
+	/** Return up to three WordPress Media attachment IDs owned by a workout. */
+	public static function photos( $workout_id, $user_id ) {
+		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
+		$ids = get_user_meta( $user_id, '_swimlog_workout_photos_' . absint( $workout_id ), true );
+		$ids = is_array( $ids ) ? array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) ) : array();
+		return array_slice( $ids, 0, 3 );
+	}
+
+	/** Replace the complete ordered photo set for a workout. */
+	public static function set_photos( $workout_id, $user_id, $attachment_ids ) {
+		if ( ! self::get_for_user( $workout_id, $user_id ) ) return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $attachment_ids ) ) ) );
+		if ( count( $ids ) > 3 ) return new \WP_Error( 'swimlog_workout_photo_limit', __( 'A workout may have no more than three photos.', 'chriss-swim-training-progress-evaluation' ) );
+		foreach ( $ids as $id ) {
+			if ( 'attachment' !== get_post_type( $id ) || 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be image attachments.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$key = '_swimlog_workout_photos_' . absint( $workout_id );
+		if ( $ids ) update_user_meta( $user_id, $key, $ids ); else delete_user_meta( $user_id, $key );
+		return true;
+	}
+
+
 	public static function update_metadata( $workout_id, $user_id, $location_id, $notes ) {
 		global $wpdb;
 		$workout_id = absint( $workout_id );
@@ -296,6 +318,7 @@ final class Workout {
 		$performances = Database::table( 'performances' );
 		$workouts = Database::table( 'workouts' );
 		$source_paths = $wpdb->get_col( $wpdb->prepare( "SELECT stored_path FROM $imports WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $workout_id, $user_id ) );
+		$photo_ids = self::photos( $workout_id, $user_id );
 
 		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
 			return new \WP_Error( 'swimlog_workout_delete_start', __( 'The workout deletion could not be started.', 'chriss-swim-training-progress-evaluation' ) );
@@ -314,6 +337,9 @@ final class Workout {
 			$wpdb->query( 'ROLLBACK' );
 			return new \WP_Error( 'swimlog_workout_delete', __( 'The workout could not be deleted. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ) );
 		}
+
+		delete_user_meta( $user_id, '_swimlog_workout_photos_' . $workout_id );
+		foreach ( $photo_ids as $photo_id ) wp_delete_attachment( $photo_id, true );
 
 		$source_delete_failures = array();
 		foreach ( array_unique( array_filter( $source_paths ) ) as $source_path ) {
