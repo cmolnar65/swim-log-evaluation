@@ -50,7 +50,7 @@ final class Importer {
 		$now=current_time('mysql');
 		if($match_info['status']==='disagreement')return new \WP_Error('swimlog_source_disagreement',__('A nearby existing workout has incompatible course or pool-length information. Import stopped for explicit review rather than attaching or creating a duplicate.','chriss-swim-training-progress-evaluation'));
 
-		$upload=self::preserve_source($user_id,$ext,$tmp_path,$preserve_filename);
+		$archive_name=preg_match('/\.(?:gz|zip)$/i',$name)?$name:'';$storage_name=$preserve_filename!==''?$preserve_filename:$archive_name;$upload=self::preserve_source($user_id,$ext,$tmp_path,$storage_name);
 		if(is_wp_error($upload))return$upload;
 		$identity=array('source_provider'=>$provider!==''?$provider:null,'external_activity_id'=>$external!==''?$external:null);
 		if($match_info['status']==='probable'){
@@ -326,7 +326,7 @@ final class Importer {
 	private static function preserve_source($uid,$ext,$tmp,$preserve_filename=''){
 		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$fs=self::filesystem();if(is_wp_error($fs))return$fs;
 		$filename=$preserve_filename!==''?basename($preserve_filename):'swimlog-'.absint($uid).'-'.wp_generate_uuid4().'.'.$ext;$path=trailingslashit($dir).$filename;
-		if($preserve_filename!==''&&$fs->exists($path))return new \WP_Error('swimlog_store_collision',__('A protected workout source file with this Garmin filename already exists. Import stopped without overwriting it.','chriss-swim-training-progress-evaluation'));
+		if($preserve_filename!==''&&$fs->exists($path))return new \WP_Error('swimlog_store_collision',__('A protected workout source file with this filename already exists. Import stopped without overwriting it.','chriss-swim-training-progress-evaluation'));
 		if(!$fs->copy($tmp,$path,false,0640))return new \WP_Error('swimlog_store',__('The original workout file could not be preserved in protected storage.','chriss-swim-training-progress-evaluation'));$fs->chmod($path,0640);return array('file'=>$path,'url'=>'','error'=>false);
 	}
 	private static function filesystem(){
