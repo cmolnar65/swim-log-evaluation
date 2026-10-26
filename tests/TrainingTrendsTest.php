@@ -60,6 +60,22 @@ final class TrainingTrendsTest extends TestCase {
 		$this->assertSame( 1, $data['current']['open_water_workouts'] );
 	}
 
+	public function test_reusable_workout_summary_matches_training_trend_metric_definitions() {
+		$summary = Training_Trends::summarize_workouts(
+			array(
+				$this->workout( array( 'total_distance_m' => 2000, 'moving_time_ms' => 3000000, 'elapsed_time_ms' => 3600000 ) ),
+				$this->workout( array( 'id' => 2, 'workout_type' => 'open_water', 'total_distance_m' => 3000, 'moving_time_ms' => 0, 'elapsed_time_ms' => 4000000 ) ),
+			)
+		);
+		$this->assertSame( 2, $summary['workout_count'] );
+		$this->assertSame( 5000.0, $summary['distance_m'] );
+		$this->assertSame( 7000000, $summary['active_time_ms'] );
+		$this->assertSame( 2000.0, $summary['pool_distance_m'] );
+		$this->assertSame( 3000.0, $summary['open_water_distance_m'] );
+		$this->assertSame( 1, $summary['pool_workouts'] );
+		$this->assertSame( 1, $summary['open_water_workouts'] );
+	}
+
 	public function test_previous_equal_period_is_kept_out_of_current_trends() {
 		$data = Training_Trends::aggregate_rows(
 			array(

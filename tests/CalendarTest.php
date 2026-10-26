@@ -135,6 +135,52 @@ final class CalendarTest extends TestCase {
 		$swimlog_test_user_meta = array();
 	}
 
+	public function test_weekly_summaries_use_shared_recorded_metric_rules() {
+		$workouts = array(
+			$this->workout( array( 'id' => 1, 'workout_start' => '2026-10-04 06:00:00', 'total_distance_m' => 2000, 'moving_time_ms' => 3000000, 'elapsed_time_ms' => 3600000 ) ),
+			$this->workout( array( 'id' => 2, 'workout_start' => '2026-10-05 06:00:00', 'workout_type' => 'open_water', 'total_distance_m' => 3000, 'moving_time_ms' => 0, 'elapsed_time_ms' => 4000000 ) ),
+		);
+		$data = Calendar::assemble_rows( $this->range(), $workouts, array(), 'sunday' );
+		$this->assertSame( 'sunday', $data['range']['first_day'] );
+		$this->assertCount( 5, $data['weeks'] );
+		$this->assertSame( '2026-10-04', $data['weeks'][1]['start'] );
+		$this->assertSame( '2026-10-10', $data['weeks'][1]['end'] );
+		$this->assertSame( 2, $data['weeks'][1]['workout_count'] );
+		$this->assertSame( 5000.0, $data['weeks'][1]['distance_m'] );
+		$this->assertSame( 7000000, $data['weeks'][1]['active_time_ms'] );
+		$this->assertSame( 2000.0, $data['weeks'][1]['pool_distance_m'] );
+		$this->assertSame( 3000.0, $data['weeks'][1]['open_water_distance_m'] );
+		$this->assertSame( 'recorded/normalized', $data['metric_metadata']['distance_m']['provenance'] );
+		$this->assertSame( 'moving time when present, otherwise elapsed time', $data['metric_metadata']['active_time_ms']['source'] );
+		$this->assertArrayNotHasKey( 'workouts_per_week', $data['weeks'][1] );
+	}
+
+	public function test_week_boundaries_honor_saturday_sunday_and_monday_preferences() {
+		$workouts = array(
+			$this->workout( array( 'id' => 1, 'workout_start' => '2026-10-03 06:00:00', 'total_distance_m' => 1000 ) ),
+			$this->workout( array( 'id' => 2, 'workout_start' => '2026-10-04 06:00:00', 'total_distance_m' => 2000 ) ),
+			$this->workout( array( 'id' => 3, 'workout_start' => '2026-10-05 06:00:00', 'total_distance_m' => 3000 ) ),
+		);
+		$saturday = Calendar::weekly_summaries( $this->range(), $workouts, 'saturday' );
+		$sunday = Calendar::weekly_summaries( $this->range(), $workouts, 'sunday' );
+		$monday = Calendar::weekly_summaries( $this->range(), $workouts, 'monday' );
+		$this->assertSame( 6000.0, $saturday[1]['distance_m'] );
+		$this->assertSame( 5000.0, $sunday[1]['distance_m'] );
+		$this->assertSame( 3000.0, $monday[1]['distance_m'] );
+	}
+
+	public function test_weekly_summaries_include_empty_calendar_weeks_without_fabricated_metrics() {
+		$weeks = Calendar::weekly_summaries( $this->range(), array(), 'monday' );
+		$this->assertCount( 5, $weeks );
+		foreach ( $weeks as $week ) {
+			$this->assertSame( 0, $week['workout_count'] );
+			$this->assertSame( 0.0, $week['distance_m'] );
+			$this->assertSame( 0, $week['active_time_ms'] );
+			$this->assertSame( 0.0, $week['pool_distance_m'] );
+			$this->assertSame( 0.0, $week['open_water_distance_m'] );
+		}
+	}
+
 	public function test_range_queries_are_owner_scoped_and_use_half_open_indexable_boundaries() {
 		$workout = file_get_contents( dirname( __DIR__ ) . '/includes/class-workout.php' );
 		$event = file_get_contents( dirname( __DIR__ ) . '/includes/class-event.php' );

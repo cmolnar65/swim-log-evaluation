@@ -53,7 +53,7 @@ final class Calendar {
 			$range['end_exclusive']
 		);
 
-		return self::assemble_rows( $range, $workouts, $events );
+		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ) );
 	}
 
 	/**
@@ -62,7 +62,7 @@ final class Calendar {
 	 * Kept public so other plugin layers and focused regression tests can reuse
 	 * the exact same normalization without performing additional database reads.
 	 */
-	public static function assemble_rows( $range, $workouts, $events ) {
+	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday' ) {
 		$workout_rows = array();
 		foreach ( (array) $workouts as $workout ) {
 			$workout_rows[] = self::workout_row( $workout );
@@ -73,15 +73,90 @@ final class Calendar {
 			$event_rows[] = self::event_row( $event );
 		}
 
+		$first_day = self::normalize_first_day( $first_day );
 		return array(
 			'range' => array(
 				'start' => $range['start'],
 				'end' => $range['end'],
 				'timezone' => $range['timezone'],
+				'first_day' => $first_day,
 			),
 			'workouts' => $workout_rows,
 			'events' => $event_rows,
+			'weeks' => self::weekly_summaries( $range, $workouts, $first_day ),
+			'metric_metadata' => self::workout_metric_metadata(),
 		);
+	}
+
+	/**
+	 * Build consecutive week buckets for the requested range.
+	 *
+	 * Week boundaries honor the swimmer preference. Buckets may begin before or
+	 * end after the requested range so month/week presentation can use natural
+	 * calendar boundaries; only supplied workouts contribute to totals.
+	 */
+	public static function weekly_summaries( $range, $workouts, $first_day = 'sunday' ) {
+		$timezone = new \DateTimeZone( (string) $range['timezone'] );
+		$first_day = self::normalize_first_day( $first_day );
+		$range_start = self::parse_date( $range['start'], $timezone );
+		$range_end = self::parse_date( $range['end'], $timezone );
+		if ( ! $range_start || ! $range_end || $range_end < $range_start ) return array();
+
+		$week_start = self::week_start_for_date( $range_start, $first_day );
+		$last_week_start = self::week_start_for_date( $range_end, $first_day );
+		$buckets = array();
+		for ( $cursor = $week_start; $cursor <= $last_week_start; $cursor = $cursor->modify( '+7 days' ) ) {
+			$key = $cursor->format( 'Y-m-d' );
+			$buckets[ $key ] = array(
+				'start' => $key,
+				'end' => $cursor->modify( '+6 days' )->format( 'Y-m-d' ),
+				'rows' => array(),
+			);
+		}
+
+		foreach ( (array) $workouts as $workout ) {
+			$start = trim( (string) ( $workout->workout_start ?? '' ) );
+			if ( '' === $start ) continue;
+			$date = \DateTimeImmutable::createFromFormat( '!Y-m-d H:i:s', $start, $timezone );
+			if ( false === $date ) continue;
+			$key = self::week_start_for_date( $date, $first_day )->format( 'Y-m-d' );
+			if ( isset( $buckets[ $key ] ) ) $buckets[ $key ]['rows'][] = $workout;
+		}
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-trends.php';
+		$weeks = array();
+		foreach ( $buckets as $bucket ) {
+			$summary = Training_Trends::summarize_workouts( $bucket['rows'] );
+			$weeks[] = array(
+				'start' => $bucket['start'],
+				'end' => $bucket['end'],
+				'workout_count' => $summary['workout_count'],
+				'distance_m' => $summary['distance_m'],
+				'active_time_ms' => $summary['active_time_ms'],
+				'pool_distance_m' => $summary['pool_distance_m'],
+				'open_water_distance_m' => $summary['open_water_distance_m'],
+				'pool_workouts' => $summary['pool_workouts'],
+				'open_water_workouts' => $summary['open_water_workouts'],
+			);
+		}
+		return $weeks;
+	}
+
+	private static function workout_metric_metadata() {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-trends.php';
+		return Training_Trends::workout_metric_metadata();
+	}
+
+	private static function normalize_first_day( $first_day ) {
+		$first_day = sanitize_key( (string) $first_day );
+		return in_array( $first_day, array( 'saturday', 'sunday', 'monday' ), true ) ? $first_day : 'sunday';
+	}
+
+	private static function week_start_for_date( $date, $first_day ) {
+		$target = array( 'sunday' => 0, 'monday' => 1, 'saturday' => 6 )[ $first_day ];
+		$current = (int) $date->format( 'w' );
+		$days_back = ( $current - $target + 7 ) % 7;
+		return $date->modify( '-' . $days_back . ' days' )->setTime( 0, 0, 0 );
 	}
 
 	private static function normalize_range( $start, $end ) {
