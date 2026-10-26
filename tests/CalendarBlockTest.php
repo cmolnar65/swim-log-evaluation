@@ -178,6 +178,14 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)',$css);
   $this->assertStringContainsString('@media(forced-colors:active)',$css);
  }
+ public function test_post_v1_calendar_typography_handles_narrow_week_columns(){
+  $css=file_get_contents(dirname(__DIR__).'/assets/css/calendar.css');
+  $this->assertStringContainsString('font-size:clamp(.72rem,.78vw,.85em)',$css);
+  $this->assertStringContainsString('overflow-wrap:anywhere',$css);
+  $this->assertStringContainsString('@media(max-width:1000px) and (min-width:701px)',$css);
+  $this->assertStringContainsString('.swimlog-calendar-grid.is-week-view .swimlog-calendar-item{font-size:.72rem',$css);
+  $this->assertStringContainsString('@media(max-width:700px)',$css);
+ }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
