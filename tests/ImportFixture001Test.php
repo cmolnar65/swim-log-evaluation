@@ -130,10 +130,29 @@ final class ImportFixture001Test extends TestCase {
   $first=hash_file('sha256',$path);$second=hash_file('sha256',$path);
   $this->assertSame($first,$second);
   $this->assertSame(64,strlen($first));
-  // Importer duplicate protection is scoped to user_id + SHA-256 before parsing.
+  // Importer duplicate protection is scoped to user_id + SHA-256 before parsing, but failed attempts remain retryable.
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
-  $this->assertStringContainsString("SELECT id FROM \\$it WHERE user_id=%d AND file_hash=%s",$source);
+  $this->assertStringContainsString("SELECT id FROM \\$it WHERE user_id=%d AND file_hash=%s AND import_status<>'failed'",$source);
   $this->assertStringContainsString("swimlog_duplicate",$source);
+ }
+
+
+ public function test_failed_imports_do_not_block_file_or_external_activity_retry(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("file_hash=%s AND import_status<>'failed'",$source);
+  $this->assertStringContainsString("external_activity_id=%s AND import_status<>'failed'",$source);
+  $this->assertStringContainsString("'import_status'=>'failed'",$source);
+ }
+
+
+ public function test_failed_retry_reuses_preserved_source_and_unique_import_row(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("import_status='failed'",$source);
+  $this->assertStringContainsString('preserved_retry_source_is_valid($failed_retry,$hash)',$source);
+  $this->assertStringContainsString("\$upload=array('file'=>\$failed_retry->stored_path",$source);
+  $this->assertStringContainsString("\$import_id=(int)\$failed_retry->id",$source);
+  $this->assertStringContainsString("\$wpdb->update(\$it,\$row,array('id'=>\$import_id,'user_id'=>\$user_id))",$source);
+  $this->assertStringContainsString("hash_equals((string)\$hash,(string)\$stored_hash)",$source);
  }
 
  public function test_september_18_fit_is_clearly_different_from_september_19(){
@@ -220,6 +239,20 @@ final class ImportFixture001Test extends TestCase {
   $this->assertStringContainsString("cleanup_unowned_source",$source);
   $this->assertStringContainsString('if(!$failure_saved)self::cleanup_unowned_source',$source);
   $this->assertStringContainsString('if(!$ok){self::cleanup_unowned_source',$source);
+ }
+
+
+ public function test_import_initializes_workouts_table_before_authority_update(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $method_start=strpos($source,'private static function import_file');
+  $method_end=strpos($source,'public static function validate',$method_start);
+  $this->assertNotFalse($method_start);$this->assertNotFalse($method_end);
+  $method=substr($source,$method_start,$method_end-$method_start);
+  $table_init=strpos($method,"\$wt=Database::table('workouts')");
+  $authority_update=strpos($method,"\$wpdb->update(\$wt,array('authoritative_import_id'=>\$import_id)");
+  $this->assertNotFalse($table_init,'import_file() must initialize the workouts table name.');
+  $this->assertNotFalse($authority_update,'The authoritative import update must target the initialized workouts table.');
+  $this->assertLessThan($authority_update,$table_init,'The workouts table must be initialized before it is used.');
  }
 
  public function test_fit_device_metadata_is_not_generic_placeholder(){

@@ -36,9 +36,10 @@ final class Importer {
 		$user_id=absint($user_id);$location_id=absint($location_id);$source_meta=(array)$source_meta;
 		$provider=trim((string)($source_meta['source_provider']??''));$external=trim((string)($source_meta['external_activity_id']??''));$preserve_filename=(string)($source_meta['preserve_filename']??'');
 		$hash=hash_file('sha256',$tmp_path);if(false===$hash)return new \WP_Error('swimlog_hash',__('The workout file fingerprint could not be calculated.','chriss-swim-training-progress-evaluation'));
-		$it=Database::table('imports');
-		if($wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s",$user_id,$hash)))return new \WP_Error('swimlog_duplicate',__('This exact file has already been imported.','chriss-swim-training-progress-evaluation'));
-		if($provider!==''&&$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s",$user_id,$provider,$external)))return new \WP_Error('swimlog_external_duplicate',__('This external activity has already been imported.','chriss-swim-training-progress-evaluation'));
+		$it=Database::table('imports');$wt=Database::table('workouts');
+		$failed_retry=$wpdb->get_row($wpdb->prepare("SELECT * FROM $it WHERE user_id=%d AND file_hash=%s AND import_status='failed'",$user_id,$hash));
+		if($wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND file_hash=%s AND import_status<>'failed'",$user_id,$hash)))return new \WP_Error('swimlog_duplicate',__('This exact file has already been imported.','chriss-swim-training-progress-evaluation'));
+		if($provider!==''&&$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s AND import_status<>'failed'",$user_id,$provider,$external)))return new \WP_Error('swimlog_external_duplicate',__('This external activity has already been imported.','chriss-swim-training-progress-evaluation'));
 		if($location_id&&!Location::get_for_user($location_id,$user_id))return new \WP_Error('swimlog_location',__('Select one of your own locations.','chriss-swim-training-progress-evaluation'));
 
 		$parsed=self::parse_source($ext,$tmp_path);if(is_wp_error($parsed))return $parsed;
@@ -50,8 +51,9 @@ final class Importer {
 		$now=current_time('mysql');
 		if($match_info['status']==='disagreement')return new \WP_Error('swimlog_source_disagreement',__('A nearby existing workout has incompatible course or pool-length information. Import stopped for explicit review rather than attaching or creating a duplicate.','chriss-swim-training-progress-evaluation'));
 
-		$archive_name=preg_match('/\.(?:gz|zip)$/i',$name)?$name:'';$storage_name=$preserve_filename!==''?$preserve_filename:$archive_name;$upload=self::preserve_source($user_id,$ext,$tmp_path,$storage_name);
-		if(is_wp_error($upload))return$upload;
+		$archive_name=preg_match('/\.(?:gz|zip)$/i',$name)?$name:'';$storage_name=$preserve_filename!==''?$preserve_filename:$archive_name;
+		if($failed_retry&&self::preserved_retry_source_is_valid($failed_retry,$hash))$upload=array('file'=>$failed_retry->stored_path,'url'=>'','error'=>false);
+		else{$upload=self::preserve_source($user_id,$ext,$tmp_path,$storage_name);if(is_wp_error($upload))return$upload;}
 		$identity=array('source_provider'=>$provider!==''?$provider:null,'external_activity_id'=>$external!==''?$external:null);
 		if($match_info['status']==='probable'){
 			$row=array_merge(array('user_id'=>$user_id,'workout_id'=>(int)$match_info['workout']->id,'source_type'=>$ext,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parsed['parser_version'],'import_status'=>'pending','error_message'=>null,'imported_at'=>$now,'updated_at'=>$now),$identity);
@@ -62,8 +64,9 @@ final class Importer {
 		}
 		$wpdb->query('START TRANSACTION');$import_id=0;
 		try{
-			$row=array_merge(array('user_id'=>$user_id,'workout_id'=>null,'source_type'=>$ext,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parsed['parser_version'],'import_status'=>'processing','imported_at'=>$now,'updated_at'=>$now),$identity);
-			$wpdb->insert($it,$row);$import_id=(int)$wpdb->insert_id;if(!$import_id)throw new \Exception('import row');
+			$row=array_merge(array('user_id'=>$user_id,'workout_id'=>null,'source_type'=>$ext,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parsed['parser_version'],'import_status'=>'processing','error_message'=>null,'imported_at'=>$now,'updated_at'=>$now),$identity);
+			if($failed_retry){$import_id=(int)$failed_retry->id;if(false===$wpdb->update($it,$row,array('id'=>$import_id,'user_id'=>$user_id)))throw new \Exception('import retry row');}
+			else{$wpdb->insert($it,$row);$import_id=(int)$wpdb->insert_id;if(!$import_id)throw new \Exception('import row');}
 			$match=$match_info['status']==='exact'?$match_info['workout']:null;$workout_id=$match?(int)$match->id:self::insert_workout($user_id,$location_id,$parsed['workout']);
 			if(!$workout_id)throw new \Exception('workout');
 			$has_fit=(bool)$wpdb->get_var($wpdb->prepare("SELECT id FROM $it WHERE workout_id=%d AND source_type='fit' AND import_status='complete'",$workout_id));$became_authority=false;
@@ -197,7 +200,7 @@ final class Importer {
 		foreach($sources as$row){
 			if(!in_array($row->source_type,array('fit','csv','gpx','tcx'),true))continue;
 			if(!$row->stored_path||!is_file($row->stored_path))return new \WP_Error('swimlog_source_missing',__('A preserved source file required for this rebuild could not be found. No workout data was changed.','chriss-swim-training-progress-evaluation'));
-			$parser=self::parser_for_source($row->source_type);if(is_wp_error($parser))return$parser;$parsed=in_array($row->source_type,array('gpx','tcx'),true)?$parser->parse($row->stored_path,$row->source_type):$parser->parse($row->stored_path);
+			$parsed=self::parse_source($row->source_type,$row->stored_path);
 			if(is_wp_error($parsed))return new \WP_Error('swimlog_rebuild_parse',sprintf(/* translators: 1: source format, 2: parsing detail. */ __('A preserved %1$s source could not be reparsed: %2$s No workout data was changed.','chriss-swim-training-progress-evaluation'),strtoupper($row->source_type),$parsed->get_error_message()));
 			$valid=self::validate($parsed);if(is_wp_error($valid))return $valid;$parsed_sources[]=array('row'=>$row,'parsed'=>$parsed);
 		}
@@ -283,7 +286,13 @@ final class Importer {
 		return array('path'=>$tmp,'temporary'=>true);
 	}
 	private static function cleanup_prepared_source($prepared){if(!empty($prepared['temporary'])&&!empty($prepared['path']))wp_delete_file($prepared['path']);}
-	private static function parser_for_source($source){$source=strtolower((string)$source);if('fit'===$source)return new FIT_Importer();if('csv'===$source)return new CSV_Importer();if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));}
+	private static function parser_for_source($source){
+		$source=strtolower((string)$source);
+		if('fit'===$source){require_once SWIMLOG_EVALUATION_DIR.'includes/class-fit-importer.php';return new FIT_Importer();}
+		if('csv'===$source){require_once SWIMLOG_EVALUATION_DIR.'includes/class-csv-importer.php';return new CSV_Importer();}
+		if(in_array($source,array('gpx','tcx'),true)){require_once SWIMLOG_EVALUATION_DIR.'includes/class-xml-importer.php';return new XML_Importer();}
+		return new \WP_Error('swimlog_parser',__('Unsupported preserved workout source type.','chriss-swim-training-progress-evaluation'));
+	}
 	public static function location_from_open_water_track($uid,$parsed,$max_m=500.0){foreach((array)($parsed['trackpoints']??array())as$p){if(!isset($p['latitude'],$p['longitude'])||null===$p['latitude']||null===$p['longitude'])continue;$match=Location::nearest_for_user($uid,(float)$p['latitude'],(float)$p['longitude'],$max_m);return$match?(int)$match['location']->id:0;}return 0;}
 	private static function location_from_csv($uid,$parsed){$name=trim((string)($parsed['metadata']['_form_location']??''));if($name==='')return 0;foreach(Location::all_for_user($uid) as $loc){if(strcasecmp(trim((string)$loc->name),$name)===0)return(int)$loc->id;}return 0;}
 	private static function is_form_fit($parsed,$filename=''){$w=(array)($parsed['workout']??array());$identity=strtolower(trim((string)($w['device_manufacturer']??'')).' '.trim((string)($w['device_model']??'')));if(strpos($identity,'form swim')!==false||preg_match('/(^|[^a-z])form([^a-z]|$)/',$identity))return true;return(bool)preg_match('/^FORM[_-].*\\.fit$/i',basename((string)$filename));}
@@ -322,6 +331,10 @@ final class Importer {
 		$root=rtrim(wp_normalize_path($docroot),'/').'/';$candidate=wp_normalize_path($dir);
 		$existing=realpath($dir);if($existing)$candidate=wp_normalize_path($existing);
 		$candidate=rtrim($candidate,'/').'/';return strpos($candidate,$root)!==0;
+	}
+	private static function preserved_retry_source_is_valid($row,$hash){
+		$path=(string)($row->stored_path??'');if($path===''||!is_file($path))return false;
+		$stored_hash=hash_file('sha256',$path);return false!==$stored_hash&&hash_equals((string)$hash,(string)$stored_hash);
 	}
 	private static function preserve_source($uid,$ext,$tmp,$preserve_filename=''){
 		$dir=self::source_directory();if(is_wp_error($dir))return$dir;$fs=self::filesystem();if(is_wp_error($fs))return$fs;

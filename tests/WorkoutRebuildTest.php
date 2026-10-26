@@ -13,6 +13,15 @@ final class WorkoutRebuildTest extends TestCase {
   $this->assertStringContainsString('self::replace_structure($workout_id,$authority[\'parsed\'])',$code);
   $this->assertStringContainsString('Evaluator::evaluate_workout($workout_id,$uid)',$code);
  }
+
+ public function test_rebuild_uses_archive_aware_parser_and_parser_loads_dependencies(){
+  $code=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString('self::parse_source($row->source_type,$row->stored_path)',$code);
+  $this->assertStringContainsString("require_once SWIMLOG_EVALUATION_DIR.'includes/class-fit-importer.php';return new FIT_Importer()",$code);
+  $this->assertStringContainsString("require_once SWIMLOG_EVALUATION_DIR.'includes/class-csv-importer.php';return new CSV_Importer()",$code);
+  $this->assertStringNotContainsString('$parser->parse($row->stored_path)',$code);
+ }
+
  public function test_admin_rebuild_requires_nonce_and_preserves_delete_as_separate_action(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   $this->assertStringContainsString("check_admin_referer( 'swimlog_rebuild_workout_' . \$detail )",$code);
