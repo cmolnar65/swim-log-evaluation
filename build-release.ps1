@@ -1,11 +1,15 @@
 param(
-    [string]$Output = "../chriss-swim-training-progress-evaluation.zip"
+    [string]$Output = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $PluginSlug = "chriss-swim-training-progress-evaluation"
 $RepoRoot = (Resolve-Path $PSScriptRoot).Path
+$BuildDir = Join-Path $RepoRoot "build"
+if ([string]::IsNullOrWhiteSpace($Output)) {
+    $Output = Join-Path $BuildDir "chriss-swim-training-progress-evaluation.zip"
+}
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("swimlog-release-" + [guid]::NewGuid().ToString("N"))
 $StageDir = Join-Path $TempRoot $PluginSlug
 $OutputPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $Output))
@@ -21,7 +25,8 @@ $ExcludeTopLevel = @(
     "build-release.ps1",
     "build-release.sh",
     "PLUGIN-CHECK.md",
-    "wordpress-org-assets"
+    "wordpress-org-assets",
+    "build"
 )
 
 try {
