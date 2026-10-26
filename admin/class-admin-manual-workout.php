@@ -3,26 +3,14 @@ namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ui.php';
+
 /** Manual pool workout administration and form processing. */
 final class Admin_Manual_Workout {
 
 	private static $manual_workout_action_error = null;
 
-	private static function selected_user_id() {
-		$uid = get_current_user_id();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin swimmer selector; no state is changed.
-		if ( current_user_can( 'swimlog_manage_all_users' ) && ! empty( $_GET['swimmer_id'] ) ) {
-			$requested = absint( wp_unslash( $_GET['swimmer_id'] ) );
-			if ( $requested && get_userdata( $requested ) ) $uid = $requested;
-		}
-		return $uid;
-	}
 
-	private static function swimmer_selector( $user_id, $page ) {
-		if ( ! current_user_can( 'swimlog_manage_all_users' ) ) return;
-		$users = get_users( array( 'fields' => array( 'ID', 'display_name' ), 'orderby' => 'display_name' ) );
-		?><form method="get" class="swimlog-swimmer-selector"><input type="hidden" name="page" value="<?php echo esc_attr( $page ); ?>"><label for="swimlog-swimmer"><?php esc_html_e( 'Swimmer', 'chriss-swim-training-progress-evaluation' ); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach ( $users as $u ) : ?><option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $user_id, $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option><?php endforeach; ?></select> <?php submit_button( __( 'View', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?></form><?php
-	}
 
 	public static function handle_manual_workout_actions() {
 		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
@@ -33,7 +21,7 @@ final class Admin_Manual_Workout {
 		check_admin_referer( 'update' === $action ? 'swimlog_update_manual_workout_' . $workout_id : 'swimlog_create_manual_workout' );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-manual-workout.php';
-		$user_id = self::selected_user_id();
+		$user_id = Admin_UI::selected_user_id();
 		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? '' ) );
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
 		$duration_minutes = isset( $_POST['duration_minutes'] ) && '' !== trim( (string) wp_unslash( $_POST['duration_minutes'] ) ) ? (float) wp_unslash( $_POST['duration_minutes'] ) : null;
@@ -106,11 +94,11 @@ final class Admin_Manual_Workout {
 	public static function manual_workout() {
 		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'You do not have permission to manage workouts.', 'chriss-swim-training-progress-evaluation' ) );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php'; require_once SWIMLOG_EVALUATION_DIR . 'includes/class-location.php'; require_once SWIMLOG_EVALUATION_DIR . 'includes/class-manual-workout.php';
-		$user_id = self::selected_user_id(); $locations = Location::all_for_user( $user_id ); $error = self::$manual_workout_action_error;
+		$user_id = Admin_UI::selected_user_id(); $locations = Location::all_for_user( $user_id ); $error = self::$manual_workout_action_error;
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only manual workout selector; ownership is enforced by Manual_Workout::get_document().
 		$workout_id = absint( wp_unslash( $_GET['workout_id'] ?? 0 ) ); $editing = $workout_id > 0; $source = null;
 		if ( $editing ) { $source = Manual_Workout::get_document( $workout_id, $user_id ); if ( is_wp_error( $source ) ) wp_die( esc_html( $source->get_error_message() ) ); }
-		self::swimmer_selector( $user_id, 'swimlog-manual-workout' );
+		Admin_UI::swimmer_selector( $user_id, 'swimlog-manual-workout' );
 		$workout = $source['workout'] ?? array(); $segments = $source['segments'] ?? array(); $start_value = (string) ( $workout['workout_start'] ?? '' );
 		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? ( $start_value ? substr( $start_value, 0, 10 ) : wp_date( 'Y-m-d' ) ) ) );
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? ( $start_value && '12:00:00' !== substr( $start_value, 11, 8 ) ? substr( $start_value, 11, 5 ) : '' ) ) );
