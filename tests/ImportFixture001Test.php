@@ -144,6 +144,17 @@ final class ImportFixture001Test extends TestCase {
   $this->assertStringContainsString("'import_status'=>'failed'",$source);
  }
 
+
+ public function test_failed_retry_reuses_preserved_source_and_unique_import_row(){
+  $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
+  $this->assertStringContainsString("import_status='failed'",$source);
+  $this->assertStringContainsString('preserved_retry_source_is_valid($failed_retry,$hash)',$source);
+  $this->assertStringContainsString("\$upload=array('file'=>\$failed_retry->stored_path",$source);
+  $this->assertStringContainsString("\$import_id=(int)\$failed_retry->id",$source);
+  $this->assertStringContainsString("\$wpdb->update(\$it,\$row,array('id'=>\$import_id,'user_id'=>\$user_id))",$source);
+  $this->assertStringContainsString("hash_equals((string)\$hash,(string)\$stored_hash)",$source);
+ }
+
  public function test_september_18_fit_is_clearly_different_from_september_19(){
   $other=getenv('SWIMLOG_DIFFERENT_FIT_FIXTURE');
   if(!$other||!is_file($other))$this->markTestSkipped('Set SWIMLOG_DIFFERENT_FIT_FIXTURE to the unchanged private FORM Sep 18 FIT.');
