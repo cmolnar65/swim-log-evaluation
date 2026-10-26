@@ -29,15 +29,16 @@ final class StrokeTrainingVolumeTest extends TestCase {
 
  public function test_training_volume_has_dedicated_admin_page(){
   $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $analytics=file_get_contents(dirname(__DIR__).'/admin/class-admin-analytics.php');
   $this->assertStringContainsString("'swimlog-training-volume', 'training_volume'",$code);
   $this->assertStringContainsString('public function training_volume()',$code);
-  $this->assertStringContainsString("swimmer_selector(\$user_id,'swimlog-training-volume')",$code);
-  $this->assertStringContainsString("Workout::stroke_volume_for_user(\$user_id,\$training_volume_months)",$code);
-  $this->assertStringNotContainsString("Workout::stroke_volume_for_user(\$user_id,\$filters)",$code);
-  $this->assertStringContainsString("\$stroke_volume_by_course=array('m'=>array(),'yd'=>array())",$code);
-  $this->assertStringContainsString('Meter and yard courses are kept separate and strokes are ranked by total distance.',$code);
-  $this->assertStringContainsString('Change the period on Swimmer Configuration.',$code);
-  $this->assertStringContainsString('Active swim time',$code);
+  $this->assertStringContainsString("swimmer_selector(\$user_id,'swimlog-training-volume')",$analytics);
+  $this->assertStringContainsString("Workout::stroke_volume_for_user(\$user_id,\$training_volume_months)",$analytics);
+  $this->assertStringNotContainsString("Workout::stroke_volume_for_user(\$user_id,\$filters)",$analytics);
+  $this->assertStringContainsString("\$stroke_volume_by_course=array('m'=>array(),'yd'=>array())",$analytics);
+  $this->assertStringContainsString('Meter and yard courses are kept separate and strokes are ranked by total distance.',$analytics);
+  $this->assertStringContainsString('Change the period on Swimmer Configuration.',$analytics);
+  $this->assertStringContainsString('Active swim time',$analytics);
  }
 
  public function test_workouts_page_no_longer_contains_training_volume_summary(){
