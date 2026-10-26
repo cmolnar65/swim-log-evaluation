@@ -29,24 +29,48 @@ final class Pool_Analytics {
 		$workouts = Database::table( 'workouts' );
 		$lengths = Database::table( 'lengths' );
 
-		$sql = "SELECT w.id workout_id,w.workout_start,w.pool_length_unit,w.original_pool_length,w.pool_length_m,
-				n.sequence_no,n.distance_m,n.elapsed_time_ms,n.stroke,n.stroke_count,n.length_type
-			FROM $workouts w
-			INNER JOIN $lengths n ON n.workout_id=w.id
-			WHERE w.user_id=%d
-				AND w.workout_type='pool'
-				AND w.pool_length_unit=%s
-				AND w.workout_start >= %s
-				AND w.workout_start <= %s
-				AND n.length_type='active'
-				AND n.distance_m>0";
-		$args = array( $user_id, $course, $start->format( 'Y-m-d H:i:s' ), $end->format( 'Y-m-d H:i:s' ) );
 		if ( '' !== $stroke ) {
-			$sql .= ' AND n.stroke=%s';
-			$args[] = $stroke;
+			$query = $wpdb->prepare(
+				"SELECT w.id workout_id,w.workout_start,w.pool_length_unit,w.original_pool_length,w.pool_length_m,
+					n.sequence_no,n.distance_m,n.elapsed_time_ms,n.stroke,n.stroke_count,n.length_type
+				FROM $workouts w
+				INNER JOIN $lengths n ON n.workout_id=w.id
+				WHERE w.user_id=%d
+					AND w.workout_type='pool'
+					AND w.pool_length_unit=%s
+					AND w.workout_start >= %s
+					AND w.workout_start <= %s
+					AND n.length_type='active'
+					AND n.distance_m>0
+					AND n.stroke=%s
+				ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",
+				$user_id,
+				$course,
+				$start->format( 'Y-m-d H:i:s' ),
+				$end->format( 'Y-m-d H:i:s' ),
+				$stroke
+			);
+		} else {
+			$query = $wpdb->prepare(
+				"SELECT w.id workout_id,w.workout_start,w.pool_length_unit,w.original_pool_length,w.pool_length_m,
+					n.sequence_no,n.distance_m,n.elapsed_time_ms,n.stroke,n.stroke_count,n.length_type
+				FROM $workouts w
+				INNER JOIN $lengths n ON n.workout_id=w.id
+				WHERE w.user_id=%d
+					AND w.workout_type='pool'
+					AND w.pool_length_unit=%s
+					AND w.workout_start >= %s
+					AND w.workout_start <= %s
+					AND n.length_type='active'
+					AND n.distance_m>0
+				ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",
+				$user_id,
+				$course,
+				$start->format( 'Y-m-d H:i:s' ),
+				$end->format( 'Y-m-d H:i:s' )
+			);
 		}
-		$sql .= ' ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC';
-		$rows = $wpdb->get_results( $wpdb->prepare( $sql, ...$args ) );
+		$rows = $wpdb->get_results( $query );
 
 		return array(
 			'filters' => array(
