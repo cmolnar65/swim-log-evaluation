@@ -13,7 +13,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $this->assertStringNotContainsString('v0.7 Block Editor support — in development',$github);
   $this->assertStringContainsString("Version: 0.7",$plugin);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '0.7'",$plugin);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.8'",$plugin);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$plugin);
   $this->assertStringContainsString('## Current release: v0.7',$github);
  }
  public function test_v07_docs_cover_release_features(){
