@@ -67,6 +67,9 @@ final class Planned_Workout {
 
 		$validated = self::validate( $data );
 		if ( is_wp_error( $validated ) ) return $validated;
+		if ( ! $id && $validated['planned_date'] < wp_date( 'Y-m-d', null, wp_timezone() ) ) {
+			return new \WP_Error( 'swimlog_planned_workout_past_date', __( 'New planned workouts must be scheduled for today or a future date.', 'chriss-swim-training-progress-evaluation' ) );
+		}
 
 		$table = Database::table( 'planned_workouts' );
 		$now = current_time( 'mysql' );
