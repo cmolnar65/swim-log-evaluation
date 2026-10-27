@@ -28,6 +28,7 @@ final class Plugin {
 		add_action( 'init', array( 'SwimLogEvaluation\\Blocks', 'register' ) );
 		add_action( 'wp_ajax_swimlog_calendar_plan', array( 'SwimLogEvaluation\\Blocks', 'calendar_plan_action' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_calendar_style' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'register_calendar_style' ) );
 		add_action( 'admin_init', array( $this, 'maybe_upgrade_schema' ) );
 	}
 

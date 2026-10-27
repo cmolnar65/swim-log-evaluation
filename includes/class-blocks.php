@@ -242,6 +242,11 @@ final class Blocks {
 
 	public static function render_calendar( $attributes ) {
 		$user_id = self::calendar_owner( $attributes );
+		return self::render_calendar_for_user( $user_id, $attributes );
+	}
+
+	/** Render the shared calendar for an explicitly authorized swimmer host such as wp-admin. */
+	public static function render_calendar_for_user( $user_id, $attributes = array() ) {
 		if ( ! self::calendar_allowed( $user_id ) ) {
 			return '<div class="swimlog-calendar swimlog-calendar-unavailable">' . esc_html__( 'Calendar unavailable.', 'chriss-swim-training-progress-evaluation' ) . '</div>';
 		}
@@ -305,6 +310,7 @@ final class Blocks {
 		$html .= '<div class="swimlog-calendar-toolbar">';
 		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
 		$html .= '<div class="swimlog-calendar-view-switch" aria-label="' . esc_attr__( 'Calendar view', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button is-active" data-calendar-view="month" aria-pressed="true">' . esc_html__( 'Month', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-view="week" aria-pressed="false">' . esc_html__( 'Week', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
+		$html .= '<div class="swimlog-calendar-jump"><label>' . esc_html__( 'Go to date', 'chriss-swim-training-progress-evaluation' ) . ' <input type="date" data-calendar-go-date></label><button type="button" class="swimlog-calendar-button" data-calendar-go>' . esc_html__( 'Go', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
 		$html .= '</div><h2 class="swimlog-calendar-title" id="swimlog-calendar-title-' . esc_attr( $user_id ) . '" tabindex="-1">' . esc_html( wp_date( 'F Y', $month->getTimestamp(), $month->getTimezone() ) ) . '</h2>';
 		$html .= '<div class="swimlog-calendar-status" role="status" aria-live="polite"></div>';
 		$html .= '<div class="swimlog-calendar-grid" role="grid" aria-labelledby="swimlog-calendar-title-' . esc_attr( $user_id ) . '">';

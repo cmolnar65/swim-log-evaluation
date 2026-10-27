@@ -234,6 +234,7 @@
 			var heading = document.createElement( 'span' ); heading.className = 'swimlog-calendar-date'; heading.textContent = date.toLocaleDateString( undefined, { weekday: 'short', month: 'short', day: 'numeric' } ); cell.appendChild( heading ); cell.appendChild( planDateButton( key ) );
 			( byDate[ key ] || [] ).forEach( function ( child ) { cell.appendChild( child ); } ); grid.appendChild( cell );
 		}
+		var duplicate = document.createElement( 'button' ); duplicate.type = 'button'; duplicate.className = 'swimlog-calendar-button swimlog-calendar-duplicate-week'; duplicate.dataset.calendarDuplicateWeek = dateKey( start ); duplicate.textContent = 'Duplicate Week'; grid.appendChild( duplicate );
 		var summary = ( data.weeks || [] )[0];
 		if ( summary ) {
 			var totals = document.createElement( 'div' ); totals.className = 'swimlog-calendar-week-summary';
@@ -241,6 +242,15 @@
 			grid.appendChild( totals );
 		}
 		renderAgenda( root, data, start, end );
+	}
+	function showDuplicateWeekEditor( root, sourceStart ) {
+		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
+		var heading = document.createElement( 'h3' ); heading.textContent = 'Duplicate Week'; panel.appendChild( heading );
+		var form = document.createElement( 'form' ); form.dataset.calendarDuplicateWeekForm = '1'; form.dataset.sourceStart = sourceStart;
+		var source = document.createElement( 'p' ); source.textContent = 'Source week begins ' + sourceStart + '.'; form.appendChild( source );
+		var target = planField( form, 'Target week begins', 'target_start', 'date', sourceStart ); target.required = true;
+		var submit = document.createElement( 'button' ); submit.type = 'submit'; submit.className = 'swimlog-calendar-button'; submit.textContent = 'Duplicate Week'; form.appendChild( submit );
+		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Cancel'; form.appendChild( close ); panel.appendChild( form );
 	}
 	function setViewButtons( root, viewName ) {
 		root.dataset.view = viewName;
@@ -275,7 +285,10 @@
 		} );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; event.preventDefault(); var data = new FormData( form ), payload = { plan_action: 'save', id: form.dataset.planId || 0 }; data.forEach( function ( value, key ) { payload[key] = value; } ); payload.planned_duration_ms = payload.planned_duration_minutes ? Math.round( Number( payload.planned_duration_minutes ) * 60000 ) : ''; delete payload.planned_duration_minutes; mutatePlan( root, payload ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-recurrence-form]' ); if ( ! form ) return; event.preventDefault(); var weekdays = Array.prototype.map.call( form.querySelectorAll( '[name="weekday"]:checked' ), function ( box ) { return box.value; } ); mutatePlan( root, { plan_action: 'recur', id: form.dataset.planId, weekdays: weekdays.join( ',' ), end_date: form.querySelector( '[name="end_date"]' ).value } ); } );
+		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-duplicate-week-form]' ); if ( ! form ) return; event.preventDefault(); mutatePlan( root, { plan_action: 'duplicate_week', source_start: form.dataset.sourceStart, target_start: form.querySelector( '[name="target_start"]' ).value } ); } );
 		root.addEventListener( 'click', function ( event ) {
+			var go = event.target.closest( '[data-calendar-go]' ); if ( go ) { var input = root.querySelector( '[data-calendar-go-date]' ); if ( ! input || ! input.value ) return; var selected = new Date( input.value + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) loadWeek( root, selected ); else loadMonth( root, new Date( selected.getFullYear(), selected.getMonth(), 1 ) ); return; }
+			var duplicateWeek = event.target.closest( '[data-calendar-duplicate-week]' ); if ( duplicateWeek ) { showDuplicateWeekEditor( root, duplicateWeek.dataset.calendarDuplicateWeek ); return; }
 			var dateButton = event.target.closest( '[data-calendar-plan-date]' ); if ( dateButton ) { showPlanEditor( root, dateButton.dataset.calendarPlanDate, null ); return; }
 			var planAction = event.target.closest( '[data-calendar-plan-action]' ); if ( planAction ) { var plan; try { plan = JSON.parse( planAction.dataset.plan || '{}' ); } catch ( error ) { return; } var action = planAction.dataset.calendarPlanAction; if ( action === 'edit' ) { showPlanEditor( root, plan.planned_date, plan ); return; } if ( action === 'repeat' ) { showRecurrenceEditor( root, plan ); return; } if ( action === 'match' ) { showCompletionCandidates( root, plan ); return; } if ( action === 'delete' && ! window.confirm( 'Delete this planned workout?' ) ) return; mutatePlan( root, { plan_action: action, id: plan.id, planned_date: plan.planned_date } ); return; }
 			var matchButton = event.target.closest( '[data-calendar-match-workout]' ); if ( matchButton ) { mutatePlan( root, { plan_action: 'associate', id: matchButton.dataset.planId, workout_id: matchButton.dataset.calendarMatchWorkout } ); return; }
