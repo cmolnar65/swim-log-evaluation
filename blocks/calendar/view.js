@@ -199,7 +199,7 @@
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = 'swimlog-calendar-plan-editor';
 		var heading = document.createElement( 'h3' ); heading.textContent = plan ? 'Edit Planned Workout' : 'Plan Workout'; panel.appendChild( heading );
 		var form = document.createElement( 'form' ); form.dataset.calendarPlanForm = '1'; form.dataset.planId = plan ? plan.id : '';
-		var planDate = planField( form, 'Date', 'planned_date', 'date', plan ? plan.planned_date : date ); if ( ! plan || plan.planned_date >= root.dataset.siteToday ) planDate.min = root.dataset.siteToday; planField( form, 'Start time', 'planned_start_time', 'time', plan && plan.planned_start_time ? String( plan.planned_start_time ).slice( 0, 5 ) : '' );
+		var planDate = planField( form, 'Date', 'planned_date', 'date', plan ? plan.planned_date : date ); if ( ! plan || plan.planned_date >= root.dataset.siteToday ) planDate.min = root.dataset.siteToday; planField( form, 'Start time (optional)', 'planned_start_time', 'time', plan && plan.planned_start_time ? String( plan.planned_start_time ).slice( 0, 5 ) : '' );
 		planField( form, 'Title', 'title', 'text', plan ? plan.title : '' ).required = true;
 		var typeLabel = document.createElement( 'label' ); typeLabel.className = 'swimlog-calendar-plan-field'; typeLabel.appendChild( document.createTextNode( 'Workout type' ) ); var select = document.createElement( 'select' ); select.name = 'workout_type'; [ [ 'pool', 'Pool Swim' ], [ 'open_water', 'Open Water' ] ].forEach( function ( option ) { var node = document.createElement( 'option' ); node.value = option[0]; node.textContent = option[1]; if ( plan && plan.workout_type === option[0] ) node.selected = true; select.appendChild( node ); } ); typeLabel.appendChild( select ); form.appendChild( typeLabel );
 		planField( form, 'Planned distance (m)', 'planned_distance_m', 'number', plan ? plan.planned_distance_m : '' ); planField( form, 'Planned duration (minutes)', 'planned_duration_minutes', 'number', plan && plan.planned_duration_ms ? Math.round( plan.planned_duration_ms / 60000 ) : '' );
@@ -207,6 +207,7 @@
 		var strokeLabel = document.createElement( 'label' ); strokeLabel.className = 'swimlog-calendar-plan-field'; strokeLabel.appendChild( document.createTextNode( 'Primary stroke' ) ); var stroke = document.createElement( 'select' ); stroke.name = 'primary_stroke'; [ [ '', 'Select stroke (optional)' ], [ 'FR', 'Freestyle' ], [ 'BACK', 'Backstroke' ], [ 'BR', 'Breaststroke' ], [ 'FLY', 'Butterfly' ], [ 'IM', 'Individual medley' ], [ 'MIXED', 'Mixed' ] ].forEach( function ( option ) { var choice = document.createElement( 'option' ); choice.value = option[0]; choice.textContent = option[1]; choice.selected = option[0] === ( plan && plan.primary_stroke || '' ); stroke.appendChild( choice ); } ); strokeLabel.appendChild( stroke ); form.appendChild( strokeLabel );
 		function updatePoolFields() { var isPool = select.value === 'pool'; form.querySelector( '[name="pool_length_m"]' ).disabled = ! isPool; course.disabled = ! isPool; } select.addEventListener( 'change', updatePoolFields ); updatePoolFields();
 		var instructions = planField( form, 'Workout Plan / Workout Instructions', 'workout_instructions', 'textarea', plan ? plan.workout_instructions : '' ); instructions.rows = 10;
+		var feedback = document.createElement( 'p' ); feedback.className = 'swimlog-calendar-plan-feedback'; feedback.setAttribute( 'role', 'status' ); feedback.setAttribute( 'aria-live', 'polite' ); form.appendChild( feedback );
 		var save = document.createElement( 'button' ); save.type = 'submit'; save.className = 'swimlog-calendar-button'; save.textContent = plan ? 'Update Planned Workout' : 'Add Planned Workout'; form.appendChild( save ); var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Cancel'; form.appendChild( close ); panel.appendChild( form ); panel.scrollIntoView( { block: 'nearest' } ); form.querySelector( '[name="title"]' ).focus();
 	}
 	function calendarPlanRequest( root, payload ) {
@@ -237,17 +238,19 @@
 		} ).catch( function ( error ) { status.textContent = error.message; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function mutatePlan( root, payload ) {
-		var settings = window.swimlogCalendarSettings || {}, status = root.querySelector( '.swimlog-calendar-status' );
-		if ( ! settings.ajaxUrl || ! settings.planNonce ) { status.textContent = 'Unable to save planned workout.'; return Promise.resolve(); }
+		var settings = window.swimlogCalendarSettings || {}, status = root.querySelector( '.swimlog-calendar-status' ), feedback = root.querySelector( '[data-calendar-plan-form] .swimlog-calendar-plan-feedback' );
+		function report( message ) { status.textContent = message; if ( feedback ) feedback.textContent = message; }
+		if ( ! settings.ajaxUrl || ! settings.planNonce ) { report( 'Unable to save planned workout.' ); return Promise.resolve(); }
+		if ( payload.plan_action === 'save' && !Number( payload.id || 0 ) && ( !root.dataset.siteToday || payload.planned_date < root.dataset.siteToday ) ) { report( 'New planned workouts must be scheduled for today or a future date.' ); return Promise.resolve(); }
 		payload.user = root.dataset.user || ''; payload.action = 'swimlog_calendar_plan'; payload.plan_action = payload.plan_action || payload.actionName || payload.action; delete payload.actionName;
 		// WordPress AJAX reserves "action" for dispatch; lifecycle action travels as plan_action.
 		payload.action = 'swimlog_calendar_plan';
 		var body = new URLSearchParams(); Object.keys( payload ).forEach( function ( key ) { body.append( key, payload[key] === null || payload[key] === undefined ? '' : payload[key] ); } ); body.append( 'nonce', settings.planNonce );
-		status.textContent = 'Saving planned workout…'; root.setAttribute( 'aria-busy', 'true' );
+		report( 'Saving planned workout…' ); root.setAttribute( 'aria-busy', 'true' );
 		return fetch( settings.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() } )
 			.then( function ( response ) { return response.json().then( function ( data ) { if ( ! response.ok || ! data.success ) throw new Error( data.data && data.data.message ? data.data.message : 'Unable to save planned workout.' ); return data; } ); } )
 			.then( function () { closeWorkoutDetail( root ); var focus = new Date( root.dataset.focusDate + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) return loadWeek( root, focus ); return loadMonth( root, new Date( focus.getFullYear(), focus.getMonth(), 1 ) ); } )
-			.catch( function ( error ) { status.textContent = error.message || 'Unable to save planned workout.'; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
+			.catch( function ( error ) { report( error.message || 'Unable to save planned workout.' ); } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function closeWorkoutDetail( root, restoreFocus ) {
 		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ), returnFocus = trigger || root._calendarReturnFocus;
