@@ -102,6 +102,26 @@ final class Planned_Workout {
 			: (int) $wpdb->insert_id;
 	}
 
+	/** Duplicate an owned plan as a new planned workout, optionally on another date. */
+	public static function duplicate( $id, $user_id, $planned_date = null ) {
+		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
+		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$data = array(
+			'planned_date' => null === $planned_date || '' === $planned_date ? $plan->planned_date : $planned_date,
+			'planned_start_time' => $plan->planned_start_time,
+			'title' => $plan->title,
+			'workout_type' => $plan->workout_type,
+			'planned_distance_m' => $plan->planned_distance_m,
+			'planned_duration_ms' => $plan->planned_duration_ms,
+			'pool_length_m' => $plan->pool_length_m,
+			'pool_course' => $plan->pool_course,
+			'primary_stroke' => $plan->primary_stroke,
+			'workout_instructions' => $plan->workout_instructions,
+			'notes' => $plan->notes,
+		);
+		return self::save( $user_id, $data );
+	}
+
 	/** Mark a plan planned, skipped, or cancelled. Completed requires an actual-workout association. */
 	public static function set_status( $id, $user_id, $status ) {
 		global $wpdb;

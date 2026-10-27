@@ -252,6 +252,7 @@ final class Blocks {
 		}
 		wp_enqueue_script( 'swimlog-calendar-view' );
 		$rest_url = rest_url( 'swimlog/v1/calendar' );
+		$manage_url = rest_url( 'swimlog/v1/calendar/planned-workouts' );
 		$html = '<section class="swimlog-calendar" data-swimlog-calendar="1" data-rest-url="' . esc_url( $rest_url ) . '" data-user="' . esc_attr( $user_id ) . '" data-year="' . esc_attr( $month->format( 'Y' ) ) . '" data-month="' . esc_attr( $month->format( 'n' ) ) . '" data-first-day="' . esc_attr( $first_day ) . '" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
 		$html .= '<div class="swimlog-calendar-toolbar">';
 		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
@@ -262,7 +263,7 @@ final class Blocks {
 		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
 		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {
 			$key = $date->format( 'Y-m-d' );$outside = $date->format( 'm' ) !== $month->format( 'm' );
-			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span>';
+			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span><button type="button" class="swimlog-calendar-plan-date" data-calendar-plan-date="' . esc_attr( $key ) . '">' . esc_html__( 'Plan workout', 'chriss-swim-training-progress-evaluation' ) . '</button>';
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';
 		}
