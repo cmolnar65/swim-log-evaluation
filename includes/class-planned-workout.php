@@ -23,6 +23,18 @@ final class Planned_Workout {
 		);
 	}
 
+	/** Return all plans owned by one swimmer, newest planned date first. */
+	public static function all_for_user( $user_id ) {
+		global $wpdb;
+		$table = Database::table( 'planned_workouts' );
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM $table WHERE user_id = %d ORDER BY planned_date DESC, CASE WHEN planned_start_time IS NULL THEN 1 ELSE 0 END ASC, planned_start_time ASC, id DESC",
+				absint( $user_id )
+			)
+		);
+	}
+
 	/** Return plans in a half-open date range, ordered deterministically for calendar use. */
 	public static function range_for_user( $user_id, $start, $end ) {
 		global $wpdb;

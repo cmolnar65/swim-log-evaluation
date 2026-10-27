@@ -26,6 +26,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Pool Analytics', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-pool-analytics', 'pool_analytics' );
 		$this->submenu( 'swimlog-dashboard', __( 'Upload Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_upload_workouts', 'swimlog-upload', 'upload' );
 		$this->submenu( 'swimlog-dashboard', __( 'Add Manual Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-manual-workout', 'manual_workout' );
+		$this->submenu( 'swimlog-dashboard', __( 'Planned Workouts', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-planned-workouts', 'planned_workouts' );
 		$this->submenu( 'swimlog-dashboard', __( 'Personal Bests', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-personal-bests', 'personal_bests' );
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
 		$this->submenu( 'swimlog-dashboard', __( 'Locations', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_locations', 'swimlog-locations', 'locations' );
@@ -108,6 +109,16 @@ final class Admin {
 	public function manual_workout() {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-manual-workout.php';
 		Admin_Manual_Workout::manual_workout();
+	}
+
+	public function handle_planned_workout_actions() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-planned-workouts.php';
+		Admin_Planned_Workouts::handle_actions();
+	}
+
+	public function planned_workouts() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-planned-workouts.php';
+		Admin_Planned_Workouts::page();
 	}
 
 	public function training_trends() {
