@@ -74,4 +74,19 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString("array( 'fit', 'csv' ) === \$allowed",$plugin);
   $this->assertStringContainsString("update_option( 'swimlog_allowed_upload_types', array( 'fit', 'csv', 'gpx', 'tcx' ) )",$plugin);
  }
+ public function test_plugin_bootstrap_loads_database_before_database_dependent_services(){
+  $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
+  $database=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';");
+  $planned=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';");
+  $admin=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';");
+  $blocks=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';");
+  $this->assertNotFalse($database);
+  $this->assertNotFalse($planned);
+  $this->assertNotFalse($admin);
+  $this->assertNotFalse($blocks);
+  $this->assertLessThan($planned,$database);
+  $this->assertLessThan($admin,$database);
+  $this->assertLessThan($blocks,$database);
+ }
+
 }

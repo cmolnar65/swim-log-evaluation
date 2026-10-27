@@ -6,6 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		// Database is a foundational dependency for workout, event, planned-workout,
+		// calendar, shortcode, block, and administration services. Load it before
+		// any of those services can be invoked through WordPress hooks or admin pages.
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
