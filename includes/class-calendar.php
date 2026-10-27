@@ -70,12 +70,6 @@ final class Calendar {
 	 */
 	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday', $planned_workouts = array() ) {
 		$workout_rows = array();
-		foreach ( (array) $planned_workouts as $plan ) {
-			$date = self::parse_date( (string) ( $plan->planned_date ?? '' ), $timezone ); if ( ! $date ) continue;
-			$key = self::week_start_for_date( $date, $first_day )->format( 'Y-m-d' );
-			if ( isset( $buckets[ $key ] ) ) $buckets[ $key ]['plans'][] = $plan;
-		}
-
 		foreach ( (array) $workouts as $workout ) {
 			$workout_rows[] = self::workout_row( $workout );
 		}
@@ -136,6 +130,13 @@ final class Calendar {
 				'rows' => array(),
 				'plans' => array(),
 			);
+		}
+
+		foreach ( (array) $planned_workouts as $plan ) {
+			$date = self::parse_date( (string) ( $plan->planned_date ?? '' ), $timezone );
+			if ( ! $date ) continue;
+			$key = self::week_start_for_date( $date, $first_day )->format( 'Y-m-d' );
+			if ( isset( $buckets[ $key ] ) ) $buckets[ $key ]['plans'][] = $plan;
 		}
 
 		foreach ( (array) $workouts as $workout ) {

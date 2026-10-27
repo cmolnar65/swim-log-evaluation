@@ -227,7 +227,7 @@
 		var summary = ( data.weeks || [] )[0];
 		if ( summary ) {
 			var totals = document.createElement( 'div' ); totals.className = 'swimlog-calendar-week-summary';
-			totals.textContent = summary.workout_count + ' recorded · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m actual · ' + ( summary.planned_workout_count || 0 ) + ' planned · ' + Math.round( summary.planned_distance_m || 0 ).toLocaleString() + ' m planned · ' + ( summary.completed_planned_workout_count || 0 ) + ' matched plans';
+			totals.textContent = summary.workout_count + ' recorded · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m actual · ' + duration( summary.active_time_ms || 0 ) + ' recorded time · ' + ( summary.planned_workout_count || 0 ) + ' planned · ' + Math.round( summary.planned_distance_m || 0 ).toLocaleString() + ' m planned · ' + ( summary.completed_planned_workout_count || 0 ) + ' matched plans';
 			grid.appendChild( totals );
 		}
 		renderAgenda( root, data, start, end );
