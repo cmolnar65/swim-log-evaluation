@@ -345,7 +345,7 @@ final class Blocks {
 			'pool_length_unit' => $workout['pool_length_unit'],
 			'primary_stroke' => $workout['primary_stroke'],
 		) );
-		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Recorded', 'chriss-swim-training-progress-evaluation' ) . '</span>' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_planned_workout_html( $plan ) {
@@ -354,12 +354,12 @@ final class Blocks {
 		if ( null !== $plan['planned_distance_m'] ) $parts[] = esc_html( number_format_i18n( $plan['planned_distance_m'], 0 ) . ' m' );
 		if ( null !== $plan['planned_duration_ms'] && $plan['planned_duration_ms'] > 0 ) $parts[] = esc_html( self::calendar_duration( $plan['planned_duration_ms'] ) );
 		$detail = wp_json_encode( $plan );
-		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-planned-workout status-' . esc_attr( $plan['status'] ) . '" data-calendar-planned-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-plan-' . esc_attr( $plan['id'] ) . '">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-planned-workout status-' . esc_attr( $plan['status'] ) . '" data-calendar-planned-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-plan-' . esc_attr( $plan['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Planned', 'chriss-swim-training-progress-evaluation' ) . '</span>' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_event_html( $event ) {
 		$name = '' !== trim( $event['event_name'] ) ? $event['event_name'] : __( 'Swim Event', 'chriss-swim-training-progress-evaluation' );
-		return '<div class="swimlog-calendar-item swimlog-calendar-event"><strong>' . esc_html( $name ) . '</strong></div>';
+		return '<div class="swimlog-calendar-item swimlog-calendar-event"><span class="swimlog-calendar-kind">' . esc_html__( 'Event', 'chriss-swim-training-progress-evaluation' ) . '</span><strong>' . esc_html( $name ) . '</strong></div>';
 	}
 
 	private static function calendar_duration( $milliseconds ) {

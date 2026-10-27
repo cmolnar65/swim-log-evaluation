@@ -19,3 +19,6 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 .swimlog-calendar-comparison{margin:.5rem 0 1rem}.swimlog-calendar-comparison dt{font-weight:600}.swimlog-calendar-comparison dd{margin:0 0 .5rem}
 
 .swimlog-calendar-jump{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}.swimlog-calendar-jump input{font:inherit}.swimlog-calendar-duplicate-week{grid-column:1/-1;justify-self:start;margin:.65rem}
+
+.swimlog-calendar-day{min-width:0}.swimlog-calendar-kind{display:inline-block;font-size:.68em;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 .35rem .2rem 0;padding:.08rem .25rem;border:1px solid currentColor;border-radius:2px}.swimlog-calendar-agenda-day-empty{margin:.25rem 0;font-size:.9em;opacity:.75}.swimlog-calendar-item{max-width:100%}.swimlog-calendar-plan-actions .swimlog-calendar-button,.swimlog-calendar-detail .swimlog-calendar-button{min-height:2.25rem}
+@media(max-width:700px){.swimlog-calendar-agenda-day{padding:.8rem 0}.swimlog-calendar-agenda-date{font-size:1.05em}.swimlog-calendar-plan-date{min-height:2.25rem;padding:.35rem .5rem}.swimlog-calendar-kind{font-size:.72em}}
