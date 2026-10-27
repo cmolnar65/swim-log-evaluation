@@ -97,6 +97,7 @@ final class Plugin {
 		$installed = get_option( 'swimlog_db_version', '0.0.0' );
 		if ( version_compare( $installed, SWIMLOG_EVALUATION_DB_VERSION, '>=' ) ) {
 			self::maybe_backfill_swolf();
+ self::maybe_backfill_equivalent_steps();
 			return;
 		}
 
@@ -105,6 +106,16 @@ final class Plugin {
 			self::migrate_upgrade_settings( $installed );
 			update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION );
 			self::maybe_backfill_swolf();
+ self::maybe_backfill_equivalent_steps();
 		}
 	}
+ private static function maybe_backfill_swolf() {
+ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swolf.php';
+ Swolf::backfill( 50 );
+ }
+ private static function maybe_backfill_equivalent_steps() {
+ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-equivalent-steps.php';
+ Equivalent_Steps::backfill( 50 );
+ }
+
 }

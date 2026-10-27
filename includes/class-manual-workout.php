@@ -192,6 +192,8 @@ final class Manual_Workout {
 		$normalized = self::normalize_document( $document );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swolf.php';
 		$normalized = Swolf::populate_parsed( $normalized );
+ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-equivalent-steps.php';
+ $normalized = Equivalent_Steps::populate_parsed( $normalized );
 		if ( is_wp_error( $normalized ) ) return $normalized;
 		$location_id = absint( $normalized['document']['workout']['location_id'] );
 		if ( $location_id && ! self::location_belongs_to_user( $location_id, $user_id ) ) return new \WP_Error( 'swimlog_manual_location', __( 'The selected location does not belong to this swimmer.', 'chriss-swim-training-progress-evaluation' ) );
