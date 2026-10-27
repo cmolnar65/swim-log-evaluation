@@ -242,7 +242,7 @@
 		function report( message ) { status.textContent = message; if ( feedback ) feedback.textContent = message; }
 		if ( ! settings.ajaxUrl || ! settings.planNonce ) { report( 'Unable to save planned workout.' ); return Promise.resolve(); }
 		if ( payload.plan_action === 'save' && !Number( payload.id || 0 ) && ( !root.dataset.siteToday || payload.planned_date < root.dataset.siteToday ) ) { report( 'New planned workouts must be scheduled for today or a future date.' ); return Promise.resolve(); }
-		payload.user = root.dataset.user || ''; payload.action = 'swimlog_calendar_plan'; payload.plan_action = payload.plan_action || payload.actionName || payload.action; delete payload.actionName;
+		payload.user = root.dataset.user || ''; payload.plan_action = payload.plan_action || payload.actionName || payload.action; delete payload.actionName;
 		// WordPress AJAX reserves "action" for dispatch; lifecycle action travels as plan_action.
 		payload.action = 'swimlog_calendar_plan';
 		var body = new URLSearchParams(); Object.keys( payload ).forEach( function ( key ) { body.append( key, payload[key] === null || payload[key] === undefined ? '' : payload[key] ); } ); body.append( 'nonce', settings.planNonce );
