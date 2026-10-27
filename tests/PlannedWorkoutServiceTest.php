@@ -78,7 +78,7 @@ final class PlannedWorkoutServiceTest extends TestCase {
 	public function test_phase_two_does_not_change_database_schema_or_version() {
 		$db = file_get_contents( dirname( __DIR__ ) . '/includes/class-database.php' );
 		$main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
-		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.0'", $main );
+		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.1'", $main );
 		$this->assertSame( 1, substr_count( $db, 'CREATE TABLE $planned_workouts' ) );
 	}
 }
