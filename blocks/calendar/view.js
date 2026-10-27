@@ -142,8 +142,33 @@
 		detailRow( list, 'Date', calendarEvent.event_date ); detailRow( list, 'Time', calendarEvent.event_time ); detailRow( list, 'Location', calendarEvent.location );
 		if ( calendarEvent.distance_value !== null && calendarEvent.distance_value !== undefined ) detailRow( list, 'Race distance', calendarEvent.distance_value + ' ' + ( calendarEvent.course_unit || '' ) );
 		detailRow( list, 'Stroke', strokeName( calendarEvent.stroke ) ); panel.appendChild( list );
+		var settings = window.swimlogCalendarSettings || {};
+		var form = document.createElement( 'form' ); form.dataset.calendarEventResultForm = '1'; form.dataset.eventId = calendarEvent.id;
+		var time = planField( form, 'Final time (MM:SS.ss)', 'result_time', 'text', '' );
+		var place = planField( form, 'Placement', 'placement', 'number', '' ); place.step = '1'; place.min = '1';
+		var notes = planField( form, 'Event notes', 'notes', 'textarea', '' );
+		var submit = document.createElement( 'button' ); submit.type = 'submit'; submit.className = 'swimlog-calendar-button'; submit.textContent = 'Save Event Results'; form.appendChild( submit );
+		var feedback = document.createElement( 'p' ); feedback.setAttribute( 'role', 'status' ); form.appendChild( feedback ); panel.appendChild( form );
+		if ( ! settings.ajaxUrl || ! settings.eventNonce ) { feedback.textContent = 'Event result editing is unavailable.'; submit.disabled = true; }
+		else {
+			feedback.textContent = 'Loading saved event results…';
+			requestEventResult( root, calendarEvent.id, 'read', {} ).then( function ( data ) {
+				if ( ! form.isConnected ) return;
+				time.value = data.result_time || ''; place.value = data.placement === null ? '' : data.placement; notes.value = data.notes || ''; feedback.textContent = '';
+			} ).catch( function ( error ) { if ( form.isConnected ) { feedback.textContent = error.message; submit.disabled = true; } } );
+		}
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close );
 		panel.scrollIntoView( { block: 'nearest' } ); close.focus();
+	}
+	function requestEventResult( root, id, operation, values ) {
+		var settings = window.swimlogCalendarSettings || {};
+		if ( ! settings.ajaxUrl || ! settings.eventNonce ) return Promise.reject( new Error( 'Event result editing is unavailable.' ) );
+		var body = new URLSearchParams();
+		body.append( 'action', 'swimlog_calendar_event_result' ); body.append( 'nonce', settings.eventNonce );
+		body.append( 'user', root.dataset.user || '' ); body.append( 'id', id ); body.append( 'operation', operation );
+		Object.keys( values ).forEach( function ( key ) { body.append( key, values[key] ); } );
+		return fetch( settings.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() } )
+			.then( function ( response ) { return response.json().then( function ( payload ) { if ( ! response.ok || ! payload.success ) throw new Error( payload.data && payload.data.message || 'Event result request failed.' ); return payload.data; } ); } );
 	}
 	function showPlannedWorkoutDetail( root, button ) {
 		var plan; try { plan = JSON.parse( button.dataset.calendarPlannedWorkout || '{}' ); } catch ( error ) { return; }
@@ -311,6 +336,16 @@
 			if ( event.key === 'Escape' && ! root.querySelector( '[data-calendar-detail]' ).hidden ) { event.preventDefault(); closeWorkoutDetail( root, true ); }
 		} );
 		root.addEventListener( 'invalid', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; var status = root.querySelector( '.swimlog-calendar-status' ); if ( status ) status.textContent = 'Please correct the highlighted field: ' + ( event.target.closest( 'label' ) ? event.target.closest( 'label' ).textContent.trim() : event.target.name ) + '. ' + ( event.target.validationMessage || '' ); }, true );
+		root.addEventListener( 'submit', function ( event ) {
+			var form = event.target.closest( '[data-calendar-event-result-form]' ); if ( ! form ) return;
+			event.preventDefault();
+			var feedback = form.querySelector( '[role="status"]' ), submit = form.querySelector( '[type="submit"]' );
+			var values = {}; new FormData( form ).forEach( function ( value, key ) { values[key] = value; } );
+			submit.disabled = true; feedback.textContent = 'Saving event results…';
+			requestEventResult( root, form.dataset.eventId, 'save', values ).then( function () { feedback.textContent = 'Event results saved.'; } )
+				.catch( function ( error ) { feedback.textContent = error.message; } )
+				.then( function () { if ( form.isConnected ) submit.disabled = false; } );
+		} );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; event.preventDefault(); var data = new FormData( form ), payload = { plan_action: 'save', id: form.dataset.planId || 0 }; data.forEach( function ( value, key ) { payload[key] = value; } ); payload.planned_duration_ms = payload.planned_duration_minutes ? Math.round( Number( payload.planned_duration_minutes ) * 60000 ) : ''; delete payload.planned_duration_minutes; mutatePlan( root, payload ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-recurrence-form]' ); if ( ! form ) return; event.preventDefault(); var weekdays = Array.prototype.map.call( form.querySelectorAll( '[name="weekday"]:checked' ), function ( box ) { return box.value; } ); mutatePlan( root, { plan_action: 'recur', id: form.dataset.planId, weekdays: weekdays.join( ',' ), end_date: form.querySelector( '[name="end_date"]' ).value } ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-duplicate-week-form]' ); if ( ! form ) return; event.preventDefault(); mutatePlan( root, { plan_action: 'duplicate_week', source_start: form.dataset.sourceStart, target_start: form.querySelector( '[name="target_start"]' ).value } ); } );
