@@ -15,3 +15,5 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 .swimlog-calendar-plan-date{display:block;margin:.25rem 0;padding:.15rem .35rem;font-size:.72rem;background:transparent;border:1px dashed currentColor;border-radius:3px;cursor:pointer}.swimlog-calendar-plan-date:focus-visible{outline:2px solid currentColor;outline-offset:2px}.swimlog-calendar-plan-field{display:block;margin:.6rem 0}.swimlog-calendar-plan-field input,.swimlog-calendar-plan-field select,.swimlog-calendar-plan-field textarea{display:block;width:100%;max-width:36rem;margin-top:.2rem}.swimlog-calendar-plan-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin:1rem 0}
 
 .swimlog-calendar-match-candidate{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.6rem 0;border-bottom:1px solid currentColor}.swimlog-calendar-planned-workout.status-completed{border-style:solid}
+
+.swimlog-calendar-comparison{margin:.5rem 0 1rem}.swimlog-calendar-comparison dt{font-weight:600}.swimlog-calendar-comparison dd{margin:0 0 .5rem}
