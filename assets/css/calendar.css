@@ -17,3 +17,5 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 .swimlog-calendar-match-candidate{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.6rem 0;border-bottom:1px solid currentColor}.swimlog-calendar-planned-workout.status-completed{border-style:solid}
 
 .swimlog-calendar-comparison{margin:.5rem 0 1rem}.swimlog-calendar-comparison dt{font-weight:600}.swimlog-calendar-comparison dd{margin:0 0 .5rem}
+
+.swimlog-calendar-jump{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}.swimlog-calendar-jump input{font:inherit}.swimlog-calendar-duplicate-week{grid-column:1/-1;justify-self:start;margin:.65rem}

@@ -5,6 +5,7 @@ final class AdminCalendarTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
   $this->assertStringContainsString("'swimlog-calendar', 'calendar'",$admin);
   $this->assertStringContainsString('Blocks::render_calendar_for_user( $user_id )',$admin);
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$this->assertStringContainsString("wp_enqueue_style( 'swimlog-calendar' )",$blocks);$this->assertStringContainsString("wp_enqueue_script( 'swimlog-calendar-view' )",$blocks);
  }
  public function test_shared_calendar_has_date_jump_and_week_navigation_controls(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
