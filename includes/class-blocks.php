@@ -223,6 +223,14 @@ final class Blocks {
 		} elseif ( 'duplicate' === $action ) {
 			$date = isset( $_POST['planned_date'] ) ? sanitize_text_field( wp_unslash( $_POST['planned_date'] ) ) : null;
 			$result = Planned_Workout::duplicate( $id, $user_id, $date );
+		} elseif ( 'duplicate_week' === $action ) {
+			$source_start = isset( $_POST['source_start'] ) ? sanitize_text_field( wp_unslash( $_POST['source_start'] ) ) : '';
+			$target_start = isset( $_POST['target_start'] ) ? sanitize_text_field( wp_unslash( $_POST['target_start'] ) ) : '';
+			$result = Planned_Workout::duplicate_week( $user_id, $source_start, $target_start );
+		} elseif ( 'recur' === $action ) {
+			$weekdays = isset( $_POST['weekdays'] ) ? array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['weekdays'] ) ) ) ), 'strlen' ) : array();
+			$end_date = isset( $_POST['end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['end_date'] ) ) : '';
+			$result = Planned_Workout::recur( $id, $user_id, $weekdays, $end_date );
 		} elseif ( 'skip' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'skipped' );
 		elseif ( 'cancel' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'cancelled' );
 		elseif ( 'restore' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'planned' );

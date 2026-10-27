@@ -122,6 +122,53 @@ final class Planned_Workout {
 		return self::save( $user_id, $data );
 	}
 
+
+	/** Duplicate every owned plan in one seven-day period into another week as independent planned rows. */
+	public static function duplicate_week( $user_id, $source_start, $target_start ) {
+		$user_id = absint( $user_id );
+		$source = self::valid_date( $source_start );
+		$target = self::valid_date( $target_start );
+		if ( ! $user_id || ! $source || ! $target ) return new \WP_Error( 'swimlog_planned_workout_week', __( 'Select valid source and target week dates.', 'chriss-swim-training-progress-evaluation' ) );
+		$source_end = $source->modify( '+7 days' );
+		$plans = self::range_for_user( $user_id, $source->format( 'Y-m-d' ), $source_end->format( 'Y-m-d' ) );
+		$created = array();
+		foreach ( (array) $plans as $plan ) {
+			$plan_date = self::valid_date( $plan->planned_date );
+			if ( ! $plan_date ) continue;
+			$offset = (int) $source->diff( $plan_date )->format( '%r%a' );
+			$result = self::duplicate( $plan->id, $user_id, $target->modify( '+' . $offset . ' days' )->format( 'Y-m-d' ) );
+			if ( is_wp_error( $result ) ) return $result;
+			$created[] = (int) $result;
+		}
+		return $created;
+	}
+
+	/** Materialize independent recurring copies of one owned plan on selected weekdays through an end date. */
+	public static function recur( $id, $user_id, $weekdays, $end_date ) {
+		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
+		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$start = self::valid_date( $plan->planned_date );
+		$end = self::valid_date( $end_date );
+		if ( ! $start || ! $end || $end < $start ) return new \WP_Error( 'swimlog_planned_workout_recurrence_end', __( 'Select a recurrence end date on or after the planned workout.', 'chriss-swim-training-progress-evaluation' ) );
+		$days = array_values( array_unique( array_map( 'absint', (array) $weekdays ) ) );
+		foreach ( $days as $day ) if ( $day < 0 || $day > 6 ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select valid recurrence weekdays.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( empty( $days ) ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select at least one recurrence weekday.', 'chriss-swim-training-progress-evaluation' ) );
+		$created = array();
+		for ( $date = $start; $date <= $end; $date = $date->modify( '+1 day' ) ) {
+			if ( $date->format( 'Y-m-d' ) === $plan->planned_date || ! in_array( (int) $date->format( 'w' ), $days, true ) ) continue;
+			if ( count( $created ) >= 366 ) return new \WP_Error( 'swimlog_planned_workout_recurrence_limit', __( 'A recurrence can create at most 366 planned workouts.', 'chriss-swim-training-progress-evaluation' ) );
+			$result = self::duplicate( $plan->id, $user_id, $date->format( 'Y-m-d' ) );
+			if ( is_wp_error( $result ) ) return $result;
+			$created[] = (int) $result;
+		}
+		return $created;
+	}
+
+	private static function valid_date( $value ) {
+		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d', (string) $value );
+		return $date && $date->format( 'Y-m-d' ) === (string) $value ? $date : false;
+	}
+
 	/** Mark a plan planned, skipped, or cancelled. Completed requires an actual-workout association. */
 	public static function set_status( $id, $user_id, $status ) {
 		global $wpdb;
