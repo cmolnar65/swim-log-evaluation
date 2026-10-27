@@ -190,6 +190,7 @@ final class Manual_Workout {
 		$user_id = absint( $user_id ); $workout_id = absint( $workout_id );
 		if ( ! $user_id ) return new \WP_Error( 'swimlog_manual_user', __( 'A valid swimmer is required.', 'chriss-swim-training-progress-evaluation' ) );
 		$normalized = self::normalize_document( $document );
+		if ( is_wp_error( $normalized ) ) return $normalized;
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swolf.php';
 		$normalized = Swolf::populate_parsed( $normalized );
  require_once SWIMLOG_EVALUATION_DIR . 'includes/class-equivalent-steps.php';
