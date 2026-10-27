@@ -118,6 +118,27 @@ final class Event {
 		return false===$result ? new \WP_Error('swimlog_event_save',__( 'The event could not be saved.', 'chriss-swim-training-progress-evaluation' )) : (int)$wpdb->insert_id;
 	}
 
+	/** Update one existing race result without replacing its event metadata. */
+	public static function save_result( $id, $user_id, $time, $placement, $notes ) {
+		global $wpdb;
+		$event = self::get_for_user( $id, $user_id );
+		if ( ! $event ) return new \\WP_Error( 'swimlog_event_not_found', __( 'Event not found.', 'chriss-swim-training-progress-evaluation' ) );
+		$time = trim( (string) $time );
+		$ms = null;
+		if ( '' !== $time ) {
+			if ( ! preg_match( '/^(?:(\\d{1,2}):)?([0-5]?\\d):([0-5]\\d)(?:\\.(\\d{1,3}))?$/', $time, $m ) ) {
+				return new \\WP_Error( 'swimlog_event_result_time', __( 'Enter a race time as MM:SS.ss or HH:MM:SS.ss.', 'chriss-swim-training-progress-evaluation' ) );
+			}
+			$ms = ( (int) ( $m[1] ?? 0 ) * 3600 + (int) $m[2] * 60 + (int) $m[3] ) * 1000 + (int) str_pad( (string) ( $m[4] ?? '' ), 3, '0' );
+			if ( $ms <= 0 ) return new \\WP_Error( 'swimlog_event_result_time', __( 'Race time must be positive.', 'chriss-swim-training-progress-evaluation' ) );
+		}
+		$placement = trim( (string) $placement );
+		if ( '' !== $placement && ( ! ctype_digit( $placement ) || (int) $placement < 1 || (int) $placement > 100000 ) ) return new \\WP_Error( 'swimlog_event_placement', __( 'Placement must be a positive whole number.', 'chriss-swim-training-progress-evaluation' ) );
+		$values = array( 'result_time_ms' => $ms, 'placement' => '' === $placement ? null : (int) $placement, 'notes' => sanitize_textarea_field( $notes ), 'updated_at' => current_time( 'mysql' ) );
+		$result = $wpdb->update( Database::table( 'events' ), $values, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
+		return false === $result ? new \\WP_Error( 'swimlog_event_save', __( 'Race results could not be saved.', 'chriss-swim-training-progress-evaluation' ) ) : true;
+	}
+
 	public static function delete( $id, $user_id ) {
 		global $wpdb;
 		$table=Database::table('events');
