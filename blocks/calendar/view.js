@@ -151,6 +151,7 @@
 		var input = type === 'textarea' ? document.createElement( 'textarea' ) : document.createElement( 'input' ); input.name = name; if ( type !== 'textarea' ) input.type = type; input.value = value === null || value === undefined ? '' : value; wrap.appendChild( input ); form.appendChild( wrap ); return input;
 	}
 	function showPlanEditor( root, date, plan ) {
+		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = 'swimlog-calendar-plan-editor';
 		var heading = document.createElement( 'h3' ); heading.textContent = plan ? 'Edit Planned Workout' : 'Plan Workout'; panel.appendChild( heading );
 		var form = document.createElement( 'form' ); form.dataset.calendarPlanForm = '1'; form.dataset.planId = plan ? plan.id : '';
@@ -168,6 +169,7 @@
 		return fetch( settings.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() } ).then( function ( response ) { return response.json().then( function ( data ) { if ( ! response.ok || ! data.success ) throw new Error( data.data && data.data.message ? data.data.message : 'Unable to manage planned workout.' ); return data.data || {}; } ); } );
 	}
 	function showRecurrenceEditor( root, plan ) {
+		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
 		var heading = document.createElement( 'h3' ); heading.textContent = 'Repeat Planned Workout'; panel.appendChild( heading );
 		var form = document.createElement( 'form' ); form.dataset.calendarRecurrenceForm = '1'; form.dataset.planId = plan.id;
@@ -178,6 +180,7 @@
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Cancel'; form.appendChild( close ); panel.appendChild( form ); panel.scrollIntoView( { block: 'nearest' } ); days.querySelector( 'input' ).focus();
 	}
 	function showCompletionCandidates( root, plan ) {
+		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
 		var panel = root.querySelector( '[data-calendar-detail]' ), status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Finding recorded workouts…'; root.setAttribute( 'aria-busy', 'true' );
 		calendarPlanRequest( root, { plan_action: 'candidates', id: plan.id } ).then( function ( data ) {
 			panel.textContent = ''; var heading = document.createElement( 'h3' ); heading.textContent = 'Match Recorded Workout'; panel.appendChild( heading );
@@ -201,10 +204,10 @@
 			.catch( function ( error ) { status.textContent = error.message || 'Unable to save planned workout.'; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function closeWorkoutDetail( root, restoreFocus ) {
-		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"]' );
+		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"]' ), returnFocus = trigger || root._calendarReturnFocus;
 		var panel = root.querySelector( '[data-calendar-detail]' ); if ( panel ) { panel.hidden = true; panel.textContent = ''; panel.removeAttribute( 'id' ); }
 		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
-		if ( restoreFocus && trigger ) trigger.focus();
+		if ( restoreFocus && returnFocus && document.contains( returnFocus ) ) returnFocus.focus(); root._calendarReturnFocus = null;
 	}
 	function weekStart( focus, firstDay ) {
 		var date = new Date( focus.getFullYear(), focus.getMonth(), focus.getDate() ), target = firstDayNumber( firstDay );
@@ -245,6 +248,7 @@
 		renderAgenda( root, data, start, end );
 	}
 	function showDuplicateWeekEditor( root, sourceStart ) {
+		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
 		var heading = document.createElement( 'h3' ); heading.textContent = 'Duplicate Week'; panel.appendChild( heading );
 		var form = document.createElement( 'form' ); form.dataset.calendarDuplicateWeekForm = '1'; form.dataset.sourceStart = sourceStart;
@@ -272,8 +276,8 @@
 		var start = dateKey( new Date( focus.getFullYear(), focus.getMonth(), 1 ) ), end = dateKey( new Date( focus.getFullYear(), focus.getMonth() + 1, 0 ) );
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', start ); url.searchParams.set( 'end', end );
 		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
-		var status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Loading calendar…'; root.classList.add( 'is-loading' );
-		fetch( url.toString(), { credentials: 'same-origin', headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
+		var status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Loading calendar…'; root.classList.add( 'is-loading' ); root.setAttribute( 'aria-busy', 'true' );
+		return fetch( url.toString(), { credentials: 'same-origin', headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
 			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'calendar' ); return response.json(); } )
 			.then( function ( data ) { renderMonth( root, data, focus ); status.textContent = ''; } )
 			.catch( function () { status.textContent = 'Unable to load calendar.'; } )
