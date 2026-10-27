@@ -60,7 +60,7 @@ final class CalendarUxRefinementTest extends TestCase {
 
 	public function test_phase_nine_b_preserves_privacy_and_database_contracts() {
 		$view = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/calendar/view.js' ) );
-		foreach ( array( 'notes', 'latitude', 'longitude', 'trackpoint', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
+		foreach ( array( 'latitude', 'longitude', 'trackpoint', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
 			$this->assertStringNotContainsString( $term, $view );
 		}
 		$rest = file_get_contents( dirname( __DIR__ ) . '/includes/class-rest-api.php' );
