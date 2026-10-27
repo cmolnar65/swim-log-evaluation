@@ -161,7 +161,8 @@ final class CalendarBlockTest extends TestCase {
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertStringContainsString("event.key === 'Escape'",$view);
   $this->assertStringContainsString('closeWorkoutDetail( root, true )',$view);
-  $this->assertStringContainsString('if ( restoreFocus && trigger ) trigger.focus()',$view);
+  $this->assertStringContainsString('returnFocus = trigger || root._calendarReturnFocus',$view);
+  $this->assertStringContainsString('if ( restoreFocus && returnFocus && document.contains( returnFocus ) ) returnFocus.focus()',$view);
   $this->assertStringContainsString('close.focus()',$view);
  }
  public function test_phase_nine_announces_loading_and_busy_state(){
