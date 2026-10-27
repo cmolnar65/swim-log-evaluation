@@ -104,6 +104,19 @@ final class Calendar {
 			$planned_rows[] = $row;
 		}
 
+		// A recorded workout is matched only when an owner-scoped planned workout
+		// explicitly references it. Do not infer matches from dates or distances.
+		$matched_workout_ids = array();
+		foreach ( $planned_rows as $planned_row ) {
+			if ( ! empty( $planned_row['completed_workout_id'] ) ) {
+				$matched_workout_ids[ (int) $planned_row['completed_workout_id'] ] = true;
+			}
+		}
+		foreach ( $workout_rows as &$workout_row ) {
+			$workout_row['matched_to_plan'] = isset( $matched_workout_ids[ $workout_row['id'] ] );
+		}
+		unset( $workout_row );
+
 		$first_day = self::normalize_first_day( $first_day );
 		return array(
 			'range' => array(
