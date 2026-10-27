@@ -7,7 +7,7 @@ final class CalendarUxRefinementTest extends TestCase {
 		$start = strpos( $view, 'function renderAgenda' );
 		$end = strpos( $view, 'function renderMonth', $start );
 		$body = substr( $view, $start, $end - $start );
-		$this->assertStringContainsString( "group.appendChild( planDateButton( key ) )", $body );
+		$this->assertStringContainsString( "var planButton = planDateButton( key, root ); if ( planButton ) group.appendChild( planButton );", $body );
 		$this->assertStringContainsString( "No workouts or events.", $body );
 		$this->assertStringNotContainsString( "if ( items.length )", $body );
 	}
