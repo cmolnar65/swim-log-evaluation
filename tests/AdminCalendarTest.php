@@ -10,7 +10,7 @@ final class AdminCalendarTest extends TestCase {
  public function test_shared_calendar_has_date_jump_and_week_navigation_controls(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertStringContainsString('data-calendar-go-date',$blocks);$this->assertStringContainsString('data-calendar-go',$blocks);
-  $this->assertStringContainsString("data-calendar-view="month"",$blocks);$this->assertStringContainsString("data-calendar-view="week"",$blocks);
+  $this->assertStringContainsString('data-calendar-view="month"',$blocks);$this->assertStringContainsString('data-calendar-view="week"',$blocks);
   $this->assertStringContainsString("button.dataset.calendarAction === 'previous' ? -7 : 7",$view);
   $this->assertStringContainsString("root.dataset.firstDay || 'sunday'",$view);
  }
