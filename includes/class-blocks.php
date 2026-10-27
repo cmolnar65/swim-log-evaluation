@@ -202,7 +202,16 @@ final class Blocks {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		$action = isset( $_POST['plan_action'] ) ? sanitize_key( wp_unslash( $_POST['plan_action'] ) ) : '';
 		$id = isset( $_POST['id'] ) ? absint( wp_unslash( $_POST['id'] ) ) : 0;
-		if ( 'save' === $action ) {
+		if ( 'candidates' === $action ) {
+			$result = Planned_Workout::completion_candidates( $id, $user_id );
+			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
+			wp_send_json_success( array( 'candidates' => $result ) );
+		} elseif ( 'associate' === $action ) {
+			$workout_id = isset( $_POST['workout_id'] ) ? absint( wp_unslash( $_POST['workout_id'] ) ) : 0;
+			$result = Planned_Workout::associate_completed_workout( $id, $user_id, $workout_id );
+		} elseif ( 'unlink' === $action ) {
+			$result = Planned_Workout::clear_completed_workout( $id, $user_id );
+		} elseif ( 'save' === $action ) {
 			$existing = $id ? Planned_Workout::get_for_user( $id, $user_id ) : null;
 			$data = array();
 			foreach ( array( 'planned_date', 'planned_start_time', 'title', 'workout_type', 'planned_distance_m', 'planned_duration_ms', 'pool_length_m', 'pool_course', 'primary_stroke', 'workout_instructions' ) as $key ) {

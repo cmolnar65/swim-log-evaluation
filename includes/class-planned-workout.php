@@ -144,6 +144,26 @@ final class Planned_Workout {
 			: true;
 	}
 
+	/** Suggest same-day recorded workouts for explicit user confirmation. Never associates automatically. */
+	public static function completion_candidates( $id, $user_id, $limit = 5 ) {
+		$id = absint( $id ); $user_id = absint( $user_id ); $limit = max( 1, min( 20, absint( $limit ) ) );
+		$plan = self::get_for_user( $id, $user_id );
+		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
+		$rows = Workout::range_for_user( $user_id, $plan->planned_date . ' 00:00:00', $plan->planned_date . ' 23:59:59.999999' );
+		$candidates = array();
+		foreach ( (array) $rows as $workout ) {
+			if ( (string) $workout->workout_type !== (string) $plan->workout_type ) continue;
+			$distance = null !== $workout->total_distance_m ? (float) $workout->total_distance_m : null;
+			$duration = null !== $workout->moving_time_ms ? (int) $workout->moving_time_ms : ( null !== $workout->elapsed_time_ms ? (int) $workout->elapsed_time_ms : null );
+			$distance_diff = null !== $plan->planned_distance_m && null !== $distance ? abs( (float) $plan->planned_distance_m - $distance ) : null;
+			$duration_diff = null !== $plan->planned_duration_ms && null !== $duration ? abs( (int) $plan->planned_duration_ms - $duration ) : null;
+			$candidates[] = array( 'id' => (int) $workout->id, 'workout_start' => (string) $workout->workout_start, 'workout_type' => (string) $workout->workout_type, 'total_distance_m' => $distance, 'active_time_ms' => $duration, 'distance_difference_m' => $distance_diff, 'duration_difference_ms' => $duration_diff );
+		}
+		usort( $candidates, function ( $a, $b ) { $ad = null === $a['distance_difference_m'] ? PHP_INT_MAX : $a['distance_difference_m']; $bd = null === $b['distance_difference_m'] ? PHP_INT_MAX : $b['distance_difference_m']; if ( $ad !== $bd ) return $ad < $bd ? -1 : 1; $at = null === $a['duration_difference_ms'] ? PHP_INT_MAX : $a['duration_difference_ms']; $bt = null === $b['duration_difference_ms'] ? PHP_INT_MAX : $b['duration_difference_ms']; if ( $at !== $bt ) return $at < $bt ? -1 : 1; return $a['id'] <=> $b['id']; } );
+		return array_slice( $candidates, 0, $limit );
+	}
+
 	/** Associate exactly one recorded workout owned by the same swimmer and mark the plan completed. */
 	public static function associate_completed_workout( $id, $user_id, $workout_id ) {
 		global $wpdb;
