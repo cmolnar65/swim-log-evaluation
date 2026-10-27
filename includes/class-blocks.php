@@ -318,7 +318,8 @@ final class Blocks {
 		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
 		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {
 			$key = $date->format( 'Y-m-d' );$outside = $date->format( 'm' ) !== $month->format( 'm' );
-			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span><button type="button" class="swimlog-calendar-plan-date" data-calendar-plan-date="' . esc_attr( $key ) . '">' . esc_html__( 'Plan workout', 'chriss-swim-training-progress-evaluation' ) . '</button>';
+			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span>';
+			if ( $key >= wp_date( 'Y-m-d', null, wp_timezone() ) ) $html .= '<button type="button" class="swimlog-calendar-plan-date" data-calendar-plan-date="' . esc_attr( $key ) . '">' . esc_html__( 'Plan workout', 'chriss-swim-training-progress-evaluation' ) . '</button>';
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';
 		}
