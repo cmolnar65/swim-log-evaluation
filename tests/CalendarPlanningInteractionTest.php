@@ -30,8 +30,8 @@ final class CalendarPlanningInteractionTest extends TestCase {
  }
  public function test_empty_calendar_dates_offer_planning_in_server_month_and_dynamic_views(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
-  $this->assertStringContainsString('data-calendar-plan-date=',$blocks);$this->assertStringContainsString('function planDateButton( key )',$view);
-  $this->assertGreaterThanOrEqual(3,substr_count($view,'planDateButton( key )'));$this->assertStringContainsString('function showPlanEditor',$view);
+  $this->assertStringContainsString('data-calendar-plan-date=',$blocks);$this->assertStringContainsString('function planDateButton( key, root )',$view);
+  $this->assertGreaterThanOrEqual(3,substr_count($view,'planDateButton( key, root )'));$this->assertStringContainsString('function showPlanEditor',$view);
  }
  public function test_calendar_plan_editor_supports_required_actions_without_drag_drop_or_schema_change(){
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
