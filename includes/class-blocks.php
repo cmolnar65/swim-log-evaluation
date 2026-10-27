@@ -244,6 +244,9 @@ final class Blocks {
 			$date = substr( $workout['workout_start'], 0, 10 );
 			$items[ $date ][] = self::calendar_workout_html( $workout );
 		}
+		foreach ( $data['planned_workouts'] as $planned_workout ) {
+			$items[ $planned_workout['planned_date'] ][] = self::calendar_planned_workout_html( $planned_workout );
+		}
 		foreach ( $data['events'] as $event ) {
 			$items[ $event['event_date'] ][] = self::calendar_event_html( $event );
 		}
@@ -287,6 +290,15 @@ final class Blocks {
 			'primary_stroke' => $workout['primary_stroke'],
 		) );
 		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+	}
+
+	private static function calendar_planned_workout_html( $plan ) {
+		$title = '' !== trim( $plan['title'] ) ? $plan['title'] : __( 'Planned Workout', 'chriss-swim-training-progress-evaluation' );
+		$parts = array( '<strong>' . esc_html( $title ) . '</strong>' );
+		if ( null !== $plan['planned_distance_m'] ) $parts[] = esc_html( number_format_i18n( $plan['planned_distance_m'], 0 ) . ' m' );
+		if ( null !== $plan['planned_duration_ms'] && $plan['planned_duration_ms'] > 0 ) $parts[] = esc_html( self::calendar_duration( $plan['planned_duration_ms'] ) );
+		$detail = wp_json_encode( $plan );
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-planned-workout status-' . esc_attr( $plan['status'] ) . '" data-calendar-planned-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-plan-' . esc_attr( $plan['id'] ) . '">' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_event_html( $event ) {

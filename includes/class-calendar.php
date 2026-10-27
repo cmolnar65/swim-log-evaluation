@@ -41,6 +41,7 @@ final class Calendar {
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 
 		$workouts = Workout::range_for_user(
 			$user_id,
@@ -52,8 +53,13 @@ final class Calendar {
 			$range['start'],
 			$range['end_exclusive']
 		);
+		$planned_workouts = Planned_Workout::range_for_user(
+			$user_id,
+			$range['start'],
+			$range['end_exclusive']
+		);
 
-		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ) );
+		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ), $planned_workouts );
 	}
 
 	/**
@@ -62,7 +68,7 @@ final class Calendar {
 	 * Kept public so other plugin layers and focused regression tests can reuse
 	 * the exact same normalization without performing additional database reads.
 	 */
-	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday' ) {
+	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday', $planned_workouts = array() ) {
 		$workout_rows = array();
 		foreach ( (array) $workouts as $workout ) {
 			$workout_rows[] = self::workout_row( $workout );
@@ -71,6 +77,11 @@ final class Calendar {
 		$event_rows = array();
 		foreach ( (array) $events as $event ) {
 			$event_rows[] = self::event_row( $event );
+		}
+
+		$planned_rows = array();
+		foreach ( (array) $planned_workouts as $planned_workout ) {
+			$planned_rows[] = self::planned_workout_row( $planned_workout );
 		}
 
 		$first_day = self::normalize_first_day( $first_day );
@@ -82,6 +93,7 @@ final class Calendar {
 				'first_day' => $first_day,
 			),
 			'workouts' => $workout_rows,
+			'planned_workouts' => $planned_rows,
 			'events' => $event_rows,
 			'weeks' => self::weekly_summaries( $range, $workouts, $first_day ),
 			'metric_metadata' => self::workout_metric_metadata(),
@@ -211,6 +223,25 @@ final class Calendar {
 			'original_pool_length' => null !== ( $workout->original_pool_length ?? null ) ? (float) $workout->original_pool_length : null,
 			'pool_length_unit' => null !== ( $workout->pool_length_unit ?? null ) ? (string) $workout->pool_length_unit : null,
 			'primary_stroke' => null !== ( $workout->primary_stroke ?? null ) ? (string) $workout->primary_stroke : null,
+		);
+	}
+
+	private static function planned_workout_row( $plan ) {
+		return array(
+			'id' => absint( $plan->id ?? 0 ),
+			'kind' => 'planned_workout',
+			'planned_date' => (string) ( $plan->planned_date ?? '' ),
+			'planned_start_time' => null !== ( $plan->planned_start_time ?? null ) ? (string) $plan->planned_start_time : null,
+			'title' => (string) ( $plan->title ?? '' ),
+			'workout_type' => 'open_water' === (string) ( $plan->workout_type ?? 'pool' ) ? 'open_water' : 'pool',
+			'planned_distance_m' => null !== ( $plan->planned_distance_m ?? null ) ? (float) $plan->planned_distance_m : null,
+			'planned_duration_ms' => null !== ( $plan->planned_duration_ms ?? null ) ? (int) $plan->planned_duration_ms : null,
+			'pool_length_m' => null !== ( $plan->pool_length_m ?? null ) ? (float) $plan->pool_length_m : null,
+			'pool_course' => null !== ( $plan->pool_course ?? null ) ? (string) $plan->pool_course : null,
+			'primary_stroke' => null !== ( $plan->primary_stroke ?? null ) ? (string) $plan->primary_stroke : null,
+			'workout_instructions' => (string) ( $plan->workout_instructions ?? '' ),
+			'status' => (string) ( $plan->status ?? 'planned' ),
+			'completed_workout_id' => null !== ( $plan->completed_workout_id ?? null ) ? absint( $plan->completed_workout_id ) : null,
 		);
 	}
 
