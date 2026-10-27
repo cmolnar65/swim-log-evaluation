@@ -30,6 +30,16 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString('swimlogcalendarsettings',$view);
   $this->assertStringContainsString('swimlog_calendar_plan',$view);
  }
+ public function test_calendar_site_date_controls_past_planning() {
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
+  $service=file_get_contents(dirname(__DIR__).'/includes/class-planned-workout.php');
+  $this->assertStringContainsString('data-site-today=', $blocks);
+  $this->assertStringContainsString("wp_date( 'Y-m-d', null, wp_timezone() )", $blocks);
+  $this->assertStringContainsString('key < root.dataset.siteToday', $view);
+  $this->assertStringContainsString('target.min = root.dataset.siteToday', $view);
+  $this->assertStringContainsString('swimlog_planned_workout_past_date', $service);
+ }
  public function test_empty_calendar_dates_offer_planning_in_server_month_and_dynamic_views(){
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertStringContainsString('data-calendar-plan-date=',$blocks);$this->assertStringContainsString('function planDateButton( key, root )',$view);

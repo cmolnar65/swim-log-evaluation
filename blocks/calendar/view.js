@@ -31,7 +31,7 @@
 		return div;
 	}
 	function planDateButton( key, root ) {
-		if ( key < root.dataset.siteToday ) return null;
+		if ( !root.dataset.siteToday || key < root.dataset.siteToday ) return null;
 		var button = document.createElement( 'button' ); button.type = 'button'; button.className = 'swimlog-calendar-plan-date'; button.dataset.calendarPlanDate = key; button.textContent = 'Plan workout'; return button;
 	}
 	function agendaItemsByDate( data ) {
@@ -299,7 +299,7 @@
 		var heading = document.createElement( 'h3' ); heading.textContent = 'Duplicate Week'; panel.appendChild( heading );
 		var form = document.createElement( 'form' ); form.dataset.calendarDuplicateWeekForm = '1'; form.dataset.sourceStart = sourceStart;
 		var source = document.createElement( 'p' ); source.textContent = 'Source week begins ' + sourceStart + '.'; form.appendChild( source );
-		var target = planField( form, 'Target week begins', 'target_start', 'date', sourceStart ); target.required = true;
+		var target = planField( form, 'Target week begins', 'target_start', 'date', sourceStart < root.dataset.siteToday ? root.dataset.siteToday : sourceStart ); target.required = true; target.min = root.dataset.siteToday;
 		var submit = document.createElement( 'button' ); submit.type = 'submit'; submit.className = 'swimlog-calendar-button'; submit.textContent = 'Duplicate Week'; form.appendChild( submit );
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Cancel'; form.appendChild( close ); panel.appendChild( form ); panel.scrollIntoView( { block: 'nearest' } ); target.focus();
 	}
@@ -352,7 +352,7 @@
 		root.addEventListener( 'click', function ( event ) {
 			var go = event.target.closest( '[data-calendar-go]' ); if ( go ) { var input = root.querySelector( '[data-calendar-go-date]' ), status = root.querySelector( '.swimlog-calendar-status' ); if ( ! input || ! input.value ) { status.textContent = 'Choose a date first.'; if ( input ) input.focus(); return; } status.textContent = ''; var selected = new Date( input.value + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) loadWeek( root, selected ); else loadMonth( root, new Date( selected.getFullYear(), selected.getMonth(), 1 ) ); return; }
 			var duplicateWeek = event.target.closest( '[data-calendar-duplicate-week]' ); if ( duplicateWeek ) { showDuplicateWeekEditor( root, duplicateWeek.dataset.calendarDuplicateWeek ); return; }
-			var dateButton = event.target.closest( '[data-calendar-plan-date]' ); if ( dateButton ) { if ( dateButton.dataset.calendarPlanDate < root.dataset.siteToday ) return; showPlanEditor( root, dateButton.dataset.calendarPlanDate, null ); return; }
+			var dateButton = event.target.closest( '[data-calendar-plan-date]' ); if ( dateButton ) { if ( !root.dataset.siteToday || dateButton.dataset.calendarPlanDate < root.dataset.siteToday ) return; showPlanEditor( root, dateButton.dataset.calendarPlanDate, null ); return; }
 			var planAction = event.target.closest( '[data-calendar-plan-action]' ); if ( planAction ) { var plan; try { plan = JSON.parse( planAction.dataset.plan || '{}' ); } catch ( error ) { return; } var action = planAction.dataset.calendarPlanAction; if ( action === 'edit' ) { showPlanEditor( root, plan.planned_date, plan ); return; } if ( action === 'repeat' ) { showRecurrenceEditor( root, plan ); return; } if ( action === 'match' ) { showCompletionCandidates( root, plan ); return; } if ( action === 'delete' && ! window.confirm( 'Delete this planned workout?' ) ) return; mutatePlan( root, { plan_action: action, id: plan.id, planned_date: plan.planned_date } ); return; }
 			var matchButton = event.target.closest( '[data-calendar-match-workout]' ); if ( matchButton ) { mutatePlan( root, { plan_action: 'associate', id: matchButton.dataset.planId, workout_id: matchButton.dataset.calendarMatchWorkout } ); return; }
 			var workoutButton = event.target.closest( '[data-calendar-workout]' ); if ( workoutButton ) { showWorkoutDetail( root, workoutButton ); return; }
