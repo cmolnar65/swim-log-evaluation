@@ -228,7 +228,7 @@ final class Blocks {
 			$target_start = isset( $_POST['target_start'] ) ? sanitize_text_field( wp_unslash( $_POST['target_start'] ) ) : '';
 			$result = Planned_Workout::duplicate_week( $user_id, $source_start, $target_start );
 		} elseif ( 'recur' === $action ) {
-			$weekdays = isset( $_POST['weekdays'] ) ? array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['weekdays'] ) ) ) ), 'strlen' ) : array();
+			$weekdays = isset( $_POST['weekdays'] ) ? explode( ',', sanitize_text_field( wp_unslash( $_POST['weekdays'] ) ) ) : array();
 			$end_date = isset( $_POST['end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['end_date'] ) ) : '';
 			$result = Planned_Workout::recur( $id, $user_id, $weekdays, $end_date );
 		} elseif ( 'skip' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'skipped' );

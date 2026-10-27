@@ -150,8 +150,12 @@ final class Planned_Workout {
 		$start = self::valid_date( $plan->planned_date );
 		$end = self::valid_date( $end_date );
 		if ( ! $start || ! $end || $end < $start ) return new \WP_Error( 'swimlog_planned_workout_recurrence_end', __( 'Select a recurrence end date on or after the planned workout.', 'chriss-swim-training-progress-evaluation' ) );
-		$days = array_values( array_unique( array_map( 'absint', (array) $weekdays ) ) );
-		foreach ( $days as $day ) if ( $day < 0 || $day > 6 ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select valid recurrence weekdays.', 'chriss-swim-training-progress-evaluation' ) );
+		$days = array();
+		foreach ( (array) $weekdays as $weekday ) {
+			if ( ! is_numeric( $weekday ) || (int) $weekday < 0 || (int) $weekday > 6 ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select valid recurrence weekdays.', 'chriss-swim-training-progress-evaluation' ) );
+			$days[] = (int) $weekday;
+		}
+		$days = array_values( array_unique( $days ) );
 		if ( empty( $days ) ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select at least one recurrence weekday.', 'chriss-swim-training-progress-evaluation' ) );
 		$created = array();
 		for ( $date = $start; $date <= $end; $date = $date->modify( '+1 day' ) ) {
