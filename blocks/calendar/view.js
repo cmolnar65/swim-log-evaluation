@@ -55,7 +55,7 @@
 			}
 			cursor.setDate( cursor.getDate() + 1 );
 		}
-		if ( ! rendered ) { var empty = document.createElement( 'p' ); empty.className = 'swimlog-calendar-agenda-empty'; empty.textContent = 'No workouts, planned workouts, or events in this period.'; agenda.appendChild( empty ); }
+		if ( ! rendered ) { var empty = document.createElement( 'p' ); empty.className = 'swimlog-calendar-agenda-empty'; empty.textContent = 'No workouts or events in this period.'; agenda.appendChild( empty ); }
 	}
 	function renderMonth( root, data, focus ) {
 		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday';
