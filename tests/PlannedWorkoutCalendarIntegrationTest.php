@@ -35,7 +35,7 @@ final class PlannedWorkoutCalendarIntegrationTest extends TestCase {
 	}
 	public function test_phase_four_does_not_change_database_schema_version_or_calendar_privacy() {
 		$main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
-		$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.0'",$main);
+		$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
 		$start=strpos($blocks,'private static function calendar_allowed');$end=strpos($blocks,'private static function calendar_month_html',$start);$body=substr($blocks,$start,$end-$start);
 		$this->assertStringContainsString("'swimlog_view_own_results'",$body);$this->assertStringContainsString("'swimlog_manage_all_users'",$body);$this->assertStringNotContainsString('swimlog_public_results',$body);
 	}
