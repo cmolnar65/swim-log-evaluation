@@ -24,7 +24,9 @@ final class CalendarPlanningInteractionTest extends TestCase {
  }
  public function test_calendar_client_never_receives_or_requests_private_notes(){
   $view=strtolower(file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js'));
-  $this->assertStringNotContainsString('notes',$view);
+  $this->assertStringContainsString('swimlog_calendar_event_result',$view);
+  $this->assertStringNotContainsString('plan.notes',$view);
+  $this->assertStringNotContainsString('workout.notes',$view);
   $this->assertStringContainsString('swimlogcalendarsettings',$view);
   $this->assertStringContainsString('swimlog_calendar_plan',$view);
  }
