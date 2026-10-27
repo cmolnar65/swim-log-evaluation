@@ -123,6 +123,9 @@
 			detailRow( list, 'Primary stroke', strokeName( workout.primary_stroke ) );
 		}
 		panel.appendChild( list );
+		if ( workout.id && root.dataset.workoutDetailUrl ) {
+			var link = document.createElement( 'a' ); link.className = 'swimlog-calendar-button'; link.href = root.dataset.workoutDetailUrl + encodeURIComponent( workout.id ); link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'View Workout'; panel.appendChild( link );
+		}
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close );
 		panel.scrollIntoView( { block: 'nearest' } ); close.focus();
 	}
