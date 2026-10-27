@@ -34,6 +34,36 @@ final class SwolfAndEventResultTest extends TestCase {
         }
     }
 
+    public function test_event_result_access_is_owner_scoped_and_not_public() {
+        $plugin = file_get_contents( dirname( __DIR__ ) . '/includes/class-plugin.php' );
+        $blocks = file_get_contents( dirname( __DIR__ ) . '/includes/class-blocks.php' );
+        $calendar = file_get_contents( dirname( __DIR__ ) . '/includes/class-calendar.php' );
+        $start = strpos( $blocks, 'public static function calendar_event_result_action()' );
+        $end = strpos( $blocks, 'public static function calendar_plan_action()', $start );
+        $handler = substr( $blocks, $start, $end - $start );
+        $this->assertStringContainsString( "wp_ajax_swimlog_calendar_event_result", $plugin );
+        $this->assertStringNotContainsString( "wp_ajax_nopriv_swimlog_calendar_event_result", $plugin );
+        $this->assertStringContainsString( 'is_user_logged_in()', $handler );
+        $this->assertStringContainsString( "check_ajax_referer( 'swimlog_calendar_event_result', 'nonce' )", $handler );
+        $this->assertStringContainsString( "current_user_can( 'swimlog_manage_own_workouts' )", $handler );
+        $this->assertStringContainsString( "current_user_can( 'swimlog_manage_all_users' )", $handler );
+        $this->assertStringContainsString( 'Event::get_for_user( $id, $user_id )', $handler );
+        $this->assertStringContainsString( 'Event::save_result( $id, $user_id, $time, $place, $notes )', $handler );
+        $event_row = substr( $calendar, strpos( $calendar, 'private static function event_row(' ) );
+        $this->assertStringNotContainsString( "'notes'", $event_row );
+        $this->assertStringNotContainsString( "'result_time_ms'", $event_row );
+    }
+
+    public function test_private_event_notes_are_not_workout_or_plan_notes() {
+        $view = file_get_contents( dirname( __DIR__ ) . '/blocks/calendar/view.js' );
+        $this->assertStringContainsString( "form.dataset.calendarEventResultForm = '1'", $view );
+        $this->assertStringContainsString( "requestEventResult( root, calendarEvent.id, 'read'", $view );
+        $this->assertStringContainsString( "requestEventResult( root, form.dataset.eventId, 'save'", $view );
+        $this->assertStringNotContainsString( 'workout.notes', strtolower( $view ) );
+        $this->assertStringNotContainsString( 'plan.notes', strtolower( $view ) );
+        $this->assertStringNotContainsString( 'calendarEvent.notes', $view );
+    }
+
     public function test_event_notes_are_loaded_only_by_authenticated_ajax() {
         $calendar = file_get_contents( dirname( __DIR__ ) . '/includes/class-calendar.php' );
         $blocks = file_get_contents( dirname( __DIR__ ) . '/includes/class-blocks.php' );
