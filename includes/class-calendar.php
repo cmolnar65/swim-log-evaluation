@@ -59,6 +59,21 @@ final class Calendar {
 			$range['end_exclusive']
 		);
 
+		// One owner-scoped query for all personal-best workouts in this range.
+		global $wpdb;
+		$pb_table = Database::table( 'performances' );
+		$workout_ids = array_values( array_filter( array_map( 'absint', wp_list_pluck( (array) $workouts, 'id' ) ) ) );
+		$pb_ids = array();
+		if ( $workout_ids ) {
+			$placeholders = implode( ',', array_fill( 0, count( $workout_ids ), '%d' ) );
+			$pb_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+				"SELECT DISTINCT workout_id FROM $pb_table WHERE user_id = %d AND is_personal_best = 1 AND workout_id IN ($placeholders)",
+				array_merge( array( $user_id ), $workout_ids )
+			) ) );
+		}
+		foreach ( (array) $workouts as $workout ) {
+			$workout->has_personal_best = in_array( absint( $workout->id ), $pb_ids, true );
+		}
 		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ), $planned_workouts );
 	}
 
@@ -248,6 +263,7 @@ final class Calendar {
 		return array(
 			'id' => absint( $workout->id ?? 0 ),
 			'kind' => 'workout',
+			'has_personal_best' => ! empty( $workout->has_personal_best ),
 			'workout_type' => 'open_water' === (string) ( $workout->workout_type ?? 'pool' ) ? 'open_water' : 'pool',
 			'workout_start' => (string) ( $workout->workout_start ?? '' ),
 			'workout_end' => null !== ( $workout->workout_end ?? null ) ? (string) $workout->workout_end : null,
