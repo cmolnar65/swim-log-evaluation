@@ -27,6 +27,6 @@ final class PlannedVsActualSummaryTest extends TestCase {
  public function test_calendar_ui_labels_comparisons_as_plain_math_not_training_scores(){
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$this->assertStringContainsString('Planned vs Actual',$view);$this->assertStringContainsString('m planned',$view);$this->assertStringContainsString('m actual',$view);
   foreach(array('adherence score','readiness','training load','compliance score')as$forbidden)$this->assertStringNotContainsString($forbidden,strtolower($view));
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.0'",$main);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
  }
 }
