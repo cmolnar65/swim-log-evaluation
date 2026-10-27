@@ -83,7 +83,7 @@
 			( byDate[ plan.planned_date ] = byDate[ plan.planned_date ] || [] ).push( item( 'swimlog-calendar-planned-workout status-' + ( plan.status || 'planned' ), parts, true, null, plan ) );
 		} );
 		( data.events || [] ).forEach( function ( event ) {
-			( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null ) );
+			( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null, null, event ) );
 		} );
 		var first = new Date( focus.getFullYear(), focus.getMonth(), 1 ), last = new Date( focus.getFullYear(), focus.getMonth() + 1, 0 );
 		var back = ( first.getDay() - firstDayNumber( firstDay ) + 7 ) % 7, forward = ( firstDayNumber( firstDay ) + 6 - last.getDay() + 7 ) % 7;
