@@ -148,7 +148,7 @@
 	}
 	function planField( form, label, name, type, value ) {
 		var wrap = document.createElement( 'label' ); wrap.className = 'swimlog-calendar-plan-field'; wrap.appendChild( document.createTextNode( label ) );
-		var input = type === 'textarea' ? document.createElement( 'textarea' ) : document.createElement( 'input' ); input.name = name; if ( type !== 'textarea' ) input.type = type; input.value = value === null || value === undefined ? '' : value; wrap.appendChild( input ); form.appendChild( wrap ); return input;
+		var input = type === 'textarea' ? document.createElement( 'textarea' ) : document.createElement( 'input' ); input.name = name; if ( type !== 'textarea' ) input.type = type; if ( type === 'number' ) { input.step = 'any'; input.min = '0'; } input.value = value === null || value === undefined ? '' : value; wrap.appendChild( input ); form.appendChild( wrap ); return input;
 	}
 	function showPlanEditor( root, date, plan ) {
 		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
@@ -289,6 +289,7 @@
 		root.addEventListener( 'keydown', function ( event ) {
 			if ( event.key === 'Escape' && ! root.querySelector( '[data-calendar-detail]' ).hidden ) { event.preventDefault(); closeWorkoutDetail( root, true ); }
 		} );
+		root.addEventListener( 'invalid', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; var status = root.querySelector( '.swimlog-calendar-status' ); if ( status ) status.textContent = 'Please correct the highlighted field: ' + ( event.target.closest( 'label' ) ? event.target.closest( 'label' ).textContent.trim() : event.target.name ) + '. ' + ( event.target.validationMessage || '' ); }, true );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; event.preventDefault(); var data = new FormData( form ), payload = { plan_action: 'save', id: form.dataset.planId || 0 }; data.forEach( function ( value, key ) { payload[key] = value; } ); payload.planned_duration_ms = payload.planned_duration_minutes ? Math.round( Number( payload.planned_duration_minutes ) * 60000 ) : ''; delete payload.planned_duration_minutes; mutatePlan( root, payload ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-recurrence-form]' ); if ( ! form ) return; event.preventDefault(); var weekdays = Array.prototype.map.call( form.querySelectorAll( '[name="weekday"]:checked' ), function ( box ) { return box.value; } ); mutatePlan( root, { plan_action: 'recur', id: form.dataset.planId, weekdays: weekdays.join( ',' ), end_date: form.querySelector( '[name="end_date"]' ).value } ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-duplicate-week-form]' ); if ( ! form ) return; event.preventDefault(); mutatePlan( root, { plan_action: 'duplicate_week', source_start: form.dataset.sourceStart, target_start: form.querySelector( '[name="target_start"]' ).value } ); } );
