@@ -53,8 +53,8 @@ final class PlannedWorkoutServiceTest extends TestCase {
 		$code = file_get_contents( dirname( __DIR__ ) . '/includes/class-planned-workout.php' );
 		$this->assertStringContainsString( 'WHERE id = %d AND user_id = %d', $code );
 		$this->assertStringContainsString( 'WHERE user_id = %d AND planned_date >= %s AND planned_date < %s', $code );
-		$this->assertStringContainsString( "array( 'id' => $id, 'user_id' => $user_id )", $code );
-		$this->assertStringContainsString( "Workout::get_for_user( $workout_id, $user_id )", $code );
+		$this->assertStringContainsString( "array( 'id' => \$id, 'user_id' => \$user_id )", $code );
+		$this->assertStringContainsString( "Workout::get_for_user( \$workout_id, \$user_id )", $code );
 	}
 
 	public function test_range_query_is_half_open_index_friendly_and_deterministic() {
@@ -69,8 +69,8 @@ final class PlannedWorkoutServiceTest extends TestCase {
 
 	public function test_completed_status_requires_owned_recorded_workout_association() {
 		$code = file_get_contents( dirname( __DIR__ ) . '/includes/class-planned-workout.php' );
-		$this->assertStringContainsString( "if ( 'completed' === $status )", $code );
-		$this->assertStringContainsString( "'status' => 'completed', 'completed_workout_id' => $workout_id", $code );
+		$this->assertStringContainsString( "if ( 'completed' === \$status )", $code );
+		$this->assertStringContainsString( "'status' => 'completed', 'completed_workout_id' => \$workout_id", $code );
 		$this->assertStringContainsString( 'completed_workout_id = %d AND id <> %d', $code );
 		$this->assertStringContainsString( "'status' => 'planned', 'completed_workout_id' => null", $code );
 	}
