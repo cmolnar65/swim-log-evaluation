@@ -11,6 +11,11 @@ final class ReleaseDocumentationTest extends TestCase {
   $this->assertStringContainsString("Version: 1.1",$plugin);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.1'",$plugin);
   $this->assertStringContainsString('## v1.1 release candidate status',$github);
+  $release_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/release-package.yml');
+  $plugin_check_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/plugin-check.yml');
+  $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.1.zip',$release_workflow);
+  $this->assertStringNotContainsString('chriss-swim-training-progress-evaluation-1.0.zip',$release_workflow);
+  $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.1.zip',$plugin_check_workflow);
   foreach(array('## Release candidate: v1.0','The `develop` branch is the v1.0 release candidate.','Stable tag: 0.7','current public stable release remains v0.7','v0.8 development status','v0.8 development — complete, not yet released')as$stale)$this->assertStringNotContainsString($stale,$readme.$github);
  }
  public function test_v11_docs_cover_planned_workout_release_features(){
