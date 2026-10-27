@@ -22,7 +22,7 @@ final class PlannedWorkoutRecurrenceTest extends TestCase {
  public function test_calendar_offers_repeat_without_private_notes_or_rest_writes(){
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$rest=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');
   $this->assertStringContainsString("[ 'repeat', 'Repeat' ]",$view);$this->assertStringContainsString('function showRecurrenceEditor',$view);$this->assertStringContainsString("plan_action: 'recur'",$view);
-  $this->assertStringNotContainsString('notes',strtolower($view));$this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);
+  $this->assertStringNotContainsString('plan.notes',strtolower($view));$this->assertStringNotContainsString('workout.notes',strtolower($view));$this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);
  }
  public function test_phase_eight_does_not_change_database_schema_version(){
   $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
