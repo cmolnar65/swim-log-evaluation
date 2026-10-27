@@ -226,7 +226,35 @@ final class Importer {
 		$source=strtolower((string)$source);$prepared=self::prepare_source_file($source,$path);if(is_wp_error($prepared))return$prepared;
 		$parser=self::parser_for_source($source);if(is_wp_error($parser)){self::cleanup_prepared_source($prepared);return$parser;}
 		$result=in_array($source,array('gpx','tcx'),true)?$parser->parse($prepared['path'],$source):$parser->parse($prepared['path']);
-		self::cleanup_prepared_source($prepared);return$result;
+		self::cleanup_prepared_source($prepared);
+		if ( ! is_wp_error( $result ) && is_array( $result ) ) {
+			$result = self::derive_primary_stroke( $result );
+		}
+		return $result;
+	}
+	/**
+	 * Derive the dominant recorded swimming stroke from active pool lengths.
+	 * Unknown, drill and mixed labels do not override a known swimming stroke.
+	 * A tie is resolved deterministically by first occurrence.
+	 */
+	public static function derive_primary_stroke( $parsed ) {
+		if ( ! isset( $parsed['workout'] ) || ! is_array( $parsed['workout'] ) ) return $parsed;
+		if ( ( $parsed['workout']['workout_type'] ?? 'pool' ) !== 'pool' ) return $parsed;
+		$distance_by_stroke = array();
+		foreach ( (array) ( $parsed['lengths'] ?? array() ) as $length ) {
+			if ( ( $length['length_type'] ?? '' ) !== 'active' ) continue;
+			$stroke = strtoupper( (string) ( $length['stroke'] ?? '' ) );
+			if ( ! in_array( $stroke, array( 'FR', 'BACK', 'BR', 'FLY' ), true ) ) continue;
+			$distance = (float) ( $length['distance_m'] ?? 0 );
+			if ( ! is_finite( $distance ) || $distance <= 0 ) continue;
+			if ( ! isset( $distance_by_stroke[ $stroke ] ) ) $distance_by_stroke[ $stroke ] = 0.0;
+			$distance_by_stroke[ $stroke ] += $distance;
+		}
+		if ( $distance_by_stroke ) {
+			arsort( $distance_by_stroke, SORT_NUMERIC );
+			$parsed['workout']['primary_stroke'] = (string) key( $distance_by_stroke );
+		}
+		return $parsed;
 	}
 	private static function uploaded_source_type($name,$path){
 		$lower=strtolower((string)$name);$supported=array('fit','csv','gpx','tcx');
