@@ -347,7 +347,7 @@ final class Blocks {
 			'pool_length_unit' => $workout['pool_length_unit'],
 			'primary_stroke' => $workout['primary_stroke'],
 		) );
-		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Recorded', 'chriss-swim-training-progress-evaluation' ) . '</span>' . ( ! empty( $workout['has_personal_best'] ) ? '<span class="swimlog-calendar-personal-best" aria-label="Personal best" title="Personal best">★</span>' : '' ) . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout' . ( ! empty( $workout['matched_to_plan'] ) ? ' is-matched-to-plan' : '' ) . '" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Recorded', 'chriss-swim-training-progress-evaluation' ) . '</span>' . ( ! empty( $workout['has_personal_best'] ) ? '<span class="swimlog-calendar-personal-best" aria-label="Personal best" title="Personal best">★</span>' : '' ) . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_planned_workout_html( $plan ) {
