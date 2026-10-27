@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0
+Stable tag: 1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,7 +17,25 @@ CSV swimming workouts, manually recording pool workouts, preserving normalized w
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
+Version 1.1 adds planned workouts and turns the Swim Training Calendar into an interactive planning surface. Swimmers can create, edit, duplicate, repeat, skip, cancel, restore, and delete future plans; duplicate a week; explicitly match a completed recorded workout to a plan; and review simple planned-versus-actual distance and duration differences. Planned workout instructions preserve multiline free-form swim notation for future structured-workout parsing without inventing sets, send-offs, training stress, readiness, or coaching conclusions.
+
+The shared calendar now also has a WordPress administration Calendar page while retaining the native Gutenberg Calendar block. Both hosts use the same calendar service, Month/Week behavior, swimmer-configured Saturday/Sunday/Monday week boundaries, planning/matching actions, privacy rules, responsive agenda, and accessibility behavior. Calendar REST remains read-only and private notes, GPS/trackpoints, and device/source metadata remain excluded.
+
+v1.1 advances the internal database schema to 1.0 by adding the dedicated planned-workouts table through the existing in-place dbDelta upgrade path. Existing workout, event, import, performance, location, manual-workout, lap, length, and trackpoint data are preserved.
+
 Version 1.0 adds the private Swim Training Calendar: month and week views, swimmer-configurable Saturday/Sunday/Monday week boundaries, defensible weekly training summaries, in-calendar workout details, responsive mobile agenda presentation, and accessibility-focused keyboard/focus behavior. It builds on the v0.9 analytics, REST/data-portability, and administration architecture without adding a database schema migration.
+
+= v1.1 =
+
+* Add dedicated planned workouts with date/time, type, distance, duration, pool/stroke context, multiline workout instructions, private notes, lifecycle status, and optional explicit completed-workout association.
+* Add create/edit/duplicate/repeat/skip/cancel/restore/delete planning actions plus Duplicate Week through authenticated owner/admin calendar actions while keeping REST read-only.
+* Add explicit same-day/type completion candidates and user-confirmed matching; never auto-match a plan to a recorded workout.
+* Add simple planned-versus-actual distance/duration differences and weekly planned/recorded totals without adherence scores, TSS, readiness, recovery, or coaching inference.
+* Add the wp-admin Calendar as another host for the shared calendar implementation, including Month/Week, Previous/Next/Today, Go to Date, swimmer-configured week starts, and Duplicate Week.
+* Improve responsive/mobile planning so empty dates remain plannable, initial agenda content loads correctly, and recorded/planned/event types are textually distinct rather than color-only.
+* Improve shared calendar accessibility, loading state, focus restoration, planned-workout aria state, and week-view recorded-workout details.
+* Preserve calendar privacy: private planned-workout notes, GPS/trackpoints, device/source, and import metadata are not exposed; calendar REST remains read-only.
+* Advance the internal database schema to 1.0 with an in-place, data-preserving planned-workouts table migration.
 
 = v1.0 =
 
@@ -88,6 +106,13 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
 
 == Changelog ==
+
+= 1.1 =
+* Add planned-workout creation and lifecycle management, recurrence, duplication, Duplicate Week, explicit recorded-workout matching/unmatching, and simple planned-versus-actual comparisons.
+* Add a shared wp-admin Calendar host with Month/Week, Previous/Next/Today, Go to Date, configured week starts, and the same planning behavior as the Gutenberg Calendar.
+* Improve mobile empty-date planning, initial responsive agenda loading, dense calendar presentation, textual Recorded/Planned/Event distinctions, focus restoration, aria state, and loading/error feedback.
+* Keep calendar REST read-only and preserve privacy exclusions for private notes, GPS/trackpoints, device/source, and import metadata.
+* Advance the internal database schema to 1.0 by adding the planned-workouts table through the existing in-place dbDelta upgrade path while preserving existing data.
 
 = 1.0 =
 * Add the private Swim Training Calendar block with Month and Week views, Previous/Next/Today navigation, and swimmer-configurable Saturday/Sunday/Monday week starts.

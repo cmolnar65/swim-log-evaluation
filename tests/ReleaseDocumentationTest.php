@@ -2,16 +2,23 @@
 use PHPUnit\Framework\TestCase;
 
 final class ReleaseDocumentationTest extends TestCase {
- public function test_release_docs_identify_version_10_release_consistently(){
+ public function test_release_docs_identify_version_11_release_consistently(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  $this->assertStringContainsString('Stable tag: 1.0',$readme);
-  $this->assertStringContainsString('= 1.0 =',$readme);
-  $this->assertStringContainsString("Version: 1.0",$plugin);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.0'",$plugin);
-  $this->assertStringContainsString('## v1.0 release status',$github);
+  $this->assertStringContainsString('Stable tag: 1.1',$readme);
+  $this->assertStringContainsString('= 1.1 =',$readme);
+  $this->assertStringContainsString("Version: 1.1",$plugin);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.1'",$plugin);
+  $this->assertStringContainsString('## v1.1 release candidate status',$github);
   foreach(array('## Release candidate: v1.0','The `develop` branch is the v1.0 release candidate.','Stable tag: 0.7','current public stable release remains v0.7','v0.8 development status','v0.8 development — complete, not yet released')as$stale)$this->assertStringNotContainsString($stale,$readme.$github);
+ }
+ public function test_v11_docs_cover_planned_workout_release_features(){
+  $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $github=file_get_contents(dirname(__DIR__).'/README.md');
+  foreach(array('Planned Workouts','Duplicate Week','planned-versus-actual','wp-admin Calendar','read-only','database schema to 1.0')as$feature)$this->assertStringContainsString($feature,$readme);
+  foreach(array('Planned Workouts','duplicate a week','Matching is never automatic','administration **Calendar**','REST remains read-only','database schema to **1.0**')as$feature)$this->assertStringContainsString($feature,$github);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.1'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v10_docs_cover_calendar_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');

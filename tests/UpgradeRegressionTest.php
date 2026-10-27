@@ -55,6 +55,17 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString('KEY user_status_date (user_id,status,planned_date)',$db);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.0'",$main);
   $this->assertStringContainsString('dbDelta( $statement )',$db);
+  $this->assertStringContainsString("'planned_workouts'",$db);
+  $this->assertStringNotContainsString('DROP TABLE',$db);
+  $this->assertStringNotContainsString('TRUNCATE TABLE',$db);
+  $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
+  $this->assertStringContainsString("get_option( 'swimlog_db_version', '0.0.0' )",$plugin);
+  $this->assertStringContainsString("version_compare( \$installed, SWIMLOG_EVALUATION_DB_VERSION, '>=' )",$plugin);
+  $this->assertStringContainsString('if ( Database::install_schema() )',$plugin);
+  $this->assertStringContainsString("update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION )",$plugin);
+  $install=strpos($plugin,'if ( Database::install_schema() )');
+  $version=strpos($plugin,"update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION )",$install);
+  $this->assertLessThan($version,$install);
  }
 
  public function test_legacy_default_upload_types_gain_gpx_and_tcx_only_during_pre_07_upgrade(){
