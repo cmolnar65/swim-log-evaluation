@@ -30,6 +30,7 @@ require_once dirname(__DIR__).'/includes/class-xml-importer.php';
 require_once dirname(__DIR__).'/includes/class-evaluator.php';
 require_once dirname(__DIR__).'/includes/class-workout.php';
 require_once dirname(__DIR__).'/includes/class-event.php';
+require_once dirname(__DIR__).'/includes/class-planned-workout.php';
 require_once dirname(__DIR__).'/includes/class-calendar.php';
 require_once dirname(__DIR__).'/includes/class-pool-analytics.php';
 require_once dirname(__DIR__).'/includes/class-training-trends.php';

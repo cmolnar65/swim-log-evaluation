@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
 		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
