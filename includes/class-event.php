@@ -129,7 +129,7 @@ final class Event {
 			if ( ! preg_match( '/^(?:(\d{1,2}):)?(\d{1,3}):([0-5]\d)(?:\.(\d{1,3}))?$/', $time, $m ) ) {
 				return new \WP_Error( 'swimlog_event_result_time', __( 'Enter a race time as MM:SS.ss or HH:MM:SS.ss.', 'chriss-swim-training-progress-evaluation' ) );
 			}
-			if ( ! empty( $m[1] ) && (int) $m[2] > 59 ) return new \WP_Error( 'swimlog_event_result_time', __( 'Minutes must be less than 60 when hours are supplied.', 'chriss-swim-training-progress-evaluation' ) );
+			if ( isset( $m[1] ) && '' !== $m[1] && (int) $m[2] > 59 ) return new \WP_Error( 'swimlog_event_result_time', __( 'Minutes must be less than 60 when hours are supplied.', 'chriss-swim-training-progress-evaluation' ) );
 			$ms = ( (int) ( $m[1] ?? 0 ) * 3600 + (int) $m[2] * 60 + (int) $m[3] ) * 1000 + (int) str_pad( (string) ( $m[4] ?? '' ), 3, '0' );
 			if ( $ms <= 0 ) return new \WP_Error( 'swimlog_event_result_time', __( 'Race time must be positive.', 'chriss-swim-training-progress-evaluation' ) );
 		}
