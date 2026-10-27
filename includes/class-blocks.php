@@ -360,7 +360,7 @@ final class Blocks {
 
 	private static function calendar_event_html( $event ) {
 		$name = '' !== trim( $event['event_name'] ) ? $event['event_name'] : __( 'Swim Event', 'chriss-swim-training-progress-evaluation' );
-		return '<div class="swimlog-calendar-item swimlog-calendar-event"><span class="swimlog-calendar-kind">' . esc_html__( 'Event', 'chriss-swim-training-progress-evaluation' ) . '</span><strong>' . esc_html( $name ) . '</strong></div>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-event" data-calendar-event="' . esc_attr( wp_json_encode( $event ) ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-event-' . esc_attr( $event['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Event', 'chriss-swim-training-progress-evaluation' ) . '</span><strong>' . esc_html( $name ) . '</strong></button>';
 	}
 
 	private static function calendar_duration( $milliseconds ) {
