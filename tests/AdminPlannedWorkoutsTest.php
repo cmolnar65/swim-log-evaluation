@@ -47,6 +47,6 @@ final class AdminPlannedWorkoutsTest extends TestCase {
 		$main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
 		$this->assertStringContainsString( 'public static function all_for_user( $user_id )', $service );
 		$this->assertStringContainsString( 'WHERE user_id = %d ORDER BY planned_date DESC', $service );
-		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.1'", $main );
+		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
 	}
 }

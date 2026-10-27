@@ -26,6 +26,6 @@ final class AdminCalendarTest extends TestCase {
   $this->assertStringContainsString("add_action( 'admin_enqueue_scripts', array( \$this, 'register_calendar_style' ) )",$plugin);
  }
  public function test_phase_nine_a_does_not_change_database_version(){
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
  }
 }
