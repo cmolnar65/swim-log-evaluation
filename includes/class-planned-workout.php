@@ -61,13 +61,14 @@ final class Planned_Workout {
 		if ( ! $user_id ) {
 			return new \WP_Error( 'swimlog_planned_workout_user', __( 'A swimmer is required.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		if ( $id && ! self::get_for_user( $id, $user_id ) ) {
+		$existing = $id ? self::get_for_user( $id, $user_id ) : null;
+		if ( $id && ! $existing ) {
 			return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
 		$validated = self::validate( $data );
 		if ( is_wp_error( $validated ) ) return $validated;
-		if ( ! $id && $validated['planned_date'] < wp_date( 'Y-m-d', null, wp_timezone() ) ) {
+		if ( $validated['planned_date'] < wp_date( 'Y-m-d', null, wp_timezone() ) && ( ! $existing || $validated['planned_date'] !== $existing->planned_date ) ) {
 			return new \WP_Error( 'swimlog_planned_workout_past_date', __( 'New planned workouts must be scheduled for today or a future date.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
@@ -132,8 +133,13 @@ final class Planned_Workout {
 		$source = self::valid_date( $source_start );
 		$target = self::valid_date( $target_start );
 		if ( ! $user_id || ! $source || ! $target ) return new \WP_Error( 'swimlog_planned_workout_week', __( 'Select valid source and target week dates.', 'chriss-swim-training-progress-evaluation' ) );
-		$source_end = $source->modify( '+7 days' );
+		$source_end = $source->modify( '+6 days' );
 		$plans = self::range_for_user( $user_id, $source->format( 'Y-m-d' ), $source_end->format( 'Y-m-d' ) );
+		$today = wp_date( 'Y-m-d', null, wp_timezone() );
+		foreach ( (array) $plans as $plan ) {
+			$offset = (int) $source->diff( self::valid_date( $plan->planned_date ) )->format( '%r%a' );
+			if ( $target->modify( '+' . $offset . ' days' )->format( 'Y-m-d' ) < $today ) return new \WP_Error( 'swimlog_planned_workout_past_date', __( 'The target week contains planned workouts before today.', 'chriss-swim-training-progress-evaluation' ) );
+		}
 		$created = array();
 		foreach ( (array) $plans as $plan ) {
 			$plan_date = self::valid_date( $plan->planned_date );
@@ -160,6 +166,8 @@ final class Planned_Workout {
 		}
 		$days = array_values( array_unique( $days ) );
 		if ( empty( $days ) ) return new \WP_Error( 'swimlog_planned_workout_recurrence_days', __( 'Select at least one recurrence weekday.', 'chriss-swim-training-progress-evaluation' ) );
+		$today = wp_date( 'Y-m-d', null, wp_timezone() );
+		if ( $start->format( 'Y-m-d' ) < $today ) $start = self::valid_date( $today );
 		$created = array();
 		for ( $date = $start; $date <= $end; $date = $date->modify( '+1 day' ) ) {
 			if ( $date->format( 'Y-m-d' ) === $plan->planned_date || ! in_array( (int) $date->format( 'w' ), $days, true ) ) continue;
