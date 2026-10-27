@@ -37,6 +37,7 @@ require_once dirname(__DIR__).'/includes/class-training-trends.php';
 
 require_once dirname(__DIR__).'/includes/class-location.php';
 
+require_once dirname(__DIR__).'/includes/class-swolf.php';
 require_once dirname(__DIR__).'/includes/class-importer.php';
 require_once dirname(__DIR__).'/includes/class-manual-workout.php';
 
