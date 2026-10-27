@@ -16,7 +16,7 @@
 		return hours ? hours + 'h ' + String( minutes ).padStart( 2, '0' ) + 'm' : minutes + 'm';
 	}
 	function item( className, parts, strong, workout, plannedWorkout, calendarEvent ) {
-		var interactive = workout || plannedWorkout || calendarEvent, div = document.createElement( interactive ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className;
+		var interactive = workout || plannedWorkout || calendarEvent, div = document.createElement( interactive ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className; if ( workout && workout.matched_to_plan ) div.classList.add( 'is-matched-to-plan' );
 		var kind = className.indexOf( 'planned-workout' ) !== -1 ? 'Planned' : ( className.indexOf( 'calendar-event' ) !== -1 ? 'Event' : 'Recorded' );
 		var badge = document.createElement( 'span' ); badge.className = 'swimlog-calendar-kind'; badge.textContent = kind; div.appendChild( badge );
 		if ( workout && workout.has_personal_best ) { var star = document.createElement( 'span' ); star.className = 'swimlog-calendar-personal-best'; star.textContent = '★'; star.setAttribute( 'aria-label', 'Personal best' ); star.title = 'Personal best'; div.appendChild( star ); }
