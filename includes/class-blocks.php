@@ -335,6 +335,7 @@ final class Blocks {
 		if ( $active > 0 ) $parts[] = esc_html( self::calendar_duration( $active ) );
 		$detail = wp_json_encode( array(
 			'id' => (int) $workout['id'],
+			'has_personal_best' => ! empty( $workout['has_personal_best'] ),
 			'workout_type' => $workout['workout_type'],
 			'workout_start' => $workout['workout_start'],
 			'location' => $workout['location'],
@@ -346,7 +347,7 @@ final class Blocks {
 			'pool_length_unit' => $workout['pool_length_unit'],
 			'primary_stroke' => $workout['primary_stroke'],
 		) );
-		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Recorded', 'chriss-swim-training-progress-evaluation' ) . '</span>' . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-workout" data-calendar-workout="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-' . esc_attr( $workout['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Recorded', 'chriss-swim-training-progress-evaluation' ) . '</span>' . ( ! empty( $workout['has_personal_best'] ) ? '<span class="swimlog-calendar-personal-best" aria-label="Personal best" title="Personal best">★</span>' : '' ) . implode( '<span aria-hidden="true"> · </span>', $parts ) . '</button>';
 	}
 
 	private static function calendar_planned_workout_html( $plan ) {
