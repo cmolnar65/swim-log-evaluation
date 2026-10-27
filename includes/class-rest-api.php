@@ -15,7 +15,6 @@ final class REST_API {
   register_rest_route(self::NS,'/analytics/pool',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'pool_analytics'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'),'stroke'=>array('sanitize_callback'=>'sanitize_key'),'months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/analytics/training-trends',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'training_trends'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/calendar',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar'),'permission_callback'=>array(__CLASS__,'calendar_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
-  register_rest_route(self::NS,'/calendar/planned-workouts',array('methods'=>\WP_REST_Server::CREATABLE,'callback'=>array(__CLASS__,'calendar_planned_workout'),'permission_callback'=>array(__CLASS__,'calendar_manage_permission')));
  }
 
  public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}
@@ -26,31 +25,6 @@ final class REST_API {
   $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$target=$requested?:$current;
   if($target===$current)return current_user_can('swimlog_view_own_results');
   return current_user_can('swimlog_manage_all_users');
- }
-
- public static function calendar_manage_permission($request){
-  if(!is_user_logged_in())return false;
-  $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$target=$requested?:$current;
-  if($target===$current)return current_user_can('swimlog_manage_own_workouts');
-  return current_user_can('swimlog_manage_all_users');
- }
-
- public static function calendar_planned_workout($request){
-  require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
-  require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-  require_once SWIMLOG_EVALUATION_DIR.'includes/class-planned-workout.php';
-  $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$uid=$requested?:$current;
-  if($uid!==$current&&!current_user_can('swimlog_manage_all_users'))return new \WP_Error('swimlog_calendar_forbidden',__('You cannot manage this swimmer calendar.','chriss-swim-training-progress-evaluation'),array('status'=>403));
-  $action=sanitize_key((string)$request->get_param('action'));$id=absint($request->get_param('id'));
-  if('save'===$action){$data=array();foreach(array('planned_date','planned_start_time','title','workout_type','planned_distance_m','planned_duration_ms','pool_length_m','pool_course','primary_stroke','workout_instructions','notes')as$key)$data[$key]=$request->get_param($key);$result=Planned_Workout::save($uid,$data,$id);}
-  elseif('duplicate'===$action){$result=Planned_Workout::duplicate($id,$uid,$request->get_param('planned_date'));}
-  elseif('skip'===$action){$result=Planned_Workout::set_status($id,$uid,'skipped');}
-  elseif('cancel'===$action){$result=Planned_Workout::set_status($id,$uid,'cancelled');}
-  elseif('restore'===$action){$result=Planned_Workout::set_status($id,$uid,'planned');}
-  elseif('delete'===$action){$result=Planned_Workout::delete($id,$uid);}
-  else return new \WP_Error('swimlog_calendar_plan_action',__('Select a valid planned-workout action.','chriss-swim-training-progress-evaluation'),array('status'=>400));
-  if(is_wp_error($result))return $result;
-  return rest_ensure_response(array('success'=>true,'id'=>is_int($result)?$result:$id));
  }
 
  public static function workouts($request){

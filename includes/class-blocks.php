@@ -191,6 +191,38 @@ final class Blocks {
 		);
 	}
 
+	public static function calendar_plan_action() {
+		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => __( 'Authentication required.', 'chriss-swim-training-progress-evaluation' ) ), 401 );
+		check_ajax_referer( 'swimlog_calendar_plan', 'nonce' );
+		$current = absint( get_current_user_id() );
+		$requested = isset( $_POST['user'] ) ? absint( wp_unslash( $_POST['user'] ) ) : 0;
+		$user_id = $requested ? $requested : $current;
+		$allowed = $user_id === $current ? current_user_can( 'swimlog_manage_own_workouts' ) : current_user_can( 'swimlog_manage_all_users' );
+		if ( ! $allowed ) wp_send_json_error( array( 'message' => __( 'You cannot manage this swimmer calendar.', 'chriss-swim-training-progress-evaluation' ) ), 403 );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+		$action = isset( $_POST['plan_action'] ) ? sanitize_key( wp_unslash( $_POST['plan_action'] ) ) : '';
+		$id = isset( $_POST['id'] ) ? absint( wp_unslash( $_POST['id'] ) ) : 0;
+		if ( 'save' === $action ) {
+			$existing = $id ? Planned_Workout::get_for_user( $id, $user_id ) : null;
+			$data = array();
+			foreach ( array( 'planned_date', 'planned_start_time', 'title', 'workout_type', 'planned_distance_m', 'planned_duration_ms', 'pool_length_m', 'pool_course', 'primary_stroke', 'workout_instructions' ) as $key ) {
+				$data[ $key ] = isset( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : '';
+			}
+			// Calendar deliberately does not receive private notes; preserve them on edit.
+			$data['notes'] = $existing ? $existing->notes : '';
+			$result = Planned_Workout::save( $user_id, $data, $id );
+		} elseif ( 'duplicate' === $action ) {
+			$date = isset( $_POST['planned_date'] ) ? sanitize_text_field( wp_unslash( $_POST['planned_date'] ) ) : null;
+			$result = Planned_Workout::duplicate( $id, $user_id, $date );
+		} elseif ( 'skip' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'skipped' );
+		elseif ( 'cancel' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'cancelled' );
+		elseif ( 'restore' === $action ) $result = Planned_Workout::set_status( $id, $user_id, 'planned' );
+		elseif ( 'delete' === $action ) $result = Planned_Workout::delete( $id, $user_id );
+		else $result = new \WP_Error( 'swimlog_calendar_plan_action', __( 'Select a valid planned-workout action.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
+		wp_send_json_success( array( 'id' => is_int( $result ) ? $result : $id ) );
+	}
+
 	public static function render_calendar( $attributes ) {
 		$user_id = self::calendar_owner( $attributes );
 		if ( ! self::calendar_allowed( $user_id ) ) {
@@ -252,7 +284,6 @@ final class Blocks {
 		}
 		wp_enqueue_script( 'swimlog-calendar-view' );
 		$rest_url = rest_url( 'swimlog/v1/calendar' );
-		$manage_url = rest_url( 'swimlog/v1/calendar/planned-workouts' );
 		$html = '<section class="swimlog-calendar" data-swimlog-calendar="1" data-rest-url="' . esc_url( $rest_url ) . '" data-user="' . esc_attr( $user_id ) . '" data-year="' . esc_attr( $month->format( 'Y' ) ) . '" data-month="' . esc_attr( $month->format( 'n' ) ) . '" data-first-day="' . esc_attr( $first_day ) . '" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
 		$html .= '<div class="swimlog-calendar-toolbar">';
 		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
