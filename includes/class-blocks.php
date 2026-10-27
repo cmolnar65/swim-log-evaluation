@@ -198,7 +198,7 @@ final class Blocks {
 		$current = absint( get_current_user_id() );
 		$requested = isset( $_POST['user'] ) ? absint( wp_unslash( $_POST['user'] ) ) : 0;
 		$user_id = $requested ? $requested : $current;
-		$allowed = $user_id === $current ? current_user_can( 'swimlog_manage_own_events' ) : current_user_can( 'swimlog_manage_all_users' );
+		$allowed = $user_id === $current ? current_user_can( 'swimlog_manage_own_workouts' ) : current_user_can( 'swimlog_manage_all_users' );
 		if ( ! $allowed ) wp_send_json_error( array( 'message' => __( 'You cannot manage these event results.', 'chriss-swim-training-progress-evaluation' ) ), 403 );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
 		$id = isset( $_POST['id'] ) ? absint( wp_unslash( $_POST['id'] ) ) : 0;
