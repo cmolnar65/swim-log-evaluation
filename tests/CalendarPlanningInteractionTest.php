@@ -38,6 +38,6 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString("'Workout Plan / Workout Instructions', 'workout_instructions', 'textarea'",$view);
   foreach(array("[ 'edit', 'Edit' ]","[ 'duplicate', 'Duplicate' ]","[ 'skip', 'Mark Skipped' ]","[ 'cancel', 'Cancel Plan' ]","[ 'delete', 'Delete' ]","dataset.calendarPlanAction = 'restore'")as$needle)$this->assertStringContainsString($needle,$view);
   foreach(array('dragstart','draggable','dropzone')as$needle)$this->assertStringNotContainsString($needle,$view);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.0'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.1'",$main);
  }
 }
