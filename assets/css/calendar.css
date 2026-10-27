@@ -22,3 +22,8 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 
 .swimlog-calendar-day{min-width:0}.swimlog-calendar-kind{display:inline-block;font-size:.68em;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 .35rem .2rem 0;padding:.08rem .25rem;border:1px solid currentColor;border-radius:2px}.swimlog-calendar-agenda-day-empty{margin:.25rem 0;font-size:.9em;opacity:.75}.swimlog-calendar-item{max-width:100%}.swimlog-calendar-plan-actions .swimlog-calendar-button,.swimlog-calendar-detail .swimlog-calendar-button{min-height:2.25rem}
 @media(max-width:700px){.swimlog-calendar-agenda-day{padding:.8rem 0}.swimlog-calendar-agenda-date{font-size:1.05em}.swimlog-calendar-plan-date{min-height:2.25rem;padding:.35rem .5rem}.swimlog-calendar-kind{font-size:.72em}}
+
+/* Recorded swims linked to a planned workout; unlinked swims retain default styling. */
+.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan{background-color:#d8f3dc;color:#173b25;border-color:#6abf80}
+.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan:hover,.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan:focus-visible{border-color:#246b3a}
+@media(forced-colors:active){.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan{border:2px solid Highlight}}
