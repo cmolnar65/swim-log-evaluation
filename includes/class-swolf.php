@@ -23,7 +23,8 @@ final class Swolf {
             return $parsed;
         }
         $scores = array();
-        foreach ( (array) ( $parsed['lengths'] ?? array() ) as &$length ) {
+        if ( ! isset( $parsed['lengths'] ) || ! is_array( $parsed['lengths'] ) ) $parsed['lengths'] = array();
+        foreach ( $parsed['lengths'] as &$length ) {
             $length['swolf_score'] = self::length_score( $length );
             if ( null !== $length['swolf_score'] ) $scores[] = $length['swolf_score'];
         }
