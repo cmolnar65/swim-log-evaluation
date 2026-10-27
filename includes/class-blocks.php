@@ -191,6 +191,37 @@ final class Blocks {
 		);
 	}
 
+	/** Authenticated per-race result access; notes never enter public calendar payloads. */
+	public static function calendar_event_result_action() {
+		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => __( 'Authentication required.', 'chriss-swim-training-progress-evaluation' ) ), 401 );
+		check_ajax_referer( 'swimlog_calendar_event_result', 'nonce' );
+		$current = absint( get_current_user_id() );
+		$requested = isset( $_POST['user'] ) ? absint( wp_unslash( $_POST['user'] ) ) : 0;
+		$user_id = $requested ? $requested : $current;
+		$allowed = $user_id === $current ? current_user_can( 'swimlog_manage_own_events' ) : current_user_can( 'swimlog_manage_all_users' );
+		if ( ! $allowed ) wp_send_json_error( array( 'message' => __( 'You cannot manage these event results.', 'chriss-swim-training-progress-evaluation' ) ), 403 );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
+		$id = isset( $_POST['id'] ) ? absint( wp_unslash( $_POST['id'] ) ) : 0;
+		$event = Event::get_for_user( $id, $user_id );
+		if ( ! $event ) wp_send_json_error( array( 'message' => __( 'Event not found.', 'chriss-swim-training-progress-evaluation' ) ), 404 );
+		$operation = isset( $_POST['operation'] ) ? sanitize_key( wp_unslash( $_POST['operation'] ) ) : 'read';
+		if ( 'save' === $operation ) {
+			$time = isset( $_POST['result_time'] ) ? sanitize_text_field( wp_unslash( $_POST['result_time'] ) ) : '';
+			$place = isset( $_POST['placement'] ) ? sanitize_text_field( wp_unslash( $_POST['placement'] ) ) : '';
+			$notes = isset( $_POST['notes'] ) ? wp_unslash( $_POST['notes'] ) : '';
+			$result = Event::save_result( $id, $user_id, $time, $place, $notes );
+			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
+			$event = Event::get_for_user( $id, $user_id );
+		} elseif ( 'read' !== $operation ) wp_send_json_error( array( 'message' => __( 'Unsupported event action.', 'chriss-swim-training-progress-evaluation' ) ), 400 );
+		$ms = null !== $event->result_time_ms ? (int) $event->result_time_ms : null;
+		$formatted = '';
+		if ( null !== $ms ) {
+			$seconds = (int) floor( $ms / 1000 );
+			$formatted = sprintf( '%02d:%02d', (int) floor( $seconds / 60 ), $seconds % 60 ) . '.' . sprintf( '%03d', $ms % 1000 );
+		}
+		wp_send_json_success( array( 'id' => $id, 'result_time' => $formatted, 'placement' => null !== $event->placement ? (int) $event->placement : null, 'notes' => (string) ( $event->notes ?? '' ) ) );
+	}
+
 	public static function calendar_plan_action() {
 		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'message' => __( 'Authentication required.', 'chriss-swim-training-progress-evaluation' ) ), 401 );
 		check_ajax_referer( 'swimlog_calendar_plan', 'nonce' );
