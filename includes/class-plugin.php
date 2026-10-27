@@ -30,6 +30,7 @@ final class Plugin {
 		Shortcodes::register();
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';
 		add_action( 'init', array( 'SwimLogEvaluation\\Blocks', 'register' ) );
+		add_action( 'wp_ajax_swimlog_calendar_event_result', array( 'SwimLogEvaluation\\Blocks', 'calendar_event_result_action' ) );
 		add_action( 'wp_ajax_swimlog_calendar_plan', array( 'SwimLogEvaluation\\Blocks', 'calendar_plan_action' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_calendar_style' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'register_calendar_style' ) );
@@ -39,7 +40,7 @@ final class Plugin {
 	public function register_calendar_style() {
 		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), SWIMLOG_EVALUATION_VERSION );
 		wp_localize_script( 'swimlog-calendar-view', 'wpApiSettings', array( 'nonce' => wp_create_nonce( 'wp_rest' ) ) );
-		wp_localize_script( 'swimlog-calendar-view', 'swimlogCalendarSettings', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'planNonce' => wp_create_nonce( 'swimlog_calendar_plan' ) ) );
+		wp_localize_script( 'swimlog-calendar-view', 'swimlogCalendarSettings', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'planNonce' => wp_create_nonce( 'swimlog_calendar_plan' ), 'eventNonce' => wp_create_nonce( 'swimlog_calendar_event_result' ) ) );
 	}
 
 	public function register_rest_api() {
