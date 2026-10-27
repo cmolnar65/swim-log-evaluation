@@ -19,6 +19,7 @@
 		var interactive = workout || plannedWorkout || calendarEvent, div = document.createElement( interactive ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className;
 		var kind = className.indexOf( 'planned-workout' ) !== -1 ? 'Planned' : ( className.indexOf( 'calendar-event' ) !== -1 ? 'Event' : 'Recorded' );
 		var badge = document.createElement( 'span' ); badge.className = 'swimlog-calendar-kind'; badge.textContent = kind; div.appendChild( badge );
+		if ( workout && workout.has_personal_best ) { var star = document.createElement( 'span' ); star.className = 'swimlog-calendar-personal-best'; star.textContent = '★'; star.setAttribute( 'aria-label', 'Personal best' ); star.title = 'Personal best'; div.appendChild( star ); }
 		if ( workout ) { div.type = 'button'; div.dataset.calendarWorkout = JSON.stringify( workout ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-' + workout.id ); }
 		if ( plannedWorkout ) { div.type = 'button'; div.dataset.calendarPlannedWorkout = JSON.stringify( plannedWorkout ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-plan-' + plannedWorkout.id ); }
 		if ( calendarEvent ) { div.type = 'button'; div.dataset.calendarEvent = JSON.stringify( calendarEvent ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-event-' + calendarEvent.id ); }
