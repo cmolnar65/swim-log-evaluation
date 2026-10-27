@@ -95,6 +95,7 @@ final class Plugin {
 
 		$installed = get_option( 'swimlog_db_version', '0.0.0' );
 		if ( version_compare( $installed, SWIMLOG_EVALUATION_DB_VERSION, '>=' ) ) {
+			self::maybe_backfill_swolf();
 			return;
 		}
 
@@ -102,6 +103,7 @@ final class Plugin {
 		if ( Database::install_schema() ) {
 			self::migrate_upgrade_settings( $installed );
 			update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION );
+			self::maybe_backfill_swolf();
 		}
 	}
 }
