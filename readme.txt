@@ -10,6 +10,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Import or manually record, preserve, evaluate, and display swimming workout history and personal bests.
 
+== v1.2 development: Twenty Twenty-Four page templates ==
+
+For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred Page/Post templates are **SwimLog Wide Content** and **SwimLog Full Width**. Select one from the editor's Template selector. Both preserve the theme header, footer, and page content while providing appropriate table width and responsive display. Wide Content is suitable for wider tables with a bounded content area; Full Width is suited to the widest tables and multi-column layouts. Both were manually verified in Twenty Twenty-Four during v1.2 Phase 03. These templates are optional, and existing pages need not change.
+
 == Description ==
 
 Chris's Swim Training Progress and Evaluation is a multi-user WordPress plugin for importing FIT and
