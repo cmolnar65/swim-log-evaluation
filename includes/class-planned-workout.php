@@ -241,6 +241,7 @@ final class Planned_Workout {
 
 	/** Associate exactly one recorded workout owned by the same swimmer and mark the plan completed. */
 	public static function associate_completed_workout( $id, $user_id, $workout_id ) {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		global $wpdb;
 		$id = absint( $id );
 		$user_id = absint( $user_id );
