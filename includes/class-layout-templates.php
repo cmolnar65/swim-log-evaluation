@@ -10,8 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Layout_Templates {
     const WIDE = 'swimlog-wide';
     const FULL = 'swimlog-full';
+    const PREFIX = 'chriss-swim-training-progress-evaluation//';
 
     public static function register() {
+        add_action( 'init', array( __CLASS__, 'register_block_templates' ) );
         add_filter( 'theme_page_templates', array( __CLASS__, 'choices' ), 10, 4 );
         add_filter( 'theme_post_templates', array( __CLASS__, 'choices' ), 10, 4 );
         add_filter( 'template_include', array( __CLASS__, 'template_include' ), 99 );
@@ -19,6 +21,27 @@ final class Layout_Templates {
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
         add_action( 'add_meta_boxes', array( __CLASS__, 'meta_boxes' ) );
         add_action( 'save_post', array( __CLASS__, 'save_preferences' ), 10, 2 );
+    }
+
+    /** Native block-theme templates, available in the Page and Post editor. */
+    public static function register_block_templates() {
+        if ( ! function_exists( 'register_block_template' ) ) return;
+        foreach ( array( self::WIDE, self::FULL ) as $slug ) {
+            register_block_template(
+                self::PREFIX . $slug,
+                array(
+                    'title' => self::WIDE === $slug ? __( 'SwimLog Wide Content', 'chriss-swim-training-progress-evaluation' ) : __( 'SwimLog Full Width', 'chriss-swim-training-progress-evaluation' ),
+                    'description' => __( 'A SwimLog layout with the theme header, footer, and editable post content.', 'chriss-swim-training-progress-evaluation' ),
+                    'post_types' => array( 'page', 'post' ),
+                    'content' => '<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->'
+                        . '<!-- wp:group {"tagName":"main","className":"swimlog-layout-main","layout":{"type":"constrained"}} -->'
+                        . '<!-- wp:post-title {"level":1} /-->'
+                        . '<!-- wp:post-content {"layout":{"type":"constrained"}} /-->'
+                        . '<!-- /wp:group -->'
+                        . '<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->',
+                )
+            );
+        }
     }
 
     public static function choices( $templates ) {
@@ -31,11 +54,13 @@ final class Layout_Templates {
         if ( ! $post_id ) $post_id = get_queried_object_id();
         if ( ! $post_id || ! in_array( get_post_type( $post_id ), array( 'page', 'post' ), true ) ) return '';
         $template = get_page_template_slug( $post_id );
-        return in_array( $template, array( self::WIDE, self::FULL ), true ) ? $template : '';
+        if ( in_array( $template, array( self::WIDE, self::FULL ), true ) ) return $template;
+        if ( in_array( $template, array( self::PREFIX . self::WIDE, self::PREFIX . self::FULL ), true ) ) return substr( $template, strlen( self::PREFIX ) );
+        return '';
     }
 
     public static function template_include( $template ) {
-        if ( is_singular( array( 'post', 'page' ) ) && self::selected() ) {
+        if ( is_singular( array( 'post', 'page' ) ) && self::selected() && ( ! function_exists( 'wp_is_block_theme' ) || ! wp_is_block_theme() || ! function_exists( 'register_block_template' ) ) ) {
             return SWIMLOG_EVALUATION_DIR . 'templates/swimlog-content.php';
         }
         return $template;
@@ -44,7 +69,7 @@ final class Layout_Templates {
     public static function body_classes( $classes ) {
         if ( ! is_singular( array( 'post', 'page' ) ) || ! self::selected() ) return $classes;
         $classes[] = 'swimlog-layout';
-        $classes[] = 'swimlog-layout-' . self::selected();
+        $classes[] = 'swimlog-layout-' . ( self::FULL === self::selected() ? 'full' : 'wide' );
         $density = get_post_meta( get_queried_object_id(), '_swimlog_table_density', true );
         $font = get_post_meta( get_queried_object_id(), '_swimlog_table_font', true );
         $classes[] = 'swimlog-density-' . ( 'compact' === $density ? 'compact' : 'comfortable' );
