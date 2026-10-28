@@ -52,7 +52,7 @@ final class CalendarPlanningInteractionTest extends TestCase {
   foreach(array('dragstart','dragover','drop','draggable','contextmenu','showMoveDate','showDateActions','pastePlan','data-calendar-move-form',"'move-date', 'Move to Date'","'copy', 'Copy Workout'","'cut', 'Cut Workout'")as$needle)$this->assertStringContainsString($needle,$view);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
   $service=file_get_contents(dirname(__DIR__).'/includes/class-planned-workout.php');
-  $this->assertStringContainsString("Planned_Workout::move( $id, $user_id, $date )",$blocks);
+  $this->assertStringContainsString('Planned_Workout::move( $id, $user_id, $date )',$blocks);
   $this->assertStringContainsString('public static function move( $id, $user_id, $date )',$service);
   $this->assertStringContainsString('Only unmatched planned workouts can be moved.',$service);
   $this->assertStringContainsString('swimlog_planned_workout_move_date',$service);
