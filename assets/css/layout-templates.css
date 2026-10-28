@@ -1,0 +1,17 @@
+/* Only pages/posts explicitly using a SwimLog layout receive these rules. */
+body.swimlog-layout .swimlog-layout-main{box-sizing:border-box;width:min(100% - 48px,1120px);margin-inline:auto;padding-block:24px 64px}
+body.swimlog-layout-full .swimlog-layout-main{width:calc(100% - 48px);max-width:none}
+body.swimlog-layout .swimlog-layout-heading{margin-bottom:1.25rem}
+body.swimlog-layout .swimlog-layout-content{min-width:0}
+body.swimlog-layout .swimlog-layout-content .wp-block-columns{max-width:none}
+body.swimlog-layout .swimlog-layout-content .wp-block-column{min-width:0}
+body.swimlog-layout .swimlog-layout-content .swimlog-table-wrap,
+body.swimlog-layout .swimlog-layout-content .wp-block-table{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+body.swimlog-layout .swimlog-layout-content .swimlog-public table{font-size:1rem}
+body.swimlog-layout.swimlog-table-font-small .swimlog-layout-content .swimlog-public table{font-size:.875rem}
+body.swimlog-layout.swimlog-density-compact .swimlog-layout-content .swimlog-public th,
+body.swimlog-layout.swimlog-density-compact .swimlog-layout-content .swimlog-public td{padding:.3em .45em}
+body.swimlog-layout-full .swimlog-layout-content .swimlog-public table{font-size:.875rem}
+body.swimlog-layout-full.swimlog-table-font-normal .swimlog-layout-content .swimlog-public table{font-size:.875rem}
+body.swimlog-layout-full.swimlog-table-font-small .swimlog-layout-content .swimlog-public table{font-size:.8rem}
+@media(max-width:782px){body.swimlog-layout .swimlog-layout-main{width:calc(100% - 24px);padding-block:16px 40px}}
