@@ -34,8 +34,8 @@ final class Layout_Templates {
                     'description' => __( 'A SwimLog layout with the theme header, footer, and editable post content.', 'chriss-swim-training-progress-evaluation' ),
                     'post_types' => array( 'page', 'post' ),
                     'content' => '<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->'
-                        . '<!-- wp:group {"tagName":"main","className":"swimlog-layout-main","layout":{"type":"constrained"}} -->'
-                        . '<main class="wp-block-group swimlog-layout-main is-layout-constrained wp-block-group-is-layout-constrained">'
+                        . '<!-- wp:group {"tagName":"main","className":"swimlog-layout-main"} -->'
+                        . '<main class="wp-block-group swimlog-layout-main">'
                         . '<!-- wp:post-title {"level":1} /-->'
                         . '<!-- wp:post-content {"className":"swimlog-layout-content"} /-->'
                         . '</main><!-- /wp:group -->'
