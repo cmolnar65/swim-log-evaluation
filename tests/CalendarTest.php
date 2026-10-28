@@ -201,8 +201,8 @@ final class CalendarTest extends TestCase {
 		$this->assertStringNotContainsString( 'swimlog_calendar', $database );
 	}
 
-	public function test_phase_one_does_not_change_database_version() {
-		$plugin = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
-		$this->assertStringContainsString( "define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.9' );", $plugin );
+	public function test_calendar_phase_does_not_define_calendar_schema() {
+		$database = file_get_contents( dirname( __DIR__ ) . '/includes/class-database.php' );
+		$this->assertStringNotContainsString( "self::table( 'calendar' )", $database );
 	}
 }

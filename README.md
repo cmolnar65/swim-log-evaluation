@@ -4,9 +4,21 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## v1.0 release status
+## v1.1 release candidate status
 
-The `develop` branch contains the intended **v1.0 release code**. This is the version to release unless site validation identifies an additional issue that requires correction. Version 0.9 remains the current GitHub release until v1.0 is merged through protected `main`, tagged, and published. WordPress.org remains on v0.8 unless a separate deployment is explicitly authorized.
+The `develop` branch contains the **v1.1 release candidate**. It must pass the complete PHP 7.4–8.4 regression matrix, packaged WordPress Plugin Check, package-content audit, and exact-ZIP site validation before any protected-main merge, tag, GitHub release, or WordPress.org deployment.
+
+## v1.1
+
+v1.1 adds **Planned Workouts** and expands the Swim Training Calendar into an interactive planning and completion-tracking surface. Plans preserve free-form multiline workout instructions and optional private notes while keeping structured workout parsing deferred for a later release.
+
+Swimmers can create, edit, duplicate, repeat, skip, cancel, restore, and delete plans, duplicate a week, and explicitly match or unlink a recorded workout. Matching is never automatic. Planned-versus-actual summaries use straightforward recorded distance and duration differences plus weekly planned/recorded totals; the plugin does not generate adherence scores, TSS, recovery, readiness, or coaching conclusions.
+
+The WordPress administration **Calendar** is another host for the same shared calendar used by the Gutenberg block rather than a second calendar implementation. Month/Week navigation, Previous/Next/Today, Go to Date, swimmer-configured Saturday/Sunday/Monday week boundaries, planning actions, privacy rules, responsive agenda, and accessibility behavior are shared.
+
+Calendar REST remains read-only. Private planned-workout notes, GPS/trackpoints, device/source metadata, and import details remain outside the calendar client surface. v1.1 advances the internal database schema to **1.2** through additive, in-place, data-preserving migrations while preserving existing workout and historical data.
+
+Additional v1.1 refinements include calendar drag-and-drop and Copy/Cut/Paste scheduling, matched-workout and personal-best indicators, primary stroke from active-length distance, measured SWOLF, editable event race results, and equivalent steps calculated from active swimming time (181 steps/minute) with provenance retained.
 
 ## v1.0
 

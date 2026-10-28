@@ -4,7 +4,8 @@ set -euo pipefail
 PLUGIN_SLUG="chriss-swim-training-progress-evaluation"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
-OUTPUT="${1:-../chriss-swim-training-progress-evaluation.zip}"
+BUILD_DIR="$REPO_ROOT/build"
+OUTPUT="${1:-$BUILD_DIR/chriss-swim-training-progress-evaluation.zip}"
 
 if [[ "$OUTPUT" = /* ]]; then
     OUTPUT_PATH="$OUTPUT"
@@ -24,6 +25,7 @@ trap cleanup EXIT
 # Development/repository files that must not ship in the WordPress release package.
 EXCLUDE_TOP_LEVEL=(
     ".git"
+    ".gitignore"
     ".github"
     "tests"
     "phpunit.xml.dist"
@@ -33,6 +35,7 @@ EXCLUDE_TOP_LEVEL=(
     "build-release.sh"
     "PLUGIN-CHECK.md"
     "wordpress-org-assets"
+    "build"
 )
 
 mkdir -p -- "$STAGE_DIR"
@@ -49,11 +52,14 @@ for item in "$REPO_ROOT"/*; do
         fi
     done
 
-    if [[ "$exclude" == false ]]; then
+    if [[ "$exclude" == false && "$name" != *.zip ]]; then
         cp -a -- "$item" "$STAGE_DIR/"
     fi
 done
 shopt -u dotglob nullglob
+
+# WordPress.org artwork is maintained in Git but never shipped inside the plugin.
+rm -rf -- "$STAGE_DIR/assets/wordpress-org-assets"
 
 mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
 rm -f -- "$OUTPUT_PATH"

@@ -226,7 +226,39 @@ final class Importer {
 		$source=strtolower((string)$source);$prepared=self::prepare_source_file($source,$path);if(is_wp_error($prepared))return$prepared;
 		$parser=self::parser_for_source($source);if(is_wp_error($parser)){self::cleanup_prepared_source($prepared);return$parser;}
 		$result=in_array($source,array('gpx','tcx'),true)?$parser->parse($prepared['path'],$source):$parser->parse($prepared['path']);
-		self::cleanup_prepared_source($prepared);return$result;
+		self::cleanup_prepared_source($prepared);
+		if ( ! is_wp_error( $result ) && is_array( $result ) ) {
+			$result = self::derive_primary_stroke( $result );
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swolf.php';
+			$result = Swolf::populate_parsed( $result );
+ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-equivalent-steps.php';
+ $result = Equivalent_Steps::populate_parsed( $result );
+		}
+		return $result;
+	}
+	/**
+	 * Derive the dominant recorded swimming stroke from active pool lengths.
+	 * Unknown, drill and mixed labels do not override a known swimming stroke.
+	 * A tie is resolved deterministically by first occurrence.
+	 */
+	public static function derive_primary_stroke( $parsed ) {
+		if ( ! isset( $parsed['workout'] ) || ! is_array( $parsed['workout'] ) ) return $parsed;
+		if ( ( $parsed['workout']['workout_type'] ?? 'pool' ) !== 'pool' ) return $parsed;
+		$distance_by_stroke = array();
+		foreach ( (array) ( $parsed['lengths'] ?? array() ) as $length ) {
+			if ( ( $length['length_type'] ?? '' ) !== 'active' ) continue;
+			$stroke = strtoupper( (string) ( $length['stroke'] ?? '' ) );
+			if ( ! in_array( $stroke, array( 'FR', 'BACK', 'BR', 'FLY' ), true ) ) continue;
+			$distance = (float) ( $length['distance_m'] ?? 0 );
+			if ( ! is_finite( $distance ) || $distance <= 0 ) continue;
+			if ( ! isset( $distance_by_stroke[ $stroke ] ) ) $distance_by_stroke[ $stroke ] = 0.0;
+			$distance_by_stroke[ $stroke ] += $distance;
+		}
+		if ( $distance_by_stroke ) {
+			arsort( $distance_by_stroke, SORT_NUMERIC );
+			$parsed['workout']['primary_stroke'] = (string) key( $distance_by_stroke );
+		}
+		return $parsed;
 	}
 	private static function uploaded_source_type($name,$path){
 		$lower=strtolower((string)$name);$supported=array('fit','csv','gpx','tcx');
@@ -354,6 +386,6 @@ final class Importer {
 	private static function insert_workout($uid,$loc,$w){global $wpdb;$t=Database::table('workouts');$d=self::workout_values($uid,$loc,$w);$d['created_at']=current_time('mysql');$d['updated_at']=current_time('mysql');return $wpdb->insert($t,$d)?(int)$wpdb->insert_id:0;}
 	private static function update_workout($id,$uid,$loc,$w,$overwrite=true){global $wpdb;$t=Database::table('workouts');$d=self::workout_values($uid,$loc,$w);unset($d['user_id']);if(!$overwrite){foreach($d as $k=>$v){if($v===null||$v==='')unset($d[$k]);}}$d['updated_at']=current_time('mysql');return $wpdb->update($t,$d,array('id'=>$id,'user_id'=>$uid));}
 	private static function supplement_workout($id,$uid,$loc,$w){global $wpdb;$t=Database::table('workouts');$d=array('updated_at'=>current_time('mysql'));if($loc)$d['location_id']=$loc;if(!empty($w['notes']))$d['notes']=$w['notes'];return $wpdb->update($t,$d,array('id'=>$id,'user_id'=>$uid));}
-	private static function workout_values($uid,$loc,$w){return array('user_id'=>$uid,'location_id'=>$loc?:null,'workout_type'=>$w['workout_type']??'pool','workout_start'=>$w['workout_start'],'workout_end'=>$w['workout_end']??null,'total_distance_m'=>$w['total_distance_m']??null,'original_distance'=>$w['original_distance']??null,'original_distance_unit'=>$w['original_distance_unit']??null,'elapsed_time_ms'=>$w['elapsed_time_ms']??null,'moving_time_ms'=>$w['moving_time_ms']??null,'average_heart_rate'=>$w['average_heart_rate']??null,'max_heart_rate'=>$w['max_heart_rate']??null,'average_cadence'=>$w['average_cadence']??null,'max_cadence'=>$w['max_cadence']??null,'pool_length_m'=>$w['pool_length_m']??null,'original_pool_length'=>$w['original_pool_length']??null,'pool_length_unit'=>$w['pool_length_unit']??null,'primary_stroke'=>$w['primary_stroke']??null,'device_manufacturer'=>$w['device_manufacturer']??null,'device_model'=>$w['device_model']??null,'source_activity_id'=>$w['source_activity_id']??null,'notes'=>$w['notes']??null);}
+	private static function workout_values($uid,$loc,$w){return array('user_id'=>$uid,'location_id'=>$loc?:null,'workout_type'=>$w['workout_type']??'pool','workout_start'=>$w['workout_start'],'workout_end'=>$w['workout_end']??null,'total_distance_m'=>$w['total_distance_m']??null,'original_distance'=>$w['original_distance']??null,'original_distance_unit'=>$w['original_distance_unit']??null,'elapsed_time_ms'=>$w['elapsed_time_ms']??null,'moving_time_ms'=>$w['moving_time_ms']??null,'average_heart_rate'=>$w['average_heart_rate']??null,'max_heart_rate'=>$w['max_heart_rate']??null,'average_cadence'=>$w['average_cadence']??null,'max_cadence'=>$w['max_cadence']??null,'pool_length_m'=>$w['pool_length_m']??null,'original_pool_length'=>$w['original_pool_length']??null,'pool_length_unit'=>$w['pool_length_unit']??null,'primary_stroke'=>$w['primary_stroke']??null,'avg_swolf'=>$w['avg_swolf']??null,'equivalent_steps'=>$w['equivalent_steps']??null,'steps_active_ms'=>$w['steps_active_ms']??null,'steps_rate'=>$w['steps_rate']??null,'steps_method'=>$w['steps_method']??null,'steps_version'=>$w['steps_version']??null,'device_manufacturer'=>$w['device_manufacturer']??null,'device_model'=>$w['device_model']??null,'source_activity_id'=>$w['source_activity_id']??null,'notes'=>$w['notes']??null);}
 	private static function replace_structure($wid,$p){global $wpdb;$lt=Database::table('laps');$nt=Database::table('lengths');$tt=Database::table('trackpoints');if($wpdb->delete($lt,array('workout_id'=>$wid))===false)return false;if($wpdb->delete($nt,array('workout_id'=>$wid))===false)return false;if($wpdb->delete($tt,array('workout_id'=>$wid))===false)return false;foreach($p['laps'] as $x){$x['workout_id']=$wid;$x['created_at']=current_time('mysql');if(!$wpdb->insert($lt,$x))return false;}foreach($p['lengths'] as $x){$x['workout_id']=$wid;$x['lap_id']=null;$x['created_at']=current_time('mysql');if(!$wpdb->insert($nt,$x))return false;}foreach(($p['trackpoints']??array()) as $x){$x['workout_id']=$wid;$x['created_at']=current_time('mysql');if(!$wpdb->insert($tt,$x))return false;}return true;}
 }

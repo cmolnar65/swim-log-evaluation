@@ -61,8 +61,8 @@ final class CalendarRestTest extends TestCase {
   $this->assertStringContainsString("format('%a')>366",$code);
   $this->assertStringContainsString('swimlog_calendar_range_too_large',$code);
  }
- public function test_phase_three_does_not_change_database_version(){
-  $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
-  $this->assertStringContainsString("define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.9' );",$plugin);
+ public function test_calendar_rest_phase_does_not_define_calendar_schema(){
+  $database=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $this->assertStringNotContainsString("self::table( 'calendar' )",$database);
  }
 }

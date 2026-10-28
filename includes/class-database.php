@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Database schema and table-name services.
  *
- * Schema v0.1 Revision 1. No SQL foreign keys are used; relationships are
- * maintained by plugin code for WordPress/dbDelta compatibility.
+ * Schema is upgraded in place with WordPress dbDelta. No SQL foreign keys are
+ * used; relationships are maintained by plugin code for WordPress/dbDelta compatibility.
  */
 final class Database {
 	public static function table( $name ) {
@@ -16,7 +16,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts' );
 	}
 
 	public static function schema_is_complete() {
@@ -46,6 +46,7 @@ final class Database {
 		$trackpoints  = self::table( 'trackpoints' );
 		$performances = self::table( 'performances' );
 		$events       = self::table( 'events' );
+		$planned_workouts = self::table( 'planned_workouts' );
 
 		$sql = array();
 
@@ -113,6 +114,12 @@ final class Database {
 			original_pool_length decimal(8,3) NULL,
 			pool_length_unit varchar(10) NULL,
 			primary_stroke varchar(20) NULL,
+			avg_swolf decimal(8,2) NULL,
+ equivalent_steps bigint(20) unsigned NULL,
+ steps_active_ms bigint(20) unsigned NULL,
+ steps_rate smallint(5) unsigned NULL,
+ steps_method varchar(40) NULL,
+ steps_version varchar(16) NULL,
 			device_manufacturer varchar(100) NULL,
 			device_model varchar(100) NULL,
 			source_activity_id varchar(191) NULL,
@@ -171,6 +178,7 @@ final class Database {
 			elapsed_time_ms bigint(20) unsigned NULL,
 			stroke varchar(20) NULL,
 			stroke_count smallint(5) unsigned NULL,
+			swolf_score int(10) unsigned NULL,
 			length_type varchar(20) NOT NULL,
 			source_length_index int(11) NULL,
 			raw_metadata longtext NULL,
@@ -234,6 +242,8 @@ final class Database {
 			distance_value int(10) unsigned NOT NULL,
 			course_unit varchar(10) NOT NULL,
 			stroke varchar(20) NOT NULL,
+			result_time_ms bigint(20) unsigned NULL,
+			placement int(10) unsigned NULL,
 			notes text NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -244,6 +254,31 @@ final class Database {
 			KEY location_id (location_id)
 		) $charset_collate;";
 
+
+		$sql[] = "CREATE TABLE $planned_workouts (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			planned_date date NOT NULL,
+			planned_start_time time NULL,
+			title varchar(191) NOT NULL,
+			workout_type varchar(20) NOT NULL DEFAULT 'pool',
+			planned_distance_m decimal(10,3) NULL,
+			planned_duration_ms bigint(20) unsigned NULL,
+			pool_length_m decimal(8,3) NULL,
+			pool_course varchar(10) NULL,
+			primary_stroke varchar(20) NULL,
+			workout_instructions longtext NULL,
+			notes text NULL,
+			status varchar(20) NOT NULL DEFAULT 'planned',
+			completed_workout_id bigint(20) unsigned NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY user_id (user_id),
+			KEY user_planned_date (user_id,planned_date),
+			KEY user_status_date (user_id,status,planned_date),
+			UNIQUE KEY completed_workout_id (completed_workout_id)
+		) $charset_collate;";
 		foreach ( $sql as $statement ) {
 			dbDelta( $statement );
 		}

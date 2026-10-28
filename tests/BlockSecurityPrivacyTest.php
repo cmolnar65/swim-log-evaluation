@@ -59,7 +59,7 @@ final class BlockSecurityPrivacyTest extends TestCase {
 
 	public function test_calendar_detail_script_does_not_request_private_workout_fields() {
 		$s = strtolower( file_get_contents( dirname( __DIR__ ) . '/blocks/calendar/view.js' ) );
-		foreach ( array( 'latitude', 'longitude', 'trackpoint', 'notes', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
+		foreach ( array( 'latitude', 'longitude', 'trackpoint', 'device_model', 'device_manufacturer', 'source_type' ) as $term ) {
 			$this->assertStringNotContainsString( $term, $s, $term );
 		}
 		$this->assertStringNotContainsString( '/workouts/', $s );

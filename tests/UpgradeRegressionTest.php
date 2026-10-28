@@ -6,6 +6,8 @@ final class UpgradeRegressionTest extends TestCase {
   $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString('dbDelta( $statement )',$db);
+  $this->assertStringNotContainsString('DROP TABLE',$db);
+  $this->assertStringNotContainsString('TRUNCATE TABLE',$db);
   $this->assertStringContainsString('latitude decimal(10,7) NULL',$db);
   $this->assertStringContainsString('longitude decimal(10,7) NULL',$db);
   $this->assertStringContainsString("get_option( 'swimlog_db_version', '0.0.0' )",$plugin);
@@ -32,14 +34,59 @@ final class UpgradeRegressionTest extends TestCase {
  }
  public function test_v09_schema_adds_length_stroke_count_for_existing_installations(){
   $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $this->assertStringContainsString('stroke_count smallint(5) unsigned NULL',$db);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '0.9'",$main);
  }
+ public function test_v11_schema_adds_planned_workouts_in_place_and_preserves_original_instructions(){
+  $db=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $this->assertStringContainsString("'planned_workouts'",$db);
+  $this->assertStringContainsString("self::table( 'planned_workouts' )",$db);
+  $this->assertStringContainsString('planned_date date NOT NULL',$db);
+  $this->assertStringContainsString('planned_start_time time NULL',$db);
+  $this->assertStringContainsString('title varchar(191) NOT NULL',$db);
+  $this->assertStringContainsString("workout_type varchar(20) NOT NULL DEFAULT 'pool'",$db);
+  $this->assertStringContainsString('planned_distance_m decimal(10,3) NULL',$db);
+  $this->assertStringContainsString('planned_duration_ms bigint(20) unsigned NULL',$db);
+  $this->assertStringContainsString('workout_instructions longtext NULL',$db);
+  $this->assertStringContainsString("status varchar(20) NOT NULL DEFAULT 'planned'",$db);
+  $this->assertStringContainsString('completed_workout_id bigint(20) unsigned NULL',$db);
+  $this->assertStringContainsString('UNIQUE KEY completed_workout_id (completed_workout_id)',$db);
+  $this->assertStringContainsString('KEY user_planned_date (user_id,planned_date)',$db);
+  $this->assertStringContainsString('KEY user_status_date (user_id,status,planned_date)',$db);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
+  $this->assertStringContainsString('dbDelta( $statement )',$db);
+  $this->assertStringContainsString("'planned_workouts'",$db);
+  $this->assertStringNotContainsString('DROP TABLE',$db);
+  $this->assertStringNotContainsString('TRUNCATE TABLE',$db);
+  $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
+  $this->assertStringContainsString("get_option( 'swimlog_db_version', '0.0.0' )",$plugin);
+  $this->assertStringContainsString("version_compare( \$installed, SWIMLOG_EVALUATION_DB_VERSION, '>=' )",$plugin);
+  $this->assertStringContainsString('if ( Database::install_schema() )',$plugin);
+  $this->assertStringContainsString("update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION )",$plugin);
+  $install=strpos($plugin,'if ( Database::install_schema() )');
+  $version=strpos($plugin,"update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION )",$install);
+  $this->assertLessThan($version,$install);
+ }
+
  public function test_legacy_default_upload_types_gain_gpx_and_tcx_only_during_pre_07_upgrade(){
   $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
   $this->assertStringContainsString("version_compare( (string) \$installed_version, '0.7', '<' )",$plugin);
   $this->assertStringContainsString("array( 'fit', 'csv' ) === \$allowed",$plugin);
   $this->assertStringContainsString("update_option( 'swimlog_allowed_upload_types', array( 'fit', 'csv', 'gpx', 'tcx' ) )",$plugin);
  }
+ public function test_plugin_bootstrap_loads_database_before_database_dependent_services(){
+  $plugin=file_get_contents(dirname(__DIR__).'/includes/class-plugin.php');
+  $database=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';");
+  $planned=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';");
+  $admin=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';");
+  $blocks=strpos($plugin,"require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';");
+  $this->assertNotFalse($database);
+  $this->assertNotFalse($planned);
+  $this->assertNotFalse($admin);
+  $this->assertNotFalse($blocks);
+  $this->assertLessThan($planned,$database);
+  $this->assertLessThan($admin,$database);
+  $this->assertLessThan($blocks,$database);
+ }
+
 }

@@ -26,6 +26,8 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Pool Analytics', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-pool-analytics', 'pool_analytics' );
 		$this->submenu( 'swimlog-dashboard', __( 'Upload Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_upload_workouts', 'swimlog-upload', 'upload' );
 		$this->submenu( 'swimlog-dashboard', __( 'Add Manual Workout', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-manual-workout', 'manual_workout' );
+		$this->submenu( 'swimlog-dashboard', __( 'Calendar', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-calendar', 'calendar' );
+		$this->submenu( 'swimlog-dashboard', __( 'Planned Workouts', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-planned-workouts', 'planned_workouts' );
 		$this->submenu( 'swimlog-dashboard', __( 'Personal Bests', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-personal-bests', 'personal_bests' );
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
 		$this->submenu( 'swimlog-dashboard', __( 'Locations', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_locations', 'swimlog-locations', 'locations' );
@@ -108,6 +110,27 @@ final class Admin {
 	public function manual_workout() {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-manual-workout.php';
 		Admin_Manual_Workout::manual_workout();
+	}
+
+	public function handle_planned_workout_actions() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-planned-workouts.php';
+		Admin_Planned_Workouts::handle_actions();
+	}
+
+	public function calendar() {
+		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'You do not have permission to manage the training calendar.', 'chriss-swim-training-progress-evaluation' ) );
+		$user_id = Admin_UI::selected_user_id();
+		if ( $user_id !== get_current_user_id() && ! current_user_can( 'swimlog_manage_all_users' ) ) wp_die( esc_html__( 'You do not have permission to manage this swimmer calendar.', 'chriss-swim-training-progress-evaluation' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-blocks.php';
+		?><div class="wrap swimlog-admin swimlog-admin-calendar"><h1><?php esc_html_e( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ); ?></h1><?php
+		Admin_UI::swimmer_selector( $user_id, 'swimlog-calendar' );
+		echo Blocks::render_calendar_for_user( $user_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Shared calendar renderer returns escaped markup.
+		?></div><?php
+	}
+
+	public function planned_workouts() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-planned-workouts.php';
+		Admin_Planned_Workouts::page();
 	}
 
 	public function training_trends() {

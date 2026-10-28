@@ -41,6 +41,7 @@ final class Calendar {
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 
 		$workouts = Workout::range_for_user(
 			$user_id,
@@ -52,8 +53,28 @@ final class Calendar {
 			$range['start'],
 			$range['end_exclusive']
 		);
+		$planned_workouts = Planned_Workout::range_for_user(
+			$user_id,
+			$range['start'],
+			$range['end_exclusive']
+		);
 
-		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ) );
+		// One owner-scoped query for all personal-best workouts in this range.
+		global $wpdb;
+		$pb_table = Database::table( 'performances' );
+		$workout_ids = array_values( array_filter( array_map( 'absint', wp_list_pluck( (array) $workouts, 'id' ) ) ) );
+		$pb_ids = array();
+		if ( $workout_ids ) {
+			$placeholders = implode( ',', array_fill( 0, count( $workout_ids ), '%d' ) );
+			$pb_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+				"SELECT DISTINCT workout_id FROM $pb_table WHERE user_id = %d AND is_personal_best = 1 AND workout_id IN ($placeholders)",
+				array_merge( array( $user_id ), $workout_ids )
+			) ) );
+		}
+		foreach ( (array) $workouts as $workout ) {
+			$workout->has_personal_best = in_array( absint( $workout->id ), $pb_ids, true );
+		}
+		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ), $planned_workouts );
 	}
 
 	/**
@@ -62,7 +83,7 @@ final class Calendar {
 	 * Kept public so other plugin layers and focused regression tests can reuse
 	 * the exact same normalization without performing additional database reads.
 	 */
-	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday' ) {
+	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday', $planned_workouts = array() ) {
 		$workout_rows = array();
 		foreach ( (array) $workouts as $workout ) {
 			$workout_rows[] = self::workout_row( $workout );
@@ -73,6 +94,29 @@ final class Calendar {
 			$event_rows[] = self::event_row( $event );
 		}
 
+		$workouts_by_id = array();
+		foreach ( (array) $workouts as $workout ) $workouts_by_id[ absint( $workout->id ?? 0 ) ] = $workout;
+		$planned_rows = array();
+		foreach ( (array) $planned_workouts as $planned_workout ) {
+			$row = self::planned_workout_row( $planned_workout );
+			$matched = ! empty( $row['completed_workout_id'] ) && isset( $workouts_by_id[ $row['completed_workout_id'] ] ) ? $workouts_by_id[ $row['completed_workout_id'] ] : null;
+			$row['comparison'] = self::planned_actual_comparison( $planned_workout, $matched );
+			$planned_rows[] = $row;
+		}
+
+		// A recorded workout is matched only when an owner-scoped planned workout
+		// explicitly references it. Do not infer matches from dates or distances.
+		$matched_workout_ids = array();
+		foreach ( $planned_rows as $planned_row ) {
+			if ( ! empty( $planned_row['completed_workout_id'] ) ) {
+				$matched_workout_ids[ (int) $planned_row['completed_workout_id'] ] = true;
+			}
+		}
+		foreach ( $workout_rows as &$workout_row ) {
+			$workout_row['matched_to_plan'] = isset( $matched_workout_ids[ $workout_row['id'] ] );
+		}
+		unset( $workout_row );
+
 		$first_day = self::normalize_first_day( $first_day );
 		return array(
 			'range' => array(
@@ -82,8 +126,9 @@ final class Calendar {
 				'first_day' => $first_day,
 			),
 			'workouts' => $workout_rows,
+			'planned_workouts' => $planned_rows,
 			'events' => $event_rows,
-			'weeks' => self::weekly_summaries( $range, $workouts, $first_day ),
+			'weeks' => self::weekly_summaries( $range, $workouts, $first_day, $planned_workouts ),
 			'metric_metadata' => self::workout_metric_metadata(),
 		);
 	}
@@ -95,7 +140,7 @@ final class Calendar {
 	 * end after the requested range so month/week presentation can use natural
 	 * calendar boundaries; only supplied workouts contribute to totals.
 	 */
-	public static function weekly_summaries( $range, $workouts, $first_day = 'sunday' ) {
+	public static function weekly_summaries( $range, $workouts, $first_day = 'sunday', $planned_workouts = array() ) {
 		$timezone = new \DateTimeZone( (string) $range['timezone'] );
 		$first_day = self::normalize_first_day( $first_day );
 		$range_start = self::parse_date( $range['start'], $timezone );
@@ -111,7 +156,15 @@ final class Calendar {
 				'start' => $key,
 				'end' => $cursor->modify( '+6 days' )->format( 'Y-m-d' ),
 				'rows' => array(),
+				'plans' => array(),
 			);
+		}
+
+		foreach ( (array) $planned_workouts as $plan ) {
+			$date = self::parse_date( (string) ( $plan->planned_date ?? '' ), $timezone );
+			if ( ! $date ) continue;
+			$key = self::week_start_for_date( $date, $first_day )->format( 'Y-m-d' );
+			if ( isset( $buckets[ $key ] ) ) $buckets[ $key ]['plans'][] = $plan;
 		}
 
 		foreach ( (array) $workouts as $workout ) {
@@ -127,6 +180,11 @@ final class Calendar {
 		$weeks = array();
 		foreach ( $buckets as $bucket ) {
 			$summary = Training_Trends::summarize_workouts( $bucket['rows'] );
+			$planned_count = 0; $planned_distance = 0.0; $planned_duration = 0; $completed_planned_count = 0;
+			foreach ( $bucket['plans'] as $plan ) {
+				if ( 'cancelled' === (string) $plan->status ) continue;
+				$planned_count++; if ( null !== $plan->planned_distance_m ) $planned_distance += (float) $plan->planned_distance_m; if ( null !== $plan->planned_duration_ms ) $planned_duration += (int) $plan->planned_duration_ms; if ( 'completed' === (string) $plan->status && ! empty( $plan->completed_workout_id ) ) $completed_planned_count++;
+			}
 			$weeks[] = array(
 				'start' => $bucket['start'],
 				'end' => $bucket['end'],
@@ -137,9 +195,28 @@ final class Calendar {
 				'open_water_distance_m' => $summary['open_water_distance_m'],
 				'pool_workouts' => $summary['pool_workouts'],
 				'open_water_workouts' => $summary['open_water_workouts'],
+				'planned_workout_count' => $planned_count,
+				'planned_distance_m' => $planned_distance,
+				'planned_duration_ms' => $planned_duration,
+				'completed_planned_workout_count' => $completed_planned_count,
 			);
 		}
 		return $weeks;
+	}
+
+	private static function planned_actual_comparison( $plan, $workout ) {
+		if ( ! $workout ) return null;
+		$actual_distance = null !== ( $workout->total_distance_m ?? null ) ? (float) $workout->total_distance_m : null;
+		$actual_duration = null !== ( $workout->moving_time_ms ?? null ) && (int) $workout->moving_time_ms > 0 ? (int) $workout->moving_time_ms : ( null !== ( $workout->elapsed_time_ms ?? null ) ? (int) $workout->elapsed_time_ms : null );
+		$planned_distance = null !== ( $plan->planned_distance_m ?? null ) ? (float) $plan->planned_distance_m : null;
+		$planned_duration = null !== ( $plan->planned_duration_ms ?? null ) ? (int) $plan->planned_duration_ms : null;
+		return array(
+			'actual_workout_id' => absint( $workout->id ?? 0 ),
+			'planned_distance_m' => $planned_distance, 'actual_distance_m' => $actual_distance,
+			'distance_difference_m' => null !== $planned_distance && null !== $actual_distance ? $actual_distance - $planned_distance : null,
+			'planned_duration_ms' => $planned_duration, 'actual_duration_ms' => $actual_duration,
+			'duration_difference_ms' => null !== $planned_duration && null !== $actual_duration ? $actual_duration - $planned_duration : null,
+		);
 	}
 
 	private static function workout_metric_metadata() {
@@ -199,6 +276,7 @@ final class Calendar {
 		return array(
 			'id' => absint( $workout->id ?? 0 ),
 			'kind' => 'workout',
+			'has_personal_best' => ! empty( $workout->has_personal_best ),
 			'workout_type' => 'open_water' === (string) ( $workout->workout_type ?? 'pool' ) ? 'open_water' : 'pool',
 			'workout_start' => (string) ( $workout->workout_start ?? '' ),
 			'workout_end' => null !== ( $workout->workout_end ?? null ) ? (string) $workout->workout_end : null,
@@ -211,6 +289,25 @@ final class Calendar {
 			'original_pool_length' => null !== ( $workout->original_pool_length ?? null ) ? (float) $workout->original_pool_length : null,
 			'pool_length_unit' => null !== ( $workout->pool_length_unit ?? null ) ? (string) $workout->pool_length_unit : null,
 			'primary_stroke' => null !== ( $workout->primary_stroke ?? null ) ? (string) $workout->primary_stroke : null,
+		);
+	}
+
+	private static function planned_workout_row( $plan ) {
+		return array(
+			'id' => absint( $plan->id ?? 0 ),
+			'kind' => 'planned_workout',
+			'planned_date' => (string) ( $plan->planned_date ?? '' ),
+			'planned_start_time' => null !== ( $plan->planned_start_time ?? null ) ? (string) $plan->planned_start_time : null,
+			'title' => (string) ( $plan->title ?? '' ),
+			'workout_type' => 'open_water' === (string) ( $plan->workout_type ?? 'pool' ) ? 'open_water' : 'pool',
+			'planned_distance_m' => null !== ( $plan->planned_distance_m ?? null ) ? (float) $plan->planned_distance_m : null,
+			'planned_duration_ms' => null !== ( $plan->planned_duration_ms ?? null ) ? (int) $plan->planned_duration_ms : null,
+			'pool_length_m' => null !== ( $plan->pool_length_m ?? null ) ? (float) $plan->pool_length_m : null,
+			'pool_course' => null !== ( $plan->pool_course ?? null ) ? (string) $plan->pool_course : null,
+			'primary_stroke' => null !== ( $plan->primary_stroke ?? null ) ? (string) $plan->primary_stroke : null,
+			'workout_instructions' => (string) ( $plan->workout_instructions ?? '' ),
+			'status' => (string) ( $plan->status ?? 'planned' ),
+			'completed_workout_id' => null !== ( $plan->completed_workout_id ?? null ) ? absint( $plan->completed_workout_id ) : null,
 		);
 	}
 

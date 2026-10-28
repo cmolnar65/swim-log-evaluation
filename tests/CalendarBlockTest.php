@@ -161,7 +161,8 @@ final class CalendarBlockTest extends TestCase {
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');
   $this->assertStringContainsString("event.key === 'Escape'",$view);
   $this->assertStringContainsString('closeWorkoutDetail( root, true )',$view);
-  $this->assertStringContainsString('if ( restoreFocus && trigger ) trigger.focus()',$view);
+  $this->assertStringContainsString('returnFocus = trigger || root._calendarReturnFocus',$view);
+  $this->assertStringContainsString('if ( restoreFocus && returnFocus && document.contains( returnFocus ) ) returnFocus.focus()',$view);
   $this->assertStringContainsString('close.focus()',$view);
  }
  public function test_phase_nine_announces_loading_and_busy_state(){
@@ -178,6 +179,14 @@ final class CalendarBlockTest extends TestCase {
   $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)',$css);
   $this->assertStringContainsString('@media(forced-colors:active)',$css);
  }
+ public function test_post_v1_calendar_typography_handles_narrow_week_columns(){
+  $css=file_get_contents(dirname(__DIR__).'/assets/css/calendar.css');
+  $this->assertStringContainsString('font-size:clamp(.72rem,.78vw,.85em)',$css);
+  $this->assertStringContainsString('overflow-wrap:anywhere',$css);
+  $this->assertStringContainsString('@media(max-width:1000px) and (min-width:701px)',$css);
+  $this->assertStringContainsString('.swimlog-calendar-grid.is-week-view .swimlog-calendar-item{font-size:.72rem',$css);
+  $this->assertStringContainsString('@media(max-width:700px)',$css);
+ }
  public function test_phase_five_navigation_uses_existing_calendar_rest_endpoint(){
   $metadata=json_decode(file_get_contents(dirname(__DIR__).'/blocks/calendar/block.json'),true);
   $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
@@ -187,8 +196,8 @@ final class CalendarBlockTest extends TestCase {
  }
  public function test_calendar_block_does_not_add_shortcode_or_schema(){
   $shortcodes=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');
-  $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
+  $database=file_get_contents(dirname(__DIR__).'/includes/class-database.php');
   $this->assertStringNotContainsString('swimlog_calendar',$shortcodes);
-  $this->assertStringContainsString("define( 'SWIMLOG_EVALUATION_DB_VERSION', '0.9' );",$plugin);
+  $this->assertStringNotContainsString("self::table( 'calendar' )",$database);
  }
 }

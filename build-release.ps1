@@ -1,11 +1,15 @@
 param(
-    [string]$Output = "../chriss-swim-training-progress-evaluation.zip"
+    [string]$Output = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $PluginSlug = "chriss-swim-training-progress-evaluation"
 $RepoRoot = (Resolve-Path $PSScriptRoot).Path
+$BuildDir = Join-Path $RepoRoot "build"
+if ([string]::IsNullOrWhiteSpace($Output)) {
+    $Output = Join-Path $BuildDir "chriss-swim-training-progress-evaluation.zip"
+}
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("swimlog-release-" + [guid]::NewGuid().ToString("N"))
 $StageDir = Join-Path $TempRoot $PluginSlug
 $OutputPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $Output))
@@ -13,6 +17,7 @@ $OutputPath = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $Output))
 # Development/repository files that must not ship in the WordPress release package.
 $ExcludeTopLevel = @(
     ".git",
+    ".gitignore",
     ".github",
     "tests",
     "phpunit.xml.dist",
@@ -21,18 +26,25 @@ $ExcludeTopLevel = @(
     "build-release.ps1",
     "build-release.sh",
     "PLUGIN-CHECK.md",
-    "wordpress-org-assets"
+    "wordpress-org-assets",
+    "build"
 )
 
 try {
     New-Item -ItemType Directory -Path $StageDir -Force | Out-Null
 
     Get-ChildItem -LiteralPath $RepoRoot -Force | ForEach-Object {
-        if ($ExcludeTopLevel -contains $_.Name) {
+        if (($ExcludeTopLevel -contains $_.Name) -or $_.Extension -eq ".zip") {
             return
         }
 
         Copy-Item -LiteralPath $_.FullName -Destination $StageDir -Recurse -Force
+    }
+
+    # Preserve runtime assets, but omit WordPress.org-only banners, icons, and screenshots.
+    $OrgAssets = Join-Path $StageDir "assets/wordpress-org-assets"
+    if (Test-Path -LiteralPath $OrgAssets) {
+        Remove-Item -LiteralPath $OrgAssets -Recurse -Force
     }
 
     if (Test-Path -LiteralPath $OutputPath) {
