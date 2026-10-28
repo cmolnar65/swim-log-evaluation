@@ -237,6 +237,16 @@
 			var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Back'; panel.appendChild( close ); status.textContent = '';
 		} ).catch( function ( error ) { status.textContent = error.message; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
+	function parsePlanResponse( response ) {
+		return response.text().then( function ( raw ) {
+			var data;
+			try { data = JSON.parse( raw ); } catch ( error ) {
+				throw new Error( 'WordPress returned a non-JSON response (HTTP ' + response.status + '). Check the PHP error log for the calendar AJAX request.' );
+			}
+			if ( !response.ok || !data.success ) throw new Error( data.data && data.data.message ? data.data.message : 'Unable to save planned workout (HTTP ' + response.status + ').' );
+			return data;
+		} );
+	}
 	function mutatePlan( root, payload ) {
 		var settings = window.swimlogCalendarSettings || {}, status = root.querySelector( '.swimlog-calendar-status' ), feedback = root.querySelector( '[data-calendar-plan-form] .swimlog-calendar-plan-feedback' );
 		function report( message ) { status.textContent = message; if ( feedback ) feedback.textContent = message; }
@@ -248,7 +258,7 @@
 		var body = new URLSearchParams(); Object.keys( payload ).forEach( function ( key ) { body.append( key, payload[key] === null || payload[key] === undefined ? '' : payload[key] ); } ); body.append( 'nonce', settings.planNonce );
 		report( 'Saving planned workout…' ); root.setAttribute( 'aria-busy', 'true' );
 		return fetch( settings.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() } )
-			.then( function ( response ) { return response.json().then( function ( data ) { if ( ! response.ok || ! data.success ) throw new Error( data.data && data.data.message ? data.data.message : 'Unable to save planned workout.' ); return data; } ); } )
+			.then( parsePlanResponse )
 			.then( function () { closeWorkoutDetail( root ); var focus = new Date( root.dataset.focusDate + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) return loadWeek( root, focus ); return loadMonth( root, new Date( focus.getFullYear(), focus.getMonth(), 1 ) ); } )
 			.then( function () { return true; } ).catch( function ( error ) { report( error.message || 'Unable to save planned workout.' ); return false; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
