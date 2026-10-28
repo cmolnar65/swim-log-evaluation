@@ -21,8 +21,8 @@ final class ReleaseDocumentationTest extends TestCase {
  public function test_v11_docs_cover_planned_workout_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  foreach(array('Planned Workouts','Duplicate Week','planned-versus-actual','wp-admin Calendar','read-only','database schema to 1.0')as$feature)$this->assertStringContainsString($feature,$readme);
-  foreach(array('Planned Workouts','duplicate a week','Matching is never automatic','administration **Calendar**','REST remains read-only','database schema to **1.0**')as$feature)$this->assertStringContainsString($feature,$github);
+  foreach(array('Planned Workouts','Duplicate Week','planned-versus-actual','wp-admin Calendar','read-only','database schema to 1.2')as$feature)$this->assertStringContainsString($feature,$readme);
+  foreach(array('Planned Workouts','duplicate a week','Matching is never automatic','administration **Calendar**','REST remains read-only','database schema to **1.2**')as$feature)$this->assertStringContainsString($feature,$github);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.1'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v10_docs_cover_calendar_release_features(){
