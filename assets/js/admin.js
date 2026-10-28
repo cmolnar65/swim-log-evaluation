@@ -41,6 +41,26 @@
 			});
 		}
 
+        var carousel = document.querySelector('.swimlog-dashboard .swimlog-dash-chart-track');
+        if (carousel) {
+            var panels = carousel.querySelectorAll('.swimlog-dash-chart');
+            var active = 0;
+            var move = function (step) {
+                active = (active + step + panels.length) % panels.length;
+                panels[active].scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest', inline: 'start'});
+            };
+            var prev = document.querySelector('[data-swimlog-chart-prev]');
+            var next = document.querySelector('[data-swimlog-chart-next]');
+            if (prev) prev.addEventListener('click', function () { move(-1); });
+            if (next) next.addEventListener('click', function () { move(1); });
+            carousel.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    move(event.key === 'ArrowRight' ? 1 : -1);
+                }
+            });
+        }
+
 		var form = document.getElementById('swimlog-garmin-batch-form');
 		if (!form) {
 			return;
