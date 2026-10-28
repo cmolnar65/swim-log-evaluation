@@ -263,7 +263,7 @@
 			.then( function () { return true; } ).catch( function ( error ) { report( error.message || 'Unable to save planned workout.' ); return false; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function clipboardStatus( root, message ) { var status = root.querySelector( '.swimlog-calendar-status' ); if ( status ) status.textContent = message; }
-	function validDestination( root, date ) { return /^\\d{4}-\\d{2}-\\d{2}$/.test( date ) && !!root.dataset.siteToday && date >= root.dataset.siteToday; }
+	function validDestination( root, date ) { return /^\d{4}-\d{2}-\d{2}$/.test( date ) && !!root.dataset.siteToday && date >= root.dataset.siteToday; }
 	function pastePlan( root, date ) {
 		var clip = root._planClipboard;
 		if ( !clip ) { clipboardStatus( root, 'Copy or cut a planned workout first.' ); return; }
