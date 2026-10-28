@@ -21,7 +21,7 @@ Version 1.1 adds Planned Workouts and turns the Swim Training Calendar into an i
 
 The shared calendar now also has a WordPress administration Calendar page while retaining the native Gutenberg Calendar block. Both hosts use the same calendar service, Month/Week behavior, swimmer-configured Saturday/Sunday/Monday week boundaries, planning/matching actions, privacy rules, responsive agenda, and accessibility behavior. Calendar REST remains read-only and private notes, GPS/trackpoints, and device/source metadata remain excluded.
 
-v1.1 advances the internal database schema to 1.0 by adding the dedicated planned-workouts table through the existing in-place dbDelta upgrade path. Existing workout, event, import, performance, location, manual-workout, lap, length, and trackpoint data are preserved.
+v1.1 advances the internal database schema to 1.2 through additive, in-place migrations for planned workouts and recorded workout metrics. Existing workout, event, import, performance, location, manual-workout, lap, length, and trackpoint data are preserved.
 
 Version 1.0 adds the private Swim Training Calendar: month and week views, swimmer-configurable Saturday/Sunday/Monday week boundaries, defensible weekly training summaries, in-calendar workout details, responsive mobile agenda presentation, and accessibility-focused keyboard/focus behavior. It builds on the v0.9 analytics, REST/data-portability, and administration architecture without adding a database schema migration.
 
@@ -35,7 +35,13 @@ Version 1.0 adds the private Swim Training Calendar: month and week views, swimm
 * Improve responsive/mobile planning so empty dates remain plannable, initial agenda content loads correctly, and recorded/planned/event types are textually distinct rather than color-only.
 * Improve shared calendar accessibility, loading state, focus restoration, planned-workout aria state, and week-view recorded-workout details.
 * Preserve calendar privacy: private planned-workout notes, GPS/trackpoints, device/source, and import metadata are not exposed; calendar REST remains read-only.
-* Advance the internal database schema to 1.0 with an in-place, data-preserving planned-workouts table migration.
+* Add calendar drag-and-drop rescheduling, Copy/Cut/Paste and destination-date selection, with date validation and cross-month navigation.
+* Highlight explicitly matched recorded workouts, show personal-best indicators, and link directly to recorded Workout Details.
+* Determine imported workouts' primary stroke from recorded active-length distance rather than an arbitrary stroke occurrence.
+* Persist and display average and per-length SWOLF when source measurements support it, without inventing missing data.
+* Add event race-result editing for finishing time, placement, and private notes with authenticated access controls.
+* Add equivalent swimming steps using 181 steps per active swimming minute, preserving calculation provenance.
+* Advance the internal database schema to 1.2 with additive, in-place, data-preserving migrations.
 
 = v1.0 =
 
@@ -113,7 +119,13 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 * Add a shared wp-admin Calendar host with Month/Week, Previous/Next/Today, Go to Date, configured week starts, and the same planning behavior as the Gutenberg Calendar.
 * Improve mobile empty-date planning, initial responsive agenda loading, dense calendar presentation, textual Recorded/Planned/Event distinctions, focus restoration, aria state, and loading/error feedback.
 * Keep calendar REST read-only and preserve privacy exclusions for private notes, GPS/trackpoints, device/source, and import metadata.
-* Advance the internal database schema to 1.0 by adding the planned-workouts table through the existing in-place dbDelta upgrade path while preserving existing data.
+* Add calendar drag-and-drop rescheduling, Copy/Cut/Paste and destination-date selection, with date validation and cross-month navigation.
+* Highlight explicitly matched recorded workouts, show personal-best indicators, and link directly to recorded Workout Details.
+* Determine imported workouts' primary stroke from recorded active-length distance rather than an arbitrary stroke occurrence.
+* Persist and display average and per-length SWOLF when source measurements support it, without inventing missing data.
+* Add event race-result editing for finishing time, placement, and private notes with authenticated access controls.
+* Add equivalent swimming steps using 181 steps per active swimming minute, preserving calculation provenance.
+* Advance the internal database schema to 1.2 through additive, in-place, data-preserving migrations.
 
 = 1.0 =
 * Add the private Swim Training Calendar block with Month and Week views, Previous/Next/Today navigation, and swimmer-configurable Saturday/Sunday/Monday week starts.
