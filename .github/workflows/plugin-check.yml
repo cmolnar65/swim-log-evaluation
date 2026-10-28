@@ -36,7 +36,7 @@ jobs:
           grep -qx "$ROOT/assets/css/calendar.css" "$RUNNER_TEMP/package-files.txt"
           grep -q "^ \* Version: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/swim-log-evaluation.php"
           grep -q "^Stable tag: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/readme.txt"
-          ! grep -Eq "^$ROOT/(\.git|\.github|tests|wordpress-org-assets)(/|$)" "$RUNNER_TEMP/package-files.txt"
+          ! grep -Eq "^$ROOT/(\.git|\.github|tests|wordpress-org-assets|assets/wordpress-org-assets)(/|$)" "$RUNNER_TEMP/package-files.txt"
           ! grep -Eq "^$ROOT/(composer\.json|composer\.lock|phpunit\.xml\.dist|build-release\.sh|build-release\.ps1|PLUGIN-CHECK\.md)$" "$RUNNER_TEMP/package-files.txt"
 
       - name: Retain exact v1.1 validation package

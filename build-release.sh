@@ -58,6 +58,9 @@ for item in "$REPO_ROOT"/*; do
 done
 shopt -u dotglob nullglob
 
+# WordPress.org artwork is maintained in Git but never shipped inside the plugin.
+rm -rf -- "$STAGE_DIR/assets/wordpress-org-assets"
+
 mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
 rm -f -- "$OUTPUT_PATH"
 

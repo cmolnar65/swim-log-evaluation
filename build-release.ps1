@@ -41,6 +41,12 @@ try {
         Copy-Item -LiteralPath $_.FullName -Destination $StageDir -Recurse -Force
     }
 
+    # Preserve runtime assets, but omit WordPress.org-only banners, icons, and screenshots.
+    $OrgAssets = Join-Path $StageDir "assets/wordpress-org-assets"
+    if (Test-Path -LiteralPath $OrgAssets) {
+        Remove-Item -LiteralPath $OrgAssets -Recurse -Force
+    }
+
     if (Test-Path -LiteralPath $OutputPath) {
         Remove-Item -LiteralPath $OutputPath -Force
     }
