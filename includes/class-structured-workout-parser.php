@@ -75,7 +75,7 @@ final class Structured_Workout_Parser {
                 } else return self::error( $index, 'Pace or rest has no preceding set.' );
                 continue;
             }
-            if ( preg_match( '/^Total:\s*([\d,.]+)\s*(meters?|metres?|yards?|yd|m)?\s*$/i', $line, $m ) ) {
+            if ( preg_match( '/^(?:Total|Total Distance):\s*([\d,.]+)\s*(meters?|metres?|yards?|yd|m)?\s*$/i', $line, $m ) ) {
                 if ( ! empty( $m[2] ) ) {
                     $u = self::unit( $m[2] );
                     if ( $explicit_unit && $explicit_unit !== $u ) return self::error( $index, 'Conflicting distance units.' );
