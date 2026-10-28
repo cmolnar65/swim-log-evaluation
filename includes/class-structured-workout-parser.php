@@ -29,7 +29,7 @@ final class Structured_Workout_Parser {
                 self::flush( $sections, $section, $ladder, $rung );
                 $summary_mode = true; continue;
             }
-            if ( preg_match( '/^(?:Main Set|Warm[- ]?up|Cool[- ]?down|Custom)(?:\s*[—–-]\s*([\d,.]+)\s*(meters?|metres?|yards?|yd|m))?\s*$/i', $line, $m ) ) {
+            if ( preg_match( '/^(?:Main Set|Warm[- ]?up|Cool[- ]?down|Custom)(?:\s*[—–-]\s*([\d,.]+)\s*(meters?|metres?|yards?|yd|m))?\s*$/iu', $line, $m ) ) {
                 self::flush( $sections, $section, $ladder, $rung );
                 $section = array( 'type' => 'section', 'label' => preg_replace( '/\s*[—–-].*$/u', '', $line ), 'children' => array() );
                 if ( isset( $m[2] ) && $m[2] ) {
