@@ -21,7 +21,7 @@ final class LayoutTemplatesV12Test extends TestCase {
     public function test_preferences_are_nonce_and_capability_protected() {
         $code = $this->source( 'includes/class-layout-templates.php' );
         $this->assertStringContainsString( "wp_verify_nonce(", $code );
-        $this->assertStringContainsString( "current_user_can( 'edit_post', $post_id )", $code );
+        $this->assertStringContainsString(  'current_user_can( \'edit_post\', $post_id )' , $code );
         $this->assertStringContainsString( 'wp_is_post_revision( $post_id )', $code );
         $this->assertStringContainsString( "array( 'comfortable', 'compact' )", $code );
         $this->assertStringContainsString( "array( 'normal', 'small' )", $code );
