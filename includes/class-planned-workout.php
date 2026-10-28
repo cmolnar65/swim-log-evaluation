@@ -106,6 +106,19 @@ final class Planned_Workout {
 			: (int) $wpdb->insert_id;
 	}
 
+	/** Reschedule an unassociated, owned plan without altering its prescription. */
+	public static function move( $id, $user_id, $date ) {
+		global $wpdb;
+		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
+		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( 'planned' !== $plan->status || ! empty( $plan->completed_workout_id ) ) return new \WP_Error( 'swimlog_planned_workout_move_status', __( 'Only unmatched planned workouts can be moved.', 'chriss-swim-training-progress-evaluation' ) );
+		$date = (string) $date;
+		$parsed = \DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
+		if ( ! $parsed || $parsed->format( 'Y-m-d' ) !== $date || $date < wp_date( 'Y-m-d', null, wp_timezone() ) ) return new \WP_Error( 'swimlog_planned_workout_move_date', __( 'Choose a valid current or future date.', 'chriss-swim-training-progress-evaluation' ) );
+		$result = $wpdb->update( Database::table( 'planned_workouts' ), array( 'planned_date' => $date, 'updated_at' => current_time( 'mysql' ) ), array( 'id' => (int) $plan->id, 'user_id' => absint( $user_id ) ) );
+		return false === $result ? new \WP_Error( 'swimlog_planned_workout_move_failed', __( 'Unable to move planned workout.', 'chriss-swim-training-progress-evaluation' ) ) : (int) $plan->id;
+	}
+
 	/** Duplicate an owned plan as a new planned workout, optionally on another date. */
 	public static function duplicate( $id, $user_id, $planned_date = null ) {
 		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );

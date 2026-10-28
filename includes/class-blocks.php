@@ -251,6 +251,9 @@ final class Blocks {
 			// Calendar deliberately does not receive private notes; preserve them on edit.
 			$data['notes'] = $existing ? $existing->notes : '';
 			$result = Planned_Workout::save( $user_id, $data, $id );
+		} elseif ( 'move' === $action ) {
+			$date = isset( $_POST['planned_date'] ) ? sanitize_text_field( wp_unslash( $_POST['planned_date'] ) ) : '';
+			$result = Planned_Workout::move( $id, $user_id, $date );
 		} elseif ( 'duplicate' === $action ) {
 			$date = isset( $_POST['planned_date'] ) ? sanitize_text_field( wp_unslash( $_POST['planned_date'] ) ) : null;
 			$result = Planned_Workout::duplicate( $id, $user_id, $date );
