@@ -81,3 +81,26 @@
 	margin-top: 4px;
 	font-size: 1.15em;
 }
+
+
+/* v1.2 dashboard: scoped to the dashboard page only. */
+.swimlog-dashboard .swimlog-dash-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0 20px}
+.swimlog-dashboard .swimlog-dash-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:24px}
+.swimlog-dashboard .swimlog-dash-tile{display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-height:88px;padding:16px;background:#fff;border:1px solid #c3c4c7;border-radius:7px;text-decoration:none;color:#1d2327}
+.swimlog-dashboard .swimlog-dash-tile:hover,.swimlog-dashboard .swimlog-dash-tile:focus-visible{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1}
+.swimlog-dashboard .swimlog-dash-tile span{font-size:13px}
+.swimlog-dashboard .swimlog-dash-tile strong{font-size:clamp(18px,2vw,25px);overflow-wrap:anywhere}
+.swimlog-dashboard .swimlog-dash-carousel{margin:0 0 24px}
+.swimlog-dashboard .swimlog-dash-carousel-nav{display:flex;align-items:center;gap:8px}
+.swimlog-dashboard .swimlog-dash-carousel-nav h2{margin-right:auto}
+.swimlog-dashboard .swimlog-dash-chart-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;gap:14px;overscroll-behavior-inline:contain}
+.swimlog-dashboard .swimlog-dash-chart{flex:0 0 100%;box-sizing:border-box;scroll-snap-align:start;min-width:0;padding:14px;background:#fff;border:1px solid #c3c4c7;border-radius:6px}
+.swimlog-dashboard .swimlog-dash-bars{display:flex;gap:10px;align-items:end;overflow-x:auto;min-height:220px;padding:12px 4px}
+.swimlog-dashboard .swimlog-dash-bar{display:flex;flex:1 0 65px;max-width:115px;flex-direction:column;align-items:center;gap:5px;font-size:11px;text-align:center}
+.swimlog-dashboard .swimlog-dash-bar-track{height:145px;width:32px;display:flex;align-items:end;background:#edf2f6;border-radius:4px;overflow:hidden}
+.swimlog-dashboard .swimlog-dash-bar-fill{width:100%;background:#2271b1}
+.swimlog-dashboard .swimlog-dash-bar strong{font-size:12px}
+.swimlog-dashboard .swimlog-dash-event{padding:14px;margin:12px 0;border:1px solid #c3c4c7;background:#fff}
+@media(prefers-reduced-motion:reduce){.swimlog-dashboard .swimlog-dash-chart-track{scroll-behavior:auto}}
+@media(max-width:782px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.swimlog-dashboard .swimlog-dash-chart{padding:10px}}
+@media(max-width:420px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:1fr}}
