@@ -9,8 +9,10 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 $swimlog_block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
 if ( $swimlog_block_theme ) {
-    wp_head();
-    echo '<div class="wp-site-blocks">';
+    ?><!doctype html>
+<html <?php language_attributes(); ?>>
+<head><meta charset="<?php bloginfo( 'charset' ); ?>"><meta name="viewport" content="width=device-width, initial-scale=1"><?php wp_head(); ?></head>
+<body <?php body_class(); ?>><?php wp_body_open(); ?><div class="wp-site-blocks"><?php
     echo do_blocks( '<!-- wp:template-part {"slug":"header","tagName":"header"} /-->' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WordPress block renderer.
 } else {
     get_header();
@@ -29,6 +31,7 @@ if ( $swimlog_block_theme ) {
     echo do_blocks( '<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WordPress block renderer.
     echo '</div>';
     wp_footer();
+    echo '</body></html>';
 } else {
     get_footer();
 }
