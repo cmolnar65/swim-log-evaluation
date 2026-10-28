@@ -36,12 +36,14 @@ final class RaceReadinessTest extends TestCase {
 	}
 
 	public function test_admin_surfaces_readiness_on_dashboard_and_events() {
-		$dashboard = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$admin = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin.php' );
+		$dashboard = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-dashboard.php' );
+		$this->assertStringContainsString( 'Admin_Dashboard::render()', $admin );
 		$events = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-events-locations.php' );
 		$view = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-race-readiness.php' );
 
 		$this->assertStringContainsString( 'Race Readiness 2.0 summarizes recorded evidence only.', $dashboard );
-		$this->assertStringContainsString( 'Admin_Race_Readiness::render($ready,$e,$strokes)', $dashboard );
+		$this->assertStringContainsString( 'Admin_Race_Readiness::render( Workout::event_readiness( $user_id, $event, Workout::EVENT_READINESS_LOOKBACK_DAYS ), $event, $strokes )', $dashboard );
 		$this->assertStringContainsString( 'Preparation Evidence', $events );
 		$this->assertStringContainsString( 'Admin_Race_Readiness::render($ready,$event,$strokes)', $events );
 
