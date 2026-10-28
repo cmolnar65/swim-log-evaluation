@@ -4,6 +4,12 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+## v1.2 Phase 04 — Structured workout foundation (in development)
+
+The first Phase 04 implementation introduces a normalized, ordered prescription tree with sections, steps, nested repeat groups, and ladder rungs. Steps support FR, BR, BK, and FL; MX is supported in standard sets but not ladders. BU input is normalized to FL. Each node supports optional pace, rest, and description; step-level drill and equipment metadata is retained. Rest is nullable (unspecified) or explicitly "0" (continuous), and neither rest nor pace changes a ladder's identity. Distances are computed in the declared meter or yard unit, with totals by stroke and bounded expansion.
+
+The reference ascending ladder is 6 × (25 FR + 25 BR), 6 × (50 FR + 50 BR), and 4 × (100 FR + 100 BR): 1,700 distance units, 850 FR and 850 BR. This first foundation commit is **not yet a complete editor or persistence integration**. Existing v1.1 free-form plans, recorded workout data, and FIT source files are unchanged. Phase 04 remains in progress pending editing, saving, preview, and integration testing.
+
 ## v1.2 Phase 03 — Page and post layout templates
 
 For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide Content** and **SwimLog Full Width** are the preferred page templates for displaying SwimLog tables. Select either from the Page or Post editor's **Template** selector. Both retain the theme header and footer and render existing page content, including SwimLog blocks and shortcodes.
