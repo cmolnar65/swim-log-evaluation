@@ -18,6 +18,19 @@ final class LayoutTemplatesV12Test extends TestCase {
         $this->assertStringContainsString( 'return $template;', $code );
     }
 
+    public function test_native_block_theme_templates_are_registered_for_pages_and_posts() {
+        $code = $this->source( 'includes/class-layout-templates.php' );
+        $this->assertStringContainsString( "add_action( 'init', array( __CLASS__, 'register_block_templates' ) )", $code );
+        $this->assertStringContainsString( "function_exists( 'register_block_template' )", $code );
+        $this->assertStringContainsString( 'register_block_template(', $code );
+        $this->assertStringContainsString( "'post_types' => array( 'page', 'post' )", $code );
+        $this->assertStringContainsString( 'wp:post-content', $code );
+        $this->assertStringContainsString( 'wp:template-part', $code );
+        $this->assertStringContainsString( "self::PREFIX . self::WIDE", $code );
+        $this->assertStringContainsString( "self::PREFIX . self::FULL", $code );
+        $this->assertStringContainsString( "'swimlog-layout-' . ( self::FULL === self::selected() ? 'full' : 'wide' )", $code );
+    }
+
     public function test_preferences_are_nonce_and_capability_protected() {
         $code = $this->source( 'includes/class-layout-templates.php' );
         $this->assertStringContainsString( "wp_verify_nonce(", $code );
