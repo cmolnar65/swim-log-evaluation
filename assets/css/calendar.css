@@ -30,3 +30,8 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 
 /* Highlight personal-best stars in both initial and dynamically rendered calendar entries. */
 .swimlog-calendar .swimlog-calendar-personal-best{color:#d4a017;}
+
+/* Indicate eligible drag-and-drop destinations for planned workouts. */
+.swimlog-calendar .swimlog-calendar-day.is-drop-target,.swimlog-calendar .swimlog-calendar-agenda-day.is-drop-target{outline:3px solid #246b3a;outline-offset:-3px;background-color:rgba(36,107,58,.12)}
+.swimlog-calendar [data-calendar-planned-workout][draggable="true"]{cursor:grab}
+.swimlog-calendar [data-calendar-planned-workout][draggable="true"]:active{cursor:grabbing}
