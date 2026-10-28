@@ -394,14 +394,14 @@
 			var planned = event.target.closest( '[data-calendar-planned-workout]' ); if ( !planned || !planned.draggable ) return;
 			try { var plan = JSON.parse( planned.dataset.calendarPlannedWorkout ); root._dragPlan = plan; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData( 'text/plain', String( plan.id ) ); } catch ( error ) {}
 		} );
-		root.addEventListener( 'dragover', function ( event ) { var day = event.target.closest( '.swimlog-calendar-day[data-date]' ); if ( root._dragPlan && day && validDestination( root, day.dataset.date ) ) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } } );
+		root.addEventListener( 'dragover', function ( event ) { var day = event.target.closest( '.swimlog-calendar-day[data-date], .swimlog-calendar-agenda-day[data-date]' ); root.querySelectorAll( '.is-drop-target' ).forEach( function ( node ) { if ( node !== day ) node.classList.remove( 'is-drop-target' ); } ); if ( root._dragPlan && day && validDestination( root, day.dataset.date ) ) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; day.classList.add( 'is-drop-target' ); } } );
 		root.addEventListener( 'drop', function ( event ) {
-			var day = event.target.closest( '.swimlog-calendar-day[data-date]' ), plan = root._dragPlan; root._dragPlan = null;
+			var day = event.target.closest( '.swimlog-calendar-day[data-date], .swimlog-calendar-agenda-day[data-date]' ), plan = root._dragPlan; root._dragPlan = null; root.querySelectorAll( '.is-drop-target' ).forEach( function ( node ) { node.classList.remove( 'is-drop-target' ); } );
 			if ( !plan || !day || !validDestination( root, day.dataset.date ) ) return;
 			event.preventDefault(); if ( day.dataset.date === plan.planned_date ) return;
 			if ( window.confirm( 'Move ' + plan.title + ' to ' + day.dataset.date + '?' ) ) mutatePlan( root, { plan_action: 'move', id: plan.id, planned_date: day.dataset.date } );
 		} );
-		root.addEventListener( 'dragend', function () { root._dragPlan = null; } );
+		root.addEventListener( 'dragend', function () { root._dragPlan = null; root.querySelectorAll( '.is-drop-target' ).forEach( function ( node ) { node.classList.remove( 'is-drop-target' ); } ); } );
 		root.addEventListener( 'click', function ( event ) {
 			var go = event.target.closest( '[data-calendar-go]' ); if ( go ) { var input = root.querySelector( '[data-calendar-go-date]' ), status = root.querySelector( '.swimlog-calendar-status' ); if ( ! input || ! input.value ) { status.textContent = 'Choose a date first.'; if ( input ) input.focus(); return; } status.textContent = ''; var selected = new Date( input.value + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) loadWeek( root, selected ); else loadMonth( root, new Date( selected.getFullYear(), selected.getMonth(), 1 ) ); return; }
 			var duplicateWeek = event.target.closest( '[data-calendar-duplicate-week]' ); if ( duplicateWeek ) { showDuplicateWeekEditor( root, duplicateWeek.dataset.calendarDuplicateWeek ); return; }
