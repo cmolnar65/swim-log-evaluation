@@ -35,9 +35,10 @@ final class Layout_Templates {
                     'post_types' => array( 'page', 'post' ),
                     'content' => '<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->'
                         . '<!-- wp:group {"tagName":"main","className":"swimlog-layout-main","layout":{"type":"constrained"}} -->'
+                        . '<main class="wp-block-group swimlog-layout-main is-layout-constrained wp-block-group-is-layout-constrained">'
                         . '<!-- wp:post-title {"level":1} /-->'
-                        . '<!-- wp:post-content {"className":"swimlog-layout-content","layout":{"type":"constrained"}} /-->'
-                        . '<!-- /wp:group -->'
+                        . '<!-- wp:post-content {"className":"swimlog-layout-content"} /-->'
+                        . '</main><!-- /wp:group -->'
                         . '<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->',
                 )
             );
