@@ -21,6 +21,16 @@ final class DashboardV12Test extends TestCase {
         $this->assertStringContainsString( 'n.stroke = %s', $source );
     }
 
+    public function test_dashboard_loads_evaluator_before_records_for_personal_bests() {
+        $source = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-dashboard.php' );
+        $evaluator = strpos( $source, "require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php'" );
+        $records = strpos( $source, "require_once SWIMLOG_EVALUATION_DIR . 'includes/class-records.php'" );
+        $this->assertNotFalse( $evaluator );
+        $this->assertNotFalse( $records );
+        $this->assertLessThan( $records, $evaluator );
+        $this->assertStringContainsString( 'Records::personal_bests(', $source );
+    }
+
     public function test_dashboard_does_not_require_schema_change() {
         $main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
         $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
