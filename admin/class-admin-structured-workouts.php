@@ -50,11 +50,50 @@ final class Admin_Structured_Workouts {
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
           </form>
           <h2><?php esc_html_e( 'Saved workouts', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-          <ul>
-            <?php foreach ( Structured_Workout_Store::all( $owner ) as $item ) : ?>
-              <li><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'edit' => $item->ID ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $item->post_title ); ?></a></li>
-            <?php endforeach; ?>
-          </ul>
+          <?php $saved_workouts = Structured_Workout_Store::all( $owner ); ?>
+          <?php if ( empty( $saved_workouts ) ) : ?>
+            <p><?php esc_html_e( 'No structured workouts have been saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+          <?php else : ?>
+            <table class="widefat striped">
+              <thead><tr>
+                <th scope="col"><?php esc_html_e( 'ID', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Workout', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Sections', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Steps', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Strokes', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Last Modified', 'chriss-swim-training-progress-evaluation' ); ?></th>
+                <th scope="col"><?php esc_html_e( 'Actions', 'chriss-swim-training-progress-evaluation' ); ?></th>
+              </tr></thead>
+              <tbody>
+                <?php foreach ( $saved_workouts as $item ) : ?>
+                  <?php
+                  $summary = Structured_Workout::summarize( json_decode( $item->post_content, true ) );
+                  $valid = ! is_wp_error( $summary );
+                  $edit_url = add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'edit' => $item->ID ), admin_url( 'admin.php' ) );
+                  $stroke_parts = array();
+                  if ( $valid ) {
+                      foreach ( $summary['totals']['by_stroke'] as $stroke => $distance ) {
+                          if ( $distance > 0 ) {
+                              $stroke_parts[] = $stroke . ': ' . number_format_i18n( $distance, 0 );
+                          }
+                      }
+                  }
+                  ?>
+                  <tr>
+                    <td><?php echo esc_html( (string) $item->ID ); ?></td>
+                    <td><strong><a href="<?php echo esc_url( $edit_url ); ?>"><?php echo esc_html( $item->post_title ); ?></a></strong></td>
+                    <td><?php echo $valid ? esc_html( number_format_i18n( $summary['totals']['distance'], 0 ) . ' ' . $summary['unit'] ) : esc_html__( 'Invalid definition', 'chriss-swim-training-progress-evaluation' ); ?></td>
+                    <td><?php echo $valid ? esc_html( (string) count( $summary['document']['sections'] ) ) : '&mdash;'; ?></td>
+                    <td><?php echo $valid ? esc_html( (string) $summary['totals']['expanded_steps'] ) : '&mdash;'; ?></td>
+                    <td><?php echo $valid ? esc_html( implode( ', ', $stroke_parts ) ) : '&mdash;'; ?></td>
+                    <td><?php echo esc_html( get_date_from_gmt( $item->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
+                    <td><a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          <?php endif; ?>
         </div>
         <?php
     }
