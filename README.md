@@ -16,7 +16,9 @@ Swimmers can create, edit, duplicate, repeat, skip, cancel, restore, and delete 
 
 The WordPress administration **Calendar** is another host for the same shared calendar used by the Gutenberg block rather than a second calendar implementation. Month/Week navigation, Previous/Next/Today, Go to Date, swimmer-configured Saturday/Sunday/Monday week boundaries, planning actions, privacy rules, responsive agenda, and accessibility behavior are shared.
 
-Calendar REST remains read-only. Private planned-workout notes, GPS/trackpoints, device/source metadata, and import details remain outside the calendar client surface. v1.1 advances the internal database schema to **1.0** by adding the dedicated planned-workouts table through the existing in-place `dbDelta` upgrade path while preserving existing workout and historical data.
+Calendar REST remains read-only. Private planned-workout notes, GPS/trackpoints, device/source metadata, and import details remain outside the calendar client surface. v1.1 advances the internal database schema to **1.2** through additive, in-place, data-preserving migrations while preserving existing workout and historical data.
+
+Additional v1.1 refinements include calendar drag-and-drop and Copy/Cut/Paste scheduling, matched-workout and personal-best indicators, primary stroke from active-length distance, measured SWOLF, editable event race results, and equivalent steps calculated from active swimming time (181 steps/minute) with provenance retained.
 
 ## v1.0
 
