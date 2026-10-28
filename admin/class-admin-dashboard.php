@@ -63,6 +63,7 @@ final class Admin_Dashboard {
         if ( ! current_user_can( 'swimlog_view_own_results' ) ) wp_die( esc_html__( 'You do not have permission to view these results.', 'chriss-swim-training-progress-evaluation' ) );
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-records.php';
         $user_id = Admin_UI::selected_user_id();
         // Read-only URL controls. Values are explicitly whitelisted.
