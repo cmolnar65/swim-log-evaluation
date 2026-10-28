@@ -27,3 +27,6 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 .swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan{background-color:#d8f3dc;color:#173b25;border-color:#6abf80}
 .swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan:hover,.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan:focus-visible{border-color:#246b3a}
 @media(forced-colors:active){.swimlog-calendar button.swimlog-calendar-workout.is-matched-to-plan{border:2px solid Highlight}}
+
+/* Highlight personal-best stars in both initial and dynamically rendered calendar entries. */
+.swimlog-calendar .swimlog-calendar-personal-best{color:#d4a017;}
