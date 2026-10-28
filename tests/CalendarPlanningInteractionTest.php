@@ -45,11 +45,17 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString('data-calendar-plan-date=',$blocks);$this->assertStringContainsString('function planDateButton( key, root )',$view);
   $this->assertGreaterThanOrEqual(3,substr_count($view,'planDateButton( key, root )'));$this->assertStringContainsString('function showPlanEditor',$view);
  }
- public function test_calendar_plan_editor_supports_required_actions_without_drag_drop_or_schema_change(){
+ public function test_calendar_plan_editor_supports_drag_drop_cross_month_clipboard_and_mobile_actions(){
   $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $this->assertStringContainsString("'Workout Plan / Workout Instructions', 'workout_instructions', 'textarea'",$view);
   foreach(array("[ 'edit', 'Edit' ]","[ 'duplicate', 'Duplicate' ]","[ 'skip', 'Mark Skipped' ]","[ 'cancel', 'Cancel Plan' ]","[ 'delete', 'Delete' ]","dataset.calendarPlanAction = 'restore'")as$needle)$this->assertStringContainsString($needle,$view);
-  foreach(array('dragstart','draggable','dropzone')as$needle)$this->assertStringNotContainsString($needle,$view);
+  foreach(array('dragstart','dragover','drop','draggable','contextmenu','showMoveDate','showDateActions','pastePlan','data-calendar-move-form',"'move-date', 'Move to Date'","'copy', 'Copy Workout'","'cut', 'Cut Workout'")as$needle)$this->assertStringContainsString($needle,$view);
+  $blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
+  $service=file_get_contents(dirname(__DIR__).'/includes/class-planned-workout.php');
+  $this->assertStringContainsString("Planned_Workout::move( $id, $user_id, $date )",$blocks);
+  $this->assertStringContainsString('public static function move( $id, $user_id, $date )',$service);
+  $this->assertStringContainsString('Only unmatched planned workouts can be moved.',$service);
+  $this->assertStringContainsString('swimlog_planned_workout_move_date',$service);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
  }
 }
