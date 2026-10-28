@@ -12,6 +12,8 @@ final class Plugin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
+		add_action( 'init', array( 'SwimLogEvaluation\\Structured_Workout_Store', 'register' ) );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-layout-templates.php';
 		Layout_Templates::register();
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
@@ -26,6 +28,7 @@ final class Plugin {
 			add_action( 'admin_init', array( $admin, 'handle_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_manual_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_planned_workout_actions' ) );
+			add_action( 'admin_init', array( $admin, 'handle_structured_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_location_actions' ) );
 		}
