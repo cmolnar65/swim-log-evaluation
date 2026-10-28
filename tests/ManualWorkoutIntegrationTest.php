@@ -33,9 +33,9 @@ final class ManualWorkoutIntegrationTest extends TestCase {
   $this->assertStringContainsString('Admin_Dashboard::render()', $admin);
   $this->assertStringContainsString('<th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th>', $dashboard);
   $this->assertStringContainsString('foreach ( $recent as $workout )', $dashboard);
-  $this->assertStringContainsString("esc_html( $workout->id )", $dashboard);
-  $this->assertStringContainsString("esc_html( $workout->workout_start )", $dashboard);
-  $this->assertStringContainsString("Workout::recent_for_user( $user_id, 5 )", $dashboard);
-  $this->assertStringContainsString("array( 'workout_id' => $workout->id )", $dashboard);
+  $this->assertStringContainsString( 'esc_html( $workout->id )' , $dashboard);
+  $this->assertStringContainsString( 'esc_html( $workout->workout_start )' , $dashboard);
+  $this->assertStringContainsString( 'Workout::recent_for_user( $user_id, 5 )' , $dashboard);
+  $this->assertStringContainsString( "array( 'workout_id' => \$workout->id )" , $dashboard);
  }
 }
