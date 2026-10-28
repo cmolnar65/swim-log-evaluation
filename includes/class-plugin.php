@@ -11,6 +11,7 @@ final class Plugin {
 		// any of those services can be invoked through WordPress hooks or admin pages.
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-layout-templates.php';
 		Layout_Templates::register();
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
