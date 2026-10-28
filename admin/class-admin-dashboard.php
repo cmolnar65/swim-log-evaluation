@@ -117,6 +117,7 @@ final class Admin_Dashboard {
         }
         if ( $events ) {
             echo '<h2>' . esc_html__( 'Upcoming events and race readiness', 'chriss-swim-training-progress-evaluation' ) . '</h2>';
+            echo '<p>' . esc_html__( 'Race Readiness 2.0 summarizes recorded evidence only.', 'chriss-swim-training-progress-evaluation' ) . '</p>';
             require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-race-readiness.php';
             $strokes = array( 'FR' => 'Freestyle', 'BR' => 'Breaststroke', 'BACK' => 'Backstroke', 'FLY' => 'Butterfly', 'MIXED' => 'Mixed' );
             foreach ( $events as $event ) {
