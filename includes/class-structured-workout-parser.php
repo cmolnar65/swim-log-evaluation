@@ -47,7 +47,7 @@ final class Structured_Workout_Parser {
                 $ladder = array( 'type' => 'ladder', 'rungs' => array() );
                 continue;
             }
-            if ( preg_match( '/^(\d+)\s*[×xX]\s*\(\s*(\d+(?:\.\d+)?)\s*(FR|BR|BK|FL|BU|MX)\s*\+\s*(\d+(?:\.\d+)?)\s*(FR|BR|BK|FL|BU|MX)\s*\)$/i', $line, $m ) ) {
+            if ( preg_match( '/^(\d+)\s*[×xX]\s*\(\s*(\d+(?:\.\d+)?)\s*(FR|BR|BK|FL|BU|MX)\s*\+\s*(\d+(?:\.\d+)?)\s*(FR|BR|BK|FL|BU|MX)\s*\)$/iu', $line, $m ) ) {
                 if ( $summary_mode ) return self::error( $index, 'Unexpected step after summary.' );
                 $steps = array(
                     array( 'type' => 'step', 'distance' => (float) $m[2], 'stroke' => strtoupper( $m[3] ) ),
