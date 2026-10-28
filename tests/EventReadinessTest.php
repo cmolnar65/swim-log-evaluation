@@ -13,10 +13,11 @@ final class EventReadinessTest extends TestCase {
   $this->assertStringContainsString("'event_distance_or_longer'",$code);
  }
  public function test_dashboard_labels_readiness_as_descriptive_not_predictive(){
-  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $code=file_get_contents(dirname(__DIR__).'/admin/class-admin-dashboard.php');
   $this->assertStringContainsString('Race Readiness 2.0 summarizes recorded evidence only.',$code);
   $this->assertSame(42,\SwimLogEvaluation\Workout::EVENT_READINESS_LOOKBACK_DAYS);
-  $this->assertStringContainsString('Workout::event_readiness($user_id,$e,Workout::EVENT_READINESS_LOOKBACK_DAYS)',$code);
+  $this->assertStringContainsString('Workout::event_readiness( $user_id, $event, Workout::EVENT_READINESS_LOOKBACK_DAYS )',$code);
+  $this->assertStringContainsString('Admin_Race_Readiness::render(', $code);
   $this->assertStringContainsString('Matching training:',$code=file_get_contents(dirname(__DIR__).'/admin/class-admin-race-readiness.php'));
   $this->assertStringContainsString('Recent distance evidence:',$code);
   $this->assertStringContainsString('event distance or longer recorded',$code);
