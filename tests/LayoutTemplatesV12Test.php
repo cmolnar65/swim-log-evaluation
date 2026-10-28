@@ -31,6 +31,14 @@ final class LayoutTemplatesV12Test extends TestCase {
         $this->assertStringContainsString( "'swimlog-layout-' . ( self::FULL === self::selected() ? 'full' : 'wide' )", $code );
     }
 
+    public function test_group_block_includes_matching_saved_html_wrapper() {
+        $code = $this->source( 'includes/class-layout-templates.php' );
+        $this->assertStringContainsString( '<!-- wp:group', $code );
+        $this->assertStringContainsString( '<main class="wp-block-group swimlog-layout-main">', $code );
+        $this->assertStringContainsString( '</main><!-- /wp:group -->', $code );
+        $this->assertStringNotContainsString( "'<!-- /wp:group -->'", $code );
+    }
+
     public function test_preferences_are_nonce_and_capability_protected() {
         $code = $this->source( 'includes/class-layout-templates.php' );
         $this->assertStringContainsString( "wp_verify_nonce(", $code );
