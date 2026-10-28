@@ -4,6 +4,15 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+## v1.2 Phase 03 — Page and post layout templates
+
+For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide Content** and **SwimLog Full Width** are the preferred page templates for displaying SwimLog tables. Select either from the Page or Post editor's **Template** selector. Both retain the theme header and footer and render existing page content, including SwimLog blocks and shortcodes.
+
+- **SwimLog Wide Content**: preferred for tables that need more horizontal space while retaining a bounded content area.
+- **SwimLog Full Width**: preferred for the widest table layouts and multi-column SwimLog content.
+
+Both templates were validated manually with Twenty Twenty-Four during v1.2 Phase 03. Their table layout, responsive behavior, and page rendering were confirmed working. They are optional; existing pages and other themes do not need to switch. The per-page SwimLog table density and font-size settings remain available.
+
 ## v1.1 release candidate status
 
 The `develop` branch contains the **v1.1 release candidate**. It must pass the complete PHP 7.4–8.4 regression matrix, packaged WordPress Plugin Check, package-content audit, and exact-ZIP site validation before any protected-main merge, tag, GitHub release, or WordPress.org deployment.
