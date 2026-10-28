@@ -36,7 +36,7 @@ final class Layout_Templates {
                     'content' => '<!-- wp:template-part {"slug":"header","tagName":"header","area":"header"} /-->'
                         . '<!-- wp:group {"tagName":"main","className":"swimlog-layout-main","layout":{"type":"constrained"}} -->'
                         . '<!-- wp:post-title {"level":1} /-->'
-                        . '<!-- wp:post-content {"layout":{"type":"constrained"}} /-->'
+                        . '<!-- wp:post-content {"className":"swimlog-layout-content","layout":{"type":"constrained"}} /-->'
                         . '<!-- /wp:group -->'
                         . '<!-- wp:template-part {"slug":"footer","tagName":"footer","area":"footer"} /-->',
                 )
