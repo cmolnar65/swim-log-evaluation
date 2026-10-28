@@ -104,6 +104,7 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 3. Personal Bests tracks performances by age group, course, distance, and stroke, with lifetime personal bests identified.
 4. PB Progression shows the performance history for a selected distance and stroke over time.
 5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
+6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
 
 == Changelog ==
 
