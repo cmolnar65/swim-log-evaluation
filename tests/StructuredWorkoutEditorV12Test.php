@@ -23,7 +23,7 @@ final class StructuredWorkoutEditorV12Test extends TestCase {
     }
     public function test_editor_supports_ladder_repeat_steps_and_preview() {
         $js = $this->source( 'assets/js/structured-workout-editor.js' );
-        foreach ( array( "'ladder'", "'repeat'", "'step'", "'section'", "'pace'", "'rest'", "node.equipment", "node.drill", 'swimlog-structure-preview', 'JSON.stringify(doc)' ) as $term ) {
+        foreach ( array( "'ladder'", "'repeat'", "'step'", "'section'", "node.pace", "node.rest", "node.equipment", "node.drill", 'swimlog-structure-preview', 'JSON.stringify(doc)' ) as $term ) {
             $this->assertStringContainsString( $term, $js );
         }
     }
