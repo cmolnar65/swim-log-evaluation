@@ -272,6 +272,19 @@
 		var payload = { plan_action: clip.mode === 'cut' ? 'move' : 'duplicate', id: clip.plan.id, planned_date: date };
 		mutatePlan( root, payload ).then( function ( success ) { if ( success && clip.mode === 'cut' ) root._planClipboard = null; } );
 	}
+	function showClipboardDate( root ) {
+		var clip = root._planClipboard;
+		if ( !clip ) return;
+		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
+		var heading = document.createElement( 'h3' ); heading.textContent = ( clip.mode === 'cut' ? 'Move ' : 'Copy ' ) + clip.plan.title; panel.appendChild( heading );
+		var form = document.createElement( 'form' ); form.dataset.calendarPasteForm = '1';
+		var label = document.createElement( 'label' ); label.textContent = 'Destination date ';
+		var input = document.createElement( 'input' ); input.type = 'date'; input.required = true; input.min = root.dataset.siteToday || '';
+		input.value = clip.plan.planned_date >= input.min ? clip.plan.planned_date : input.min;
+		label.appendChild( input ); form.appendChild( label );
+		var submit = document.createElement( 'button' ); submit.type = 'submit'; submit.className = 'swimlog-calendar-button'; submit.textContent = clip.mode === 'cut' ? 'Save Move' : 'Paste Copy'; form.appendChild( submit );
+		panel.appendChild( form ); input.focus();
+	}
 	function showMoveDate( root, plan ) {
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false;
 		var heading = document.createElement( 'h3' ); heading.textContent = 'Move ' + plan.title; panel.appendChild( heading );
@@ -391,6 +404,7 @@
 				.catch( function ( error ) { feedback.textContent = error.message; } )
 				.then( function () { if ( form.isConnected ) submit.disabled = false; } );
 		} );
+		root.addEventListener( 'submit', function ( event ) { var paste = event.target.closest( '[data-calendar-paste-form]' ); if ( !paste ) return; event.preventDefault(); pastePlan( root, paste.querySelector( '[type="date"]' ).value ); } );
 		root.addEventListener( 'submit', function ( event ) { var move = event.target.closest( '[data-calendar-move-form]' ); if ( !move ) return; event.preventDefault(); var date = move.querySelector( '[type="date"]' ).value; if ( !validDestination( root, date ) ) { clipboardStatus( root, 'Choose today or a future date.' ); return; } if ( window.confirm( 'Move this planned workout to ' + date + '?' ) ) mutatePlan( root, { plan_action: 'move', id: move.dataset.calendarMoveForm, planned_date: date } ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; event.preventDefault(); var data = new FormData( form ), payload = { plan_action: 'save', id: form.dataset.planId || 0 }; data.forEach( function ( value, key ) { payload[key] = value; } ); payload.planned_duration_ms = payload.planned_duration_minutes ? Math.round( Number( payload.planned_duration_minutes ) * 60000 ) : ''; delete payload.planned_duration_minutes; mutatePlan( root, payload ); } );
 		root.addEventListener( 'submit', function ( event ) { var form = event.target.closest( '[data-calendar-recurrence-form]' ); if ( ! form ) return; event.preventDefault(); var weekdays = Array.prototype.map.call( form.querySelectorAll( '[name="weekday"]:checked' ), function ( box ) { return box.value; } ); mutatePlan( root, { plan_action: 'recur', id: form.dataset.planId, weekdays: weekdays.join( ',' ), end_date: form.querySelector( '[name="end_date"]' ).value } ); } );
@@ -417,7 +431,7 @@
 			var duplicateWeek = event.target.closest( '[data-calendar-duplicate-week]' ); if ( duplicateWeek ) { showDuplicateWeekEditor( root, duplicateWeek.dataset.calendarDuplicateWeek ); return; }
 			var pasteButton = event.target.closest( '[data-calendar-paste-date]' ); if ( pasteButton ) { pastePlan( root, pasteButton.dataset.calendarPasteDate ); return; }
 			var dateButton = event.target.closest( '[data-calendar-plan-date]' ); if ( dateButton ) { if ( !root.dataset.siteToday || dateButton.dataset.calendarPlanDate < root.dataset.siteToday ) return; if ( root._planClipboard ) { showDateActions( root, dateButton.dataset.calendarPlanDate ); return; } showPlanEditor( root, dateButton.dataset.calendarPlanDate, null ); return; }
-			var planAction = event.target.closest( '[data-calendar-plan-action]' ); if ( planAction ) { var plan; try { plan = JSON.parse( planAction.dataset.plan || '{}' ); } catch ( error ) { return; } var action = planAction.dataset.calendarPlanAction; if ( action === 'copy' || action === 'cut' ) { root._planClipboard = { mode: action, plan: plan }; clipboardStatus( root, ( action === 'copy' ? 'Copied ' : 'Cut ' ) + plan.title + '. Select a destination date and Paste Workout Here.' ); return; } if ( action === 'move-date' ) { showMoveDate( root, plan ); return; } if ( action === 'edit' ) { showPlanEditor( root, plan.planned_date, plan ); return; } if ( action === 'repeat' ) { showRecurrenceEditor( root, plan ); return; } if ( action === 'match' ) { showCompletionCandidates( root, plan ); return; } if ( action === 'delete' && ! window.confirm( 'Delete this planned workout?' ) ) return; mutatePlan( root, { plan_action: action, id: plan.id, planned_date: plan.planned_date } ); return; }
+			var planAction = event.target.closest( '[data-calendar-plan-action]' ); if ( planAction ) { var plan; try { plan = JSON.parse( planAction.dataset.plan || '{}' ); } catch ( error ) { return; } var action = planAction.dataset.calendarPlanAction; if ( action === 'copy' || action === 'cut' ) { root._planClipboard = { mode: action, plan: plan }; clipboardStatus( root, ( action === 'copy' ? 'Copied ' : 'Cut ' ) + plan.title + '. Choose a destination date below.' ); showClipboardDate( root ); return; } if ( action === 'move-date' ) { showMoveDate( root, plan ); return; } if ( action === 'edit' ) { showPlanEditor( root, plan.planned_date, plan ); return; } if ( action === 'repeat' ) { showRecurrenceEditor( root, plan ); return; } if ( action === 'match' ) { showCompletionCandidates( root, plan ); return; } if ( action === 'delete' && ! window.confirm( 'Delete this planned workout?' ) ) return; mutatePlan( root, { plan_action: action, id: plan.id, planned_date: plan.planned_date } ); return; }
 			var matchButton = event.target.closest( '[data-calendar-match-workout]' ); if ( matchButton ) { mutatePlan( root, { plan_action: 'associate', id: matchButton.dataset.planId, workout_id: matchButton.dataset.calendarMatchWorkout } ); return; }
 			var workoutButton = event.target.closest( '[data-calendar-workout]' ); if ( workoutButton ) { showWorkoutDetail( root, workoutButton ); return; }
 			var eventButton = event.target.closest( '[data-calendar-event]' ); if ( eventButton ) { showEventDetail( root, eventButton ); return; }
