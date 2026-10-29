@@ -3,7 +3,7 @@
  * Plugin Name: Chris's Swim Training Progress and Evaluation
  * Description: Import, normalize, evaluate, and display swimming workout history and personal bests.
  * Version: 1.1
- * Requires at least: 6.0
+ * Requires at least: 6.2
  * Requires PHP: 7.4
  * Author: Christopher Molnar
  * Author Email: cmolnar@cmolnar.com
