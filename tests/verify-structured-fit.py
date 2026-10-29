@@ -29,4 +29,15 @@ assert steps[0]["duration_type"] == "distance"
 assert steps[1]["duration_type"] == "repetition_time"
 assert steps[4]["duration_type"] == "repeat_until_steps_cmplt"
 assert steps[6]["duration_type"] == "open"
+assert abs(steps[0]["duration_distance"] - 91.44) < 0.0001
+assert steps[0]["target_stroke_type"] == "freestyle"
+assert steps[1]["duration_time"] == 120.0
+assert abs(steps[2]["duration_distance"] - 45.72) < 0.0001
+assert steps[2]["target_stroke_type"] == "breaststroke"
+assert abs(steps[2]["secondary_custom_target_speed_low"] - 1.016) < 0.0001
+assert abs(steps[2]["secondary_custom_target_speed_high"] - 1.016) < 0.0001
+assert steps[3]["duration_time"] == 15.0
+assert steps[4]["duration_step"] == 0 and steps[4]["repeat_steps"] == 3
+assert steps[5]["target_stroke_type"] == "drill"
+assert steps[5]["equipment"] == "swim_fins"
 print("Official Garmin decoder: workout type, CRC, swimming metadata, repeats and rests verified.")
