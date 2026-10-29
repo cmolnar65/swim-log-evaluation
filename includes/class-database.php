@@ -51,7 +51,7 @@ final class Database {
 			throw new \InvalidArgumentException( 'Unsupported database read method.' );
 		}
 		self::observe_writes();
-		$cacheable = self::$observing && ! self::$transaction && preg_match( '/^\s*SELECT\b/i', $sql ) && ! preg_match( '/FOR\s+UPDATE|LOCK\s+IN\s+SHARE|SQL_NO_CACHE|RAND\s*\(|NOW\s*\(/i', $sql );
+		$cacheable = self::$observing && ! self::$transaction && preg_match( '/^\s*SELECT\b/i', $sql ) && ! preg_match( '/FOR\s+UPDATE|LOCK\s+IN\s+SHARE|SQL_NO_CACHE|GET_LOCK\\s*\\(|RELEASE_LOCK\\s*\\(|@@(?:session\\.)?in_transaction|RAND\s*\(|NOW\s*\(/i', $sql );
 		$key = spl_object_hash( $wpdb ) . ':' . (string) $wpdb->prefix . ':' . md5( serialize( array( $method, $sql, $args ) ) );
 		if ( $cacheable && array_key_exists( $key, self::$reads ) ) return self::copy_result( self::$reads[ $key ] );
 		// Prepared SQL is supplied by domain services; custom-table reads share the bounded cache above.
