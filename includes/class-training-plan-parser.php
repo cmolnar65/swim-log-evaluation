@@ -42,6 +42,8 @@ final class Training_Plan_Parser {
             $unit = null;
             $nodes = array();
             foreach ( $block['lines'] as $line ) {
+                // Explicit summary totals are reconciled separately, not counted as swim steps.
+                if ( preg_match( '/^(?:total|workout total|total distance)\\s*[:=\\-]?\\s*[0-9,]+\\s*(?:yards?|yds?|meters?|metres?|m)\\b/i', $line ) ) continue;
                 $parsed = self::parse_line( $line );
                 if ( null === $parsed ) {
                     $flags[] = 'Unconverted instruction: ' . $line;
