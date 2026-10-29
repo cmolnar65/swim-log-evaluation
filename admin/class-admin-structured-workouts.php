@@ -4,6 +4,27 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Admin_Structured_Workouts {
     public static function handle_actions() {
+        if ( isset( $_POST['swimlog_pdf_bulk_import'] ) ) {
+            if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+            check_admin_referer( 'swimlog_pdf_bulk_import' );
+            $owner = get_current_user_id();
+            $token = isset( $_POST['swimlog_pdf_token'] ) && is_string( $_POST['swimlog_pdf_token'] ) ? sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_token'] ) ) : '';
+            if ( ! preg_match( '/^[a-zA-Z0-9]{32}$/', $token ) ) { self::error( 'Invalid preview token.' ); return; }
+            $preview = get_transient( 'swimlog_pdf_' . $owner . '_' . $token );
+            if ( ! is_array( $preview ) || empty( $preview['text'] ) ) { self::error( 'PDF preview expired. Upload the PDF again.' ); return; }
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-parser.php';
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-review.php';
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-bulk-import.php';
+            $parsed = Training_Plan_Parser::parse( $preview['text'] );
+            if ( is_wp_error( $parsed ) ) { self::error( $parsed->get_error_message() ); return; }
+            $name = isset( $_POST['swimlog_pdf_plan_name'] ) && is_string( $_POST['swimlog_pdf_plan_name'] ) ? sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_plan_name'] ) ) : '';
+            $selected = isset( $_POST['swimlog_pdf_selected'] ) && is_array( $_POST['swimlog_pdf_selected'] ) ? array_map( 'absint', wp_unslash( $_POST['swimlog_pdf_selected'] ) ) : array();
+            $result = Training_Plan_Bulk_Import::run( $owner, $name, $parsed, $selected, hash( 'sha256', $preview['text'] ) );
+            if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
+            delete_transient( 'swimlog_pdf_' . $owner . '_' . $token );
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_imported' => $result['count'] ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
         if ( isset( $_POST['swimlog_pdf_extract'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
             check_admin_referer( 'swimlog_pdf_extract' );
@@ -87,7 +108,15 @@ final class Admin_Structured_Workouts {
                 <?php else : ?>
                   <p><?php echo esc_html( sprintf( '%d candidate workout boundaries found. No workouts have been saved.', count( $candidate_plan['workouts'] ) ) ); ?></p>
                   <?php foreach ( $candidate_plan['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
+                  <form method="post">
+                    <?php wp_nonce_field( 'swimlog_pdf_bulk_import' ); ?>
+                    <input type="hidden" name="swimlog_pdf_bulk_import" value="1">
+                    <input type="hidden" name="swimlog_pdf_token" value="<?php echo esc_attr( $pdf_token ); ?>">
+                    <p><label for="swimlog-pdf-plan-name">Private plan name</label>
+                    <input type="text" id="swimlog-pdf-plan-name" name="swimlog_pdf_plan_name" maxlength="120" required></p>
+                    <p>Only checked workouts with exact stated-distance matches and no review flags may be imported. Unverified workouts cannot be imported.</p>
                   <?php foreach ( $candidate_plan['workouts'] as $candidate ) : $review = Training_Plan_Review::assess( $candidate ); ?>
+                    <?php if ( $review['ready'] ) : ?><p><label><input type="checkbox" name="swimlog_pdf_selected[]" value="<?php echo esc_attr( $candidate['sequence'] ); ?>"> Select verified workout <?php echo esc_html( $candidate['source_number'] ); ?> for import</label></p><?php endif; ?>
                     <details><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $review['flags'] ) . ' review flags' ); ?></summary>
                       <p><?php echo esc_html( 'Distance verification: ' . $review['status'] ); ?></p>
                       <p><?php echo esc_html( 'Stated total: ' . ( $review['stated'] ? $review['stated']['distance'] . ' ' . $review['stated']['unit'] : 'not found' ) ); ?></p>
@@ -99,12 +128,16 @@ final class Admin_Structured_Workouts {
                       <p><?php echo esc_html( $review['ready'] ? 'Distance verified and no conversion flags; candidate is ready for explicit approval in a later phase.' : 'Requires manual review before approval or import.' ); ?></p>
                     </details>
                   <?php endforeach; ?>
+                    <p><button class="button button-primary" type="submit">Import selected verified workouts</button></p>
+                  </form>
                 <?php endif; ?>
               <?php endif;
           endif; ?>
           <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only saved flag. ?>
           <?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+          <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only import result notice. ?>
+          <?php if ( isset( $_GET['pdf_imported'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['pdf_imported'] ) ) . ' verified workouts imported into a private training plan.' ); ?></p></div><?php endif; ?>
           <?php if ( $locked ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'This prescription is locked because it is associated with a recorded swim. Duplicate it to create an editable copy.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
           <?php if ( ! $locked ) : ?><form method="post" id="swimlog-structure-form">
             <?php wp_nonce_field( 'swimlog_structure_save' ); ?>
