@@ -44,4 +44,4 @@ jobs:
       - name: Verify database cache ownership and persistence in WordPress
         run: |
           set -euo pipefail
-          wp-env run cli wp eval "$(cat tests/production-staging-smoke.php)"
+          wp-env run cli wp eval "$(tail -n +2 tests/production-staging-smoke.php)"

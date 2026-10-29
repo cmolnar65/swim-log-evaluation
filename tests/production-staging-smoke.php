@@ -1,3 +1,4 @@
+<?php
 // Executed by wp eval in the disposable wp-env database after Plugin Check.
 use SwimLogEvaluation\Database;
 use SwimLogEvaluation\Workout;
