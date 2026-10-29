@@ -14,6 +14,8 @@ final class Plugin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-collection.php';
+		add_action( 'init', array( 'SwimLogEvaluation\\Training_Plan_Collection', 'register' ) );
 		add_action( 'init', array( 'SwimLogEvaluation\\Structured_Workout_Store', 'register' ) );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-layout-templates.php';
 		Layout_Templates::register();
