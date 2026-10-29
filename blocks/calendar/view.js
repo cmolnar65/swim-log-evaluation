@@ -102,6 +102,7 @@
 		if ( cached && cached.range && state.date >= cached.range.start && state.date <= cached.range.end ) { renderDayContents( root, state, cached ); return; }
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', state.date ); url.searchParams.set( 'end', state.date );
 		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
+		if ( state.content.contains( document.activeElement ) ) state.dialog.querySelector( '[data-calendar-day-close]' ).focus( { preventScroll: true } );
 		state.content.textContent = 'Loading day…'; state.content.setAttribute( 'aria-busy', 'true' ); state.request = new AbortController();
 		fetch( url.toString(), { credentials: 'same-origin', signal: state.request.signal, headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
 			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'Unable to load this day.' ); return response.json(); } )

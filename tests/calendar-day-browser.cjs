@@ -35,7 +35,7 @@ async function scenario(engine, name, options) {
   });
   await page.goto('https://calendar.test/');
   await page.setContent('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:12px;font:16px sans-serif}header{height:250px}footer{height:900px}</style><header>Test calendar host</header>'+html+'<footer>End of synthetic host</footer>');
-  await page.evaluate(()=>{window.wpApiSettings={nonce:'synthetic-rest-nonce'};window.swimlogCalendarSettings={ajaxUrl:'https://calendar.test/ajax',planNonce:'synthetic-plan-nonce',eventNonce:'synthetic-event-nonce'};});
+  await page.evaluate(()=>{document.querySelectorAll('[data-swimlog-calendar]').forEach(el=>{el.dataset.restUrl=location.origin+'/calendar';});window.wpApiSettings={nonce:'synthetic-rest-nonce'};window.swimlogCalendarSettings={ajaxUrl:'https://calendar.test/ajax',planNonce:'synthetic-plan-nonce',eventNonce:'synthetic-event-nonce'};});
   await page.addStyleTag({path:path.resolve('assets/css/calendar.css')});
   await page.addScriptTag({path:path.resolve('blocks/calendar/view.js')});
   await page.evaluate(()=>document.dispatchEvent(new Event('DOMContentLoaded')));
@@ -100,6 +100,7 @@ async function scenario(engine, name, options) {
   assert.deepEqual(await page.evaluate(()=>({x:scrollX,y:scrollY})),scroll,'Closing changed host scroll');
   // Week view uses the same date dialog, including the mobile agenda.
   await root.locator('[data-calendar-view="week"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-swimlog-calendar]').classList.contains('is-loading'));
   await root.locator('[data-calendar-go-date]').fill(data.date); await root.locator('[data-calendar-go]').click();
   await page.waitForFunction(date=>document.querySelector('[data-swimlog-calendar]').dataset.focusDate===date&&!document.querySelector('[data-swimlog-calendar]').classList.contains('is-loading'),data.date);
   await open(data.date); assert.equal(await page.getByRole('dialog').locator('[data-calendar-planned-workout]').count(),12); await close();
