@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Planned-workout administration UI and actions. */
 final class Admin_Planned_Workouts {
 	private static $action_error = null;
+	private static $regeneration_preview = null;
 
 	public static function handle_actions() {
 		if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
@@ -28,6 +29,35 @@ final class Admin_Planned_Workouts {
 			if ( is_wp_error( $result ) ) { self::$action_error = $result->get_error_message(); return; }
 			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $id, 'structure_linked' => 1 ), admin_url( 'admin.php' ) ) );
 			exit;
+		}
+
+		if ( 'apply_regeneration' === $action ) {
+			check_admin_referer( 'swimlog_regenerate_structure_' . $id );
+			$plan = Planned_Workout::get_for_user( $id, $user_id );
+			$linked = $plan ? Planned_Structure_Link::for_plan( $id, $user_id ) : null;
+			if ( ! $plan || is_wp_error( $linked ) || ! $linked ) { self::$action_error = __( 'Linked workout unavailable.', 'chriss-swim-training-progress-evaluation' ); return; }
+			$expected = isset( $_POST['structure_hash'] ) ? sanitize_text_field( wp_unslash( $_POST['structure_hash'] ) ) : '';
+			$instructions_hash = isset( $_POST['instructions_hash'] ) ? sanitize_text_field( wp_unslash( $_POST['instructions_hash'] ) ) : '';
+			if ( ! hash_equals( hash( 'sha256', wp_json_encode( $linked['document'] ) ), $expected ) || ! hash_equals( hash( 'sha256', $plan->workout_instructions ), $instructions_hash ) ) {
+				self::$action_error = __( 'The planned instructions or structured workout changed. Preview again before approving.', 'chriss-swim-training-progress-evaluation' ); return;
+			}
+			$parsed = self::parse_for_plan( $plan );
+			if ( is_wp_error( $parsed ) ) { self::$action_error = $parsed->get_error_message(); return; }
+			$result = Structured_Workout_Store::save( $user_id, $linked['title'], $parsed['document'], $linked['id'] );
+			if ( is_wp_error( $result ) ) { self::$action_error = $result->get_error_message(); return; }
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $id, 'regenerated' => 1 ), admin_url( 'admin.php' ) );
+			exit;
+		}
+
+		if ( 'preview_regeneration' === $action ) {
+			check_admin_referer( 'swimlog_regenerate_structure_' . $id );
+			$plan = Planned_Workout::get_for_user( $id, $user_id );
+			$linked = $plan ? Planned_Structure_Link::for_plan( $id, $user_id ) : null;
+			if ( ! $plan || is_wp_error( $linked ) || ! $linked ) { self::$action_error = __( 'Linked workout unavailable.', 'chriss-swim-training-progress-evaluation' ); return; }
+			$parsed = self::parse_for_plan( $plan );
+			if ( is_wp_error( $parsed ) ) { self::$action_error = $parsed->get_error_message(); return; }
+			self::$regeneration_preview = array( 'plan' => $plan, 'linked' => $linked, 'parsed' => $parsed );
+			return;
 		}
 
 		if ( 'save' === $action ) {
@@ -76,6 +106,12 @@ final class Admin_Planned_Workouts {
 		}
 	}
 
+	private static function parse_for_plan( $plan ) {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-parser.php';
+		$unit = 'yd' === $plan->pool_course ? 'yd' : ( 'm' === $plan->pool_course ? 'm' : '' );
+		return Structured_Workout_Parser::parse( $plan->workout_instructions, $unit );
+	}
+
 	public static function page() {
 		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage planned workouts.', 'chriss-swim-training-progress-evaluation' ) );
@@ -100,7 +136,30 @@ final class Admin_Planned_Workouts {
 			<?php if ( isset( $_GET['deleted'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Planned workout deleted.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flags. ?>
 			<?php if ( isset( $_GET['status_changed'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Planned-workout status updated.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only confirmation notice. ?>
+			<?php if ( isset( $_GET['regenerated'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout regenerated with your explicit approval.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+
+			<?php if ( self::$regeneration_preview ) :
+				$preview = self::$regeneration_preview;
+				$old = Structured_Workout::summarize( $preview['linked']['document'] );
+				$new = $preview['parsed'];
+			?>
+			<div class="notice notice-warning"><p><strong><?php esc_html_e( 'Approval required: regenerate linked structured workout', 'chriss-swim-training-progress-evaluation' ); ?></strong></p>
+			<p><?php esc_html_e( 'This will replace the linked structured definition, including any manual edits. The written instructions remain unchanged.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php echo esc_html( 'Current: ' . ( is_wp_error( $old ) ? 'Invalid' : $old['totals']['distance'] . ' ' . $old['unit'] . ', ' . $old['totals']['expanded_steps'] . ' steps' ) ); ?></p>
+			<p><?php echo esc_html( 'Proposed: ' . $new['totals']['distance'] . ' ' . $new['unit'] . ', ' . $new['totals']['expanded_steps'] . ' steps' ); ?></p>
+			<details><summary><?php esc_html_e( 'Review complete proposed structure (JSON)', 'chriss-swim-training-progress-evaluation' ); ?></summary><pre style="white-space:pre-wrap;overflow:auto"><?php echo esc_html( wp_json_encode( $new['document'], JSON_PRETTY_PRINT ) ); ?></pre></details>
+			<form method="post">
+			<?php wp_nonce_field( 'swimlog_regenerate_structure_' . $preview['plan']->id ); ?>
+			<input type="hidden" name="swimlog_planned_workout_action" value="apply_regeneration">
+			<input type="hidden" name="planned_workout_id" value="<?php echo esc_attr( $preview['plan']->id ); ?>">
+			<input type="hidden" name="structure_hash" value="<?php echo esc_attr( hash( 'sha256', wp_json_encode( $preview['linked']['document'] ) ) ); ?>">
+			<input type="hidden" name="instructions_hash" value="<?php echo esc_attr( hash( 'sha256', $preview['plan']->workout_instructions ) ); ?>">
+			<?php submit_button( __( 'Approve and replace linked structure', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
+			<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $preview['plan']->id ), admin_url( 'admin.php' ) ); ?>"><?php esc_html_e( 'Keep existing structure', 'chriss-swim-training-progress-evaluation' ); ?></a>
+			</form></div>
+			<?php endif; ?>
 
 			<h2><?php echo $editing ? esc_html__( 'Edit Planned Workout', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Add Planned Workout', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<form method="post">
@@ -137,6 +196,14 @@ final class Admin_Planned_Workouts {
 				<?php submit_button( $editing ? __( 'Update Planned Workout', 'chriss-swim-training-progress-evaluation' ) : __( 'Add Planned Workout', 'chriss-swim-training-progress-evaluation' ) ); ?>
 				<?php if ( $editing ) : ?><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-planned-workouts' ) ); ?>"><?php esc_html_e( 'Cancel Edit', 'chriss-swim-training-progress-evaluation' ); ?></a><?php endif; ?>
 			</form>
+			<?php if ( $editing && ! is_wp_error( $linked_structure ) && $linked_structure ) : ?>
+			<form method="post">
+				<?php wp_nonce_field( 'swimlog_regenerate_structure_' . $editing->id ); ?>
+				<input type="hidden" name="swimlog_planned_workout_action" value="preview_regeneration">
+				<input type="hidden" name="planned_workout_id" value="<?php echo esc_attr( $editing->id ); ?>">
+				<?php submit_button( __( 'Preview regeneration from saved instructions', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+			</form>
+			<?php endif; ?>
 			<?php if ( $editing && ! is_wp_error( $linked_structure ) ) : ?>
 			<form method="post">
 				<?php wp_nonce_field( 'swimlog_link_structure_' . $editing->id ); ?>
