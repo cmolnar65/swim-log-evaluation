@@ -30,7 +30,9 @@ final class MatchingPolicyTest extends TestCase {
   $this->assertSame('exact',$match['status']);
   $this->assertSame(77,(int)$match['workout']->id);
   $this->assertStringContainsString("workout_type='pool'",$wpdb->prepared['sql']);
-  $this->assertSame('2026-10-23 12:00:00',$wpdb->prepared['args'][1]);
+  $this->assertSame('wp_swimlog_workouts',$wpdb->prepared['args'][0]);
+  $this->assertSame(42,$wpdb->prepared['args'][1]);
+  $this->assertSame('2026-10-23 12:00:00',$wpdb->prepared['args'][2]);
  }
 
  public function test_multiple_exact_open_water_candidates_require_review(){
