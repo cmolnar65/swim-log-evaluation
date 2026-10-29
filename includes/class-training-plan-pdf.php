@@ -41,6 +41,11 @@ final class Training_Plan_PDF {
         if ( '' === $text ) {
             return new \WP_Error( 'swimlog_pdf_scanned', 'No selectable text found. Scanned PDFs require OCR before import.' );
         }
+        // An embedded-font PDF may yield printable glyph codes rather than decoded
+        // Unicode text. Never pass such output to the workout parser as if valid.
+        if ( ! preg_match( '/\\b(?:swim|workout|session|practice|week)\\b/i', $text ) ) {
+            return new \\WP_Error( 'swimlog_pdf_encoding', 'PDF text could not be decoded into recognizable workout headings. This PDF may use a custom font encoding; import requires a supported text extraction method.' );
+        }
         return array( 'text' => $text, 'bytes' => strlen( $text ), 'sha256' => hash_file( 'sha256', $path ) );
     }
     /**
