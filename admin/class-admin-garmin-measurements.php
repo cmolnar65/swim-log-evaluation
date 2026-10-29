@@ -18,7 +18,7 @@ final class Admin_Garmin_Measurements {
             check_admin_referer( 'swimlog_garmin_measurements' );
             $start = isset( $_POST['measurement_start'] ) && is_string( $_POST['measurement_start'] ) ? sanitize_text_field( wp_unslash( $_POST['measurement_start'] ) ) : '';
             $end = isset( $_POST['measurement_end'] ) && is_string( $_POST['measurement_end'] ) ? sanitize_text_field( wp_unslash( $_POST['measurement_end'] ) ) : '';
-            $raw = isset( $_POST['measurement_categories'] ) && is_array( $_POST['measurement_categories'] ) ? wp_unslash( $_POST['measurement_categories'] ) : array();
+            $raw = isset( $_POST['measurement_categories'] ) && is_array( $_POST['measurement_categories'] ) ? map_deep( wp_unslash( $_POST['measurement_categories'] ), 'sanitize_text_field' ) : array();
             foreach ( $raw as $value ) {
                 if ( is_string( $value ) ) $selected[] = sanitize_key( $value );
             }
