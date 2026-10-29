@@ -29,60 +29,66 @@ final class Training_Plan_PDF {
         if ( false === $header || 0 !== strpos( $header, '%PDF-' ) ) {
             return new \WP_Error( 'swimlog_pdf_signature', 'File does not have a PDF signature.' );
         }
-        if ( ! function_exists( 'proc_open' ) ) {
-            return new \WP_Error( 'swimlog_pdf_unavailable', 'PDF text extraction is unavailable on this server.' );
+        // No shell/process execution: use a bounded, local PDF stream reader.
+        // Supports selectable text in uncompressed and FlateDecode content streams.
+        $pdf = file_get_contents( $path );
+        if ( false === $pdf || strlen( $pdf ) > self::MAX_BYTES ) {
+            return new \\WP_Error( 'swimlog_pdf_read', 'Could not read the uploaded PDF.' );
         }
-        $binary = apply_filters( 'swimlog_pdf_text_extractor', '/usr/bin/pdftotext' );
-        if ( ! is_string( $binary ) || ! in_array( $binary, array( '/usr/bin/pdftotext', '/usr/local/bin/pdftotext' ), true ) ||
-            ! is_file( $binary ) || ! is_executable( $binary ) ) {
-            return new \WP_Error( 'swimlog_pdf_unavailable', 'The server needs the pdftotext utility to import PDFs.' );
-        }
-        // Command arguments are individually quoted; no uploaded filename reaches the shell.
-        $command = escapeshellarg( $binary ) . ' -layout -enc UTF-8 -nopgbrk ' . escapeshellarg( $path ) . ' -';
-        $descriptors = array( 0 => array( 'pipe', 'r' ), 1 => array( 'pipe', 'w' ), 2 => array( 'pipe', 'w' ) );
-        $process = proc_open( $command, $descriptors, $pipes );
-        if ( ! is_resource( $process ) ) {
-            return new \WP_Error( 'swimlog_pdf_extract', 'Could not start PDF extraction.' );
-        }
-        fclose( $pipes[0] );
-        stream_set_blocking( $pipes[1], false );
-        stream_set_blocking( $pipes[2], false );
-        $text = '';
-        $stderr = '';
-        $started = microtime( true );
-        $timed_out = false;
-        $oversized = false;
-        while ( true ) {
-            $read = array();
-            if ( ! feof( $pipes[1] ) ) $read[] = $pipes[1];
-            if ( ! feof( $pipes[2] ) ) $read[] = $pipes[2];
-            if ( ! $read ) break;
-            if ( microtime( true ) - $started > 15 ) { $timed_out = true; break; }
-            $write = null;
-            $except = null;
-            $ready = stream_select( $read, $write, $except, 0, 200000 );
-            if ( false === $ready ) break;
-            foreach ( $read as $stream ) {
-                $chunk = fread( $stream, 8192 );
-                if ( $stream === $pipes[1] ) $text .= $chunk;
-                else $stderr .= $chunk;
-            }
-            if ( strlen( $text ) > self::MAX_TEXT_BYTES || strlen( $stderr ) > 8192 ) {
-                $oversized = true;
-                break;
-            }
-        }
-        if ( $timed_out || $oversized ) proc_terminate( $process );
-        fclose( $pipes[1] );
-        fclose( $pipes[2] );
-        $status = proc_close( $process );
-        if ( $timed_out || $oversized || 0 !== $status ) {
-            return new \WP_Error( 'swimlog_pdf_extract', 'Unable to extract PDF text. The document may be encrypted, unsupported, or too large.' );
-        }
+        $text = self::extract_text_streams( $pdf );
+        if ( is_wp_error( $text ) ) return $text;
         $text = trim( str_replace( "\r", '', $text ) );
         if ( '' === $text ) {
             return new \WP_Error( 'swimlog_pdf_scanned', 'No selectable text found. Scanned PDFs require OCR before import.' );
         }
         return array( 'text' => $text, 'bytes' => strlen( $text ), 'sha256' => hash_file( 'sha256', $path ) );
     }
+    /**
+     * Extract basic PDF text operators without invoking external programs.
+     * Complex font encodings and scanned PDFs are intentionally unsupported.
+     */
+    private static function extract_text_streams( $pdf ) {
+        $text = '';
+        $offset = 0;
+        $count = 0;
+        while ( false !== ( $stream_pos = strpos( $pdf, 'stream', $offset ) ) ) {
+            if ( ++$count > 2000 ) return new \\WP_Error( 'swimlog_pdf_complex', 'PDF contains too many streams.' );
+            $begin = $stream_pos + 6;
+            if ( isset( $pdf[$begin] ) && "\\r" === $pdf[$begin] ) ++$begin;
+            if ( isset( $pdf[$begin] ) && "\\n" === $pdf[$begin] ) ++$begin;
+            $finish = strpos( $pdf, 'endstream', $begin );
+            if ( false === $finish ) break;
+            $raw = substr( $pdf, $begin, $finish - $begin );
+            $offset = $finish + 9;
+            $dictionary = substr( $pdf, max( 0, $stream_pos - 1024 ), min( 1024, $stream_pos ) );
+            if ( false !== strpos( $dictionary, '/FlateDecode' ) ) {
+                if ( strlen( $raw ) > self::MAX_BYTES ) continue;
+                $decoded = @gzuncompress( rtrim( $raw, "\\r\\n" ), self::MAX_TEXT_BYTES );
+                if ( false === $decoded ) continue;
+                $raw = $decoded;
+            } elseif ( false !== strpos( $dictionary, '/Filter' ) ) {
+                continue;
+            }
+            if ( ! preg_match( '/\\b(?:BT|Tj|TJ)\\b/', $raw ) ) continue;
+            if ( preg_match_all( '/\\((?:\\\\\\\\.|\\\\.|[^\\\\)])*\\)\\s*(?:Tj|\\x27|\\x22)|\\[(?:[^\\]]{0,16384})\\]\\s*TJ/s', $raw, $matches ) ) {
+                foreach ( $matches[0] as $operator ) {
+                    if ( preg_match_all( '/\\((?:\\\\.|[^\\\\)])*\\)/s', $operator, $pieces ) ) {
+                        $line = '';
+                        foreach ( $pieces[0] as $piece ) {
+                            $part = substr( $piece, 1, -1 );
+                            $part = preg_replace_callback( '/\\\\([0-7]{1,3})/', function ( $m ) { return chr( octdec( $m[1] ) ); }, $part );
+                            $part = str_replace( array( '\\\\n', '\\\\r', '\\\\t', '\\\\(', '\\\\)', '\\\\\\\\' ), array( "\\n", "\\r", "\\t", '(', ')', '\\\\' ), $part );
+                            $line .= $part;
+                        }
+                        $text .= $line . "\\n";
+                        if ( strlen( $text ) > self::MAX_TEXT_BYTES ) {
+                            return new \\WP_Error( 'swimlog_pdf_text_limit', 'Extracted PDF text exceeds the size limit.' );
+                        }
+                    }
+                }
+            }
+        }
+        return $text;
+    }
+
 }
