@@ -65,6 +65,12 @@ final class Admin_Garmin_History {
     private static function button( $job, $action, $label ) {
         ?><form method="post"><?php wp_nonce_field( 'swimlog_history_control' ); ?><input type="hidden" name="swimlog_history_action" value="<?php echo esc_attr( $action ); ?>"><input type="hidden" name="history_job" value="<?php echo esc_attr( $job['id'] ); ?>"><?php submit_button( $label, 'secondary', 'history_control', false ); ?></form><?php
     }
+    private static function failure_message( $code ) {
+        if ( false !== strpos( $code, 'capacity' ) ) return __( 'The job storage limit was reached. Cancel and choose a smaller range; existing imports are retained.', 'chriss-swim-training-progress-evaluation' );
+        if ( 'authorization_or_connection' === $code ) return __( 'Check your Garmin key and import permissions, then resume. Progress has been retained.', 'chriss-swim-training-progress-evaluation' );
+        if ( 'schedule' === $code ) return __( 'WordPress could not schedule the next task. Use Resume / repair schedule.', 'chriss-swim-training-progress-evaluation' );
+        return __( 'This operation could not finish. Existing imports were retained. Resume a blocked job, or use Retry failed items after the scan finishes.', 'chriss-swim-training-progress-evaluation' );
+    }
     public static function status( $job, $offset = 0, $filter = 'all' ) {
         if ( ! in_array( $filter, array( 'all', 'failed', 'review' ), true ) ) $filter = 'all';
         $active = in_array( $job['status'], array( 'queued', 'running', 'waiting' ), true );
@@ -75,8 +81,8 @@ final class Admin_Garmin_History {
         <div id="swimlog-history-status" data-job="<?php echo esc_attr( $job['id'] ); ?>" data-offset="<?php echo esc_attr( $offset ); ?>" data-filter="<?php echo esc_attr( $filter ); ?>" data-active="<?php echo $active ? '1' : '0'; ?>">
             <h3><?php echo esc_html( $job['start'] . ' — ' . $job['end'] ); ?></h3>
             <p role="status"><strong><?php echo esc_html( $labels[$job['status']] ?? $job['status'] ); ?></strong></p>
-            <?php if ( $job['error'] ) : ?><p role="alert"><?php echo esc_html( $job['error'] ); ?></p><?php endif; ?>
-            <p><?php echo esc_html( sprintf( /* translators: 1: queued units, 2: failed units, 3: discovered swim activities, 4: fully scanned activity days, 5: attempted measurement days. */ __( 'Queued work units: %1$d; failed units: %2$d; discovered swims: %3$d; fully scanned activity days: %4$d; attempted measurement days: %5$d.', 'chriss-swim-training-progress-evaluation' ), count( $job['ready'] ), count( $job['failed'] ), $job['counts']['discovered'], $job['counts']['activity_days'], $job['counts']['measurement_days'] ) ); ?></p>
+            <?php if ( $job['error'] ) : ?><p role="alert"><?php echo esc_html( self::failure_message( $job['error'] ) ); ?></p><?php endif; ?>
+            <p><?php echo esc_html( sprintf( /* translators: 1: queued units, 2: failed units, 3: discovered swim activities, 4: fully scanned activity days, 5: attempted measurement days. */ __( 'Unfinished checks/imports: %1$d; failed checks/imports: %2$d; discovered swims: %3$d; fully scanned activity days: %4$d; attempted measurement days: %5$d.', 'chriss-swim-training-progress-evaluation' ), count( $job['ready'] ), count( $job['failed'] ), $job['counts']['discovered'], $job['counts']['activity_days'], $job['counts']['measurement_days'] ) ); ?></p>
             <dl class="swimlog-history-counts">
             <?php foreach ( array( 'activity_imported' => __( 'Swims imported', 'chriss-swim-training-progress-evaluation' ), 'activity_already' => __( 'Swims already present', 'chriss-swim-training-progress-evaluation' ), 'activity_review' => __( 'Swims needing review', 'chriss-swim-training-progress-evaluation' ), 'added' => __( 'Readings added', 'chriss-swim-training-progress-evaluation' ), 'updated' => __( 'Readings updated', 'chriss-swim-training-progress-evaluation' ), 'skipped' => __( 'Duplicate readings skipped', 'chriss-swim-training-progress-evaluation' ), 'reports_added' => __( 'Reports added', 'chriss-swim-training-progress-evaluation' ), 'reports_updated' => __( 'Reports updated', 'chriss-swim-training-progress-evaluation' ), 'reports_skipped' => __( 'Unchanged reports', 'chriss-swim-training-progress-evaluation' ), 'measurement_no_data' => __( 'Empty date/category responses', 'chriss-swim-training-progress-evaluation' ), 'excluded' => __( 'Unsupported fields/rows excluded', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?><div><dt><?php echo esc_html( $label ); ?></dt><dd><?php echo esc_html( (string) ( $job['counts'][$key] ?? 0 ) ); ?></dd></div><?php endforeach; ?>
             </dl>
@@ -101,7 +107,7 @@ final class Admin_Garmin_History {
                 $date = $unit['data']['date'] ?? ( $unit['data']['cursor']['day'] ?? '' );
                 ?>
                 <tr><td><?php echo esc_html( $date . ' · ' . $unit['kind'] . ( isset( $unit['data']['activity_id'] ) ? ' #' . $unit['data']['activity_id'] : '' ) ); ?></td><td><?php echo esc_html( $unit['status'] ); ?></td><td>
-                <?php if ( $unit['error'] ) echo esc_html( $unit['error'] ); ?>
+                <?php if ( $unit['error'] ) : ?><p><?php echo esc_html( self::failure_message( $unit['error'] ) ); ?></p><details><summary><?php esc_html_e( 'Technical details', 'chriss-swim-training-progress-evaluation' ); ?></summary><?php echo esc_html( $unit['error'] ); ?></details><?php endif; ?>
                 <?php foreach ( $unit['outcomes'] as $category => $row ) : ?><p><?php echo esc_html( $category . ': ' . $row['status'] ); ?></p><?php endforeach; ?>
                 <?php if ( 'review' === $unit['status'] && 'activity' === $unit['kind'] ) : ?>
                     <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $unit['data']['activity_id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Review Garmin activity / assign location', 'chriss-swim-training-progress-evaluation' ); ?></a>

@@ -6,7 +6,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Garmin_History_Jobs {
     const HOOK = 'swimlog_garmin_history_job';
     private static function error( $code ) {
-        return new \WP_Error( 'swimlog_history_job_' . $code, __( 'The historical job could not proceed. Check its status, connection and permissions, or retry shortly.', 'chriss-swim-training-progress-evaluation' ) );
+        $messages = array(
+            'input' => __( 'Choose valid inclusive dates ending no later than today and at least one supported category.', 'chriss-swim-training-progress-evaluation' ),
+            'active' => __( 'You already have an unfinished historical job. Resume or cancel it before starting another.', 'chriss-swim-training-progress-evaluation' ),
+            'connection' => __( 'Save your Garmin Personal API key before starting a historical import.', 'chriss-swim-training-progress-evaluation' ),
+            'forbidden' => __( 'You do not have permission for this historical import.', 'chriss-swim-training-progress-evaluation' ),
+            'state' => __( 'That control is not available for this job status. Refresh the job and choose an available control.', 'chriss-swim-training-progress-evaluation' ),
+            'busy' => __( 'Another job control is being saved. Retry shortly.', 'chriss-swim-training-progress-evaluation' )
+        );
+        return new \WP_Error( 'swimlog_history_job_' . $code, $messages[$code] ?? __( 'Job progress could not be saved. Existing imports were retained. Check the job status and resume to retry safely.', 'chriss-swim-training-progress-evaluation' ) );
     }
     public static function register() {
         add_action( self::HOOK, array( __CLASS__, 'run' ), 10, 2 );

@@ -154,6 +154,21 @@ try {
     $_POST = array( 'swimlog_history_action' => 'cancel', 'history_job' => $id, '_wpnonce' => 'invalid' ); $_REQUEST = $_POST;
     $denied = false; ob_start(); try { UI::render(); } catch ( RuntimeException $error ) { $denied = 'expected nonce rejection' === $error->getMessage(); } finally { ob_end_clean(); }
     $verify( $denied && 'queued' === Jobs::get( $id )['status'], 'Invalid form nonce cannot cancel job.' );
+
+    $ajax = static function () {
+        ob_start(); try { UI::ajax_status(); } catch ( RuntimeException $error ) { if ( 'expected nonce rejection' !== $error->getMessage() ) throw $error; }
+        return ob_get_clean();
+    };
+    $_POST = array( 'job' => $id, 'nonce' => wp_create_nonce( 'swimlog_history_status' ) ); $_REQUEST = $_POST;
+    $answer = json_decode( $ajax(), true );
+    $verify( ! empty( $answer['success'] ) && false !== strpos( $answer['data']['html'], $id ) && false === strpos( $answer['data']['html'], '82.5' ), 'Actual AJAX status accepts owner nonce and returns safe HTML.' );
+    wp_set_current_user( $other ); ( new WP_User( $other ) )->add_cap( 'swimlog_manage_all_users' );
+    $_POST['nonce'] = wp_create_nonce( 'swimlog_history_status' ); $_REQUEST = $_POST;
+    $answer = json_decode( $ajax(), true );
+    $verify( is_array( $answer ) && false === $answer['success'] && empty( $answer['data'] ), 'Actual AJAX denies foreign job even with manage-all capability.' );
+    wp_set_current_user( $owner ); $_POST['nonce'] = 'invalid'; $_REQUEST = $_POST;
+    $answer = $ajax();
+    $verify( false === strpos( $answer, $id ), 'Invalid status nonce discloses no job data.' );
     $_POST = array(); $_REQUEST = array();
     Jobs::control( $id, 'cancel' );
 
@@ -163,6 +178,24 @@ try {
     $verify( 'blocked' === Jobs::get( $id )['status'] && ! Jobs::next( $id ), 'Scheduling failure is persisted and actionable.' );
     remove_filter( 'pre_schedule_event', $schedule_filter, 10 ); $schedule_filter = null;
     Jobs::control( $id, 'resume' ); $job = $run( $id ); $verify( 'completed' === $job['status'], 'Schedule repair resumes durable queue.' );
+
+    $job = Jobs::start( '2018-01-12', '2018-01-12', array( 'weight' ) ); $id = $job['id'];
+    $write_count = 0;
+    $failure_filter = static function ( $sql ) use ( &$write_count, $owner, $id ) {
+        if ( 0 === stripos( ltrim( $sql ), 'INSERT INTO' ) && false !== strpos( $sql, 'swimlog_hj_' . $owner . '_' . $id ) ) {
+            ++$write_count;
+            if ( 2 === $write_count ) throw new RuntimeException( 'synthetic ledger write failure' );
+        }
+        return $sql;
+    };
+    add_filter( 'query', $failure_filter, 20 );
+    try { $job = $run( $id ); } finally { remove_filter( 'query', $failure_filter, 20 ); }
+    $verify( 'blocked' === $job['status'] && 0 === ( $job['counts']['added'] ?? 0 ) && ! Jobs::units( $id )['items'][0]['outcomes'], 'Failed ledger commit rolls back counts and unit outcome atomically.' );
+    $actual = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d AND calendar_date = %s', Database::table( 'health_measurements' ), $owner, '2018-01-12' ) );
+    $verify( 1 === $actual, 'Already committed import survives ledger failure.' );
+    Jobs::control( $id, 'resume' ); $job = $run( $id );
+    $verify( 'completed' === $job['status'] && 1 === $job['counts']['skipped'] && 0 === ( $job['counts']['added'] ?? 0 ), 'At-least-once recovery replays safely and records recovered duplicate once.' );
+
     $verify( count( Jobs::recent() ) <= 10 && count( Jobs::recent() ) > 1, 'Recent job history retained and bounded.' );
     WP_CLI::success( 'Historical job workflow passed ' . $checks . ' assertions: persistence, queue/retries/counts, owner isolation, auth/cooldowns, controls during HTTP, review links, scheduling recovery and nonce-protected UI.' );
 } finally {
