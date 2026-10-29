@@ -102,11 +102,11 @@
       wrap.className = 'swimlog-structure-checkbox';
       const check = make('input', null, wrap); check.type='checkbox';check.checked=!!node.drill;
       check.addEventListener('change',()=>{node.drill=check.checked;preview();});
-      equipmentField(panel, node);
     }
     field(fields, 'Pace target', node.pace, v=>node.pace=v===''?null:v);
     field(fields, 'Rest (0 = none; blank = unspecified)', node.rest, v=>node.rest=v===''?null:v);
     field(fields, 'Description', node.description, v=>node.description=v===''?null:v);
+    if (node.type === 'step') equipmentField(panel, node);
     if (node.type !== 'step') {
       const children = node.type==='ladder' ? node.rungs : node.children;
       const nested = make('div', null, panel);nested.className='swimlog-structure-nested';
