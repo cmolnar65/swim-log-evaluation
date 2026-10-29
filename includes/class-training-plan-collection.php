@@ -1,0 +1,98 @@
+<?php
+namespace SwimLogEvaluation;
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * Phase 04-10A: private training-plan collections.
+ * A collection is metadata only; the original PDF is not published or shared.
+ */
+final class Training_Plan_Collection {
+    const POST_TYPE = 'swimlog_training_plan';
+    const META_PLAN = '_swimlog_training_plan_id';
+    const META_SEQUENCE = '_swimlog_training_plan_sequence';
+    const META_WEEK = '_swimlog_training_plan_week';
+    const META_SOURCE = '_swimlog_training_plan_source';
+    const META_COUNT = '_swimlog_training_plan_count';
+
+    public static function register() {
+        register_post_type( self::POST_TYPE, array(
+            'label' => __( 'Private Training Plans', 'chriss-swim-training-progress-evaluation' ),
+            'public' => false, 'show_ui' => false, 'show_in_rest' => false,
+            'exclude_from_search' => true, 'supports' => array( 'title', 'author' ),
+            'capability_type' => 'post', 'map_meta_cap' => true,
+        ) );
+    }
+
+    public static function title( $plan_name, $number, $total ) {
+        return sprintf( '%s — Workout %02d of %02d', trim( $plan_name ), $number, $total );
+    }
+
+    public static function create( $owner_id, $name, $total, $source = '' ) {
+        $owner_id = absint( $owner_id );
+        $total = absint( $total );
+        if ( ! $owner_id || ! user_can( $owner_id, 'swimlog_manage_own_workouts' ) ) {
+            return new \WP_Error( 'swimlog_plan_permission', 'Permission denied.' );
+        }
+        if ( ! is_string( $name ) || '' === trim( $name ) || strlen( $name ) > 120 || $total < 1 || $total > 500 ) {
+            return new \WP_Error( 'swimlog_plan_invalid', 'Invalid plan name or workout count.' );
+        }
+        $id = wp_insert_post( wp_slash( array(
+            'post_type' => self::POST_TYPE, 'post_status' => 'private',
+            'post_author' => $owner_id, 'post_title' => sanitize_text_field( $name ),
+        ) ), true );
+        if ( is_wp_error( $id ) ) return $id;
+        update_post_meta( $id, self::META_COUNT, $total );
+        update_post_meta( $id, self::META_SOURCE, sanitize_text_field( $source ) );
+        return $id;
+    }
+
+    public static function get( $id, $owner_id ) {
+        $post = get_post( absint( $id ) );
+        if ( ! $post || self::POST_TYPE !== $post->post_type || (int) $post->post_author !== absint( $owner_id ) ) {
+            return new \WP_Error( 'swimlog_plan_not_found', 'Training plan not found.' );
+        }
+        return $post;
+    }
+
+    public static function attach( $owner_id, $plan_id, $structure_id, $sequence, $week = 0 ) {
+        $plan = self::get( $plan_id, $owner_id );
+        if ( is_wp_error( $plan ) ) return $plan;
+        $structure = Structured_Workout_Store::get( $structure_id, $owner_id );
+        if ( is_wp_error( $structure ) ) return $structure;
+        $total = absint( get_post_meta( $plan_id, self::META_COUNT, true ) );
+        $sequence = absint( $sequence );
+        if ( ! $sequence || $sequence > $total ) {
+            return new \WP_Error( 'swimlog_plan_sequence', 'Sequence is outside the plan.' );
+        }
+        $existing = get_posts( array(
+            'post_type' => Structured_Workout_Store::POST_TYPE, 'author' => absint( $owner_id ),
+            'post_status' => 'private', 'posts_per_page' => 1,
+            'post__not_in' => array( absint( $structure_id ) ),
+            'meta_query' => array(
+                array( 'key' => self::META_PLAN, 'value' => absint( $plan_id ) ),
+                array( 'key' => self::META_SEQUENCE, 'value' => $sequence ),
+            ),
+        ) );
+        if ( $existing ) return new \WP_Error( 'swimlog_plan_duplicate', 'Sequence already assigned.' );
+        $current = absint( get_post_meta( $structure_id, self::META_PLAN, true ) );
+        if ( $current && $current !== absint( $plan_id ) ) {
+            return new \WP_Error( 'swimlog_plan_assigned', 'Workout already belongs to another plan.' );
+        }
+        update_post_meta( $structure_id, self::META_PLAN, absint( $plan_id ) );
+        update_post_meta( $structure_id, self::META_SEQUENCE, $sequence );
+        update_post_meta( $structure_id, self::META_WEEK, absint( $week ) );
+        return true;
+    }
+
+    public static function workouts( $owner_id, $plan_id ) {
+        $plan = self::get( $plan_id, $owner_id );
+        if ( is_wp_error( $plan ) ) return $plan;
+        return get_posts( array(
+            'post_type' => Structured_Workout_Store::POST_TYPE,
+            'author' => absint( $owner_id ), 'post_status' => 'private',
+            'posts_per_page' => 500, 'meta_key' => self::META_SEQUENCE,
+            'orderby' => 'meta_value_num', 'order' => 'ASC',
+            'meta_query' => array( array( 'key' => self::META_PLAN, 'value' => absint( $plan_id ) ) ),
+        ) );
+    }
+}
