@@ -61,6 +61,24 @@ shopt -u dotglob nullglob
 # WordPress.org artwork is maintained in Git but never shipped inside the plugin.
 rm -rf -- "$STAGE_DIR/assets/wordpress-org-assets"
 
+# Vendor runtime PDF parser in the staged package, never require Composer on
+# the WordPress production server. Keep development packages out of the ZIP.
+if ! command -v composer >/dev/null 2>&1; then
+    echo "Error: Composer is required to bundle the pure-PHP PDF parser." >&2
+    exit 1
+fi
+cp -- "$REPO_ROOT/composer.json" "$STAGE_DIR/composer.json"
+if [[ -f "$REPO_ROOT/composer.lock" ]]; then
+    cp -- "$REPO_ROOT/composer.lock" "$STAGE_DIR/composer.lock"
+fi
+rm -rf -- "$STAGE_DIR/vendor"
+(
+    cd -- "$STAGE_DIR"
+    composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts --no-plugins
+)
+test -f "$STAGE_DIR/vendor/autoload.php" || { echo "Missing runtime PDF parser." >&2; exit 1; }
+rm -f -- "$STAGE_DIR/composer.json" "$STAGE_DIR/composer.lock"
+
 mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
 rm -f -- "$OUTPUT_PATH"
 
