@@ -9,7 +9,7 @@ final class Location {
 		global $wpdb;
 		$table = Database::table( 'locations' );
 		return $wpdb->get_results(
-			$wpdb->prepare( "SELECT * FROM $table WHERE user_id = %d ORDER BY name ASC, id ASC", $user_id )
+			$wpdb->prepare( "SELECT * FROM %i WHERE user_id = %d ORDER BY name ASC, id ASC", $table, $user_id )
 		);
 	}
 
@@ -17,7 +17,7 @@ final class Location {
 		global $wpdb;
 		$table = Database::table( 'locations' );
 		return $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM $table WHERE id = %d AND user_id = %d", $id, $user_id )
+			$wpdb->prepare( "SELECT * FROM %i WHERE id = %d AND user_id = %d", $table, $id, $user_id )
 		);
 	}
 
