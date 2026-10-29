@@ -69,7 +69,7 @@ try {
 
     // Force a fresh window and an older fetch audit for a legitimate provider summary update.
     Sync::clear( $owner );
-    $wpdb->query( $wpdb->prepare( 'UPDATE %i SET fetched_at_utc = %s WHERE user_id = %d', Database::table( 'health_reports' ), '2020-01-01 00:00:00', $owner ) );
+    Database::write( 'query', $wpdb->prepare( 'UPDATE %i SET fetched_at_utc = %s WHERE user_id = %d', Database::table( 'health_reports' ), '2020-01-01 00:00:00', $owner ) );
     $scenario = 'correction';
     $state = $run();
     $verify( 1 === $state['results'][$today . ':spo2']['reports_updated'], 'Provider report correction updates one existing report.' );
@@ -102,9 +102,8 @@ try {
 
     $scenario = 'exception';
     wp_set_current_user( $previous );
-    $caught = false;
-    try { $run(); } catch ( RuntimeException $error ) { $caught = 'synthetic transport exception' === $error->getMessage(); }
-    $verify( $caught && $previous === get_current_user_id(), 'Exceptions restore prior authenticated identity and release lock.' );
+    $state = $run();
+    $verify( 'job_error' === $state['status'] && $previous === get_current_user_id(), 'Exceptions restore prior authenticated identity and release lock.' );
 
     $scenario = 'normal';
     wp_set_current_user( $owner );

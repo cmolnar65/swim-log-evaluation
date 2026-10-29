@@ -129,10 +129,11 @@ final class Garmin_Measurement_Sync {
                 foreach ( $state['results'] as $row ) {
                     if ( in_array( $row['status'], array( 'failed', 'not_attempted' ), true ) ) $state['status'] = 'complete_with_errors';
                 }
-                if ( is_wp_error( $rows ) ) $state['status'] = 'complete_with_errors';
+                if ( ! empty( $state['job_errors'] ) ) $state['status'] = 'complete_with_errors';
                 wp_clear_scheduled_hook( self::RETRY_HOOK, array( $owner ) );
                 $state['finished_utc'] = gmdate( 'Y-m-d H:i:s' );
             }
+            wp_cache_delete( $owner, 'user_meta' );
             // Settings changed during HTTP: do not resurrect a disabled/changed schedule.
             if ( self::categories( $owner ) !== $categories || get_user_meta( $owner, self::GENERATION, true ) !== $generation ) return;
             update_user_meta( $owner, self::STATE, $state );
@@ -142,6 +143,21 @@ final class Garmin_Measurement_Sync {
                     $state['status'] = 'schedule_error';
                     update_user_meta( $owner, self::STATE, $state );
                 }
+            }
+        } catch ( \Throwable $error ) {
+            // Extensions/transport can throw. Preserve data and expose a safe job error, not its message.
+            wp_cache_delete( $owner, 'user_meta' );
+            if ( self::categories( $owner ) === $categories && get_user_meta( $owner, self::GENERATION, true ) === $generation && isset( $state ) ) {
+                $state['status'] = 'job_error';
+                if ( isset( $day ) ) $state['job_errors'][ $day ] = true;
+                $state['attempt_utc'] = gmdate( 'Y-m-d H:i:s' );
+                $state['retries'] = 1 + (int) ( $state['retries'] ?? 0 );
+                if ( $state['retries'] >= 3 ) {
+                    array_shift( $state['pending'] );
+                    $state['retries'] = 0;
+                }
+                update_user_meta( $owner, self::STATE, $state );
+                if ( $state['pending'] ) self::later( $owner, 300 );
             }
         } finally {
             wp_set_current_user( $previous );
