@@ -13,13 +13,19 @@ async function scenario(engine, name, options) {
   const context = await browser.newContext({...options,locale:'en-US',timezoneId:'America/Denver'});
   const page = await context.newPage(); const errors = [], requests = [];
   page.on('pageerror', e=>errors.push(e.message));
-  let failDay = false, delayDay = false, saveCount = 0;
+  let failDay = false, delayDay = false, failHealth = false, saveCount = 0;
   await page.route('**/*', async route=>{
    const request=route.request(), url=new URL(request.url()); requests.push({url:request.url(),method:request.method(),headers:request.headers(),body:request.postData()});
    if(request.method()==='POST') {
     const body=new URLSearchParams(request.postData());
     if(body.get('action')==='swimlog_calendar_event_result') return route.fulfill({json:{success:true,data:{result_time:'1:20.00',placement:2,notes:'Synthetic result note'}}});
     saveCount++; return route.fulfill({body:JSON.stringify({success:true,data:{id:321}}),contentType:'application/json'});
+   }
+   if(url.pathname.endsWith('/measurements')) {
+    if(failHealth)return route.fulfill({status:500,json:{message:'Synthetic health failure'}});
+    const day={date:data.date,reports:[{category:'spo2',source:'Garmin',role:'provider_report',values:{average:{value:'96.4',unit:'%'},sleep_average:{value:'95.8',unit:'%'},seven_day_average:{value:'96.8',unit:'%'}},window:{window_start_utc:data.date+'T00:00:00Z'}}],readings:[{id:1,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.5',unit:'kg'}},time_utc:data.date+'T07:00:00Z'},{id:2,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.6',unit:'kg'}},time_utc:data.date+'T08:00:00Z'},{id:3,category:'body_composition',source:'Garmin',role:'sample',values:{bmi:{value:'24.1',unit:'kg/m2'}}}],aggregates:[]};
+    const start=url.searchParams.get('start'),end=url.searchParams.get('end');
+    return route.fulfill({json:{range:{start,end},days:data.date>=start&&data.date<=end?[day]:[],invalid_records:0}});
    }
    if(url.pathname.includes('/calendar')) {
     const start=url.searchParams.get('start'), end=url.searchParams.get('end');
@@ -43,12 +49,22 @@ async function scenario(engine, name, options) {
   await page.waitForFunction(()=>!document.querySelector('[data-swimlog-calendar]').classList.contains('is-loading'));
   const mobile=options.viewport.width<=700;
   const dayArea=()=>root.locator(mobile?'[data-calendar-agenda]':'.swimlog-calendar-grid');
-  const dayButton=(date)=>dayArea().locator(`[data-calendar-day="${date}"]`);
+  const dayButton=(date)=>dayArea().locator(`.swimlog-calendar-day-toggle[data-calendar-day="${date}"]`);
   const open=async(date)=>{await dayButton(date).click();await page.getByRole('dialog').waitFor();};
   const close=async()=>{await page.getByRole('button',{name:'Close day details',exact:true}).click();await page.getByRole('dialog').waitFor({state:'detached'});};
   const state=await root.evaluate(el=>({view:el.dataset.view,date:el.dataset.focusDate,user:el.dataset.user}));
-  await open(data.date);
+  await page.waitForFunction(()=>document.querySelectorAll('[data-calendar-measurement]').length>=6);
+  const preview=dayArea().locator('[data-date="'+data.date+'"]');
+  assert.equal(await preview.locator('[data-calendar-measurement]').count(),3,'One badge per category/day');
+  assert(await preview.evaluate(el=>{const nodes=[...el.querySelectorAll('.swimlog-calendar-item')];return nodes.findIndex(n=>n.hasAttribute('data-calendar-measurement'))>nodes.map(n=>n.hasAttribute('data-calendar-workout')||n.hasAttribute('data-calendar-planned-workout')).lastIndexOf(true);}),'Measurements must follow workouts/plans');
+  await preview.locator('[data-calendar-overflow]').click();
+  await page.getByRole('dialog').waitFor();
   let dialog=page.getByRole('dialog');
+  await dialog.locator('[data-calendar-health-details]').getByText('Garmin average SpO₂',{exact:true}).waitFor();
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/96.4%/);
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Weight · 2 imported readings/);
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Garmin seven-day baseline/);
+  assert(await dialog.evaluate(el=>el.querySelector('[data-calendar-day-sections]').compareDocumentPosition(el.querySelector('[data-calendar-health-details]'))&Node.DOCUMENT_POSITION_FOLLOWING),'Workout list before measurements');
   assert.equal(await dialog.locator('[data-calendar-workout]').count(),2);
   assert.equal(await dialog.locator('[data-calendar-planned-workout]').count(),12);
   assert.equal(await dialog.locator('[data-calendar-event]').count(),1);
@@ -120,7 +136,22 @@ async function scenario(engine, name, options) {
   await page.getByRole('dialog').getByText('No workouts or events for this day.',{exact:true}).waitFor(); await close();
   delayDay=true; await root.locator(`.swimlog-calendar-grid [data-calendar-day="${outside}"]`).evaluate(el=>el.click()); await close();
   await page.waitForTimeout(200); assert.equal(await page.getByRole('dialog').count(),0);assert(!await page.locator('body').evaluate(el=>el.classList.contains('swimlog-calendar-modal-open')));
-  assert.equal(errors.length,0,errors.join('\n'));
+  failHealth=true;
+  await open(data.date);
+  await page.getByRole('dialog').locator('[data-calendar-health-details]').waitFor();
+  // Force a per-day retry to exercise failure independently of the valid cached calendar.
+  await close();
+  await root.locator('[data-calendar-action="next"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-swimlog-calendar]').classList.contains('is-loading'));
+  await page.waitForFunction(()=>document.querySelector('[data-calendar-health-status]').textContent.includes('could not'));
+  const retryDate=await dayArea().locator('.swimlog-calendar-day-toggle').first().getAttribute('data-calendar-day');
+  await open(retryDate);
+  await page.getByRole('button',{name:'Retry measurements',exact:true}).waitFor();
+  failHealth=false;await page.getByRole('button',{name:'Retry measurements',exact:true}).click();
+  await page.getByRole('dialog').getByText('No private measurements for this day.',{exact:true}).waitFor();await close();
+  const healthRequest=requests.find(r=>r.url.includes('/measurements'));
+  assert.equal(healthRequest.headers['x-wp-nonce'],'synthetic-rest-nonce');
+  assert.equal(errors.length,0,errors.join('\\n'));
   console.log(name+': month/week, responsive agenda, scroll/focus, dismissal, empty/busy days, existing actions and authorized adjacent-day requests passed.');
   await context.close();
  } finally {await browser.close();}

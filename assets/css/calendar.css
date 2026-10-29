@@ -57,3 +57,13 @@ body.swimlog-calendar-modal-open{overflow:hidden}
 .swimlog-calendar-day-dialog .swimlog-calendar-button,.swimlog-calendar-day-dialog .swimlog-calendar-plan-date{min-height:44px;white-space:normal}
 @media(max-width:700px){.swimlog-calendar-day-dialog{width:calc(100% - 1rem);max-height:calc(100vh - 1rem);max-height:calc(100dvh - 1rem);border-radius:8px}.swimlog-calendar-day-header,.swimlog-calendar-day-body{padding:.75rem}.swimlog-calendar-day-dialog input,.swimlog-calendar-day-dialog select,.swimlog-calendar-day-dialog textarea{font-size:16px;max-width:100%}.swimlog-calendar-day-dialog .swimlog-calendar-detail-list{grid-template-columns:1fr}.swimlog-calendar-day-dialog .swimlog-calendar-match-candidate{flex-wrap:wrap}}
 @media(forced-colors:active){.swimlog-calendar-day-dialog{background:Canvas;color:CanvasText;border-color:CanvasText}.swimlog-calendar-day-dialog::backdrop{background:Canvas;opacity:.65}}
+
+/* Compact previews retain the complete list in the day dialog. */
+.swimlog-calendar [data-calendar-overflow-hidden]{display:none!important}
+.swimlog-calendar-more,.swimlog-calendar-measurement{min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;cursor:pointer}
+.swimlog-calendar-more{display:block;min-width:44px;font-size:1.3rem}
+.swimlog-calendar .swimlog-calendar-measurement{display:block;width:100%;border:1px solid currentColor;padding:.4rem}
+.swimlog-calendar-health-details{margin-top:1.5rem;border-top:1px solid #cbd5e1;padding-top:1rem}
+.swimlog-calendar-measurement-record{padding:.5rem 0;border-bottom:1px solid #cbd5e1;overflow-wrap:anywhere}
+.swimlog-calendar-measurement-record dd{margin:0;overflow-wrap:anywhere}
+.swimlog-calendar-more:focus-visible,.swimlog-calendar-measurement:focus-visible{outline:2px solid currentColor;outline-offset:2px}

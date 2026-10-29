@@ -1,6 +1,136 @@
 ( function () {
 	'use strict';
 
+
+    var healthCategories = { weight: ['⚖', 'Weight'], body_composition: ['◈', 'Body composition'], blood_pressure: ['♥', 'Blood pressure'], spo2: ['O₂', 'SpO₂'] };
+    var healthLabels = { weight: 'Weight', bmi: 'BMI', body_fat: 'Body fat', body_water: 'Body water', bone_mass: 'Bone mass', muscle_mass: 'Muscle mass', systolic: 'Systolic', diastolic: 'Diastolic', pulse: 'Pulse', spo2: 'SpO₂', average: 'Garmin average SpO₂', lowest: 'Garmin minimum SpO₂', latest: 'Latest SpO₂', sleep_average: 'Garmin sleep average SpO₂', next_sleep_average: 'Garmin next-sleep average SpO₂', seven_day_average: 'Garmin seven-day baseline SpO₂' };
+    function healthValue(value) {
+        if (!value || value.value === null || value.value === undefined || value.value === '' || !Number.isFinite(Number(value.value))) return '';
+        return Number(value.value).toLocaleString(undefined,{maximumFractionDigits:3}) + (value.unit === '%' ? '%' : ' ' + value.unit);
+    }
+    function healthGroups(day) {
+        var groups = {};
+        ['reports','readings','aggregates'].forEach(function(role) {
+            ((day && day[role]) || []).forEach(function(row) {
+                if (!healthCategories[row.category]) return;
+                if (!groups[row.category]) groups[row.category] = {reports:[],readings:[],aggregates:[]};
+                groups[row.category][role].push(row);
+            });
+        });
+        return groups;
+    }
+    function healthSummary(category, group) {
+        if (category === 'spo2') {
+            var report = group.reports.find(function(row){return row.values && row.values.average;});
+            if (report) return 'Garmin average ' + healthValue(report.values.average);
+        }
+        var reading = group.readings[group.readings.length - 1];
+        if (reading && reading.values) {
+            if (category === 'blood_pressure' && reading.values.systolic && reading.values.diastolic) return reading.values.systolic.value + '/' + reading.values.diastolic.value + ' mmHg';
+            var key = Object.keys(reading.values)[0];
+            return (healthLabels[key] || key) + ' ' + healthValue(reading.values[key]);
+        }
+        return 'Provider summaries';
+    }
+    function applyDayOverflow(root) {
+        root.querySelectorAll('.swimlog-calendar-grid .swimlog-calendar-day, [data-calendar-agenda] .swimlog-calendar-agenda-day').forEach(function(cell){
+            var old = cell.querySelector('[data-calendar-overflow]');
+            if (old) old.remove();
+            var items = Array.prototype.filter.call(cell.children,function(child){return child.classList.contains('swimlog-calendar-item');});
+            items.forEach(function(child){child.hidden=false;child.removeAttribute('data-calendar-overflow-hidden');});
+            if (!cell.getClientRects().length) return;
+            var budget = cell.classList.contains('swimlog-calendar-agenda-day') ? 200 : 180, used = 0, hidden = 0;
+            items.forEach(function(child){
+                var height = child.getBoundingClientRect().height + 12;
+                if (hidden || used + height > budget) {child.hidden=true;child.dataset.calendarOverflowHidden='1';hidden++;}
+                else used += height;
+            });
+            if (hidden) {
+                var more = document.createElement('button'); more.type='button';more.className='swimlog-calendar-more';more.dataset.calendarOverflow='1';more.dataset.calendarDay=cell.dataset.date;more.textContent='…';
+                more.setAttribute('aria-label','Show all items for '+cell.dataset.date+' ('+hidden+' more)');more.setAttribute('aria-haspopup','dialog');cell.appendChild(more);
+            }
+        });
+    }
+    function healthURL(root,start,end) {
+        var url=new URL(root.dataset.restUrl,window.location.origin);url.pathname=url.pathname.replace(/\/$/,'')+'/measurements';url.search='';
+        url.searchParams.set('start',start);url.searchParams.set('end',end);if(root.dataset.user)url.searchParams.set('user',root.dataset.user);return url;
+    }
+    function fetchHealth(root,start,end,signal) {
+        return fetch(healthURL(root,start,end).toString(),{credentials:'same-origin',signal:signal,headers:{'X-WP-Nonce':(window.wpApiSettings&&window.wpApiSettings.nonce)||''}})
+            .then(function(response){if(!response.ok)throw new Error('health');return response.json();})
+            .then(function(data){if(!data || !Array.isArray(data.days))throw new Error('health');return data;});
+    }
+    function renderHealthDay(root,state) {
+        if(root._calendarDayView!==state || root.dataset.healthEnabled!=='1')return;
+        var old=state.content.querySelector('[data-calendar-health-details]');
+        if(old && old.contains(document.activeElement))state.dialog.querySelector('[data-calendar-day-close]').focus({preventScroll:true});
+        if(old)old.remove();
+        var section=document.createElement('section');section.dataset.calendarHealthDetails='1';section.className='swimlog-calendar-health-details';
+        var title=document.createElement('h3');title.textContent='Private measurements';section.appendChild(title);state.content.appendChild(section);
+        var data=state.healthData || root._healthData, covered=data&&data.range&&state.date>=data.range.start&&state.date<=data.range.end;
+        if(!covered) {
+            var message=document.createElement('p');message.setAttribute('role','status');message.textContent=(state.healthError||root._healthError)?'Unable to load private measurements. Workouts remain available.':'Loading private measurements…';section.appendChild(message);
+            if(state.healthError||root._healthError){var retry=document.createElement('button');retry.type='button';retry.className='swimlog-calendar-button';retry.textContent='Retry measurements';retry.addEventListener('click',function(){state.healthError=false;root._healthError=false;loadHealthDay(root,state,true);});section.appendChild(retry);}
+            return;
+        }
+        var day=data.days.find(function(row){return row.date===state.date;}), groups=healthGroups(day);
+        if(!Object.keys(groups).length){var empty=document.createElement('p');empty.textContent='No private measurements for this day.';section.appendChild(empty);}
+        Object.keys(healthCategories).forEach(function(category){
+            var group=groups[category];if(!group)return;
+            var heading=document.createElement('h4');heading.textContent=healthCategories[category][1]+' · '+group.readings.length+' imported reading'+(group.readings.length===1?'':'s');section.appendChild(heading);
+            ['reports','readings','aggregates'].forEach(function(role){
+                group[role].forEach(function(row){
+                    var article=document.createElement('article');article.className='swimlog-calendar-measurement-record';
+                    var label=document.createElement('p');label.textContent=role==='reports'?'Garmin-reported summary':(row.role==='calculated_mean'?'Calculated mean of imported readings':(row.role==='sample'?'Recorded measurement':row.role==='hourly_average'?'Hourly average':'Sleep average'));article.appendChild(label);
+                    var list=document.createElement('dl');list.className='swimlog-calendar-detail-list';
+                    Object.keys(row.values||{}).forEach(function(key){detailRow(list,healthLabels[key]||key,healthValue(row.values[key]));});
+                    detailRow(list,'Source',row.source);detailRow(list,'Time (UTC)',row.time_utc);detailRow(list,'Source-local time',row.source_local_time);
+                    Object.keys(row.window||{}).forEach(function(key){detailRow(list,key.replace(/_/g,' '),row.window[key]);});
+                    if(row.has_conflict)detailRow(list,'Data status','Conflicting readings at this instant; excluded from any future calculated mean until resolved.');
+                    article.appendChild(list);section.appendChild(article);
+                });
+            });
+        });
+        if(data.invalid_records){var warning=document.createElement('p');warning.textContent='Some stored records could not be displayed because their format was invalid.';section.appendChild(warning);}
+    }
+    function loadHealthDay(root,state,force) {
+        if(root.dataset.healthEnabled!=='1')return;
+        if(!force && root._healthData && state.date>=root._healthData.range.start && state.date<=root._healthData.range.end){renderHealthDay(root,state);return;}
+        renderHealthDay(root,state);
+        if(!force && root._healthPromise){root._healthPromise.then(function(){if(root._calendarDayView===state)loadHealthDay(root,state,true);});return;}
+        if(state.healthRequest)state.healthRequest.abort();state.healthRequest=new AbortController();
+        fetchHealth(root,state.date,state.date,state.healthRequest.signal).then(function(data){if(root._calendarDayView!==state)return;state.healthData=data;state.healthError=false;renderHealthDay(root,state);})
+            .catch(function(error){if(root._calendarDayView!==state||error.name==='AbortError')return;state.healthError=true;renderHealthDay(root,state);});
+    }
+    function paintHealth(root) {
+        root.querySelectorAll('[data-calendar-measurement]').forEach(function(node){node.remove();});
+        (root._healthData&&root._healthData.days||[]).forEach(function(day){
+            var groups=healthGroups(day);
+            root.querySelectorAll('.swimlog-calendar-grid [data-date], [data-calendar-agenda] [data-date]').forEach(function(cell){
+                if(cell.dataset.date!==day.date)return;
+                Object.keys(healthCategories).forEach(function(category){var group=groups[category];if(!group)return;
+                    var button=document.createElement('button');button.type='button';button.className='swimlog-calendar-item swimlog-calendar-measurement';button.dataset.calendarMeasurement=category;button.dataset.calendarDay=day.date;button.setAttribute('aria-haspopup','dialog');
+                    button.textContent=healthCategories[category][0]+' '+healthCategories[category][1]+' · '+healthSummary(category,group);cell.appendChild(button);
+                });
+            });
+        });
+        applyDayOverflow(root);
+    }
+    function loadHealthRange(root) {
+        applyDayOverflow(root);
+        if(root.dataset.healthEnabled!=='1')return;
+        var cells=root.querySelectorAll('.swimlog-calendar-grid .swimlog-calendar-day[data-date]');if(!cells.length)return;
+        var start=cells[0].dataset.date,end=cells[cells.length-1].dataset.date;
+        if(root._healthRequest)root._healthRequest.abort();root._healthRequest=new AbortController();
+        var seq=(root._healthSeq||0)+1;root._healthSeq=seq;root._healthData=null;root._healthError=false;
+        var status=root.querySelector('[data-calendar-health-status]');
+        if(!status){status=document.createElement('div');status.dataset.calendarHealthStatus='1';status.setAttribute('role','status');root.querySelector('.swimlog-calendar-status').after(status);}
+        status.textContent='Loading private measurements…';
+        root._healthPromise=fetchHealth(root,start,end,root._healthRequest.signal).then(function(data){if(root._healthSeq!==seq)return;root._healthData=data;status.textContent='';paintHealth(root);if(root._calendarDayView)renderHealthDay(root,root._calendarDayView);})
+            .catch(function(error){if(root._healthSeq!==seq||error.name==='AbortError')return;root._healthError=true;status.textContent='Private measurements could not be loaded. Open a day to retry; workouts remain available.';if(root._calendarDayView)renderHealthDay(root,root._calendarDayView);})
+            .finally(function(){if(root._healthSeq===seq)root._healthPromise=null;});
+    }
+
 	function pad( value ) { return String( value ).padStart( 2, '0' ); }
 	function dateKey( date ) { return date.getFullYear() + '-' + pad( date.getMonth() + 1 ) + '-' + pad( date.getDate() ); }
 	function monthName( date ) { return date.toLocaleDateString( undefined, { month: 'long', year: 'numeric' } ); }
@@ -62,6 +192,7 @@
 		var state = root._calendarDayView; if ( ! state ) return;
 		root._calendarDayView = null;
 		if ( state.request ) state.request.abort();
+        if ( state.healthRequest ) state.healthRequest.abort();
 		if ( state.dialog.open ) state.dialog.close();
 		closeWorkoutDetail( root, false );
 		state.home.insertBefore( state.panel, state.next && state.next.parentNode === state.home ? state.next : null );
@@ -95,6 +226,7 @@
 			( agendaItemsByDate( selected )[state.date] || [] ).forEach( function ( entry ) { entry.draggable = false; section.appendChild( entry ); } );
 			sections.appendChild( section );
 		} );
+		loadHealthDay( root, state, false );
 		if ( ! workouts.length && ! plans.length && ! events.length ) { var empty = document.createElement( 'p' ); empty.textContent = 'No workouts or events for this day.'; sections.appendChild( empty ); }
 	}
 	function loadDayContents( root, state ) {
@@ -192,6 +324,7 @@
 			cursor.setDate( cursor.getDate() + 1 );
 		}
 		renderAgenda( root, data, first, last );
+        loadHealthRange(root);
 	}
 	function detailRow( list, label, value ) {
 		if ( value === null || value === undefined || value === '' ) return;
@@ -449,6 +582,7 @@
 			grid.appendChild( totals );
 		}
 		renderAgenda( root, data, start, end );
+        loadHealthRange(root);
 	}
 	function showDuplicateWeekEditor( root, sourceStart ) {
 		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
@@ -489,6 +623,7 @@
 			.finally( function () { root.classList.remove( 'is-loading' ); root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function init( root ) {
+		window.addEventListener('resize',function(){requestAnimationFrame(function(){applyDayOverflow(root);});});
 		root.dataset.view = 'month'; root.setAttribute( 'aria-busy', 'false' ); root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		loadMonth( root, new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		root.addEventListener( 'keydown', function ( event ) {
