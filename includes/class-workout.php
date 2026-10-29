@@ -115,7 +115,8 @@ final class Workout {
 		$t = Database::table( 'laps' );
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT sequence_no,start_time,start_offset_ms,distance_m,elapsed_time_ms,moving_time_ms,stroke,source_lap_index FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				"SELECT sequence_no,start_time,start_offset_ms,distance_m,elapsed_time_ms,moving_time_ms,stroke,source_lap_index FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$t,
 				$workout_id
 			)
 		);
@@ -135,7 +136,8 @@ final class Workout {
 		$t = Database::table( 'trackpoints' );
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT sequence_no,recorded_at,latitude,longitude,distance_m,heart_rate,cadence FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				"SELECT sequence_no,recorded_at,latitude,longitude,distance_m,heart_rate,cadence FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$t,
 				$workout_id
 			)
 		);
