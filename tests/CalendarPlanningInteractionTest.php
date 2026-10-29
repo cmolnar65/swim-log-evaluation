@@ -57,6 +57,6 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString('public static function move( $id, $user_id, $date )',$service);
   $this->assertStringContainsString('Only unmatched planned workouts can be moved.',$service);
   $this->assertStringContainsString('swimlog_planned_workout_move_date',$service);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.3'",$main);
  }
 }

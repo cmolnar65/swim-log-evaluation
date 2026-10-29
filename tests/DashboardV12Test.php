@@ -33,7 +33,7 @@ final class DashboardV12Test extends TestCase {
 
     public function test_dashboard_does_not_require_schema_change() {
         $main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
-        $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
+        $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.3'", $main );
     }
 
     public function test_carousel_is_accessible_and_responsive() {

@@ -71,7 +71,7 @@ final class LayoutTemplatesV12Test extends TestCase {
     public function test_plugin_support_and_database_version_remain_unchanged() {
         $main = $this->source( 'swim-log-evaluation.php' );
         $this->assertStringContainsString( 'Requires at least: 6.2', $main );
-        $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
+        $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.3'", $main );
         $this->assertStringContainsString( 'Layout_Templates::register()', $this->source( 'includes/class-plugin.php' ) );
     }
 }
