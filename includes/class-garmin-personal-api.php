@@ -453,6 +453,7 @@ final class Garmin_Personal_API {
 
 		return array(
 			'status'      => 'pending_review' === $outcome ? 'pending_review' : 'associated',
+            'candidate_workout_id' => 'pending_review' === $outcome ? (int) $preflight['existing_workout_id'] : 0,
 			'activity_id' => $activity_id,
 			'import_id'   => (int) $preflight['existing_import_id'],
 			'workout_id'  => (int) $preflight['existing_workout_id'],

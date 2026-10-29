@@ -238,7 +238,7 @@ final class ImportFixture001Test extends TestCase {
   $source=file_get_contents(dirname(__DIR__).'/includes/class-importer.php');
   $this->assertStringContainsString("cleanup_unowned_source",$source);
   $this->assertStringContainsString('if(!$failure_saved)self::cleanup_unowned_source',$source);
-  $this->assertStringContainsString('if(!$ok){self::cleanup_unowned_source',$source);
+  $this->assertStringContainsString('if(false===$ok){self::cleanup_unowned_source',$source);
  }
 
 
