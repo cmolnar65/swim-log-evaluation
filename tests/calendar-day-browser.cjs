@@ -58,6 +58,12 @@ async function scenario(engine, name, options) {
   assert(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Horizontal dialog overflow');
   assert(await dialog.locator('.swimlog-calendar-day-close').evaluate(el=>el.getBoundingClientRect().height>=44),'Close touch target too small');
   console.log('SWIMLOG_CALENDAR_QA_'+name.split(' ')[0].toUpperCase().replace(/[^A-Z]/g,'')+'_BASE64='+(await page.screenshot()).toString('base64'));
+  if (mobile) {
+   const landscape={width:options.viewport.height,height:options.viewport.width};
+   await page.setViewportSize(landscape);
+   const rotated=await dialog.boundingBox(); assert(rotated.x>=0&&rotated.y>=0&&rotated.x+rotated.width<=landscape.width+1&&rotated.y+rotated.height<=landscape.height+1,'Rotated dialog exceeds viewport');
+   await page.setViewportSize(options.viewport);
+  }
   // Tab remains within the native modal; Escape closes it and restores the date trigger.
   for(let i=0;i<20;i++) {await page.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Focus escaped modal');}
   await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'});

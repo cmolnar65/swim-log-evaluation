@@ -68,7 +68,11 @@
 		state.dialog.remove(); openDayDialogs = Math.max( 0, openDayDialogs - 1 );
 		if ( ! openDayDialogs ) document.body.classList.remove( 'swimlog-calendar-modal-open' );
 		state.trigger.setAttribute( 'aria-expanded', 'false' ); state.trigger.removeAttribute( 'aria-controls' );
-		if ( restoreFocus !== false && state.trigger.isConnected ) state.trigger.focus( { preventScroll: true } );
+		var focusTarget = state.trigger;
+		if ( ! focusTarget.isConnected || ! focusTarget.getClientRects().length ) {
+			focusTarget = Array.prototype.find.call( root.querySelectorAll( '[data-calendar-day]' ), function ( node ) { return node.dataset.calendarDay === state.date && node.getClientRects().length; } ) || root.querySelector( '.swimlog-calendar-title' );
+		}
+		if ( restoreFocus !== false && focusTarget ) focusTarget.focus( { preventScroll: true } );
 		window.scrollTo( { left: state.scrollX, top: state.scrollY, behavior: 'instant' } );
 	}
 	function renderDayContents( root, state, data ) {
@@ -126,6 +130,14 @@
 		function outside( event ) { var rect = dialog.getBoundingClientRect(); return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom; }
 		dialog.addEventListener( 'pointerdown', function ( event ) { outsideDown = event.target === dialog && outside( event ); } );
 		dialog.addEventListener( 'click', function ( event ) { if ( outsideDown && event.target === dialog && outside( event ) ) { event.preventDefault(); event.stopPropagation(); closeDayView( root, true ); } } );
+		dialog.addEventListener( 'keydown', function ( event ) {
+			if ( event.key !== 'Tab' || event.ctrlKey || event.altKey || event.metaKey ) return;
+			var focusable = Array.prototype.filter.call( dialog.querySelectorAll( 'a[href], button, input, select, textarea, [tabindex]' ), function ( node ) { return ! node.disabled && node.tabIndex >= 0 && node.getClientRects().length; } );
+			var first = focusable[0], last = focusable[focusable.length - 1], active = document.activeElement;
+			if ( ! first ) { event.preventDefault(); close.focus(); return; }
+			if ( event.shiftKey && ( active === first || ! dialog.contains( active ) ) ) { event.preventDefault(); last.focus(); }
+			else if ( ! event.shiftKey && ( active === last || ! dialog.contains( active ) ) ) { event.preventDefault(); first.focus(); }
+		} );
 		dialog.addEventListener( 'cancel', function ( event ) { event.preventDefault(); closeDayView( root, true ); } );
 		dialog.addEventListener( 'close', function () { if ( root._calendarDayView === state ) closeDayView( root, true ); } );
 		// Native modal dialogs contain focus and make the background inert, including on touch devices.
