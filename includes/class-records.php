@@ -69,7 +69,7 @@ final class Records {
 				absint( $user_id ),
 				$course
 			)
-		); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		);
 		$groups = array();
 		foreach ( $rows as $row ) {
 			$group = Age_Group::for_user( $user_id, substr( (string) $row->achieved_at, 0, 10 ) );
@@ -103,7 +103,7 @@ final class Records {
 			$args[] = $stroke;
 		}
 		$sql .= ' ORDER BY duration_ms ASC,achieved_at ASC,id ASC';
-		$rows = Database::read( 'get_results',  $wpdb->prepare( $sql, $args ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = Database::read( 'get_results',  $wpdb->prepare( $sql, $args ) );
 		$out = array();
 		foreach ( $rows as $row ) {
 			$achieved_date = substr( (string) $row->achieved_at, 0, 10 );

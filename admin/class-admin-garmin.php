@@ -17,9 +17,9 @@ final class Admin_Garmin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		$imports = Database::table( 'imports' );
 		$row = Database::read( 'get_row',  $wpdb->prepare(
-			"SELECT workout_id,import_status FROM %i WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s ORDER BY id DESC LIMIT 1",$imports,  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT workout_id,import_status FROM %i WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s ORDER BY id DESC LIMIT 1",$imports,
 			$user_id, 'garmin', (string) $activity_id
-		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		) );
 		if ( ! $row ) return array( 'status' => 'none', 'workout_id' => 0 );
 		if ( 'pending' === (string) $row->import_status ) return array( 'status' => 'pending', 'workout_id' => (int) $row->workout_id );
 		if ( 'complete' === (string) $row->import_status ) return array( 'status' => 'imported', 'workout_id' => (int) $row->workout_id );

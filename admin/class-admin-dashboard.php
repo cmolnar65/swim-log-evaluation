@@ -15,12 +15,12 @@ final class Admin_Dashboard {
         $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
         if ( false !== $cached ) return $cached;
         // The plugin owns these custom tables; SQL identifiers and values are prepared.
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+
         $totals = Database::read( 'get_row',  $wpdb->prepare(
             "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s",
             $table, $user_id, $start_value, $start_value, $end
         ) );
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+
         $volume = Database::read( 'get_results',  $wpdb->prepare(
             "SELECT DATE_FORMAT(workout_start,'%%Y-%%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s GROUP BY DATE_FORMAT(workout_start,'%%Y-%%m') ORDER BY month ASC",
             $table, $user_id, $start_value, $start_value, $end
@@ -40,7 +40,7 @@ final class Admin_Dashboard {
         $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
         if ( false !== $cached ) return $cached;
         // SWOLF is grouped by native pool length; different lengths must not be mixed.
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+
         $rows = Database::read( 'get_results',  $wpdb->prepare(
             "SELECT DATE_FORMAT(w.workout_start,'%%Y-%%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM %i w INNER JOIN %i n ON n.workout_id = w.id WHERE w.user_id = %d AND w.workout_type = 'pool' AND w.pool_length_unit = %s AND n.length_type = 'active' AND n.swolf_score IS NOT NULL AND n.swolf_score > 0 AND w.workout_start <= %s AND (%s = '' OR w.workout_start >= %s) AND (%s = '' OR n.stroke = %s) AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%%Y-%%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC",
             $workouts, $lengths, $user_id, $course, $end, $start_value, $start_value, $stroke_value, $stroke_value

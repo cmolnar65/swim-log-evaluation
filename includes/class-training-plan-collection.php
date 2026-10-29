@@ -93,7 +93,6 @@ final class Training_Plan_Collection {
             // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Existing private plan metadata supplies numeric sequence ordering; bounded to the supported 500 workouts and one owner.
             'posts_per_page' => 500, 'meta_key' => self::META_SEQUENCE,
             'orderby' => 'meta_value_num', 'order' => 'ASC',
-            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Owner-scoped private-post uniqueness check on existing metadata; two IDs suffice to detect a conflicting sequence without SQL exclusions.
             // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Owner-scoped membership lookup uses existing post metadata through core, preserving legacy plans without a schema migration.
             'meta_query' => array( array( 'key' => self::META_PLAN, 'value' => absint( $plan_id ) ) ),
         ) );
