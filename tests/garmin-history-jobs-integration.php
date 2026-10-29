@@ -15,6 +15,7 @@ $http = static function ( $pre, $args, $url ) use ( &$calls, &$mode, &$active_id
     ++$calls;
     if ( 0 !== strpos( $url, API::API_BASE ) ) throw new RuntimeException( 'Unexpected history job HTTP.' );
     if ( false !== strpos( $url, 'personal-api-key/token' ) ) return array( 'response' => array( 'code' => 200 ), 'headers' => array(), 'body' => 'synthetic.jobs.token' );
+    if ( 'deactivate' === $mode ) { Jobs::deactivate(); $mode = 'normal'; }
     if ( 'pause' === $mode ) { Jobs::control( $active_id, 'pause' ); $mode = 'normal'; }
     if ( 'cancel' === $mode ) { Jobs::control( $active_id, 'cancel' ); $mode = 'normal'; }
     $code = in_array( $mode, array( '401', '429', '500' ), true ) ? (int) $mode : 200;
@@ -197,6 +198,12 @@ try {
     Jobs::control( $id, 'resume' ); $job = $run( $id );
     $verify( 'completed' === $job['status'] && 1 === $job['counts']['skipped'] && 0 === ( $job['counts']['added'] ?? 0 ), 'At-least-once recovery replays safely and records recovered duplicate once.' );
 
+
+    $mode = 'deactivate'; $job = Jobs::start( '2018-01-13', '2018-01-14', array( 'weight' ) ); $id = $job['id'];
+    $job = $run( $id );
+    $verify( 'paused' === $job['status'] && 1 === $job['counts']['added'] && ! Jobs::next( $id ), 'Deactivation during HTTP cannot re-arm an old worker.' );
+    Jobs::control( $id, 'resume' ); $job = $run( $id );
+    $verify( 'completed' === $job['status'] && 2 === $job['counts']['added'], 'Explicit resume adopts the current lifecycle and preserves prior outcomes.' );
     $verify( count( Jobs::recent() ) <= 10 && count( Jobs::recent() ) > 1, 'Recent job history retained and bounded.' );
     WP_CLI::success( 'Historical job workflow passed ' . $checks . ' assertions: persistence, queue/retries/counts, owner isolation, auth/cooldowns, controls during HTTP, review links, scheduling recovery and nonce-protected UI.' );
 } finally {

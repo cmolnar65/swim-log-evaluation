@@ -25,6 +25,7 @@ final class Garmin_History_Jobs {
         return $id && is_user_logged_in() && current_user_can( 'swimlog_manage_own_workouts' ) ? $id : 0;
     }
     private static function id_valid( $id ) { return is_string( $id ) && (bool) preg_match( '/^[a-f0-9]{32}$/D', $id ); }
+    private static function epoch() { return (string) ( self::read( 'swimlog_history_epoch' ) ?? '' ); }
     private static function job_key( $owner, $id ) { return 'swimlog_hj_' . $owner . '_' . $id; }
     private static function unit_key( $owner, $id, $key ) { return 'swimlog_hu_' . $owner . '_' . $id . '_' . $key; }
     private static function pointer( $owner ) { return 'swimlog_ha_' . $owner; }
@@ -105,7 +106,7 @@ final class Garmin_History_Jobs {
             if ( is_string( $active ) && self::unfinished( self::read( self::job_key( $owner, $active ) ) ) ) return self::error( 'active' );
             $id = str_replace( '-', '', wp_generate_uuid4() );
             $job = array( 'id' => $id, 'owner' => $owner, 'start' => $start, 'end' => $end, 'selected' => $selected, 'types' => $types, 'measurements' => array_values( array_diff( $selected, $types ) ),
-                'status' => 'queued', 'generation' => 1, 'created_utc' => gmdate( 'Y-m-d H:i:s' ), 'updated_utc' => gmdate( 'Y-m-d H:i:s' ), 'not_before' => 0, 'error' => '',
+                'status' => 'queued', 'generation' => 1, 'epoch' => self::epoch(), 'created_utc' => gmdate( 'Y-m-d H:i:s' ), 'updated_utc' => gmdate( 'Y-m-d H:i:s' ), 'not_before' => 0, 'error' => '',
                 'units' => array(), 'statuses' => array(), 'ready' => array(), 'failed' => array(), 'counts' => array( 'discovered' => 0, 'activity_days' => 0, 'measurement_days' => 0 ) );
             if ( $types ) self::enqueue( $job, 'page', array( 'cursor' => $cursor ) );
             if ( $job['measurements'] ) self::enqueue( $job, 'measurement', array( 'date' => $start, 'pending' => $job['measurements'] ) );
@@ -120,7 +121,9 @@ final class Garmin_History_Jobs {
         if ( null === $id ) $id = self::read( self::pointer( $owner ) );
         if ( ! self::id_valid( $id ) ) return null;
         $job = self::read( self::job_key( $owner, $id ) );
-        return self::allowed( $job, $owner ) ? $job : null;
+        if ( ! self::allowed( $job, $owner ) ) return null;
+        if ( self::runnable( $job ) && ( $job['epoch'] ?? '' ) !== self::epoch() ) { $job['status'] = 'paused'; $job['error'] = 'deactivated'; }
+        return $job;
     }
     public static function recent() {
         $owner = self::owner(); if ( ! $owner ) return array();
@@ -177,7 +180,7 @@ final class Garmin_History_Jobs {
                         $unit['attempts'] = 0; self::write( self::unit_key( $owner, $id, $key ), $unit );
                     }
                 }
-                $job['status'] = $job['ready'] ? 'queued' : ( $job['failed'] ? 'completed_with_errors' : 'completed' ); $job['not_before'] = 0; $job['error'] = ''; self::write( self::pointer( $owner ), $id );
+                $job['epoch'] = self::epoch(); $job['status'] = $job['ready'] ? 'queued' : ( $job['failed'] ? 'completed_with_errors' : 'completed' ); $job['not_before'] = 0; $job['error'] = ''; self::write( self::pointer( $owner ), $id );
             }
             ++$job['generation']; $job['updated_utc'] = gmdate( 'Y-m-d H:i:s' );
             self::write( self::job_key( $owner, $id ), $job ); return $job;
@@ -195,11 +198,11 @@ final class Garmin_History_Jobs {
     private static function arm( $owner, $id, $seconds ) {
         $args = array( $owner, $id );
         $current = self::read( self::job_key( $owner, $id ) );
-        if ( ! self::allowed( $current, $owner ) || ! self::runnable( $current ) ) return;
+        if ( ! self::allowed( $current, $owner ) || ! self::runnable( $current ) || ( $current['epoch'] ?? '' ) !== self::epoch() ) return;
         if ( wp_next_scheduled( self::HOOK, $args ) ) return;
         $ok = wp_schedule_single_event( time() + max( 60, min( 86400, $seconds ) ), self::HOOK, $args, true );
         $current = self::read( self::job_key( $owner, $id ) );
-        if ( ! self::allowed( $current, $owner ) || ! self::runnable( $current ) ) { wp_clear_scheduled_hook( self::HOOK, $args ); return; }
+        if ( ! self::allowed( $current, $owner ) || ! self::runnable( $current ) || ( $current['epoch'] ?? '' ) !== self::epoch() ) { wp_clear_scheduled_hook( self::HOOK, $args ); return; }
         if ( is_wp_error( $ok ) || ! $ok ) self::mutate( $owner, static function () use ( $owner, $id ) {
             $job = self::read( self::job_key( $owner, $id ) );
             if ( self::allowed( $job, $owner ) && self::runnable( $job ) ) { $job['status'] = 'blocked'; $job['error'] = 'schedule'; self::write( self::job_key( $owner, $id ), $job ); }
@@ -245,6 +248,7 @@ final class Garmin_History_Jobs {
             $claim = self::mutate( $owner, static function () use ( $owner, $id ) {
                 $job = self::read( self::job_key( $owner, $id ) );
                 if ( ! self::allowed( $job, $owner ) || ! self::runnable( $job ) || ! $job['ready'] ) return null;
+                if ( ( $job['epoch'] ?? '' ) !== self::epoch() ) { $job['status'] = 'paused'; $job['error'] = 'deactivated'; self::write( self::job_key( $owner, $id ), $job ); return null; }
                 if ( $job['not_before'] > time() ) return array( 'wait' => $job['not_before'] - time() );
                 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
                 if ( ! user_can( $owner, 'swimlog_manage_own_workouts' ) || ( $job['types'] && ! user_can( $owner, 'swimlog_upload_workouts' ) ) || ! Garmin_Personal_API::is_configured( $owner ) ) {
@@ -286,6 +290,7 @@ final class Garmin_History_Jobs {
         return self::mutate( $owner, static function () use ( $owner, $id, $claimed, $result ) {
             $job = self::read( self::job_key( $owner, $id ) );
             if ( ! self::allowed( $job, $owner ) ) return self::error( 'ledger' );
+            if ( self::runnable( $job ) && ( $job['epoch'] ?? '' ) !== self::epoch() ) { $job['status'] = 'paused'; $job['error'] = 'deactivated'; }
             $unit = self::read( self::unit_key( $owner, $id, $claimed['key'] ) );
             $before = self::counts( $unit ); $failed = is_wp_error( $result ); $delay = 300 * ( 1 << min( 2, max( 0, $unit['attempts'] - 1 ) ) );
             $code = $failed ? $result->get_error_code() : ''; $info = $failed ? $result->get_error_data() : null;
@@ -352,7 +357,14 @@ final class Garmin_History_Jobs {
             self::write( self::unit_key( $owner, $id, $unit['key'] ), $unit ); self::write( self::job_key( $owner, $id ), $job ); return $job;
         } );
     }
-    public static function deactivate() { wp_unschedule_hook( self::HOOK ); }
+    public static function deactivate() {
+        global $wpdb;
+        // Invalidate every existing job before removing events; late workers cannot re-arm.
+        $ok = Database::write( 'query', $wpdb->prepare( 'INSERT INTO %i (option_name,option_value,autoload) VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE option_value = VALUES(option_value), autoload = VALUES(autoload)', $wpdb->options, 'swimlog_history_epoch', wp_json_encode( wp_generate_uuid4() ), 'no' ) );
+        wp_cache_delete( 'swimlog_history_epoch', 'options' );
+        wp_unschedule_hook( self::HOOK );
+        return false !== $ok;
+    }
     public static function delete_owner( $owner ) {
         global $wpdb; $owner = (int) $owner;
         $jobs = Database::read( 'get_col', $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( 'swimlog_hj_' . $owner . '_' ) . '%' ) );

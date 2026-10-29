@@ -101,6 +101,7 @@ final class Admin_Garmin_History {
     private static function failure_message( $code ) {
         if ( false !== strpos( $code, 'capacity' ) ) return __( 'The job storage limit was reached. Cancel and choose a smaller range; existing imports are retained.', 'chriss-swim-training-progress-evaluation' );
         if ( 'authorization_or_connection' === $code ) return __( 'Check your Garmin key and import permissions, then resume. Progress has been retained.', 'chriss-swim-training-progress-evaluation' );
+        if ( 'deactivated' === $code ) return __( 'The plugin was deactivated. Resume explicitly to continue this job after reactivation.', 'chriss-swim-training-progress-evaluation' );
         if ( 'schedule' === $code ) return __( 'WordPress could not schedule the next task. Use Resume / repair schedule.', 'chriss-swim-training-progress-evaluation' );
         return __( 'This operation could not finish. Existing imports were retained. Resume a blocked job, or use Retry failed items after the scan finishes.', 'chriss-swim-training-progress-evaluation' );
     }
