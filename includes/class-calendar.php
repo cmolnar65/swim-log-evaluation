@@ -65,12 +65,15 @@ final class Calendar {
 		$workout_ids = array_values( array_filter( array_map( 'absint', wp_list_pluck( (array) $workouts, 'id' ) ) ) );
 		$pb_ids = array();
 		if ( $workout_ids ) {
-			$placeholders = implode( ',', array_fill( 0, count( $workout_ids ), '%d' ) );
-			$pb_ids = array_map( 'intval', Database::read( 'get_col',  $wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only generated integer placeholders are interpolated; values and the identifier are bound below.
-				"SELECT DISTINCT workout_id FROM %i WHERE user_id = %d AND is_personal_best = 1 AND workout_id IN ($placeholders)",
-				array_merge( array( $pb_table, $user_id ), $workout_ids )
+			// Current PBs are bounded by the supported distance/course/stroke combinations.
+			// Read this owner-indexed set once and intersect in PHP rather than building
+			// a variable SQL placeholder list for the displayed calendar range.
+			$owner_pb_ids = array_map( 'intval', Database::read( 'get_col', $wpdb->prepare(
+				'SELECT DISTINCT workout_id FROM %i WHERE user_id = %d AND is_personal_best = 1',
+				$pb_table,
+				$user_id
 			) ) );
+			$pb_ids = array_values( array_intersect( $owner_pb_ids, $workout_ids ) );
 		}
 		foreach ( (array) $workouts as $workout ) {
 			$workout->has_personal_best = in_array( absint( $workout->id ), $pb_ids, true );
