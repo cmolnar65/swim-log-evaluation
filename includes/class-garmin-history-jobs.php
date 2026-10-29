@@ -44,7 +44,8 @@ final class Garmin_History_Jobs {
     private static function lock( $owner, $worker = false, $release = false ) {
         global $wpdb;
         $name = 'swimlog_h_' . ( $worker ? 'worker_' : 'control_' ) . substr( hash( 'sha256', $wpdb->prefix . ':' . $owner ), 0, 40 );
-        return 1 === (int) Database::read( 'get_var', $wpdb->prepare( $release ? 'SELECT RELEASE_LOCK(%s)' : 'SELECT GET_LOCK(%s, 0)', $name ) );
+        if ( $release ) return 1 === (int) Database::read( 'get_var', $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+        return 1 === (int) Database::read( 'get_var', $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $name ) );
     }
     /** Only short metadata mutations run in this transaction; HTTP/imports run outside it. */
     private static function mutate( $owner, $callback ) {
@@ -288,7 +289,7 @@ final class Garmin_History_Jobs {
             $before = self::counts( $unit ); $failed = is_wp_error( $result ); $delay = 300 * ( 1 << min( 2, max( 0, $unit['attempts'] - 1 ) ) );
             $code = $failed ? $result->get_error_code() : ''; $info = $failed ? $result->get_error_data() : null;
             if ( is_array( $info ) && isset( $info['retry_after'] ) ) $delay = max( $delay, (int) $info['retry_after'] );
-            $auth = in_array( $code, array( 'swimlog_history_forbidden', 'swimlog_garmin_auth_failed', 'swimlog_garmin_not_configured' ), true ) || ( is_array( $info ) && in_array( $info['status'] ?? 0, array( 401, 403 ), true ) );
+            $auth = in_array( $code, array( 'swimlog_history_forbidden', 'swimlog_garmin_auth_failed', 'swimlog_garmin_not_configured', 'swimlog_garmin_decrypt_failed', 'swimlog_garmin_crypto_unavailable' ), true ) || ( is_array( $info ) && in_array( $info['status'] ?? 0, array( 401, 403 ), true ) );
             if ( 'activity' === $unit['kind'] ) {
                 if ( in_array( $code, array( 'swimlog_ows_location_review', 'swimlog_source_disagreement' ), true ) ) {
                     $failed = false; $unit['outcomes']['activity'] = array( 'status' => 'review' );
@@ -302,7 +303,7 @@ final class Garmin_History_Jobs {
                 foreach ( $rows as $category => $row ) {
                     if ( in_array( $row['status'], array( 'failed', 'not_attempted' ), true ) ) {
                         $pending[] = $category;
-                        if ( in_array( $row['http_status'] ?? 0, array( 401, 403 ), true ) || in_array( $row['error_code'] ?? '', array( 'swimlog_garmin_auth_failed', 'swimlog_garmin_not_configured', 'swimlog_health_forbidden' ), true ) ) $auth = true;
+                        if ( in_array( $row['http_status'] ?? 0, array( 401, 403 ), true ) || in_array( $row['error_code'] ?? '', array( 'swimlog_garmin_auth_failed', 'swimlog_garmin_not_configured', 'swimlog_garmin_decrypt_failed', 'swimlog_garmin_crypto_unavailable', 'swimlog_health_forbidden' ), true ) ) $auth = true;
                         $delay = max( $delay, (int) ( $row['retry_after'] ?? 0 ) );
                     }
                     // Completed category results survive retries of other categories in this day.
