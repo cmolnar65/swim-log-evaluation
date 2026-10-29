@@ -72,10 +72,27 @@ final class Admin_Structured_Workouts {
           $pdf_token = isset( $_GET['pdf_preview'] ) && is_string( $_GET['pdf_preview'] ) ? sanitize_text_field( wp_unslash( $_GET['pdf_preview'] ) ) : '';
           if ( preg_match( '/^[a-zA-Z0-9]{32}$/', $pdf_token ) ) :
               $pdf_preview = get_transient( 'swimlog_pdf_' . $owner . '_' . $pdf_token );
-              if ( is_array( $pdf_preview ) && isset( $pdf_preview['text'] ) ) : ?>
+              if ( is_array( $pdf_preview ) && isset( $pdf_preview['text'] ) ) :
+                  require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-parser.php';
+                  $candidate_plan = Training_Plan_Parser::parse( $pdf_preview['text'] );
+                  ?>
+
                 <h2><?php esc_html_e( 'Extracted text preview (private, expires after 15 minutes)', 'chriss-swim-training-progress-evaluation' ); ?></h2>
                 <p><?php echo esc_html( number_format_i18n( $pdf_preview['bytes'] ) ); ?> <?php esc_html_e( 'text bytes extracted. No workouts have been created.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 <textarea readonly rows="16" style="width:100%;max-width:1100px"><?php echo esc_textarea( $pdf_preview['text'] ); ?></textarea>
+                <h3><?php esc_html_e( 'Detected workout candidates — review only', 'chriss-swim-training-progress-evaluation' ); ?></h3>
+                <?php if ( is_wp_error( $candidate_plan ) ) : ?>
+                  <p><?php echo esc_html( $candidate_plan->get_error_message() ); ?></p>
+                <?php else : ?>
+                  <p><?php echo esc_html( sprintf( '%d candidate workout boundaries found. No workouts have been saved.', count( $candidate_plan['workouts'] ) ) ); ?></p>
+                  <?php foreach ( $candidate_plan['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
+                  <?php foreach ( $candidate_plan['workouts'] as $candidate ) : ?>
+                    <details><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $candidate['flags'] ) . ' review flags' ); ?></summary>
+                      <?php foreach ( $candidate['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
+                      <pre style="white-space:pre-wrap"><?php echo esc_html( wp_json_encode( $candidate['document'], JSON_PRETTY_PRINT ) ); ?></pre>
+                    </details>
+                  <?php endforeach; ?>
+                <?php endif; ?>
               <?php endif;
           endif; ?>
           <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
