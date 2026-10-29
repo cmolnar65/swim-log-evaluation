@@ -14,6 +14,7 @@ final class GarminMeasurementImportTest extends TestCase {
             array( '2099-01-01', '2099-01-01', array( 'weight' ) ),
             array( '2026-01-01', '2026-01-01', array() ),
             array( '2026-01-01', '2026-01-01', array( 'blood_pressure' ) ),
+            array( '2026-01-01', '2026-01-01', array( array( 'weight' ) ) ),
         ) as $args ) $this->assertTrue( is_wp_error( Importer::range( ...$args ) ) );
     }
 

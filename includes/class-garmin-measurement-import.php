@@ -10,7 +10,8 @@ final class Garmin_Measurement_Import {
     }
 
     public static function range( $start, $end, $categories ) {
-        if ( ! is_string( $start ) || ! is_string( $end ) || ! is_array( $categories ) || ! $categories || count( $categories ) > 3 || array_diff( $categories, array( 'weight', 'body_composition', 'spo2' ) ) ) return self::error();
+        if ( ! is_string( $start ) || ! is_string( $end ) || ! is_array( $categories ) || ! $categories || count( $categories ) > 3 ) return self::error();
+        foreach ( $categories as $category ) if ( ! is_string( $category ) || ! in_array( $category, array( 'weight', 'body_composition', 'spo2' ), true ) ) return self::error();
         $tz = new \DateTimeZone( 'UTC' );
         $a = \DateTimeImmutable::createFromFormat( '!Y-m-d', $start, $tz );
         $b = \DateTimeImmutable::createFromFormat( '!Y-m-d', $end, $tz );
