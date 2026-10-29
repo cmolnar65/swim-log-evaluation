@@ -16,7 +16,7 @@ For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred 
 
 == Development status ==
 
-The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private Garmin measurement import and calendar display are planned, not implemented. Development database schema is 1.3 for additive private-measurement storage; released v1.2 used schema 1.2.
+The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private storage, verified-field manual Garmin import and internal owner-only calendar retrieval are implemented; visible calendar indicators remain planned. Development database schema is 1.3 for additive private-measurement storage; released v1.2 used schema 1.2.
 
 == Description ==
 

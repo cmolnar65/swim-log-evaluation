@@ -283,3 +283,16 @@ Do not make client logic depend on a particular WordPress-generated authenticati
 | GET | `/calendar` | Private calendar data and weekly summaries. |
 | GET | `/analytics/pool` | Pool performance/efficiency analytics. |
 | GET | `/analytics/training-trends` | Training-volume trends. |
+
+
+## GET /calendar/measurements
+
+Internal health-calendar projection only. This route requires the current owner's valid WordPress logged-in cookie AND an X-WP-Nonce header verified for wp_rest, plus swimlog_view_own_results and swimlog_manage_own_workouts. Application Password or other noncookie authentication alone is insufficient. No external REST opt-in or public-results setting grants access. A user parameter may only identify the current owner; swimlog_manage_all_users does not authorize another owner's health records.
+
+Required start/end: exact YYYY-MM-DD, at most 62 inclusive days (enough for a full calendar grid). Unknown or unassigned measurement dates are not inferred from UTC. Queries use stored calendar_date/provider_date and half-open indexed boundaries. More than 500 report rows or 2,000 observations returns HTTP 413, requesting a smaller range; no silent truncation.
+
+Response: range (start/end/date_policy), days (date, reports, readings, aggregates) and invalid_records. Provider reports expose named summary roles and verified reporting/sleep windows. Readings expose approved grouped values/units, source label, UTC/local time and verified offset, date_basis and conflict flag. Non-sample observations remain in aggregates. No averaging or clinical interpretation is performed.
+
+Observation IDs identify only owner-authorized internal records. External measurement/account IDs, owner IDs, hashes, arbitrary provenance/context, devices and raw payloads are excluded. Unknown/malformed numeric envelopes are counted and omitted. Responses use Cache-Control: private, no-store.
+
+This separate route does not change GET /calendar or existing portability responses. No visible measurement indicators are added until the calendar presentation phase.

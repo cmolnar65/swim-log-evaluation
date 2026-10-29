@@ -15,6 +15,7 @@ final class REST_API {
   register_rest_route(self::NS,'/analytics/pool',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'pool_analytics'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'),'stroke'=>array('sanitize_callback'=>'sanitize_key'),'months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/analytics/training-trends',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'training_trends'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/calendar',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar'),'permission_callback'=>array(__CLASS__,'calendar_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
+  register_rest_route(self::NS,'/calendar/measurements',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar_measurements'),'permission_callback'=>array(__CLASS__,'calendar_measurements_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
  }
 
  public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}
@@ -25,6 +26,25 @@ final class REST_API {
   $current=absint(get_current_user_id());$requested=absint($request->get_param('user'));$target=$requested?:$current;
   if($target===$current)return current_user_can('swimlog_view_own_results');
   return current_user_can('swimlog_manage_all_users');
+ }
+
+
+ /** Health records require the owner's real login cookie and a REST nonce, not portability opt-in. */
+ public static function calendar_measurements_permission($request){
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-calendar-measurements.php';
+  $owner=(int)get_current_user_id();
+  $requested=absint($request->get_param('user'));
+  if(($requested&&$requested!==$owner)||!Calendar_Measurements::authorized($owner))return false;
+  return $owner===(int)wp_validate_auth_cookie('','logged_in') && (bool)wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),'wp_rest');
+ }
+
+ public static function calendar_measurements($request){
+  if(!self::calendar_measurements_permission($request))return new \WP_Error('swimlog_health_calendar_forbidden',__('Private calendar measurements are unavailable.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  $data=Calendar_Measurements::for_user((int)get_current_user_id(),$request->get_param('start'),$request->get_param('end'));
+  if(is_wp_error($data))return $data;
+  $response=rest_ensure_response($data);
+  $response->header('Cache-Control','private, no-store');
+  return $response;
  }
 
  public static function workouts($request){

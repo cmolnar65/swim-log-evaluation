@@ -64,7 +64,8 @@ final class Health_Measurement_Store {
         return array();
     }
 
-    private static function values( $category, $values, $summary = false ) {
+    public static function normalize_values( $category, $values, $summary = false ) {
+        if ( ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) ) return self::error( 'category' );
         if ( ! is_array( $values ) || ( ! $summary && ! $values ) ) return self::error( 'values' );
         $units = self::units( $category, $summary );
         $out = array();
@@ -108,7 +109,7 @@ final class Health_Measurement_Store {
         if ( array_diff( array_keys( $input ), $allowed ) ) return self::error( 'fields' );
         $role = $input['role'] ?? '';
         if ( ! in_array( $role, array( 'sample', 'hourly_average', 'sleep_average', 'calculated_mean' ), true ) || ( 'spo2' !== $category && 'sample' !== $role ) ) return self::error( 'role' );
-        $values = self::values( $category, $input['values'] ?? null );
+        $values = self::normalize_values( $category, $input['values'] ?? null );
         $provenance = self::context( $input['provenance'] ?? array() );
         if ( is_wp_error( $values ) ) return $values;
         if ( is_wp_error( $provenance ) ) return $provenance;
@@ -158,7 +159,7 @@ final class Health_Measurement_Store {
         $day = $report['calendar_date'] ?? '';
         if ( 'garmin' !== $provider || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
         $fetched = self::timestamp( $report['fetched_at_utc'] ?? '' );
-        $summary = self::values( $category, $report['summary'] ?? array(), true );
+        $summary = self::normalize_values( $category, $report['summary'] ?? array(), true );
         $context = self::context( $report['context'] ?? array() );
         if ( is_wp_error( $fetched ) || is_wp_error( $summary ) || is_wp_error( $context ) || strlen( $fetched ) !== 20 ) return self::error( 'report' );
         // This service never authorizes an undocumented blood-pressure fetch.
