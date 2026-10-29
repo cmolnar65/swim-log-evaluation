@@ -11,6 +11,7 @@ $owner = wp_create_user( 'swimlog_cleanup_' . wp_generate_password( 8, false ), 
 $verify( ! is_wp_error( $owner ), 'Could not create synthetic owner.' );
 $table = Database::table( 'workouts' );
 $id = 0;
+$post_id = 0;
 try {
     global $wpdb;
     $ok = Database::write( 'insert', $table, array(
@@ -25,6 +26,16 @@ try {
     $first->notes = 'caller mutation';
     $verify( 'synthetic private note' === Workout::get_for_user( $id, $owner )->notes, 'Cached objects are shared.' );
     $verify( null === Workout::get_for_user( $id, $owner + 10000 ), 'Foreign owner read leaked.' );
+    require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-workouts.php';
+    $lookup = new ReflectionMethod( SwimLogEvaluation\Admin_Workouts::class, 'linked_post_ids' );
+    $lookup->setAccessible( true );
+    $verify( array() === $lookup->invoke( null, $id ), 'Unexpected linked post.' );
+    $post_id = wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'draft', 'post_author' => $owner, 'post_title' => 'Synthetic cache test' ), true );
+    $verify( ! is_wp_error( $post_id ), 'Post creation failed.' );
+    update_post_meta( $post_id, '_swimlog_workout_id', $id );
+    $verify( array( (string) $post_id ) === array_map( 'strval', $lookup->invoke( null, $id ) ), 'Negative linked-post cache survived creation.' );
+    wp_trash_post( $post_id );
+    $verify( array() === $lookup->invoke( null, $id ), 'Linked-post cache survived trash.' );
     $verify( true === Workout::update_metadata( $id, $owner, 0, 'updated note' ), 'Metadata update failed.' );
     $verify( 'updated note' === Workout::get_for_user( $id, $owner )->notes, 'Write left stale cache.' );
     $wpdb->update( $table, array( 'notes' => 'external write' ), array( 'id' => $id ) );
@@ -47,6 +58,7 @@ try {
     WP_CLI::success( 'Production staging smoke: owner isolation, private output, cache copies, internal/external invalidation, rollback, schema idempotence, and deletion passed.' );
 } finally {
     Database::write( 'query', 'ROLLBACK' );
+    if ( $post_id && ! is_wp_error( $post_id ) ) wp_delete_post( $post_id, true );
     if ( $id ) Database::write( 'delete', $table, array( 'id' => $id, 'user_id' => $owner ) );
     require_once ABSPATH . 'wp-admin/includes/user.php';
     wp_delete_user( $owner );
