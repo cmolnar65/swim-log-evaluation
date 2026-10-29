@@ -3,6 +3,8 @@ namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Admin_Structured_Workouts {
+    // A full plan needs time for manual review; private previews expire 24 hours after upload.
+    const PDF_PREVIEW_TTL = 86400;
     public static function handle_actions() {
         if ( isset( $_POST['swimlog_structure_lifecycle'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
@@ -39,7 +41,7 @@ final class Admin_Structured_Workouts {
             $token = isset( $_POST['swimlog_pdf_token'] ) && is_string( $_POST['swimlog_pdf_token'] ) ? sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_token'] ) ) : '';
             if ( ! preg_match( '/^[a-zA-Z0-9]{32}$/', $token ) ) { self::error( 'Invalid preview token.' ); return; }
             $preview = get_transient( 'swimlog_pdf_' . $owner . '_' . $token );
-            if ( ! is_array( $preview ) || empty( $preview['text'] ) ) { self::error( 'PDF preview expired. Upload the PDF again.' ); return; }
+            if ( ! is_array( $preview ) || empty( $preview['text'] ) ) { self::error( 'PDF preview expired or is no longer available. Upload the PDF again to start a new 24-hour review.' ); return; }
             require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-parser.php';
             require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-review.php';
             require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-bulk-import.php';
@@ -71,7 +73,7 @@ final class Admin_Structured_Workouts {
             if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
             $owner = get_current_user_id();
             $token = wp_generate_password( 32, false, false );
-            set_transient( 'swimlog_pdf_' . $owner . '_' . $token, $result, 15 * MINUTE_IN_SECONDS );
+            set_transient( 'swimlog_pdf_' . $owner . '_' . $token, $result, self::PDF_PREVIEW_TTL );
             wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_preview' => $token ), admin_url( 'admin.php' ) ) );
             exit;
         }
@@ -138,7 +140,7 @@ final class Admin_Structured_Workouts {
                   $review_input = $GLOBALS['swimlog_pdf_review_input'] ?? array( 'reviews' => array(), 'selected' => array(), 'name' => '' );
                   ?>
 
-                <h2><?php esc_html_e( 'Extracted text preview (private, expires after 15 minutes)', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+                <h2><?php esc_html_e( 'Extracted text preview (private, available for 24 hours after upload)', 'chriss-swim-training-progress-evaluation' ); ?></h2>
                 <p><?php echo esc_html( number_format_i18n( $pdf_preview['bytes'] ) ); ?> <?php esc_html_e( 'text bytes extracted. No workouts have been created.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 <textarea readonly rows="16" style="width:100%;max-width:1100px"><?php echo esc_textarea( $pdf_preview['text'] ); ?></textarea>
                 <h3><?php esc_html_e( 'Review and select workouts for import', 'chriss-swim-training-progress-evaluation' ); ?></h3>

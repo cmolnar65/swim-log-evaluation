@@ -22,9 +22,15 @@ try {
     $owner = $users['owner']; wp_set_current_user( $owner );
     $parsed = Parser::parse( $text );
     $verify( ! is_wp_error( $parsed ) && 3 === count( $parsed['workouts'] ), 'Three synthetic candidates.' );
-    set_transient( 'swimlog_pdf_' . $owner . '_' . $token, array( 'text' => $text, 'bytes' => strlen( $text ) ), 900 );
+    set_transient( 'swimlog_pdf_' . $owner . '_' . $token, array( 'text' => $text, 'bytes' => strlen( $text ) ), Admin::PDF_PREVIEW_TTL );
+    // Check the persisted expiration without sleeping or changing the host clock.
+    if ( ! wp_using_ext_object_cache() ) {
+        $expires = (int) get_option( '_transient_timeout_swimlog_pdf_' . $owner . '_' . $token );
+        $verify( $expires >= time() + 86390 && $expires <= time() + 86410, 'PDF review did not retain a full 24-hour window.' );
+    }
     $_GET = array( 'pdf_preview' => $token );
     ob_start(); Admin::page(); $html = ob_get_clean();
+    $verify( false !== strpos( $html, 'available for 24 hours after upload' ), 'PDF review notice advertises the wrong lifetime.' );
     $dom = new DOMDocument(); $previous_errors = libxml_use_internal_errors( true ); $dom->loadHTML( $html ); libxml_clear_errors(); libxml_use_internal_errors( $previous_errors );
     $xpath = new DOMXPath( $dom );
     $verify( 3 === $xpath->query( '//form[@data-swimlog-pdf-import]//input[@name="swimlog_pdf_selected[]"]' )->length, 'Every candidate needs a selection checkbox, including flagged/null structures.' );

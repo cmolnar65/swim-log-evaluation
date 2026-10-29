@@ -27,5 +27,13 @@ final class TrainingPlanPDFV12Test extends TestCase {
             $this->assertStringContainsString( $guard, $source );
         }
     }
+    public function test_upload_storage_and_notice_use_the_full_day_review_window() {
+        $source = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-structured-workouts.php' );
+        $this->assertStringContainsString( 'const PDF_PREVIEW_TTL = 86400;', $source );
+        $this->assertStringContainsString( '$result, self::PDF_PREVIEW_TTL );', $source );
+        $this->assertStringContainsString( 'available for 24 hours after upload', $source );
+        $this->assertStringNotContainsString( '15 * MINUTE_IN_SECONDS', $source );
+    }
+
 }
 
