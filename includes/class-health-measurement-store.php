@@ -82,11 +82,11 @@ final class Health_Measurement_Store {
 
     private static function context( $input ) {
         if ( ! is_array( $input ) ) return self::error( 'context' );
-        $allowed = array( 'normalization_version', 'device', 'source_format', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision' );
+        $allowed = array( 'normalization_version', 'device', 'source_format', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local' );
         $out = array();
         foreach ( $input as $key => $value ) {
             if ( ! in_array( $key, $allowed, true ) || ! is_string( $value ) || strlen( $value ) > 191 || preg_match( '/[\\x00-\\x1f]/', $value ) ) return self::error( 'context' );
-            if ( in_array( $key, array( 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local' ), true ) ) {
+            if ( preg_match( '/_(utc|local)$/D', $key ) ) {
                 $value = self::timestamp( $value, false !== strpos( $key, '_utc' ) );
                 if ( is_wp_error( $value ) ) return $value;
             }

@@ -522,6 +522,49 @@ final class Garmin_Personal_API {
 		update_user_meta($user_id,'swimlog_garmin_sync_last_run',current_time('mysql'));update_user_meta($user_id,'swimlog_garmin_sync_last_success',current_time('mysql'));update_user_meta($user_id,'swimlog_garmin_sync_last_result',$result);delete_user_meta($user_id,'swimlog_garmin_sync_last_error');return$result;
 	}
 
+
+    /** Owner-only, bounded reads from documented measurement endpoints. */
+    public static function measurement_day( $user_id, $kind, $date ) {
+        if ( ! is_int( $user_id ) || $user_id !== (int) get_current_user_id() || ! is_user_logged_in() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) {
+            return new \WP_Error( 'swimlog_health_forbidden', __( 'You cannot import these measurements.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        $parsed = is_string( $date ) ? \DateTimeImmutable::createFromFormat( '!Y-m-d', $date, new \DateTimeZone( 'UTC' ) ) : false;
+        if ( ! $parsed || $parsed->format( 'Y-m-d' ) !== $date || ! in_array( $kind, array( 'weight', 'spo2' ), true ) ) {
+            return new \WP_Error( 'swimlog_health_request', __( 'Invalid measurement request.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        $cooldown = (int) get_transient( 'swimlog_health_retry_' . $user_id );
+        if ( $cooldown > time() ) return new \WP_Error( 'swimlog_health_rate_limit', __( 'Garmin requested a waiting period before another measurement request.', 'chriss-swim-training-progress-evaluation' ), array( 'retry_after' => $cooldown - time() ) );
+        static $tokens = array();
+        if ( ! isset( $tokens[ $user_id ] ) ) $tokens[ $user_id ] = self::access_token( $user_id );
+        $token = $tokens[ $user_id ];
+        if ( is_wp_error( $token ) ) return $token;
+        $path = 'weight' === $kind ? 'weight-service/weight/all/' . $date . '/' . $date : 'wellness-service/wellness/daily/spo2acclimation/' . $date;
+        $response = wp_remote_get( self::API_BASE . $path, array(
+            'timeout' => 8, 'redirection' => 0, 'limit_response_size' => 1048577,
+            'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ),
+        ) );
+        if ( is_wp_error( $response ) ) return new \WP_Error( 'swimlog_health_network', __( 'Garmin could not be reached. Existing measurements were preserved; retry the same range.', 'chriss-swim-training-progress-evaluation' ) );
+        $status = (int) wp_remote_retrieve_response_code( $response );
+        if ( 429 === $status ) {
+            $retry = wp_remote_retrieve_header( $response, 'retry-after' );
+            $retry_time = is_string( $retry ) ? strtotime( $retry ) : false;
+            $seconds = ctype_digit( (string) $retry ) ? max( 1, min( 86400, (int) $retry ) ) : ( false !== $retry_time ? max( 1, min( 86400, $retry_time - time() ) ) : 60 );
+            set_transient( 'swimlog_health_retry_' . $user_id, time() + $seconds, $seconds );
+            return new \WP_Error( 'swimlog_health_rate_limit', __( 'Garmin rate-limited this request. Wait before retrying the same range.', 'chriss-swim-training-progress-evaluation' ), array( 'retry_after' => $seconds ) );
+        }
+        if ( 200 !== $status ) {
+            if ( 401 === $status ) unset( $tokens[ $user_id ] );
+            return new \WP_Error( 'swimlog_health_http', sprintf( /* translators: %d: HTTP status code. */ __( 'Garmin measurement request failed (HTTP %d). Existing measurements were preserved.', 'chriss-swim-training-progress-evaluation' ), $status ) );
+        }
+        $body = wp_remote_retrieve_body( $response );
+        if ( strlen( $body ) > 1048576 || '' === trim( $body ) ) return new \WP_Error( 'swimlog_health_response', __( 'Garmin returned an empty or oversized response. Nothing from this response was imported.', 'chriss-swim-training-progress-evaluation' ) );
+        $first = substr( ltrim( $body ), 0, 1 );
+        if ( ( 'weight' === $kind && '[' !== $first ) || ( 'spo2' === $kind && '{' !== $first ) ) return new \WP_Error( 'swimlog_health_response', __( 'Garmin returned an unexpected measurement structure.', 'chriss-swim-training-progress-evaluation' ) );
+        $data = json_decode( $body, true, 32 );
+        if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $data ) ) return new \WP_Error( 'swimlog_health_response', __( 'Garmin returned an invalid measurement response. Nothing from this response was imported.', 'chriss-swim-training-progress-evaluation' ) );
+        return $data;
+    }
+
 	private static function access_token( $user_id ) {
 		$api_key = self::get_key( $user_id );
 		if ( is_wp_error( $api_key ) ) {
