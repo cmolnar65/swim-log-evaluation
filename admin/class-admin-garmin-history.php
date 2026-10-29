@@ -23,11 +23,12 @@ final class Admin_Garmin_History {
         if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history-jobs.php';
         $notice = null;
-        $form_start = self::scalar( $_POST, 'history_start' );
-        $form_end = self::scalar( $_POST, 'history_end' );
-        $form_selected = isset( $_POST['history_categories'] ) && is_array( $_POST['history_categories'] ) ? map_deep( wp_unslash( $_POST['history_categories'] ), 'sanitize_text_field' ) : array();
+        $form_start = ''; $form_end = ''; $form_selected = array();
         if ( isset( $_POST['swimlog_history_action'] ) ) {
             check_admin_referer( 'swimlog_history_control' );
+            $form_start = self::scalar( $_POST, 'history_start' );
+            $form_end = self::scalar( $_POST, 'history_end' );
+            $form_selected = isset( $_POST['history_categories'] ) && is_array( $_POST['history_categories'] ) ? map_deep( wp_unslash( $_POST['history_categories'] ), 'sanitize_text_field' ) : array();
             $action = self::scalar( $_POST, 'swimlog_history_action' );
             if ( 'start' === $action ) {
                 $selected = isset( $_POST['history_categories'] ) && is_array( $_POST['history_categories'] ) ? map_deep( wp_unslash( $_POST['history_categories'] ), 'sanitize_text_field' ) : array();
