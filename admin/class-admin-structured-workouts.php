@@ -4,6 +4,23 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Admin_Structured_Workouts {
     public static function handle_actions() {
+        if ( isset( $_POST['swimlog_plan_schedule'] ) ) {
+            if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+            check_admin_referer( 'swimlog_plan_schedule' );
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-scheduler.php';
+            $plan_id = isset( $_POST['swimlog_plan_id'] ) ? absint( wp_unslash( $_POST['swimlog_plan_id'] ) ) : 0;
+            $dates = isset( $_POST['swimlog_schedule_dates'] ) && is_array( $_POST['swimlog_schedule_dates'] ) ? wp_unslash( $_POST['swimlog_schedule_dates'] ) : array();
+            $assignments = array();
+            foreach ( $dates as $id => $date ) {
+                if ( ! is_string( $date ) ) { self::error( 'Invalid date input.' ); return; }
+                $date = sanitize_text_field( $date );
+                if ( '' !== $date ) $assignments[absint( $id )] = $date;
+            }
+            $result = Training_Plan_Scheduler::schedule( get_current_user_id(), $plan_id, $assignments );
+            if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'schedule_plan' => $plan_id, 'scheduled' => count( $result ) ), admin_url( 'admin.php' ) );
+            exit;
+        }
         if ( isset( $_POST['swimlog_pdf_bulk_import'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
             check_admin_referer( 'swimlog_pdf_bulk_import' );
@@ -22,7 +39,7 @@ final class Admin_Structured_Workouts {
             $result = Training_Plan_Bulk_Import::run( $owner, $name, $parsed, $selected, hash( 'sha256', $preview['text'] ) );
             if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
             delete_transient( 'swimlog_pdf_' . $owner . '_' . $token );
-            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_imported' => $result['count'] ), admin_url( 'admin.php' ) ) );
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_imported' => $result['count'], 'schedule_plan' => $result['plan_id'] ), admin_url( 'admin.php' ) ) );
             exit;
         }
         if ( isset( $_POST['swimlog_pdf_extract'] ) ) {
@@ -133,6 +150,34 @@ final class Admin_Structured_Workouts {
                 <?php endif; ?>
               <?php endif;
           endif; ?>
+          <?php
+          // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only owner-scoped plan selector.
+          $schedule_plan_id = isset( $_GET['schedule_plan'] ) ? absint( wp_unslash( $_GET['schedule_plan'] ) ) : 0;
+          if ( $schedule_plan_id ) :
+              $schedule_plan = Training_Plan_Collection::get( $schedule_plan_id, $owner );
+              if ( ! is_wp_error( $schedule_plan ) ) :
+                  $schedule_workouts = Training_Plan_Collection::workouts( $owner, $schedule_plan_id );
+                  if ( ! is_wp_error( $schedule_workouts ) ) : ?>
+                    <h2><?php echo esc_html( 'Schedule workouts from ' . $schedule_plan->post_title ); ?></h2>
+                    <p>Enter any current or future date for each workout you wish to schedule. Leave dates blank to skip workouts. Dates do not need to be consecutive.</p>
+                    <form method="post">
+                      <?php wp_nonce_field( 'swimlog_plan_schedule' ); ?>
+                      <input type="hidden" name="swimlog_plan_schedule" value="1">
+                      <input type="hidden" name="swimlog_plan_id" value="<?php echo esc_attr( $schedule_plan_id ); ?>">
+                      <?php foreach ( $schedule_workouts as $scheduled_structure ) :
+                          $linked_plan_id = absint( get_post_meta( $scheduled_structure->ID, Planned_Structure_Link::META_KEY, true ) ); ?>
+                          <p><label><?php echo esc_html( $scheduled_structure->post_title ); ?>
+                          <?php if ( $linked_plan_id ) : ?> — already scheduled
+                          <?php else : ?><input type="date" name="swimlog_schedule_dates[<?php echo esc_attr( $scheduled_structure->ID ); ?>]" min="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>">
+                          <?php endif; ?></label></p>
+                      <?php endforeach; ?>
+                      <p><button type="submit" class="button button-primary">Schedule selected dates</button></p>
+                    </form>
+                  <?php endif;
+              endif;
+          endif; ?>
+          <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only scheduling result notice. ?>
+          <?php if ( isset( $_GET['scheduled'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['scheduled'] ) ) . ' workouts scheduled.' ); ?></p></div><?php endif; ?>
           <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only saved flag. ?>
           <?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
