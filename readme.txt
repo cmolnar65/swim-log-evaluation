@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2
+Stable tag: 1.3-dev
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

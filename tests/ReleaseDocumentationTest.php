@@ -6,7 +6,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  $this->assertStringContainsString('Stable tag: 1.2',$readme);
+  $this->assertStringContainsString('Stable tag: 1.3-dev',$readme);
   $this->assertStringContainsString('= 1.2 =',$readme);
   $this->assertStringContainsString("Version: 1.3-dev",$plugin);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.3-dev'",$plugin);
