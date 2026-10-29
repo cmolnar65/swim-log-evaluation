@@ -32,6 +32,7 @@ final class Admin_Structured_Workouts {
         $default = array( 'version' => 1, 'unit' => 'm', 'sections' => array( array( 'type' => 'section', 'label' => 'Main Set', 'children' => array( array( 'type' => 'step', 'distance' => 100, 'stroke' => 'FR' ) ) ) ) );
         $document = $current ? $current['document'] : $default;
         $locked = $current ? Structured_Workout_Store::is_locked( $current['id'], $owner ) : false;
+        wp_enqueue_style( 'swimlog-structured-editor-layout', SWIMLOG_EVALUATION_URL . 'assets/css/structured-workout-editor.css', array(), SWIMLOG_EVALUATION_VERSION );
         wp_enqueue_script( 'swimlog-structured-editor', SWIMLOG_EVALUATION_URL . 'assets/js/structured-workout-editor.js', array(), SWIMLOG_EVALUATION_VERSION, true );
         ?>
         <div class="wrap swimlog-admin">
