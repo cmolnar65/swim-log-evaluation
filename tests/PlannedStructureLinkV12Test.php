@@ -15,6 +15,7 @@ final class PlannedStructureLinkV12Test extends TestCase {
         global $wpdb;
         $previous = $wpdb;
         $wpdb = new class {
+            public $prefix = 'wp_';
             public function prepare( $query ) { return $query; }
             public function get_row() { return null; }
         };
