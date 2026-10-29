@@ -101,7 +101,7 @@ final class Workout {
 			$wpdb->prepare('w.workout_start <= %s',$end)
 		);
 		$sql_where=implode(' AND ',$where);
-		return $wpdb->get_results("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM $w w INNER JOIN $n n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC");
+		return $wpdb->get_results($wpdb->prepare("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM %i w INNER JOIN %i n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC",$w,$n));
 	}
 
 
