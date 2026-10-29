@@ -17,6 +17,9 @@ final class Plugin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-collection.php';
 		add_action( 'init', array( 'SwimLogEvaluation\\Training_Plan_Collection', 'register' ) );
 		add_action( 'init', array( 'SwimLogEvaluation\\Structured_Workout_Store', 'register' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-structured-transfers.php';
+		add_action( 'admin_post_swimlog_structure_download', array( 'SwimLogEvaluation\\Admin_Structured_Transfers', 'download' ) );
+		add_action( 'admin_post_swimlog_structure_convert', array( 'SwimLogEvaluation\\Admin_Structured_Transfers', 'convert' ) );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-layout-templates.php';
 		Layout_Templates::register();
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );

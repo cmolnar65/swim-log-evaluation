@@ -90,6 +90,9 @@ final class Admin_Structured_Workouts {
 
     public static function page() {
         if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'Permission denied.', 'chriss-swim-training-progress-evaluation' ) );
+        require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-structured-transfers.php';
+        wp_enqueue_script( 'swimlog-structured-transfers', SWIMLOG_EVALUATION_URL . 'assets/js/structured-workout-transfer.js', array(), SWIMLOG_EVALUATION_VERSION, true );
+        wp_enqueue_style( 'swimlog-structured-transfers', SWIMLOG_EVALUATION_URL . 'assets/css/structured-workout-transfer.css', array(), SWIMLOG_EVALUATION_VERSION );
         $owner = get_current_user_id();
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only owner-scoped edit selector.
         $id = isset( $_GET['edit'] ) ? absint( wp_unslash( $_GET['edit'] ) ) : 0;
@@ -105,6 +108,7 @@ final class Admin_Structured_Workouts {
         <div class="wrap swimlog-admin">
           <h1><?php esc_html_e( 'Structured Workouts', 'chriss-swim-training-progress-evaluation' ); ?></h1>
           <p><?php esc_html_e( 'Create reusable structured prescriptions. These are private and do not alter existing planned or recorded workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+          <?php Admin_Structured_Transfers::preview_panel(); ?>
           <details><summary><strong><?php esc_html_e( 'Import a training plan PDF', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary>
             <p><?php esc_html_e( 'Extract selectable PDF text for private review. No workouts are created in this phase.', 'chriss-swim-training-progress-evaluation' ); ?></p>
             <form method="post" enctype="multipart/form-data">
@@ -206,6 +210,7 @@ final class Admin_Structured_Workouts {
             <input type="hidden" id="swimlog-structure-document" name="structure_document">
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
           </form><?php else : ?><pre><?php echo esc_html( wp_json_encode( $document, JSON_PRETTY_PRINT ) ); ?></pre><?php endif; ?>
+          <?php if ( $current ) Admin_Structured_Transfers::controls( $current['id'], true ); ?>
           <h2><?php esc_html_e( 'Saved workouts', 'chriss-swim-training-progress-evaluation' ); ?></h2>
           <?php
           // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter.
@@ -257,6 +262,7 @@ final class Admin_Structured_Workouts {
                     <td><?php echo $valid ? esc_html( implode( ', ', $stroke_parts ) ) : '&mdash;'; ?></td>
                     <td><?php echo esc_html( get_date_from_gmt( $item->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
                     <td><a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php echo $item_locked ? esc_html__( 'View locked', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a>
+                    <?php Admin_Structured_Transfers::controls( $item->ID ); ?>
                     <form method="post" style="display:inline">
                       <?php wp_nonce_field( 'swimlog_structure_lifecycle' ); ?>
                       <input type="hidden" name="structure_id" value="<?php echo esc_attr( $item->ID ); ?>">

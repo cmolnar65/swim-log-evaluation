@@ -50,3 +50,10 @@ jobs:
         run: |
           set -euo pipefail
           wp-env run cli wp eval "$(tail -n +2 tests/training-plan-integration.php)"
+
+      - name: Verify recorded conversion and prescription exports
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/structured-transfer-integration.php)" | tee "$RUNNER_TEMP/structured-transfers.log"
+          python -m pip install garmin-fit-sdk==21.218.0
+          python tests/verify-structured-fit.py "$RUNNER_TEMP/structured-transfers.log"

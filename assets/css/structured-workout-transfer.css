@@ -1,0 +1,4 @@
+.swimlog-conversion-preview { border:1px solid #c3c4c7; padding:16px; margin:16px 0; background:#fff; }
+.swimlog-prescription-text { white-space:pre-wrap; overflow-wrap:anywhere; max-width:100%; box-sizing:border-box; }
+textarea.swimlog-prescription-text { font-family:monospace; width:100%; }
+.swimlog-transfer-actions { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
