@@ -155,7 +155,8 @@ final class Workout {
 		$t = Database::table( 'trackpoints' );
 		$points = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT recorded_at,latitude,longitude,distance_m,cadence FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",
+				"SELECT recorded_at,latitude,longitude,distance_m,cadence FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
+				$t,
 				$workout_id
 			)
 		);
