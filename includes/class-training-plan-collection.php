@@ -7,7 +7,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * A collection is metadata only; the original PDF is not published or shared.
  */
 final class Training_Plan_Collection {
-    const POST_TYPE = 'swimlog_training_plan';
+    const POST_TYPE = 'swimlog_train_plan';
+    // Compatibility with the former overlong name if legacy database rows were truncated to 20 characters.
+    const LEGACY_POST_TYPE = 'swimlog_training_pla';
+
+    public static function post_types() {
+        return array( self::POST_TYPE, self::LEGACY_POST_TYPE );
+    }
     const META_PLAN = '_swimlog_training_plan_id';
     const META_SEQUENCE = '_swimlog_training_plan_sequence';
     const META_WEEK = '_swimlog_training_plan_week';
@@ -15,7 +21,7 @@ final class Training_Plan_Collection {
     const META_COUNT = '_swimlog_training_plan_count';
 
     public static function register() {
-        register_post_type( self::POST_TYPE, array(
+        foreach ( self::post_types() as $type ) register_post_type( $type, array(
             'label' => __( 'Private Training Plans', 'chriss-swim-training-progress-evaluation' ),
             'public' => false, 'show_ui' => false, 'show_in_rest' => false,
             'exclude_from_search' => true, 'supports' => array( 'title', 'author' ),
@@ -52,7 +58,7 @@ final class Training_Plan_Collection {
 
     public static function get( $id, $owner_id ) {
         $post = get_post( absint( $id ) );
-        if ( ! $post || self::POST_TYPE !== $post->post_type || (int) $post->post_author !== absint( $owner_id ) ) {
+        if ( ! $post || ! in_array( $post->post_type, self::post_types(), true ) || (int) $post->post_author !== absint( $owner_id ) ) {
             return new \WP_Error( 'swimlog_plan_not_found', 'Training plan not found.' );
         }
         return $post;

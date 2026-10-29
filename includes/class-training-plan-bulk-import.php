@@ -29,18 +29,21 @@ final class Training_Plan_Bulk_Import {
         $candidates = array();
         if ( ! is_array( $parsed['workouts'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Invalid candidate list.' );
         foreach ( $parsed['workouts'] as $candidate ) {
-            if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'], $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
+            if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'], $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) || ! is_int( $candidate['sequence'] ) || $candidate['sequence'] < 1 ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
+            foreach ( $candidate['source_lines'] as $line ) {
+                if ( ! is_string( $line ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout source line.' );
+            }
             if ( ! in_array( (int) $candidate['sequence'], $selected, true ) ) continue;
             $review = Training_Plan_Review::assess( $candidate );
             if ( ! $review['ready'] ) return new \WP_Error( 'swimlog_bulk_unverified', 'All selected workouts must have verified totals and no review flags.' );
             $summary = Structured_Workout::summarize( $candidate['document'] );
-            if ( is_wp_error( $summary ) || abs( (float) $summary['totals']['distance'] - (float) $review['calculated'] ) > 0.001 ) {
+            if ( is_wp_error( $summary ) || $summary['unit'] !== $review['unit'] || abs( (float) $summary['totals']['distance'] - (float) $review['calculated'] ) > 0.001 ) {
                 return new \WP_Error( 'swimlog_bulk_invalid', 'A selected workout failed structure validation.' );
             }
             $candidates[] = $candidate;
         }
         if ( count( $candidates ) !== count( $selected ) ) return new \WP_Error( 'swimlog_bulk_missing', 'A selected workout was not found.' );
-        $existing = get_posts( array( 'post_type' => Training_Plan_Collection::POST_TYPE, 'author' => $owner_id,
+        $existing = get_posts( array( 'post_type' => Training_Plan_Collection::post_types(), 'author' => $owner_id,
             'post_status' => 'private', 'posts_per_page' => 1, 'fields' => 'ids',
             // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Exact SHA-256 deduplication key on an owner's existing private plans, returns at most one ID; core owns metadata caching and invalidation.
             'meta_query' => array( array( 'key' => self::META_FINGERPRINT, 'value' => $fingerprint ) ) ) );

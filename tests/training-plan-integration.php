@@ -46,11 +46,13 @@ try {
         return get_posts( array( 'post_type' => array( Store::POST_TYPE, Collection::POST_TYPE ), 'author' => $owner, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) );
     };
     $run( 'import persistence, selection, duplicates and ownership', function() use ( $verify, $owner, $users, $parsed, $fingerprint, &$imported, &$structures ) {
+        $verify( is_wp_error( Import::run( $owner, 'Malformed', array( 'workouts' => array( array() ) ), array( 1 ), $fingerprint ) ), 'Malformed candidate accepted.' );
+        $verify( is_wp_error( Import::run( $owner, 'Nested selection', $parsed, array( array( 1 ) ), $fingerprint ) ), 'Nested selection accepted.' );
         $verify( is_wp_error( Import::run( $owner, 'Invalid selection', $parsed, array( 99 ), $fingerprint ) ), 'Missing selection must fail.' );
         $bad = Parser::parse( "Workout 1\n100 yards free\nTotal: 200 yards" );
         $verify( is_wp_error( Import::run( $owner, 'Mismatched', $bad, array( 1 ), $fingerprint ) ), 'Unverified total must fail.' );
         $imported = Import::run( $owner, 'Synthetic private collection', $parsed, array( 1, 2 ), $fingerprint );
-        $verify( ! is_wp_error( $imported ) && 2 === $imported['count'], 'Import two verified candidates.' );
+        $verify( ! is_wp_error( $imported ) && 2 === $imported['count'], 'Import two verified candidates: ' . ( is_wp_error( $imported ) ? $imported->get_error_code() . ' ' . $imported->get_error_message() : wp_json_encode( $imported ) ) );
         $structures = Collection::workouts( $owner, $imported['plan_id'] );
         $verify( 2 === count( $structures ), 'Persist both structures.' );
         $verify( 'private' === get_post_status( $imported['plan_id'] ), 'Collection must be private.' );
@@ -103,7 +105,11 @@ try {
         $verify( abs( 365.76 - (float) $a->planned_distance_m ) < 0.001 && 'yd' === $a->pool_course, 'Yard conversion failed.' );
         $verify( 400.0 === (float) $b->planned_distance_m && 'm' === $b->pool_course, 'Meter distance changed.' );
         $verify( is_wp_error( Scheduler::schedule( $owner, $imported['plan_id'], array( $ids[0] => $monday->format( 'Y-m-d' ) ) ) ), 'Already-scheduled structure accepted.' );
-        update_user_meta( $owner, 'swimlog_calendar_first_day', 'monday' );
+        foreach ( array( 'saturday', 'sunday', 'monday' ) as $first_day ) {
+            update_user_meta( $owner, 'swimlog_calendar_first_day', $first_day );
+            $week = Calendar::for_user( $owner, $monday->format( 'Y-m-d' ), $monday->modify( '+6 days' )->format( 'Y-m-d' ) );
+            $verify( $week['range']['first_day'] === $first_day && 'America/Denver' === $week['range']['timezone'], 'Calendar ignored week start or site timezone.' );
+        }
         $calendar = Calendar::for_user( $owner, $monday->format( 'Y-m-d' ), $monday->modify( '+6 days' )->format( 'Y-m-d' ) );
         $verify( ! is_wp_error( $calendar ) && false !== strpos( wp_json_encode( $calendar ), $a->title ), 'Calendar did not contain scheduled workouts.' );
         $copies = Plan::duplicate_week( $owner, $monday->format( 'Y-m-d' ), $monday->modify( '+7 days' )->format( 'Y-m-d' ) );
@@ -111,7 +117,7 @@ try {
     } );
     $run( 'schedule link failure removes only new rows and links', function() use ( $verify, $owner, $parsed ) {
         $batch = Import::run( $owner, 'Rollback schedule', $parsed, array( 1, 2 ), hash( 'sha256', 'schedule rollback' ) );
-        $verify( ! is_wp_error( $batch ), 'Prepare failure fixture.' );
+        $verify( ! is_wp_error( $batch ), 'Prepare failure fixture: ' . ( is_wp_error( $batch ) ? $batch->get_error_message() : 'ok' ) );
         $items = Collection::workouts( $owner, $batch['plan_id'] );
         $before = count( Plan::all_for_user( $owner ) );
         $second = (int) $items[1]->ID;
