@@ -5,6 +5,12 @@ PLUGIN_SLUG="chriss-swim-training-progress-evaluation"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 BUILD_DIR="$REPO_ROOT/build"
+STAGE_ONLY=false
+if [[ "${1:-}" == "--stage-only" ]]; then
+    STAGE_ONLY=true
+    shift
+    [[ -n "${1:-}" ]] || { echo "A staging destination is required." >&2; exit 1; }
+fi
 OUTPUT="${1:-$BUILD_DIR/chriss-swim-training-progress-evaluation.zip}"
 
 if [[ "$OUTPUT" = /* ]]; then
@@ -36,6 +42,8 @@ EXCLUDE_TOP_LEVEL=(
     "PLUGIN-CHECK.md"
     "wordpress-org-assets"
     "build"
+    "docs"
+    "REST-API.md"
 )
 
 mkdir -p -- "$STAGE_DIR"
@@ -78,6 +86,14 @@ rm -rf -- "$STAGE_DIR/vendor"
 )
 test -f "$STAGE_DIR/vendor/autoload.php" || { echo "Missing runtime PDF parser." >&2; exit 1; }
 rm -f -- "$STAGE_DIR/composer.lock"
+
+if [[ "$STAGE_ONLY" == true ]]; then
+    [[ ! -e "$OUTPUT_PATH" ]] || { echo "Staging destination already exists." >&2; exit 1; }
+    mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
+    cp -a -- "$STAGE_DIR" "$OUTPUT_PATH"
+    echo "Production staging complete: $OUTPUT_PATH"
+    exit 0
+fi
 
 mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
 rm -f -- "$OUTPUT_PATH"

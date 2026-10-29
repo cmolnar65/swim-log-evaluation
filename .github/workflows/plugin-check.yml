@@ -1,4 +1,4 @@
-name: Plugin Check Release Package
+name: Plugin Check Production Staging
 
 on:
   workflow_dispatch:
@@ -13,41 +13,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Build clean release package
+      - name: Stage production plugin without distribution archive
         run: |
           set -euo pipefail
-          chmod +x ./build-release.sh
-          ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip"
-          mkdir -p "$RUNNER_TEMP/plugin-build"
-          unzip -q "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip" -d "$RUNNER_TEMP/plugin-build"
+          bash ./build-release.sh --stage-only "$RUNNER_TEMP/plugin-build/chriss-swim-training-progress-evaluation"
 
-      - name: Audit v1.1 release package
+      - name: Audit production staging
         run: |
           set -euo pipefail
-          ZIP="$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip"
-          ROOT="chriss-swim-training-progress-evaluation"
-          unzip -t "$ZIP"
-          unzip -Z1 "$ZIP" > "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/block.json" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/index.js" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/view.js" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/assets/css/calendar.css" "$RUNNER_TEMP/package-files.txt"
-          grep -q "^ \* Version: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/swim-log-evaluation.php"
-          grep -q "^Stable tag: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/readme.txt"
-          ! grep -Eq "^$ROOT/(\.git|\.github|tests|wordpress-org-assets|assets/wordpress-org-assets)(/|$)" "$RUNNER_TEMP/package-files.txt"
-          ! grep -Eq "^$ROOT/(composer\.lock|phpunit\.xml\.dist|build-release\.sh|build-release\.ps1|PLUGIN-CHECK\.md)$" "$RUNNER_TEMP/package-files.txt"
+          ROOT="$RUNNER_TEMP/plugin-build/chriss-swim-training-progress-evaluation"
+          test -f "$ROOT/composer.json"
+          test -f "$ROOT/vendor/autoload.php"
+          test -f "$ROOT/blocks/calendar/block.json"
+          test -f "$ROOT/blocks/calendar/index.js"
+          test -f "$ROOT/blocks/calendar/view.js"
+          test -f "$ROOT/assets/css/calendar.css"
+          for excluded in .git .github tests wordpress-org-assets assets/wordpress-org-assets composer.lock phpunit.xml.dist build-release.sh build-release.ps1 PLUGIN-CHECK.md docs REST-API.md; do
+            test ! -e "$ROOT/$excluded"
+          done
+          test -z "$(find "$ROOT" -type f -iname '*.pdf' -print -quit)"
 
-      - name: Retain exact v1.1 validation package
-        uses: actions/upload-artifact@v4
-        with:
-          name: chriss-swim-training-progress-evaluation-1.1
-          path: ${{ runner.temp }}/chriss-swim-training-progress-evaluation-1.1.zip
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Run WordPress Plugin Check against packaged plugin
+      - name: Run WordPress Plugin Check against production staging
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
