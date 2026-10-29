@@ -84,11 +84,12 @@ final class Blocks {
 			array( 'render_callback' => array( __CLASS__, 'render_progress' ) )
 		);
 
+		$calendar_view = SWIMLOG_EVALUATION_DIR . 'blocks/calendar/view.js';
 		wp_register_script(
 			'swimlog-calendar-view',
 			SWIMLOG_EVALUATION_URL . 'blocks/calendar/view.js',
 			array(),
-			SWIMLOG_EVALUATION_VERSION,
+			is_file( $calendar_view ) ? SWIMLOG_EVALUATION_VERSION . '.' . filemtime( $calendar_view ) : SWIMLOG_EVALUATION_VERSION,
 			true
 		);
 
@@ -352,7 +353,7 @@ final class Blocks {
 		foreach ( $labels[ $first_day ] as $label ) $html .= '<div class="swimlog-calendar-weekday" role="columnheader">' . esc_html( $label ) . '</div>';
 		for ( $date = $grid_start; $date <= $grid_end; $date = $date->modify( '+1 day' ) ) {
 			$key = $date->format( 'Y-m-d' );$outside = $date->format( 'm' ) !== $month->format( 'm' );
-			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><span class="swimlog-calendar-date">' . esc_html( $date->format( 'j' ) ) . '</span>';
+			$html .= '<div class="swimlog-calendar-day' . ( $outside ? ' is-outside-month' : '' ) . '" role="gridcell" data-date="' . esc_attr( $key ) . '"><button type="button" class="swimlog-calendar-date swimlog-calendar-day-toggle" data-calendar-day="' . esc_attr( $key ) . '" aria-haspopup="dialog" aria-expanded="false" aria-label="' . esc_attr( sprintf( /* translators: %s: full calendar date. */ __( 'Open day details for %s', 'chriss-swim-training-progress-evaluation' ), wp_date( 'l, F j, Y', $date->getTimestamp(), $date->getTimezone() ) ) ) . '">' . esc_html( $date->format( 'j' ) ) . '</button>';
 			if ( $key >= wp_date( 'Y-m-d', null, wp_timezone() ) ) $html .= '<button type="button" class="swimlog-calendar-plan-date" data-calendar-plan-date="' . esc_attr( $key ) . '">' . esc_html__( 'Plan workout', 'chriss-swim-training-progress-evaluation' ) . '</button>';
 			if ( ! empty( $items[ $key ] ) ) $html .= implode( '', $items[ $key ] );
 			$html .= '</div>';

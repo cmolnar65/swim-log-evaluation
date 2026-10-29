@@ -50,7 +50,8 @@ final class Plugin {
 	}
 
 	public function register_calendar_style() {
-		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), SWIMLOG_EVALUATION_VERSION );
+		$calendar_css = SWIMLOG_EVALUATION_DIR . 'assets/css/calendar.css';
+		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), is_file( $calendar_css ) ? SWIMLOG_EVALUATION_VERSION . '.' . filemtime( $calendar_css ) : SWIMLOG_EVALUATION_VERSION );
 		wp_localize_script( 'swimlog-calendar-view', 'wpApiSettings', array( 'nonce' => wp_create_nonce( 'wp_rest' ) ) );
 		wp_localize_script( 'swimlog-calendar-view', 'swimlogCalendarSettings', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'planNonce' => wp_create_nonce( 'swimlog_calendar_plan' ), 'eventNonce' => wp_create_nonce( 'swimlog_calendar_event_result' ) ) );
 	}

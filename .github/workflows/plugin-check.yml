@@ -65,3 +65,10 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/swimlog-browser-tests" --no-save --package-lock=false playwright@1.62.1
           "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps chromium
           NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/pdf-review-browser.cjs "$RUNNER_TEMP/pdf-review.log"
+
+      - name: Verify expanded calendar day on desktop and mobile engines
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/calendar-day-integration.php)" | tee "$RUNNER_TEMP/calendar-day.log"
+          "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps webkit
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/calendar-day-browser.cjs "$RUNNER_TEMP/calendar-day.log"
