@@ -1,7 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/** Static regression guards for the WordPress 6.0+ compatible template path. */
+/** Static regression guards for the WordPress 6.2+ compatible template path. */
 final class LayoutTemplatesV12Test extends TestCase {
     private function source( $file ) {
         return file_get_contents( dirname( __DIR__ ) . '/' . $file );
@@ -70,7 +70,7 @@ final class LayoutTemplatesV12Test extends TestCase {
 
     public function test_plugin_support_and_database_version_remain_unchanged() {
         $main = $this->source( 'swim-log-evaluation.php' );
-        $this->assertStringContainsString( 'Requires at least: 6.0', $main );
+        $this->assertStringContainsString( 'Requires at least: 6.2', $main );
         $this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
         $this->assertStringContainsString( 'Layout_Templates::register()', $this->source( 'includes/class-plugin.php' ) );
     }
