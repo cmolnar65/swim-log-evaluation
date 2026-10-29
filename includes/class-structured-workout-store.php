@@ -26,6 +26,14 @@ final class Structured_Workout_Store {
         return get_posts( array( 'post_type' => self::POST_TYPE, 'author' => absint( $owner_id ),
             'post_status' => 'private', 'posts_per_page' => 100, 'orderby' => 'modified', 'order' => 'DESC' ) );
     }
+    public static function is_locked( $id, $owner_id ) {
+        $structure = self::get( $id, $owner_id );
+        if ( is_wp_error( $structure ) ) return $structure;
+        $plan_id = absint( get_post_meta( absint( $id ), Planned_Structure_Link::META_KEY, true ) );
+        if ( ! $plan_id ) return false;
+        $plan = Planned_Workout::get_for_user( $plan_id, $owner_id );
+        return $plan && ! empty( $plan->completed_workout_id );
+    }
     public static function save( $owner_id, $title, $document, $id = 0 ) {
         $owner_id = absint( $owner_id );
         if ( ! $owner_id || ! user_can( $owner_id, 'swimlog_manage_own_workouts' ) ) {
@@ -39,6 +47,9 @@ final class Structured_Workout_Store {
         if ( $id ) {
             $existing = self::get( $id, $owner_id );
             if ( is_wp_error( $existing ) ) return $existing;
+            $locked = self::is_locked( $id, $owner_id );
+            if ( is_wp_error( $locked ) ) return $locked;
+            if ( $locked ) return new \WP_Error( 'swimlog_structure_locked', 'Recorded-swim prescriptions cannot be changed; duplicate to edit.' );
         }
         $data = array( 'post_type' => self::POST_TYPE, 'post_status' => 'private',
             'post_author' => $owner_id, 'post_title' => sanitize_text_field( $title ),
