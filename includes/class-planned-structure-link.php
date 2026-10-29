@@ -40,6 +40,11 @@ final class Planned_Structure_Link {
         if ( is_wp_error( $structure ) ) return $structure;
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;
+        if ( $existing ) {
+            $locked = Structured_Workout_Store::is_locked( $existing['id'], $owner_id );
+            if ( is_wp_error( $locked ) ) return $locked;
+            if ( $locked && (int) $existing['id'] !== $structure_id ) return new \WP_Error( 'swimlog_structure_locked', 'A recorded-swim prescription cannot be replaced.' );
+        }
         if ( $existing && (int) $existing['id'] !== $structure_id ) {
             return new \WP_Error( 'swimlog_link_existing', 'Unlink the current structure before linking another.' );
         }
@@ -57,6 +62,9 @@ final class Planned_Structure_Link {
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;
         if ( ! $existing ) return true;
+        $locked = Structured_Workout_Store::is_locked( $existing['id'], $owner_id );
+        if ( is_wp_error( $locked ) ) return $locked;
+        if ( $locked ) return new \WP_Error( 'swimlog_structure_locked', 'A recorded-swim prescription cannot be unlinked.' );
         delete_post_meta( $existing['id'], self::META_KEY, absint( $plan_id ) );
         return true;
     }
