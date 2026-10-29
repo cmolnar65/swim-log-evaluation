@@ -9,23 +9,44 @@ final class Admin_Dashboard {
         $table = Database::table( 'workouts' );
         $now = new \DateTimeImmutable( 'now', wp_timezone() );
         $start = 'all' === $range ? null : $now->modify( '-' . (int) $range . ' months' )->format( 'Y-m-d H:i:s' );
-        $where = $wpdb->prepare( 'user_id = %d', $user_id );
-        if ( $start ) $where .= $wpdb->prepare( ' AND workout_start >= %s', $start );
-        $where .= $wpdb->prepare( ' AND workout_start <= %s', $now->format( 'Y-m-d H:i:s' ) );
-        $totals = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE $where", $table ) );
-        $volume = $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(workout_start,'%Y-%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE $where GROUP BY DATE_FORMAT(workout_start,'%Y-%m') ORDER BY month ASC", $table ) );
-        return array( 'totals' => $totals, 'volume' => $volume, 'start' => $start, 'end' => $now->format( 'Y-m-d H:i:s' ) );
+        $end = $now->format( 'Y-m-d H:i:s' );
+        $start_value = null === $start ? '' : $start;
+        $cache_key = 'summary_' . md5( wp_json_encode( array( $user_id, $range, $end ) ) );
+        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
+        if ( false !== $cached ) return $cached;
+        // The plugin owns these custom tables; SQL identifiers and values are prepared.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        $totals = $wpdb->get_row( $wpdb->prepare(
+            "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s",
+            $table, $user_id, $start_value, $start_value, $end
+        ) );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        $volume = $wpdb->get_results( $wpdb->prepare(
+            "SELECT DATE_FORMAT(workout_start,'%%Y-%%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s GROUP BY DATE_FORMAT(workout_start,'%%Y-%%m') ORDER BY month ASC",
+            $table, $user_id, $start_value, $start_value, $end
+        ) );
+        $result = array( 'totals' => $totals, 'volume' => $volume, 'start' => $start, 'end' => $end );
+        wp_cache_set( $cache_key, $result, 'swimlog_dashboard', 60 );
+        return $result;
     }
 
     public static function swolf( $user_id, $start, $end, $course, $stroke ) {
         global $wpdb;
         $workouts = Database::table( 'workouts' );
         $lengths = Database::table( 'lengths' );
-        $where = $wpdb->prepare( "w.user_id = %d AND w.workout_type = 'pool' AND w.pool_length_unit = %s AND n.length_type = 'active' AND n.swolf_score IS NOT NULL AND n.swolf_score > 0 AND w.workout_start <= %s", $user_id, $course, $end );
-        if ( $start ) $where .= $wpdb->prepare( ' AND w.workout_start >= %s', $start );
-        if ( 'all' !== $stroke ) $where .= $wpdb->prepare( ' AND n.stroke = %s', $stroke );
-        // Group by native pool length: a 25 m SWOLF must never be averaged with 50 m.
-        return $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(w.workout_start,'%Y-%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM %i w INNER JOIN %i n ON n.workout_id = w.id WHERE $where AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%Y-%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC", $workouts, $lengths ) );
+        $start_value = null === $start ? '' : $start;
+        $stroke_value = 'all' === $stroke ? '' : $stroke;
+        $cache_key = 'swolf_' . md5( wp_json_encode( array( $user_id, $start_value, $end, $course, $stroke_value ) ) );
+        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
+        if ( false !== $cached ) return $cached;
+        // SWOLF is grouped by native pool length; different lengths must not be mixed.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT DATE_FORMAT(w.workout_start,'%%Y-%%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM %i w INNER JOIN %i n ON n.workout_id = w.id WHERE w.user_id = %d AND w.workout_type = 'pool' AND w.pool_length_unit = %s AND n.length_type = 'active' AND n.swolf_score IS NOT NULL AND n.swolf_score > 0 AND w.workout_start <= %s AND (%s = '' OR w.workout_start >= %s) AND (%s = '' OR n.stroke = %s) AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%%Y-%%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC",
+            $workouts, $lengths, $user_id, $course, $end, $start_value, $start_value, $stroke_value, $stroke_value
+        ) );
+        wp_cache_set( $cache_key, $rows, 'swimlog_dashboard', 60 );
+        return $rows;
     }
 
     private static function link( $page, $user_id, $args = array() ) {
