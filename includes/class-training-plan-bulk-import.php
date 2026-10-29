@@ -18,12 +18,18 @@ final class Training_Plan_Bulk_Import {
         if ( ! is_string( $fingerprint ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) {
             return new \WP_Error( 'swimlog_bulk_source', 'Invalid source fingerprint.' );
         }
-        $selected = array_values( array_unique( array_map( 'absint', (array) $sequences ) ) );
+        if ( ! is_array( $sequences ) ) return new \WP_Error( 'swimlog_bulk_selection', 'Select valid workout numbers.' );
+        foreach ( $sequences as $sequence ) {
+            if ( ( ! is_int( $sequence ) && ! is_string( $sequence ) ) || ! preg_match( '/^[1-9][0-9]*$/', (string) $sequence ) ) return new \WP_Error( 'swimlog_bulk_selection', 'Select valid workout numbers.' );
+        }
+        $selected = array_values( array_unique( array_map( 'absint', $sequences ) ) );
         if ( ! $selected || count( $selected ) > 500 || in_array( 0, $selected, true ) ) {
             return new \WP_Error( 'swimlog_bulk_selection', 'Select one or more workouts.' );
         }
         $candidates = array();
+        if ( ! is_array( $parsed['workouts'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Invalid candidate list.' );
         foreach ( $parsed['workouts'] as $candidate ) {
+            if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'], $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
             if ( ! in_array( (int) $candidate['sequence'], $selected, true ) ) continue;
             $review = Training_Plan_Review::assess( $candidate );
             if ( ! $review['ready'] ) return new \WP_Error( 'swimlog_bulk_unverified', 'All selected workouts must have verified totals and no review flags.' );
@@ -47,7 +53,7 @@ final class Training_Plan_Bulk_Import {
             $id = Structured_Workout_Store::save( $owner_id, $title, $candidate['document'] );
             if ( ! is_wp_error( $id ) ) {
                 $created[] = (int) $id;
-                $linked = Training_Plan_Collection::attach( $owner_id, $plan_id, $id, $index + 1, absint( $candidate['week'] ) );
+                $linked = Training_Plan_Collection::attach( $owner_id, $plan_id, $id, $index + 1, absint( $candidate['week'] ?? 0 ) );
             } else {
                 $linked = $id;
             }
@@ -58,6 +64,11 @@ final class Training_Plan_Bulk_Import {
             }
         }
         update_post_meta( $plan_id, self::META_FINGERPRINT, $fingerprint );
+        if ( $fingerprint !== get_post_meta( $plan_id, self::META_FINGERPRINT, true ) ) {
+            foreach ( array_reverse( $created ) as $created_id ) wp_delete_post( $created_id, true );
+            wp_delete_post( $plan_id, true );
+            return new \WP_Error( 'swimlog_bulk_rollback', 'Import fingerprint could not be persisted; new workouts and collection were rolled back.' );
+        }
         return array( 'plan_id' => (int) $plan_id, 'count' => count( $created ) );
     }
 }

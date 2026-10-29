@@ -60,6 +60,23 @@ final class Planned_Structure_Link {
         return true;
     }
 
+    /** Preserve legacy/current recorded history before a plan clears or loses its match. */
+    public static function preserve_recorded_lock( $plan_id, $owner_id ) {
+        $plan = Planned_Workout::get_for_user( $plan_id, $owner_id );
+        if ( ! $plan ) return new \WP_Error( 'swimlog_plan_not_found', 'Planned workout not found.' );
+        if ( empty( $plan->completed_workout_id ) ) return true;
+        $structure = self::for_plan( $plan_id, $owner_id );
+        if ( is_wp_error( $structure ) ) return $structure;
+        if ( ! $structure ) return true;
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
+        if ( absint( get_post_meta( $structure['id'], Structured_Workout_Store::META_RECORDED, true ) ) ) return true;
+        update_post_meta( $structure['id'], Structured_Workout_Store::META_RECORDED, absint( $plan->completed_workout_id ) );
+        if ( ! absint( get_post_meta( $structure['id'], Structured_Workout_Store::META_RECORDED, true ) ) ) {
+            return new \WP_Error( 'swimlog_structure_history', 'Could not preserve recorded-swim prescription history. The planned workout was not changed.' );
+        }
+        return true;
+    }
+
     public static function detach( $plan_id, $owner_id ) {
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;

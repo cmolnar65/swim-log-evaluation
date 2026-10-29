@@ -166,7 +166,7 @@ final class Planned_Workout {
 		$source = self::valid_date( $source_start );
 		$target = self::valid_date( $target_start );
 		if ( ! $user_id || ! $source || ! $target ) return new \WP_Error( 'swimlog_planned_workout_week', __( 'Select valid source and target week dates.', 'chriss-swim-training-progress-evaluation' ) );
-		$source_end = $source->modify( '+6 days' );
+		$source_end = $source->modify( '+7 days' );
 		$plans = self::range_for_user( $user_id, $source->format( 'Y-m-d' ), $source_end->format( 'Y-m-d' ) );
 		$today = wp_date( 'Y-m-d', null, wp_timezone() );
 		foreach ( (array) $plans as $plan ) {
@@ -228,6 +228,9 @@ final class Planned_Workout {
 		if ( ! in_array( $status, self::STATUSES, true ) ) return new \WP_Error( 'swimlog_planned_workout_status', __( 'Select a valid planned-workout status.', 'chriss-swim-training-progress-evaluation' ) );
 		if ( 'completed' === $status ) return new \WP_Error( 'swimlog_planned_workout_completion', __( 'Associate the recorded workout to mark this plan completed.', 'chriss-swim-training-progress-evaluation' ) );
 
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+		$history = Planned_Structure_Link::preserve_recorded_lock( $id, $user_id );
+		if ( is_wp_error( $history ) ) return $history;
 		$table = Database::table( 'planned_workouts' );
 		$result = Database::write( 'update', 
 			$table,
@@ -294,6 +297,9 @@ final class Planned_Workout {
 		$id = absint( $id );
 		$user_id = absint( $user_id );
 		if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+		$history = Planned_Structure_Link::preserve_recorded_lock( $id, $user_id );
+		if ( is_wp_error( $history ) ) return $history;
 		$table = Database::table( 'planned_workouts' );
 		$result = Database::write( 'update', 
 			$table,
@@ -310,6 +316,9 @@ final class Planned_Workout {
 		$id = absint( $id );
 		$user_id = absint( $user_id );
 		if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+		$history = Planned_Structure_Link::preserve_recorded_lock( $id, $user_id );
+		if ( is_wp_error( $history ) ) return $history;
 		$table = Database::table( 'planned_workouts' );
 		$result = Database::write( 'delete',  $table, array( 'id' => $id, 'user_id' => $user_id ), array( '%d', '%d' ) );
 		return false === $result

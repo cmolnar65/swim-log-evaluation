@@ -17,8 +17,9 @@ final class Training_Plan_Scheduler {
         $validated = array();
         foreach ( $assignments as $structure_id => $date ) {
             $id = absint( $structure_id );
-            if ( ! isset( $allowed[$id] ) || ! is_string( $date ) ) return new \WP_Error( 'swimlog_schedule_ownership', 'Workout does not belong to this training plan.' );
-            $day = \DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
+            if ( ! preg_match( '/^[1-9][0-9]*$/', (string) $structure_id ) || ! isset( $allowed[$id] ) || ! is_string( $date ) ) return new \WP_Error( 'swimlog_schedule_ownership', 'Workout does not belong to this training plan.' );
+            if ( ! preg_match( '/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/D', $date ) ) return new \WP_Error( 'swimlog_schedule_date', 'Choose valid current or future dates.' );
+            $day = \DateTimeImmutable::createFromFormat( '!Y-m-d', $date, wp_timezone() );
             if ( ! $day || $day->format( 'Y-m-d' ) !== $date || $date < wp_date( 'Y-m-d', null, wp_timezone() ) ) return new \WP_Error( 'swimlog_schedule_date', 'Choose current or future dates.' );
             $existing = absint( get_post_meta( $id, Planned_Structure_Link::META_KEY, true ) );
             if ( $existing ) return new \WP_Error( 'swimlog_schedule_existing', 'One of the selected workouts is already scheduled.' );

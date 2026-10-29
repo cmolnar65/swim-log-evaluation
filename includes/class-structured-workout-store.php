@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Structured_Workout_Store {
     const POST_TYPE = 'swimlog_structure';
     const META_HIDDEN = '_swimlog_structure_hidden';
+    const META_RECORDED = '_swimlog_structure_recorded_workout_id';
     public static function register() {
         register_post_type( self::POST_TYPE, array(
             'label' => __( 'Structured Swim Workouts', 'chriss-swim-training-progress-evaluation' ),
@@ -41,6 +42,7 @@ final class Structured_Workout_Store {
     public static function has_history( $id, $owner_id ) {
         $item = self::get( $id, $owner_id );
         if ( is_wp_error( $item ) ) return $item;
+        if ( absint( get_post_meta( absint( $id ), self::META_RECORDED, true ) ) ) return true;
         // Both collection membership and planned-workout linkage are historical references.
         if ( absint( get_post_meta( absint( $id ), Training_Plan_Collection::META_PLAN, true ) ) ) return true;
         if ( absint( get_post_meta( absint( $id ), Planned_Structure_Link::META_KEY, true ) ) ) return true;
@@ -65,6 +67,7 @@ final class Structured_Workout_Store {
     public static function is_locked( $id, $owner_id ) {
         $structure = self::get( $id, $owner_id );
         if ( is_wp_error( $structure ) ) return $structure;
+        if ( absint( get_post_meta( absint( $id ), self::META_RECORDED, true ) ) ) return true;
         $plan_id = absint( get_post_meta( absint( $id ), Planned_Structure_Link::META_KEY, true ) );
         if ( ! $plan_id ) return false;
         $plan = Planned_Workout::get_for_user( $plan_id, $owner_id );

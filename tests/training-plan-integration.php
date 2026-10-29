@@ -69,7 +69,7 @@ try {
     } );
     $run( 'partial import failure rolls back all new posts', function() use ( $verify, $owner, $parsed, $post_ids ) {
         wp_set_current_user( $owner ); $before = count( $post_ids( $owner ) ); $attempt = 0;
-        $inject = static function( $empty, $post ) use ( &$attempt ) { return Store::POST_TYPE === $post['post_type'] && 2 === ++$attempt ? true : $empty; };
+        $inject = static function( $empty, $post ) use ( &$attempt ) { if ( Store::POST_TYPE !== $post['post_type'] ) return $empty; return 2 === ++$attempt ? true : $empty; };
         add_filter( 'wp_insert_post_empty_content', $inject, 10, 2 );
         try { $result = Import::run( $owner, 'Injected failure', $parsed, array( 1, 2 ), hash( 'sha256', 'insert failure' ) ); }
         finally { remove_filter( 'wp_insert_post_empty_content', $inject, 10 ); }

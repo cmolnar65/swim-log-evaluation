@@ -43,6 +43,10 @@ final class Training_Plan_Collection {
         if ( is_wp_error( $id ) ) return $id;
         update_post_meta( $id, self::META_COUNT, $total );
         update_post_meta( $id, self::META_SOURCE, sanitize_text_field( $source ) );
+        if ( $total !== (int) get_post_meta( $id, self::META_COUNT, true ) || sanitize_text_field( $source ) !== get_post_meta( $id, self::META_SOURCE, true ) ) {
+            wp_delete_post( $id, true );
+            return new \WP_Error( 'swimlog_plan_metadata', 'Could not persist training-plan metadata.' );
+        }
         return $id;
     }
 
@@ -78,9 +82,21 @@ final class Training_Plan_Collection {
         if ( $current && $current !== absint( $plan_id ) ) {
             return new \WP_Error( 'swimlog_plan_assigned', 'Workout already belongs to another plan.' );
         }
-        update_post_meta( $structure_id, self::META_PLAN, absint( $plan_id ) );
-        update_post_meta( $structure_id, self::META_SEQUENCE, $sequence );
-        update_post_meta( $structure_id, self::META_WEEK, absint( $week ) );
+        $values = array( self::META_PLAN => absint( $plan_id ), self::META_SEQUENCE => $sequence, self::META_WEEK => absint( $week ) );
+        $previous = array();
+        foreach ( $values as $key => $value ) {
+            $previous[$key] = array( 'exists' => metadata_exists( 'post', $structure_id, $key ), 'value' => get_post_meta( $structure_id, $key, true ) );
+        }
+        foreach ( $values as $key => $value ) {
+            update_post_meta( $structure_id, $key, $value );
+            if ( (string) $value !== (string) get_post_meta( $structure_id, $key, true ) ) {
+                foreach ( $previous as $restore_key => $old ) {
+                    if ( $old['exists'] ) update_post_meta( $structure_id, $restore_key, $old['value'] );
+                    else delete_post_meta( $structure_id, $restore_key );
+                }
+                return new \WP_Error( 'swimlog_plan_metadata', 'Could not persist workout collection membership.' );
+            }
+        }
         return true;
     }
 
