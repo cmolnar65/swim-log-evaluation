@@ -23,6 +23,9 @@ final class Admin_Garmin_History {
         if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history-jobs.php';
         $notice = null;
+        $form_start = self::scalar( $_POST, 'history_start' );
+        $form_end = self::scalar( $_POST, 'history_end' );
+        $form_selected = isset( $_POST['history_categories'] ) && is_array( $_POST['history_categories'] ) ? map_deep( wp_unslash( $_POST['history_categories'] ), 'sanitize_text_field' ) : array();
         if ( isset( $_POST['swimlog_history_action'] ) ) {
             check_admin_referer( 'swimlog_history_control' );
             $action = self::scalar( $_POST, 'swimlog_history_action' );
@@ -42,22 +45,22 @@ final class Admin_Garmin_History {
         <section id="swimlog-garmin-history" aria-labelledby="swimlog-history-title">
             <h2 id="swimlog-history-title"><?php esc_html_e( 'Import historical Garmin data', 'chriss-swim-training-progress-evaluation' ); ?></h2>
             <p><?php esc_html_e( 'Choose inclusive dates and supported categories. Imports run in background batches and continue after you close this page. Garmin may not provide every historical record. Existing records are retained; exact duplicates are skipped and ambiguous matches require review.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-            <?php if ( is_wp_error( $notice ) ) : ?><p role="alert"><?php echo esc_html( $notice->get_error_message() . ' (' . $notice->get_error_code() . ')' ); ?></p><?php endif; ?>
+            <?php if ( is_wp_error( $notice ) ) : ?><p role="alert"><?php echo esc_html( $notice->get_error_message() ); ?></p><?php endif; ?>
             <form method="post" class="swimlog-history-start">
                 <?php wp_nonce_field( 'swimlog_history_control' ); ?>
                 <input type="hidden" name="swimlog_history_action" value="start">
-                <p><label for="swimlog-history-start"><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-start" type="date" name="history_start" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
-                <p><label for="swimlog-history-end"><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-end" type="date" name="history_end" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
+                <p><label for="swimlog-history-start"><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-start" type="date" name="history_start" value="<?php echo esc_attr( $form_start ); ?>" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
+                <p><label for="swimlog-history-end"><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-end" type="date" name="history_end" value="<?php echo esc_attr( $form_end ); ?>" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
                 <fieldset><legend><?php esc_html_e( 'Categories to import', 'chriss-swim-training-progress-evaluation' ); ?></legend>
                 <?php foreach ( array( 'lap_swimming' => __( 'Pool swims', 'chriss-swim-training-progress-evaluation' ), 'open_water_swimming' => __( 'Open-water swims', 'chriss-swim-training-progress-evaluation' ), 'weight' => __( 'Weight', 'chriss-swim-training-progress-evaluation' ), 'body_composition' => __( 'Body composition (BMI only)', 'chriss-swim-training-progress-evaluation' ), 'spo2' => __( 'SpO2 provider summaries', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?>
-                <label class="swimlog-history-choice"><input type="checkbox" name="history_categories[]" value="<?php echo esc_attr( $key ); ?>"> <?php echo esc_html( $label ); ?></label>
+                <label class="swimlog-history-choice"><input type="checkbox" name="history_categories[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( in_array( $key, $form_selected, true ) ); ?>> <?php echo esc_html( $label ); ?></label>
                 <?php endforeach; ?></fieldset>
                 <p><?php esc_html_e( 'One unfinished job per swimmer. Pause or resume it, or cancel before starting another range. This does not enable regular automatic synchronization. Blood pressure, unverified composition fields and individual/hourly SpO2 readings are not imported.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 <?php submit_button( __( 'Start historical import', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'start_history', false ); ?>
             </form>
             <?php if ( is_array( $job ) ) self::status( $job, $offset, $filter ); ?>
             <h3><?php esc_html_e( 'Recent historical jobs', 'chriss-swim-training-progress-evaluation' ); ?></h3><ul>
-            <?php foreach ( Garmin_History_Jobs::recent() as $recent ) : ?><li><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $recent['id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $recent['start'] . ' — ' . $recent['end'] . ' · ' . $recent['status'] ); ?></a></li><?php endforeach; ?>
+            <?php foreach ( Garmin_History_Jobs::recent() as $recent ) : ?><li><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $recent['id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $recent['start'] . ' — ' . $recent['end'] . ' · ' . self::label( $recent['status'] ) ); ?></a></li><?php endforeach; ?>
             </ul>
         </section>
         <?php
@@ -65,6 +68,36 @@ final class Admin_Garmin_History {
     private static function button( $job, $action, $label ) {
         ?><form method="post"><?php wp_nonce_field( 'swimlog_history_control' ); ?><input type="hidden" name="swimlog_history_action" value="<?php echo esc_attr( $action ); ?>"><input type="hidden" name="history_job" value="<?php echo esc_attr( $job['id'] ); ?>"><?php submit_button( $label, 'secondary', 'history_control', false ); ?></form><?php
     }
+
+    private static function label( $value ) {
+        $labels = array(
+            'page' => __( 'Activity discovery', 'chriss-swim-training-progress-evaluation' ),
+            'activity' => __( 'Recorded swim', 'chriss-swim-training-progress-evaluation' ),
+            'measurement' => __( 'Measurements', 'chriss-swim-training-progress-evaluation' ),
+            'weight' => __( 'Weight', 'chriss-swim-training-progress-evaluation' ),
+            'body_composition' => __( 'BMI', 'chriss-swim-training-progress-evaluation' ),
+            'spo2' => __( 'SpO2 summaries', 'chriss-swim-training-progress-evaluation' ),
+            'queued' => __( 'Queued', 'chriss-swim-training-progress-evaluation' ),
+            'working' => __( 'In progress', 'chriss-swim-training-progress-evaluation' ),
+            'running' => __( 'Running', 'chriss-swim-training-progress-evaluation' ),
+            'waiting' => __( 'Waiting before retry', 'chriss-swim-training-progress-evaluation' ),
+            'paused' => __( 'Paused', 'chriss-swim-training-progress-evaluation' ),
+            'blocked' => __( 'Blocked', 'chriss-swim-training-progress-evaluation' ),
+            'complete' => __( 'Finished', 'chriss-swim-training-progress-evaluation' ),
+            'completed' => __( 'Completed', 'chriss-swim-training-progress-evaluation' ),
+            'completed_with_errors' => __( 'Completed with errors', 'chriss-swim-training-progress-evaluation' ),
+            'cancelled' => __( 'Cancelled', 'chriss-swim-training-progress-evaluation' ),
+            'failed' => __( 'Failed', 'chriss-swim-training-progress-evaluation' ),
+            'review' => __( 'Needs review', 'chriss-swim-training-progress-evaluation' ),
+            'imported' => __( 'Imported', 'chriss-swim-training-progress-evaluation' ),
+            'already' => __( 'Already present', 'chriss-swim-training-progress-evaluation' ),
+            'no_data' => __( 'No data returned', 'chriss-swim-training-progress-evaluation' ),
+            'not_attempted' => __( 'Not attempted', 'chriss-swim-training-progress-evaluation' ),
+            'unsupported_data' => __( 'No supported values', 'chriss-swim-training-progress-evaluation' )
+        );
+        return $labels[$value] ?? $value;
+    }
+
     private static function failure_message( $code ) {
         if ( false !== strpos( $code, 'capacity' ) ) return __( 'The job storage limit was reached. Cancel and choose a smaller range; existing imports are retained.', 'chriss-swim-training-progress-evaluation' );
         if ( 'authorization_or_connection' === $code ) return __( 'Check your Garmin key and import permissions, then resume. Progress has been retained.', 'chriss-swim-training-progress-evaluation' );
@@ -106,9 +139,9 @@ final class Admin_Garmin_History {
             <?php foreach ( $units['items'] ?? array() as $unit ) :
                 $date = $unit['data']['date'] ?? ( $unit['data']['cursor']['day'] ?? '' );
                 ?>
-                <tr><td><?php echo esc_html( $date . ' · ' . $unit['kind'] . ( isset( $unit['data']['activity_id'] ) ? ' #' . $unit['data']['activity_id'] : '' ) ); ?></td><td><?php echo esc_html( $unit['status'] ); ?></td><td>
+                <tr><td><?php echo esc_html( $date . ' · ' . self::label( $unit['kind'] ) . ( isset( $unit['data']['activity_id'] ) ? ' #' . $unit['data']['activity_id'] : '' ) ); ?></td><td><?php echo esc_html( self::label( $unit['status'] ) ); ?></td><td>
                 <?php if ( $unit['error'] ) : ?><p><?php echo esc_html( self::failure_message( $unit['error'] ) ); ?></p><details><summary><?php esc_html_e( 'Technical details', 'chriss-swim-training-progress-evaluation' ); ?></summary><?php echo esc_html( $unit['error'] ); ?></details><?php endif; ?>
-                <?php foreach ( $unit['outcomes'] as $category => $row ) : ?><p><?php echo esc_html( $category . ': ' . $row['status'] ); ?></p><?php endforeach; ?>
+                <?php foreach ( $unit['outcomes'] as $category => $row ) : ?><p><?php echo esc_html( self::label( $category ) . ': ' . self::label( $row['status'] ) ); ?></p><?php endforeach; ?>
                 <?php if ( 'review' === $unit['status'] && 'activity' === $unit['kind'] ) : ?>
                     <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'garmin_activity_id' => $unit['data']['activity_id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Review Garmin activity / assign location', 'chriss-swim-training-progress-evaluation' ); ?></a>
                     <?php if ( ! empty( $unit['outcomes']['activity']['import_id'] ) ) : ?><p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-upload' ) ); ?>"><?php esc_html_e( 'Review pending import', 'chriss-swim-training-progress-evaluation' ); ?></a></p><?php endif; ?>
