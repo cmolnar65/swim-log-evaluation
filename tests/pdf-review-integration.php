@@ -77,6 +77,15 @@ try {
     // A previously unparsed candidate can be authored explicitly instead of being permanently blocked.
     $created = Import::run( $owner, 'Authored after review', $parsed, array( 3 ), hash( 'sha256', 'separate synthetic source' ), array( 3 => $review ) );
     $verify( ! is_wp_error( $created ), 'Null candidate could not be corrected into a valid structure.' );
+    $compact = Parser::parse( "WEEK 1 of 6 Swim #1 of 24 Repeat 2x (rest :15 btw reps)\t300\n50 EZ choice\n100 swim as 25 breast + 25 back\nTOTAL 300 yds" );
+    $compact_review = array( 'document' => wp_json_encode( $compact['workouts'][0]['document'] ), 'total' => '300', 'unit' => 'yd', 'reviewed' => '1' );
+    $compact_result = Import::run( $owner, 'Synthetic compact table', $compact, array( 1 ), hash( 'sha256', 'synthetic compact source' ), array( 1 => $compact_review ) );
+    $verify( ! is_wp_error( $compact_result ), 'Compact table notation did not import after review.' );
+    wp_cache_flush();
+    $compact_items = Collection::workouts( $owner, $compact_result['plan_id'] );
+    $compact_item = Store::get( $compact_items[0]->ID, $owner );
+    $compact_summary = SwimLogEvaluation\Structured_Workout::summarize( $compact_item['document'] );
+    $verify( 300.0 === $compact_summary['totals']['distance'] && 2 === $compact_item['document']['sections'][0]['children'][0]['count'], 'Header repeat or implicit units lost on persistence.' );
     wp_set_current_user( $users['other'] );
     $verify( is_wp_error( Store::get( $workouts[0]->ID, $users['other'] ) ), 'Private review exposed another owner workout.' );
     $verify( is_wp_error( Import::run( $owner, 'Foreign', $parsed, array( 2 ), hash( 'sha256', 'foreign' ), array( 2 => $review ) ) ), 'Foreign owner review import accepted.' );

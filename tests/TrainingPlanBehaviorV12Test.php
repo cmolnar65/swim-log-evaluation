@@ -77,7 +77,7 @@ final class TrainingPlanBehaviorV12Test extends TestCase {
         }
     }
 
-    public function test_four_six_week_plans_keep_all_96_boundaries_and_block_unverified_sets() {
+    public function test_four_synthetic_six_week_plans_keep_boundaries_and_reconcile_supported_repeat_sets() {
         $prefixes = array( 'WEEK ', '', 'WEEK ', '' );
         foreach ( $prefixes as $prefix ) {
             $lines = array();
@@ -94,9 +94,10 @@ final class TrainingPlanBehaviorV12Test extends TestCase {
             foreach ( $parsed['workouts'] as $index => $candidate ) {
                 $this->assertSame( $index + 1, $candidate['source_number'] );
                 $this->assertSame( (int) floor( $index / 4 ) + 1, $candidate['week'] );
-                $this->assertFalse( \SwimLogEvaluation\Training_Plan_Review::assess( $candidate )['ready'] );
+                $this->assertTrue( \SwimLogEvaluation\Training_Plan_Review::assess( $candidate )['ready'] );
             }
         }
     }
 
 }
+
