@@ -70,7 +70,7 @@ final class TrainingPlanBehaviorV12Test extends TestCase {
             "1 of 6          Swim #1 of 24    Warm-up (rest :10 for all):",
         );
         foreach ( $samples as $heading ) {
-            $parsed = \\SwimLogEvaluation\\Training_Plan_Parser::parse( $heading . "\\n200 yards free\\nTotal: 200 yards" );
+            $parsed = \SwimLogEvaluation\Training_Plan_Parser::parse( $heading . "\n200 yards free\nTotal: 200 yards" );
             $this->assertCount( 1, $parsed['workouts'] );
             $this->assertSame( 1, $parsed['workouts'][0]['source_number'] );
             $this->assertSame( 1, $parsed['workouts'][0]['week'] );
