@@ -8,6 +8,7 @@
   let doc;
   try { doc = JSON.parse(root.dataset.document); } catch (e) { return; }
   const strokes = ['FR', 'BR', 'BK', 'FL', 'MX'];
+  const standardEquipment = ['Kickboard', 'Pull buoy', 'Paddles', 'Fins', 'Snorkel', 'Ankle strap', 'Tempo trainer', 'Parachute'];
   const make = (tag, label, parent) => {
     const el = document.createElement(tag);
     if (label !== null) el.textContent = label;
@@ -16,7 +17,7 @@
   };
   const field = (parent, label, value, callback, type = 'text') => {
     const wrap = make('label', null, parent);
-    wrap.style.marginRight = '12px';
+    wrap.className = 'swimlog-structure-field';
     make('span', label + ' ', wrap);
     const input = make('input', null, wrap);
     input.type = type;
@@ -27,7 +28,7 @@
   };
   const select = (parent, label, value, choices, callback) => {
     const wrap = make('label', null, parent);
-    wrap.style.marginRight = '12px';
+    wrap.className = 'swimlog-structure-field';
     make('span', label + ' ', wrap);
     const input = make('select', null, wrap);
     choices.forEach(x => { const opt = make('option', x, input); opt.value = x; });
@@ -36,8 +37,41 @@
   };
   const button = (parent, label, action) => {
     const b = make('button', label, parent);
-    b.type = 'button'; b.className = 'button'; b.style.margin = '3px';
+    b.type = 'button'; b.className = 'button';
     b.addEventListener('click', action);
+  };
+  const equipmentField = (parent, node) => {
+    const group = make('fieldset', null, parent);
+    group.className = 'swimlog-equipment';
+    make('legend', 'Equipment', group);
+    const selected = Array.isArray(node.equipment) ? node.equipment.slice() : [];
+    const known = standardEquipment.map(x => x.toLowerCase());
+    const options = make('div', null, group);
+    options.className = 'swimlog-equipment-options';
+    standardEquipment.forEach(name => {
+      const label = make('label', null, options);
+      const check = make('input', null, label);
+      check.type = 'checkbox';
+      check.checked = selected.some(x => x.toLowerCase() === name.toLowerCase());
+      make('span', name, label);
+      check.addEventListener('change', () => {
+        node.equipment = (node.equipment || []).filter(x => x.toLowerCase() !== name.toLowerCase());
+        if (check.checked) node.equipment.push(name);
+        preview();
+      });
+    });
+    const custom = make('label', null, group);
+    custom.className = 'swimlog-structure-field';
+    make('span', 'Other equipment (comma separated)', custom);
+    const input = make('input', null, custom);
+    input.type = 'text';
+    input.value = selected.filter(x => !known.includes(x.toLowerCase())).join(', ');
+    input.addEventListener('input', () => {
+      const standard = (node.equipment || []).filter(x => known.includes(x.toLowerCase()));
+      const extra = input.value.split(',').map(x => x.trim()).filter(Boolean);
+      node.equipment = standard.concat(extra);
+      preview();
+    });
   };
   const step = () => ({type:'step', distance:25, stroke:'FR', pace:null, rest:null, description:null, drill:false, equipment:[]});
   const repeat = () => ({type:'repeat', count:2, children:[step()]});
@@ -50,28 +84,32 @@
   };
   const nodeUI = (parent, node, siblings, index, inLadder) => {
     const panel = make('fieldset', null, parent);
-    panel.style.cssText = 'border:1px solid #c3c4c7;padding:12px;margin:8px 0;background:#fff';
+    panel.className = 'swimlog-structure-panel';
     make('legend', node.type.toUpperCase(), panel);
     const actions = make('div', null, panel);
+    actions.className = 'swimlog-structure-actions';
+    const fields = make('div', null, panel);
+    fields.className = 'swimlog-structure-fields';
     button(actions, '↑', () => { if(index){ [siblings[index-1],siblings[index]]=[siblings[index],siblings[index-1]];render(); } });
     button(actions, '↓', () => { if(index<siblings.length-1){ [siblings[index+1],siblings[index]]=[siblings[index],siblings[index+1]];render(); } });
     button(actions, 'Remove', () => { if(siblings.length>1){siblings.splice(index,1);render();} else alert('At least one item is required in each group.'); });
-    if (node.type === 'section') field(panel, 'Section', node.label, v=>node.label=v);
-    if (node.type === 'repeat') field(panel, 'Repeat count', node.count, v=>node.count=Number(v), 'number');
+    if (node.type === 'section') field(fields, 'Section', node.label, v=>node.label=v);
+    if (node.type === 'repeat') field(fields, 'Repeat count', node.count, v=>node.count=Number(v), 'number');
     if (node.type === 'step') {
-      field(panel, 'Distance', node.distance, v=>node.distance=Number(v), 'number');
-      select(panel, 'Stroke', node.stroke, inLadder ? strokes.slice(0,4) : strokes, v=>node.stroke=v);
-      const wrap = make('label', 'Drill ', panel);
+      field(fields, 'Distance', node.distance, v=>node.distance=Number(v), 'number');
+      select(fields, 'Stroke', node.stroke, inLadder ? strokes.slice(0,4) : strokes, v=>node.stroke=v);
+      const wrap = make('label', 'Drill ', fields);
+      wrap.className = 'swimlog-structure-checkbox';
       const check = make('input', null, wrap); check.type='checkbox';check.checked=!!node.drill;
       check.addEventListener('change',()=>{node.drill=check.checked;preview();});
-      field(panel, 'Equipment (comma separated)', (node.equipment||[]).join(', '), v=>node.equipment=v.split(',').map(x=>x.trim()).filter(Boolean));
+      equipmentField(panel, node);
     }
-    field(panel, 'Pace target', node.pace, v=>node.pace=v===''?null:v);
-    field(panel, 'Rest (0 = none; blank = unspecified)', node.rest, v=>node.rest=v===''?null:v);
-    field(panel, 'Description', node.description, v=>node.description=v===''?null:v);
+    field(fields, 'Pace target', node.pace, v=>node.pace=v===''?null:v);
+    field(fields, 'Rest (0 = none; blank = unspecified)', node.rest, v=>node.rest=v===''?null:v);
+    field(fields, 'Description', node.description, v=>node.description=v===''?null:v);
     if (node.type !== 'step') {
       const children = node.type==='ladder' ? node.rungs : node.children;
-      const nested = make('div', null, panel);nested.style.marginLeft='20px';
+      const nested = make('div', null, panel);nested.className='swimlog-structure-nested';
       children.forEach((child,i)=>nodeUI(nested,child,children,i,inLadder||node.type==='ladder'));
       addControls(panel,children,node.type==='ladder'||inLadder);
     }
@@ -103,7 +141,8 @@
   };
   const render = () => {
     root.replaceChildren();
-    select(root,'Distance unit',doc.unit,['m','yd'],v=>doc.unit=v);
+    const unitRow = make('div', null, root); unitRow.className = 'swimlog-structure-unit';
+    select(unitRow,'Distance unit',doc.unit,['m','yd'],v=>doc.unit=v);
     doc.sections.forEach((s,i)=>nodeUI(root,s,doc.sections,i,false));
     button(root,'+ Section',()=>{doc.sections.push(section());render();});
     const box=make('div',null,root);
