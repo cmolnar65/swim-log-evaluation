@@ -9,7 +9,7 @@ final class Workout {
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
-		return $wpdb->get_row($wpdb->prepare("SELECT w.*, l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$id,$user_id));
+		return $wpdb->get_row($wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
 	}
 
 	public static function query_for_user( $user_id, $filters=array(), $page=1, $per_page=20 ) {
@@ -125,7 +125,7 @@ final class Workout {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('lengths');
-		return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE workout_id=%d ORDER BY sequence_no ASC",$workout_id));
+		return $wpdb->get_results($wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",$t,$workout_id));
 	}
 
 
@@ -234,14 +234,14 @@ final class Workout {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('performances');
-		return $wpdb->get_results($wpdb->prepare("SELECT * FROM $t WHERE workout_id=%d AND user_id=%d ORDER BY course_unit,distance_value,stroke,duration_ms",$workout_id,$user_id));
+		return $wpdb->get_results($wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY course_unit,distance_value,stroke,duration_ms",$t,$workout_id,$user_id));
 	}
 
 	public static function imports( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('imports');
-		return $wpdb->get_results($wpdb->prepare("SELECT id,source_type,original_filename,import_status,imported_at FROM $t WHERE workout_id=%d AND user_id=%d ORDER BY imported_at ASC,id ASC",$workout_id,$user_id));
+		return $wpdb->get_results($wpdb->prepare("SELECT id,source_type,original_filename,import_status,imported_at FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY imported_at ASC,id ASC",$t,$workout_id,$user_id));
 	}
 
 
@@ -280,7 +280,7 @@ final class Workout {
 		if ( $location_id ) {
 			$locations = Database::table( 'locations' );
 			$owned_location = (int) $wpdb->get_var(
-				$wpdb->prepare( "SELECT id FROM $locations WHERE id = %d AND user_id = %d", $location_id, $user_id )
+				$wpdb->prepare( "SELECT id FROM %i WHERE id = %d AND user_id = %d", $locations, $location_id, $user_id )
 			);
 			if ( $owned_location !== $location_id ) {
 				return new \WP_Error( 'swimlog_workout_location', __( 'Select one of this swimmer\'s locations.', 'chriss-swim-training-progress-evaluation' ) );
@@ -323,7 +323,7 @@ final class Workout {
 		$trackpoints = Database::table( 'trackpoints' );
 		$performances = Database::table( 'performances' );
 		$workouts = Database::table( 'workouts' );
-		$source_paths = $wpdb->get_col( $wpdb->prepare( "SELECT stored_path FROM $imports WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $workout_id, $user_id ) );
+		$source_paths = $wpdb->get_col( $wpdb->prepare( "SELECT stored_path FROM %i WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $imports, $workout_id, $user_id ) );
 		$photo_ids = self::photos( $workout_id, $user_id );
 
 		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
