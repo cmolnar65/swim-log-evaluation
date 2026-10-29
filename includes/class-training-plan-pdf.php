@@ -33,7 +33,7 @@ final class Training_Plan_PDF {
         // Supports selectable text in uncompressed and FlateDecode content streams.
         $pdf = file_get_contents( $path );
         if ( false === $pdf || strlen( $pdf ) > self::MAX_BYTES ) {
-            return new \\WP_Error( 'swimlog_pdf_read', 'Could not read the uploaded PDF.' );
+            return new \WP_Error( 'swimlog_pdf_read', 'Could not read the uploaded PDF.' );
         }
         $text = self::extract_text_streams( $pdf );
         if ( is_wp_error( $text ) ) return $text;
@@ -52,10 +52,10 @@ final class Training_Plan_PDF {
         $offset = 0;
         $count = 0;
         while ( false !== ( $stream_pos = strpos( $pdf, 'stream', $offset ) ) ) {
-            if ( ++$count > 2000 ) return new \\WP_Error( 'swimlog_pdf_complex', 'PDF contains too many streams.' );
+            if ( ++$count > 2000 ) return new \WP_Error( 'swimlog_pdf_complex', 'PDF contains too many streams.' );
             $begin = $stream_pos + 6;
-            if ( isset( $pdf[$begin] ) && "\\r" === $pdf[$begin] ) ++$begin;
-            if ( isset( $pdf[$begin] ) && "\\n" === $pdf[$begin] ) ++$begin;
+            if ( isset( $pdf[$begin] ) && "\r" === $pdf[$begin] ) ++$begin;
+            if ( isset( $pdf[$begin] ) && "\n" === $pdf[$begin] ) ++$begin;
             $finish = strpos( $pdf, 'endstream', $begin );
             if ( false === $finish ) break;
             $raw = substr( $pdf, $begin, $finish - $begin );
@@ -63,7 +63,7 @@ final class Training_Plan_PDF {
             $dictionary = substr( $pdf, max( 0, $stream_pos - 1024 ), min( 1024, $stream_pos ) );
             if ( false !== strpos( $dictionary, '/FlateDecode' ) ) {
                 if ( strlen( $raw ) > self::MAX_BYTES ) continue;
-                $decoded = @gzuncompress( rtrim( $raw, "\\r\\n" ), self::MAX_TEXT_BYTES );
+                $decoded = @gzuncompress( rtrim( $raw, "\r\n" ), self::MAX_TEXT_BYTES );
                 if ( false === $decoded ) continue;
                 $raw = $decoded;
             } elseif ( false !== strpos( $dictionary, '/Filter' ) ) {
@@ -77,12 +77,12 @@ final class Training_Plan_PDF {
                         foreach ( $pieces[0] as $piece ) {
                             $part = substr( $piece, 1, -1 );
                             $part = preg_replace_callback( '/\\\\([0-7]{1,3})/', function ( $m ) { return chr( octdec( $m[1] ) ); }, $part );
-                            $part = str_replace( array( '\\\\n', '\\\\r', '\\\\t', '\\\\(', '\\\\)', '\\\\\\\\' ), array( "\\n", "\\r", "\\t", '(', ')', '\\\\' ), $part );
+                            $part = str_replace( array( '\\\\n', '\\\\r', '\\\\t', '\\\\(', '\\\\)', '\\\\\\\\' ), array( "\n", "\r", "\t", '(', ')', '\\\\' ), $part );
                             $line .= $part;
                         }
-                        $text .= $line . "\\n";
+                        $text .= $line . "\n";
                         if ( strlen( $text ) > self::MAX_TEXT_BYTES ) {
-                            return new \\WP_Error( 'swimlog_pdf_text_limit', 'Extracted PDF text exceeds the size limit.' );
+                            return new \WP_Error( 'swimlog_pdf_text_limit', 'Extracted PDF text exceeds the size limit.' );
                         }
                     }
                 }
