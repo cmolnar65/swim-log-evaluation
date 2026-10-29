@@ -136,7 +136,27 @@ final class Planned_Workout {
 			'workout_instructions' => $plan->workout_instructions,
 			'notes' => $plan->notes,
 		);
-		return self::save( $user_id, $data );
+		// Preflight the owner-scoped source structure before creating a new plan.
+		$source_structure = Planned_Structure_Link::for_plan( $plan->id, $user_id );
+		if ( is_wp_error( $source_structure ) ) return $source_structure;
+		if ( $source_structure ) {
+			$valid = Structured_Workout::summarize( $source_structure['document'] );
+			if ( is_wp_error( $valid ) ) return $valid;
+		}
+		$copy_id = self::save( $user_id, $data );
+		if ( is_wp_error( $copy_id ) || ! $source_structure ) return $copy_id;
+		$copy_structure_id = Structured_Workout_Store::save( $user_id, $source_structure['title'], $source_structure['document'] );
+		if ( is_wp_error( $copy_structure_id ) ) {
+			self::delete( $copy_id, $user_id );
+			return $copy_structure_id;
+		}
+		$linked = Planned_Structure_Link::attach( $copy_id, $copy_structure_id, $user_id );
+		if ( is_wp_error( $linked ) ) {
+			wp_delete_post( $copy_structure_id, true );
+			self::delete( $copy_id, $user_id );
+			return $linked;
+		}
+		return $copy_id;
 	}
 
 
