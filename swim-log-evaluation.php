@@ -26,6 +26,8 @@ register_activation_hook( __FILE__, array( 'SwimLogEvaluation\\Activator', 'acti
 
 register_deactivation_hook( __FILE__, array( 'SwimLogEvaluation\\Garmin_Measurement_Sync', 'deactivate' ) );
 
+register_deactivation_hook( __FILE__, array( 'SwimLogEvaluation\\Garmin_History_Jobs', 'deactivate' ) );
+
 function swimlog_evaluation_run() {
 	$plugin = new SwimLogEvaluation\Plugin();
 	$plugin->run();

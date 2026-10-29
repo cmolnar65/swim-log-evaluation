@@ -129,6 +129,9 @@ final class Garmin_Measurement_Import {
                     $result['status'] = 'failed';
                     $result['failed'] = 1;
                     $result['message'] = $data->get_error_message();
+                    $result['error_code'] = $data->get_error_code();
+                    $error_info = $data->get_error_data();
+                    if ( is_array( $error_info ) && isset( $error_info['status'] ) ) $result['http_status'] = (int) $error_info['status'];
                     if ( 'swimlog_health_rate_limit' === $data->get_error_code() ) {
                         $info = $data->get_error_data();
                         $result['retry_after'] = (int) ( $info['retry_after'] ?? 60 );

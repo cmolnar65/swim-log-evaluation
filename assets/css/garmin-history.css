@@ -1,0 +1,12 @@
+#swimlog-garmin-history { max-width: 72rem; }
+#swimlog-garmin-history .swimlog-history-choice { display: flex; align-items: center; gap: .5rem; min-height: 44px; }
+#swimlog-garmin-history .swimlog-history-controls { display: flex; flex-wrap: wrap; gap: .75rem; }
+#swimlog-garmin-history .button, #swimlog-garmin-history nav a, #swimlog-garmin-history .swimlog-history-refresh-note a { display: inline-flex; align-items: center; min-height: 44px; white-space: normal; }
+#swimlog-garmin-history nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+#swimlog-garmin-history input[type=date] { max-width: 100%; min-height: 44px; }
+#swimlog-garmin-history .swimlog-history-counts { display: grid; grid-template-columns: repeat(auto-fit,minmax(12rem,1fr)); gap: .5rem 1rem; }
+#swimlog-garmin-history .swimlog-history-counts div { display: flex; justify-content: space-between; gap: .5rem; }
+#swimlog-garmin-history dd { margin: 0; font-weight: bold; }
+#swimlog-garmin-history .swimlog-history-results { max-width: 100%; overflow-x: auto; margin-block: 1rem; }
+#swimlog-garmin-history td { overflow-wrap: anywhere; }
+@media (max-width: 480px) { #swimlog-garmin-history .swimlog-history-counts { grid-template-columns: 1fr; } #swimlog-garmin-history .swimlog-history-controls form { width: 100%; } }

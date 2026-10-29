@@ -617,7 +617,7 @@ final class Garmin_Personal_API {
         }
         if ( 200 !== $status ) {
             if ( 401 === $status ) unset( $tokens[ $user_id ] );
-            return new \WP_Error( 'swimlog_health_http', sprintf( /* translators: %d: HTTP status code. */ __( 'Garmin measurement request failed (HTTP %d). Existing measurements were preserved.', 'chriss-swim-training-progress-evaluation' ), $status ) );
+            return new \WP_Error( 'swimlog_health_http', sprintf( /* translators: %d: HTTP status code. */ __( 'Garmin measurement request failed (HTTP %d). Existing measurements were preserved.', 'chriss-swim-training-progress-evaluation' ), $status ), array( 'status' => $status ) );
         }
         $body = wp_remote_retrieve_body( $response );
         if ( strlen( $body ) > 1048576 || '' === trim( $body ) ) return new \WP_Error( 'swimlog_health_response', __( 'Garmin returned an empty or oversized response. Nothing from this response was imported.', 'chriss-swim-training-progress-evaluation' ) );

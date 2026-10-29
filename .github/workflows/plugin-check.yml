@@ -46,6 +46,11 @@ jobs:
           set -euo pipefail
           wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-integration.php)"
 
+      - name: Verify persistent historical jobs and controls
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-jobs-integration.php)" | tee "$RUNNER_TEMP/garmin-history-jobs.log"
+
       - name: Verify private measurement schema migration
         run: |
           set -euo pipefail
@@ -107,3 +112,8 @@ jobs:
           wp-env run cli wp eval "$(tail -n +2 tests/calendar-day-integration.php)" | tee "$RUNNER_TEMP/calendar-day.log"
           "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps webkit
           NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/calendar-day-browser.cjs "$RUNNER_TEMP/calendar-day.log"
+
+      - name: Verify historical import controls on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/garmin-history-browser.cjs "$RUNNER_TEMP/garmin-history-jobs.log"

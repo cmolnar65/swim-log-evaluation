@@ -8,6 +8,10 @@ final class Plugin {
 	public function run() {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-sync.php';
 		Garmin_Measurement_Sync::register();
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history-jobs.php';
+        Garmin_History_Jobs::register();
+        require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-history.php';
+        add_action( 'wp_ajax_swimlog_history_status', array( 'SwimLogEvaluation\\Admin_Garmin_History', 'ajax_status' ) );
 		// Database is a foundational dependency for workout, event, planned-workout,
 		// calendar, shortcode, block, and administration services. Load it before
 		// any of those services can be invoked through WordPress hooks or admin pages.

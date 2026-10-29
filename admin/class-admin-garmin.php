@@ -454,7 +454,7 @@ final class Admin_Garmin {
 					<?php endif; ?>
 				<?php endif; ?>
 
-				<?php if ( ! $activity_mode ) { require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-measurements.php'; Admin_Garmin_Measurements::render(); } ?>
+				<?php if ( ! $activity_mode ) { require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-history.php'; Admin_Garmin_History::render(); require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-measurements.php'; Admin_Garmin_Measurements::render(); } ?>
 				<div id="swimlog-garmin-activities"><h2><?php esc_html_e( 'Garmin Activities', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<p><?php esc_html_e( 'Retrieve Garmin activities for a date range of up to 30 days. This inspection does not import or change swim training data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<form method="post">
