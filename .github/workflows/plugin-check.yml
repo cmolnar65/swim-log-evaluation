@@ -38,4 +38,5 @@ jobs:
       - name: Run WordPress Plugin Check against production staging
         uses: wordpress/plugin-check-action@v1
         with:
+          strict: true
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation

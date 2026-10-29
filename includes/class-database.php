@@ -40,7 +40,7 @@ final class Database {
 
 	/**
 	 * Execute a caller-prepared custom-table SELECT, preserving wpdb output modes.
-	 * Cache only within this request, bounded to 128 results. Every observed write
+	 * Cache only within this request, bounded to 128 results of at most 1,000 rows. Every observed write
 	 * invalidates it; transactions/locking reads bypass it. Failed queries are not
 	 * cached. Cached objects are copied so callers cannot change subsequent reads.
 	 * Core has no CRUD API for these normalized custom tables.
@@ -54,10 +54,26 @@ final class Database {
 		$cacheable = self::$observing && ! self::$transaction && preg_match( '/^\s*SELECT\b/i', $sql ) && ! preg_match( '/FOR\s+UPDATE|LOCK\s+IN\s+SHARE|SQL_NO_CACHE|RAND\s*\(|NOW\s*\(/i', $sql );
 		$key = spl_object_hash( $wpdb ) . ':' . (string) $wpdb->prefix . ':' . md5( serialize( array( $method, $sql, $args ) ) );
 		if ( $cacheable && array_key_exists( $key, self::$reads ) ) return self::copy_result( self::$reads[ $key ] );
-		// Each SQL argument is assembled/prepared at the domain service call site.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Central custom-table boundary; bounded request cache and write invalidation are above.
-		$result = $wpdb->$method( $sql, ...$args );
-		if ( $cacheable && empty( $wpdb->last_error ) ) {
+		// Prepared SQL is supplied by domain services; custom-table reads share the bounded cache above.
+		switch ( $method ) {
+			case 'get_results':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Prepared custom-table SQL; request caching and invalidation are implemented in this method.
+				$result = $wpdb->get_results( $sql, ...$args );
+				break;
+			case 'get_row':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Prepared custom-table SQL; request caching and invalidation are implemented in this method.
+				$result = $wpdb->get_row( $sql, ...$args );
+				break;
+			case 'get_col':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Prepared custom-table SQL; request caching and invalidation are implemented in this method.
+				$result = $wpdb->get_col( $sql, ...$args );
+				break;
+			case 'get_var':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Prepared custom-table SQL; request caching and invalidation are implemented in this method.
+				$result = $wpdb->get_var( $sql, ...$args );
+				break;
+		}
+		if ( $cacheable && empty( $wpdb->last_error ) && ( ! is_array( $result ) || count( $result ) <= 1000 ) ) {
 			if ( count( self::$reads ) >= 128 ) array_shift( self::$reads );
 			self::$reads[ $key ] = self::copy_result( $result );
 		}
@@ -73,9 +89,24 @@ final class Database {
 		self::observe_writes();
 		self::$reads = array();
 		if ( 'query' === $method ) self::observe_query( $args[0] );
-		// wpdb CRUD methods escape values; query callers supply prepared SQL or fixed transaction statements.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom-table writes have no core API and invalidate the request cache here.
-		return $wpdb->$method( ...$args );
+		// Core has no CRUD API for normalized custom tables. Invalidation precedes all writes.
+		switch ( $method ) {
+			case 'insert':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- wpdb CRUD escapes field values; query receives prepared statements or fixed transaction commands. Cache invalidated above.
+				return $wpdb->insert( ...$args );
+			case 'update':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- wpdb CRUD escapes field values; query receives prepared statements or fixed transaction commands. Cache invalidated above.
+				return $wpdb->update( ...$args );
+			case 'delete':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- wpdb CRUD escapes field values; query receives prepared statements or fixed transaction commands. Cache invalidated above.
+				return $wpdb->delete( ...$args );
+			case 'replace':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- wpdb CRUD escapes field values; query receives prepared statements or fixed transaction commands. Cache invalidated above.
+				return $wpdb->replace( ...$args );
+			case 'query':
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- wpdb CRUD escapes field values; query receives prepared statements or fixed transaction commands. Cache invalidated above.
+				return $wpdb->query( ...$args );
+		}
 	}
 
 	public static function table( $name ) {
