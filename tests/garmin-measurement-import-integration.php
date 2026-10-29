@@ -11,6 +11,7 @@ require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-measurements.php
 global $wpdb;
 $original_user = get_current_user_id();
 $original_post = $_POST;
+$original_request = $_REQUEST;
 $owner = 0;
 $checks = 0;
 $calls = array();
@@ -84,6 +85,7 @@ try {
 
     // Render and submit the actual owner form, including nonce rejection.
     $_POST = array( 'swimlog_measurement_import' => '1', '_wpnonce' => wp_create_nonce( 'swimlog_garmin_measurements' ), 'measurement_start' => '2026-10-01', 'measurement_end' => '2026-10-01', 'measurement_categories' => array( 'weight', 'spo2' ) );
+    $_REQUEST = $_POST;
     ob_start();
     UI::render();
     $html = ob_get_clean();
@@ -91,6 +93,7 @@ try {
     $verify( false === strpos( $html, 'synthetic-only-not-a-real-key' ) && false === strpos( $html, 'synthetic.token.fixture' ) && false === strpos( $html, '82.5' ), 'Results do not expose credentials or raw measurements.' );
     $verify( false !== strpos( $html, 'BMI only' ) && false !== strpos( $html, 'not imported' ), 'Limitations visible.' );
     $_POST['_wpnonce'] = 'invalid';
+    $_REQUEST = $_POST;
     $nonce_filter = static function () { return static function () { throw new RuntimeException( 'expected nonce denial' ); }; };
     add_filter( 'wp_die_handler', $nonce_filter );
     add_filter( 'wp_die_ajax_handler', $nonce_filter );
@@ -107,6 +110,7 @@ try {
     }
     remove_filter( 'pre_http_request', $http, 10 );
     $_POST = $original_post;
+    $_REQUEST = $original_request;
     if ( $owner ) {
         delete_transient( 'swimlog_health_retry_' . $owner );
         foreach ( array( 'health_report_members', 'health_measurements', 'health_reports' ) as $name ) Database::write( 'delete', Database::table( $name ), array( 'user_id' => $owner ) );
