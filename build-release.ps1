@@ -27,6 +27,8 @@ $ExcludeTopLevel = @(
     "build-release.sh",
     "PLUGIN-CHECK.md",
     "wordpress-org-assets",
+    "docs",
+    "REST-API.md",
     "build"
 )
 
@@ -69,3 +71,4 @@ finally {
         Remove-Item -LiteralPath $TempRoot -Recurse -Force
     }
 }
+

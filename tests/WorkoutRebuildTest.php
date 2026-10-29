@@ -7,9 +7,9 @@ final class WorkoutRebuildTest extends TestCase {
   $this->assertStringContainsString('public static function rebuild_workout',$code);
   $this->assertStringContainsString("import_status='complete'",$code);
   $this->assertStringContainsString("if(!\$row->stored_path||!is_file(\$row->stored_path))",$code);
-  $this->assertStringContainsString("query('START TRANSACTION')",$code);
-  $this->assertStringContainsString("query('ROLLBACK')",$code);
-  $this->assertStringContainsString("query('COMMIT')",$code);
+  $this->assertStringContainsString("Database::write( 'query', 'START TRANSACTION')",$code);
+  $this->assertStringContainsString("Database::write( 'query', 'ROLLBACK')",$code);
+  $this->assertStringContainsString("Database::write( 'query', 'COMMIT')",$code);
   $this->assertStringContainsString('self::replace_structure($workout_id,$authority[\'parsed\'])',$code);
   $this->assertStringContainsString('Evaluator::evaluate_workout($workout_id,$uid)',$code);
  }
@@ -41,3 +41,4 @@ final class WorkoutRebuildTest extends TestCase {
   $this->assertStringContainsString("'authoritative_import_id'=>\$import_id",$code);
  }
 }
+

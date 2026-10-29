@@ -15,26 +15,26 @@ final class Event {
 		// Keep the prepared query shapes static so placeholder counts are explicit.
 		// The view controls only which fixed query is selected; it is never inserted into SQL.
 		if ( 'upcoming' === $view ) {
-			return $wpdb->get_results(
+			return Database::read( 'get_results', 
 				$wpdb->prepare(
-					"SELECT * FROM $table WHERE user_id = %d AND event_date >= %s ORDER BY event_date ASC, event_time ASC, id ASC",
+					"SELECT * FROM %i WHERE user_id = %d AND event_date >= %s ORDER BY event_date ASC, event_time ASC, id ASC",$table, 
 					$user_id,
 					$today
 				)
 			);
 		}
 		if ( 'past' === $view ) {
-			return $wpdb->get_results(
+			return Database::read( 'get_results', 
 				$wpdb->prepare(
-					"SELECT * FROM $table WHERE user_id = %d AND event_date < %s ORDER BY event_date DESC, event_time DESC, id DESC",
+					"SELECT * FROM %i WHERE user_id = %d AND event_date < %s ORDER BY event_date DESC, event_time DESC, id DESC",$table, 
 					$user_id,
 					$today
 				)
 			);
 		}
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
-				"SELECT * FROM $table WHERE user_id = %d ORDER BY event_date ASC, event_time ASC, id ASC",
+				"SELECT * FROM %i WHERE user_id = %d ORDER BY event_date ASC, event_time ASC, id ASC",$table, 
 				$user_id
 			)
 		);
@@ -49,15 +49,15 @@ final class Event {
 		global $wpdb;
 		$table = Database::table( 'events' );
 		$locations = Database::table( 'locations' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT e.*, l.name AS location_name
-				FROM $table e
-				LEFT JOIN $locations l ON l.id = e.location_id AND l.user_id = e.user_id
+				FROM %i e
+				LEFT JOIN %i l ON l.id = e.location_id AND l.user_id = e.user_id
 				WHERE e.user_id = %d AND e.event_date >= %s AND e.event_date < %s
 				ORDER BY e.event_date ASC,
 					CASE WHEN e.event_time IS NULL THEN 1 ELSE 0 END ASC,
-					e.event_time ASC, e.id ASC",
+					e.event_time ASC, e.id ASC",$table, $locations, 
 				absint( $user_id ),
 				$start,
 				$end
@@ -69,13 +69,13 @@ final class Event {
 		global $wpdb;
 		$table=Database::table('events'); $locations=Database::table('locations');
 		$today=current_time('Y-m-d'); $limit=max(1,min(50,(int)$limit));
-		return $wpdb->get_results($wpdb->prepare("SELECT e.*, l.name AS location_name FROM $table e LEFT JOIN $locations l ON l.id=e.location_id AND l.user_id=e.user_id WHERE e.user_id=%d AND e.event_date >= %s ORDER BY e.event_date ASC, CASE WHEN e.event_time IS NULL THEN 1 ELSE 0 END ASC, e.event_time ASC, e.id ASC LIMIT %d",$user_id,$today,$limit));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT e.*, l.name AS location_name FROM %i e LEFT JOIN %i l ON l.id=e.location_id AND l.user_id=e.user_id WHERE e.user_id=%d AND e.event_date >= %s ORDER BY e.event_date ASC, CASE WHEN e.event_time IS NULL THEN 1 ELSE 0 END ASC, e.event_time ASC, e.id ASC LIMIT %d",$table, $locations, $user_id,$today,$limit));
 	}
 
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'events' );
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d AND user_id = %d", $id, $user_id ) );
+		return Database::read( 'get_row',  $wpdb->prepare( "SELECT * FROM %i WHERE id = %d AND user_id = %d",$table,  $id, $user_id ) );
 	}
 
 	public static function save( $user_id, $data, $id = 0 ) {
@@ -110,11 +110,11 @@ final class Event {
 		);
 		if ( $id ) {
 			if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_event_not_found', __( 'Event not found.', 'chriss-swim-training-progress-evaluation' ) );
-			$result=$wpdb->update($table,$values,array('id'=>(int)$id,'user_id'=>(int)$user_id));
+			$result=Database::write( 'update', $table,$values,array('id'=>(int)$id,'user_id'=>(int)$user_id));
 			return false===$result ? new \WP_Error('swimlog_event_save',__( 'The event could not be saved.', 'chriss-swim-training-progress-evaluation' )) : (int)$id;
 		}
 		$values['created_at']=$now;
-		$result=$wpdb->insert($table,$values);
+		$result=Database::write( 'insert', $table,$values);
 		return false===$result ? new \WP_Error('swimlog_event_save',__( 'The event could not be saved.', 'chriss-swim-training-progress-evaluation' )) : (int)$wpdb->insert_id;
 	}
 
@@ -136,7 +136,7 @@ final class Event {
 		$placement = trim( (string) $placement );
 		if ( '' !== $placement && ( ! ctype_digit( $placement ) || (int) $placement < 1 || (int) $placement > 100000 ) ) return new \WP_Error( 'swimlog_event_placement', __( 'Placement must be a positive whole number.', 'chriss-swim-training-progress-evaluation' ) );
 		$values = array( 'result_time_ms' => $ms, 'placement' => '' === $placement ? null : (int) $placement, 'notes' => sanitize_textarea_field( $notes ), 'updated_at' => current_time( 'mysql' ) );
-		$result = $wpdb->update( Database::table( 'events' ), $values, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
+		$result = Database::write( 'update',  Database::table( 'events' ), $values, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
 		return false === $result ? new \WP_Error( 'swimlog_event_save', __( 'Race results could not be saved.', 'chriss-swim-training-progress-evaluation' ) ) : true;
 	}
 
@@ -144,6 +144,7 @@ final class Event {
 		global $wpdb;
 		$table=Database::table('events');
 		if(!self::get_for_user($id,$user_id)) return new \WP_Error('swimlog_event_not_found',__( 'Event not found.', 'chriss-swim-training-progress-evaluation' ));
-		return false !== $wpdb->delete($table,array('id'=>(int)$id,'user_id'=>(int)$user_id));
+		return false !== Database::write( 'delete', $table,array('id'=>(int)$id,'user_id'=>(int)$user_id));
 	}
 }
+

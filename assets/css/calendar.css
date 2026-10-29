@@ -35,3 +35,25 @@ button.swimlog-calendar-planned-workout{display:block;width:100%;text-align:left
 .swimlog-calendar .swimlog-calendar-day.is-drop-target,.swimlog-calendar .swimlog-calendar-agenda-day.is-drop-target{outline:3px solid #246b3a;outline-offset:-3px;background-color:rgba(36,107,58,.12)}
 .swimlog-calendar [data-calendar-planned-workout][draggable="true"]{cursor:grab}
 .swimlog-calendar [data-calendar-planned-workout][draggable="true"]:active{cursor:grabbing}
+
+/* Expanded day details share the existing calendar actions and responsive item styles. */
+.swimlog-calendar .swimlog-calendar-day-toggle{font:inherit;font-weight:600;color:inherit;background:transparent;border:0;border-radius:3px;min-height:44px;padding:.25rem .35rem;text-align:left;cursor:pointer;white-space:normal}
+.swimlog-calendar .swimlog-calendar-day-toggle:hover{text-decoration:underline}
+.swimlog-calendar .swimlog-calendar-day-toggle:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+body.swimlog-calendar-modal-open{overflow:hidden}
+.swimlog-calendar-day-dialog{box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(56rem,calc(100% - 2rem));max-width:none;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem);padding:0;border:1px solid #64748b;border-radius:12px;background:#fff;color:#172d40;box-shadow:0 12px 48px rgba(0,0,0,.3);overflow:hidden}
+.swimlog-calendar-day-dialog[open]{display:flex;flex-direction:column}
+.swimlog-calendar-day-dialog::backdrop{background:rgba(15,23,42,.6)}
+.swimlog-calendar-day-dialog *{box-sizing:border-box;min-width:0}
+.swimlog-calendar-day-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem;border-bottom:1px solid #cbd5e1;flex-shrink:0}
+.swimlog-calendar-day-header h2{margin:0;font-size:clamp(1.15rem,3vw,1.6rem);line-height:1.3;overflow-wrap:anywhere}
+.swimlog-calendar-day-dialog .swimlog-calendar-day-close{flex-shrink:0;min-width:60px;min-height:44px;margin:0}
+.swimlog-calendar-day-body{padding:1rem;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-gutter:stable}
+.swimlog-calendar-day-section{margin:1rem 0 1.5rem}
+.swimlog-calendar-day-section h3{margin:0 0 .5rem;font-size:1.1rem}
+.swimlog-calendar-day-summary{margin:0 0 .75rem;overflow-wrap:anywhere}
+.swimlog-calendar-day-dialog .swimlog-calendar-item{display:block;width:100%;font-size:1rem;line-height:1.45;padding:.65rem;margin:.5rem 0;text-align:left;white-space:normal}
+.swimlog-calendar-day-dialog .swimlog-calendar-detail{margin-top:1rem;overflow-wrap:anywhere}
+.swimlog-calendar-day-dialog .swimlog-calendar-button,.swimlog-calendar-day-dialog .swimlog-calendar-plan-date{min-height:44px;white-space:normal}
+@media(max-width:700px){.swimlog-calendar-day-dialog{width:calc(100% - 1rem);max-height:calc(100vh - 1rem);max-height:calc(100dvh - 1rem);border-radius:8px}.swimlog-calendar-day-header,.swimlog-calendar-day-body{padding:.75rem}.swimlog-calendar-day-dialog input,.swimlog-calendar-day-dialog select,.swimlog-calendar-day-dialog textarea{font-size:16px;max-width:100%}.swimlog-calendar-day-dialog .swimlog-calendar-detail-list{grid-template-columns:1fr}.swimlog-calendar-day-dialog .swimlog-calendar-match-candidate{flex-wrap:wrap}}
+@media(forced-colors:active){.swimlog-calendar-day-dialog{background:Canvas;color:CanvasText;border-color:CanvasText}.swimlog-calendar-day-dialog::backdrop{background:Canvas;opacity:.65}}

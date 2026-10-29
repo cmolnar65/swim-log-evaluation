@@ -1,14 +1,18 @@
 === Chris's Swim Training Progress and Evaluation ===
 Contributors: cmolnar65
 Tags: swimming, swim log, personal bests, fit, csv
-Requires at least: 6.0
+Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1
+Stable tag: 1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Import or manually record, preserve, evaluate, and display swimming workout history and personal bests.
+
+== Twenty Twenty-Four page templates ==
+
+For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred Page/Post templates are **SwimLog Wide Content** and **SwimLog Full Width**. Select one from the editor's Template selector. Both preserve the theme header, footer, and page content while providing appropriate table width and responsive display. Wide Content is suitable for wider tables with a bounded content area; Full Width is suited to the widest tables and multi-column layouts. Both were manually verified in Twenty Twenty-Four during v1.2 Phase 03. These templates are optional, and existing pages need not change.
 
 == Description ==
 
@@ -17,6 +21,8 @@ CSV swimming workouts, manually recording pool workouts, preserving normalized w
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
 
+Version 1.2 redesigns the dashboard with navigation tiles and training-volume/SWOLF charts, and adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
+
 Version 1.1 adds Planned Workouts and turns the Swim Training Calendar into an interactive planning surface. Swimmers can create, edit, duplicate, repeat, skip, cancel, restore, and delete future plans; duplicate a week; explicitly match a completed recorded workout to a plan; and review simple planned-versus-actual distance and duration differences. Planned workout instructions preserve multiline free-form swim notation for future structured-workout parsing without inventing sets, send-offs, training stress, readiness, or coaching conclusions.
 
 The shared calendar now also has a WordPress administration Calendar page while retaining the native Gutenberg Calendar block. Both hosts use the same calendar service, Month/Week behavior, swimmer-configured Saturday/Sunday/Monday week boundaries, planning/matching actions, privacy rules, responsive agenda, and accessibility behavior. Calendar REST remains read-only and private notes, GPS/trackpoints, and device/source metadata remain excluded.
@@ -24,6 +30,14 @@ The shared calendar now also has a WordPress administration Calendar page while 
 v1.1 advances the internal database schema to 1.2 through additive, in-place migrations for planned workouts and recorded workout metrics. Existing workout, event, import, performance, location, manual-workout, lap, length, and trackpoint data are preserved.
 
 Version 1.0 adds the private Swim Training Calendar: month and week views, swimmer-configurable Saturday/Sunday/Monday week boundaries, defensible weekly training summaries, in-calendar workout details, responsive mobile agenda presentation, and accessibility-focused keyboard/focus behavior. It builds on the v0.9 analytics, REST/data-portability, and administration architecture without adding a database schema migration.
+
+= Training plans and structured workouts (v1.2) =
+
+Upload a training-plan PDF from Structured Workouts, inspect each candidate against its source instructions and stated total, correct supported structure as needed, select the workouts to import and confirm review completion. Preview sessions last 24 hours after upload; expired previews require another upload. Unsupported notation requires manual correction rather than guessed distances. Imported workouts retain their collection sequence and can be scheduled on individually chosen dates.
+
+Planned workouts can link to structured prescriptions. Regeneration from changed text requires preview and approval; copied plans receive independent prescriptions. Structures associated with recorded swims are protected against editing, replacement or unlinking. Hide/unhide organizes the library without removing history.
+
+Download FIT Workout, PDF or text from a structured workout. FORM text can be copied and pasted; FIT compatibility depends on the destination and does not guarantee TrainingPeaks planned-workout import. These exports describe prescriptions and do not fabricate completed activities. Existing recorded history, personal bests and privacy restrictions remain intact.
 
 = v1.1 =
 
@@ -113,6 +127,28 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
 
 == Changelog ==
+
+= 1.2 =
+* Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.
+* Add optional SwimLog Wide Content and SwimLog Full Width Page/Post templates for Twenty Twenty-Four, with scoped responsive styles and per-page table display preferences.
+* Add private structured swimming workouts with ordered sections, steps, nested repeats and ladders; stroke, drill, equipment, pace and rest fields; and live distance/stroke totals.
+* Add a responsive structured-workout editor, equipment checklist and detailed saved-workout list, with active/hidden/all filters, hide/unhide and history-protected deletion.
+* Parse supported written swim notation conservatively, retaining meter/yard units, explicit totals, unknown versus zero rest and review flags for ambiguous instructions.
+* Link planned workouts to private structures and preview explicitly approved regeneration from changed instructions, with stale-edit protection.
+* Copy structured prescriptions independently with duplicated or recurring plans; preserve recorded-swim structures as immutable and prevent replacement or unlinking.
+* Add private training-plan collections with source sequence/week metadata and individually assigned, nonconsecutive scheduling dates.
+* Extract PDF text with bundled smalot/pdfparser 2.13.1; recognize supported workout headings, compact sets, table-header repeats, odd/even strokes, split lengths and equipment instructions.
+* Provide editable PDF candidate previews, selection checkboxes, confirmed distance/unit and explicit review approval; reset approval after edits and reject incomplete submissions.
+* Keep PDF previews available for 24 hours after upload. Retain private review provenance, preserve selected-only imports, reject duplicate imports and roll back partial failures.
+* Convert supported recorded pool swims into independent private prescriptions through preview and confirmation, without changing source history or inventing timing, sets or personal-best evidence.
+* Download standard FIT Workout files, printable Unicode PDFs using Dompdf 3.1.6, and text suitable for copying to FORM. FIT destination support varies; TrainingPeaks planned-library import is not guaranteed.
+* Expand calendar dates into accessible day dialogs in month/week views and the mobile agenda, preserving existing workout/planning/event actions, privacy and normal navigation.
+* Support empty/busy days, scrolling, keyboard focus containment, Escape/Close/outside-tap dismissal, focus restoration, phone rotation and authorized adjacent-day loading with retry handling.
+* Reorder administration navigation around Dashboard, Calendar, workouts/import/planning, analytics, events/locations and configuration, with Settings last.
+* Harden nonce/input validation, prepared SQL identifiers and values, owner-scoped query caching and invalidation, FORM import bindings and linked-post lookup freshness; retain individually justified database exceptions.
+* Extend full-file PHP lint and regression validation through PHP 8.5. Run strict Plugin Check against production staging and exercise real WordPress/MariaDB persistence, permissions, rollback and desktop/mobile browsers.
+* Use Node.js 24-compatible GitHub actions and manual-only ZIP packaging; retain the runtime Composer manifest/dependencies and exclude confidential PDFs, private extracted content and unnecessary development files.
+* Keep WordPress minimum version 6.2, PHP minimum 7.4 and database schema version 1.2. Preserve existing data and backward compatibility; no new schema migration is required.
 
 = 1.1 =
 * Add planned-workout creation and lifecycle management, recurrence, duplication, Duplicate Week, explicit recorded-workout matching/unmatching, and simple planned-versus-actual comparisons.

@@ -17,10 +17,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -31,5 +31,12 @@ jobs:
         run: composer validate --no-check-publish
       - name: Install test dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Lint every tracked PHP file
+        run: |
+          status=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" || status=1
+          done < <(git ls-files -z '*.php')
+          exit "$status"
       - name: Run PHPUnit
         run: composer test

@@ -202,38 +202,38 @@ final class Manual_Workout {
 		$lt = Database::table( 'laps' ); $nt = Database::table( 'lengths' ); $tt = Database::table( 'trackpoints' ); $pt = Database::table( 'performances' );
 		$now = current_time( 'mysql' );
 		if ( $workout_id ) {
-			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id,user_id,source_type FROM $wt WHERE id=%d AND user_id=%d", $workout_id, $user_id ) );
+			$existing = Database::read( 'get_row',  $wpdb->prepare( "SELECT id,user_id,source_type FROM %i WHERE id=%d AND user_id=%d",$wt,  $workout_id, $user_id ) );
 			if ( ! $existing ) return new \WP_Error( 'swimlog_manual_not_found', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 			if ( 'manual' !== (string) $existing->source_type ) return new \WP_Error( 'swimlog_manual_imported', __( 'Imported workouts cannot be rewritten as manual workouts.', 'chriss-swim-training-progress-evaluation' ) );
 		}
-		if ( false === $wpdb->query( 'START TRANSACTION' ) ) return new \WP_Error( 'swimlog_manual_transaction', __( 'The manual workout transaction could not be started.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( false === Database::write( 'query',  'START TRANSACTION' ) ) return new \WP_Error( 'swimlog_manual_transaction', __( 'The manual workout transaction could not be started.', 'chriss-swim-training-progress-evaluation' ) );
 		try {
 			$values = $normalized['workout']; $values['user_id'] = $user_id; $values['location_id'] = $location_id ?: null; $values['updated_at'] = $now;
 			if ( $workout_id ) {
 				unset( $values['user_id'] );
-				if ( false === $wpdb->update( $wt, $values, array( 'id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'workout' );
+				if ( false === Database::write( 'update',  $wt, $values, array( 'id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'workout' );
 			} else {
 				$values['created_at'] = $now;
-				if ( ! $wpdb->insert( $wt, $values ) ) throw new \Exception( 'workout' );
+				if ( ! Database::write( 'insert',  $wt, $values ) ) throw new \Exception( 'workout' );
 				$workout_id = (int) $wpdb->insert_id;
 			}
 			$source = wp_json_encode( $normalized['document'] );
-			$source_row = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $mt WHERE workout_id=%d", $workout_id ) );
+			$source_row = Database::read( 'get_var',  $wpdb->prepare( "SELECT id FROM %i WHERE workout_id=%d",$mt,  $workout_id ) );
 			if ( $source_row ) {
-				if ( false === $wpdb->update( $mt, array( 'user_id' => $user_id, 'schema_version' => self::SCHEMA_VERSION, 'source_document' => $source, 'updated_at' => $now ), array( 'id' => (int) $source_row, 'workout_id' => $workout_id ) ) ) throw new \Exception( 'source' );
+				if ( false === Database::write( 'update',  $mt, array( 'user_id' => $user_id, 'schema_version' => self::SCHEMA_VERSION, 'source_document' => $source, 'updated_at' => $now ), array( 'id' => (int) $source_row, 'workout_id' => $workout_id ) ) ) throw new \Exception( 'source' );
 			} else {
-				if ( ! $wpdb->insert( $mt, array( 'workout_id' => $workout_id, 'user_id' => $user_id, 'schema_version' => self::SCHEMA_VERSION, 'source_document' => $source, 'created_at' => $now, 'updated_at' => $now ) ) ) throw new \Exception( 'source' );
+				if ( ! Database::write( 'insert',  $mt, array( 'workout_id' => $workout_id, 'user_id' => $user_id, 'schema_version' => self::SCHEMA_VERSION, 'source_document' => $source, 'created_at' => $now, 'updated_at' => $now ) ) ) throw new \Exception( 'source' );
 			}
-			foreach ( array( $lt, $nt, $tt ) as $table ) if ( false === $wpdb->delete( $table, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'structure' );
-			if ( false === $wpdb->delete( $pt, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
-			foreach ( $normalized['laps'] as $row ) { $row['workout_id'] = $workout_id; $row['created_at'] = $now; if ( ! $wpdb->insert( $lt, $row ) ) throw new \Exception( 'lap' ); }
-			foreach ( $normalized['lengths'] as $row ) { $row['workout_id'] = $workout_id; $row['lap_id'] = null; $row['created_at'] = $now; if ( ! $wpdb->insert( $nt, $row ) ) throw new \Exception( 'length' ); }
+			foreach ( array( $lt, $nt, $tt ) as $table ) if ( false === Database::write( 'delete',  $table, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'structure' );
+			if ( false === Database::write( 'delete',  $pt, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
+			foreach ( $normalized['laps'] as $row ) { $row['workout_id'] = $workout_id; $row['created_at'] = $now; if ( ! Database::write( 'insert',  $lt, $row ) ) throw new \Exception( 'lap' ); }
+			foreach ( $normalized['lengths'] as $row ) { $row['workout_id'] = $workout_id; $row['lap_id'] = null; $row['created_at'] = $now; if ( ! Database::write( 'insert',  $nt, $row ) ) throw new \Exception( 'length' ); }
 			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
 			$evaluated = Evaluator::evaluate_manual_measured_repetitions( $workout_id, $user_id, $normalized['document'], false );
 			if ( is_wp_error( $evaluated ) ) throw new \Exception( 'evaluation' );
-			if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' );
+			if ( false === Database::write( 'query',  'COMMIT' ) ) throw new \Exception( 'commit' );
 		} catch ( \Throwable $e ) {
-			$wpdb->query( 'ROLLBACK' );
+			Database::write( 'query',  'ROLLBACK' );
 			return new \WP_Error( 'swimlog_manual_save_failed', __( 'The manual workout could not be saved and all changes were rolled back.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		return array( 'workout_id' => $workout_id, 'source_type' => 'manual', 'laps' => count( $normalized['laps'] ), 'lengths' => count( $normalized['lengths'] ), 'performances' => (int) $evaluated );
@@ -242,7 +242,7 @@ final class Manual_Workout {
 	public static function get_document( $workout_id, $user_id ) {
 		global $wpdb; $workout_id = absint( $workout_id ); $user_id = absint( $user_id );
 		$wt = Database::table( 'workouts' ); $mt = Database::table( 'manual_workouts' );
-		$source = $wpdb->get_var( $wpdb->prepare( "SELECT m.source_document FROM $mt m INNER JOIN $wt w ON w.id=m.workout_id WHERE m.workout_id=%d AND m.user_id=%d AND w.user_id=%d AND w.source_type='manual'", $workout_id, $user_id, $user_id ) );
+		$source = Database::read( 'get_var',  $wpdb->prepare( "SELECT m.source_document FROM %i m INNER JOIN %i w ON w.id=m.workout_id WHERE m.workout_id=%d AND m.user_id=%d AND w.user_id=%d AND w.source_type='manual'",$mt, $wt,  $workout_id, $user_id, $user_id ) );
 		if ( ! $source ) return new \WP_Error( 'swimlog_manual_not_found', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$document = json_decode( (string) $source, true );
 		if ( ! is_array( $document ) ) return new \WP_Error( 'swimlog_manual_source_invalid', __( 'The authoritative manual workout source is invalid.', 'chriss-swim-training-progress-evaluation' ) );
@@ -252,7 +252,7 @@ final class Manual_Workout {
 	public static function rebuild( $workout_id, $user_id ) {
 		global $wpdb;
 		$mt = Database::table( 'manual_workouts' );
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT source_document FROM $mt WHERE workout_id=%d AND user_id=%d", absint( $workout_id ), absint( $user_id ) ) );
+		$row = Database::read( 'get_row',  $wpdb->prepare( "SELECT source_document FROM %i WHERE workout_id=%d AND user_id=%d",$mt,  absint( $workout_id ), absint( $user_id ) ) );
 		if ( ! $row ) return new \WP_Error( 'swimlog_manual_source_missing', __( 'The authoritative manual workout source is missing.', 'chriss-swim-training-progress-evaluation' ) );
 		$document = json_decode( (string) $row->source_document, true );
 		if ( ! is_array( $document ) ) return new \WP_Error( 'swimlog_manual_source_invalid', __( 'The authoritative manual workout source is invalid.', 'chriss-swim-training-progress-evaluation' ) );
@@ -261,7 +261,7 @@ final class Manual_Workout {
 
 	private static function location_belongs_to_user( $location_id, $user_id ) {
 		global $wpdb; $table = Database::table( 'locations' );
-		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE id=%d AND user_id=%d", $location_id, $user_id ) );
+		return (bool) Database::read( 'get_var',  $wpdb->prepare( "SELECT id FROM %i WHERE id=%d AND user_id=%d",$table,  $location_id, $user_id ) );
 	}
 	private static function primary_stroke( $segments ) {
 		$strokes = array();
@@ -278,3 +278,4 @@ final class Manual_Workout {
 	private static function positive_int_or_null( $value ) { return is_numeric( $value ) && (int) $value > 0 && (float) $value === (float) (int) $value ? (int) $value : null; }
 	private static function nonnegative_int_or_null( $value ) { return is_numeric( $value ) && (int) $value >= 0 && (float) $value === (float) (int) $value ? (int) $value : null; }
 }
+

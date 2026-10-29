@@ -11,6 +11,17 @@ final class Plugin {
 		// any of those services can be invoked through WordPress hooks or admin pages.
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-collection.php';
+		add_action( 'init', array( 'SwimLogEvaluation\\Training_Plan_Collection', 'register' ) );
+		add_action( 'init', array( 'SwimLogEvaluation\\Structured_Workout_Store', 'register' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-structured-transfers.php';
+		add_action( 'admin_post_swimlog_structure_download', array( 'SwimLogEvaluation\\Admin_Structured_Transfers', 'download' ) );
+		add_action( 'admin_post_swimlog_structure_convert', array( 'SwimLogEvaluation\\Admin_Structured_Transfers', 'convert' ) );
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-layout-templates.php';
+		Layout_Templates::register();
 		add_filter( 'upload_mimes', array( $this, 'allow_fit_upload_mime' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
 		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
@@ -23,6 +34,7 @@ final class Plugin {
 			add_action( 'admin_init', array( $admin, 'handle_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_manual_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_planned_workout_actions' ) );
+			add_action( 'admin_init', array( $admin, 'handle_structured_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_location_actions' ) );
 		}
@@ -38,7 +50,8 @@ final class Plugin {
 	}
 
 	public function register_calendar_style() {
-		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), SWIMLOG_EVALUATION_VERSION );
+		$calendar_css = SWIMLOG_EVALUATION_DIR . 'assets/css/calendar.css';
+		wp_register_style( 'swimlog-calendar', SWIMLOG_EVALUATION_URL . 'assets/css/calendar.css', array(), is_file( $calendar_css ) ? SWIMLOG_EVALUATION_VERSION . '.' . filemtime( $calendar_css ) : SWIMLOG_EVALUATION_VERSION );
 		wp_localize_script( 'swimlog-calendar-view', 'wpApiSettings', array( 'nonce' => wp_create_nonce( 'wp_rest' ) ) );
 		wp_localize_script( 'swimlog-calendar-view', 'swimlogCalendarSettings', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'planNonce' => wp_create_nonce( 'swimlog_calendar_plan' ), 'eventNonce' => wp_create_nonce( 'swimlog_calendar_event_result' ) ) );
 	}

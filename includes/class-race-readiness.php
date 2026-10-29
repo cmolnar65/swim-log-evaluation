@@ -45,9 +45,9 @@ final class Race_Readiness {
 		$lengths = Database::table( 'lengths' );
 		$performances = Database::table( 'performances' );
 
-		$volume = $wpdb->get_row(
+		$volume = Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms,MAX(w.workout_start) last_workout_start FROM $workouts w INNER JOIN $lengths n ON n.workout_id=w.id WHERE w.user_id=%d AND w.workout_type='pool' AND w.pool_length_unit=%s AND w.workout_start >= %s AND w.workout_start <= %s AND n.length_type='active' AND n.stroke=%s AND n.distance_m>0",
+				"SELECT COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms,MAX(w.workout_start) last_workout_start FROM %i w INNER JOIN %i n ON n.workout_id=w.id WHERE w.user_id=%d AND w.workout_type='pool' AND w.pool_length_unit=%s AND w.workout_start >= %s AND w.workout_start <= %s AND n.length_type='active' AND n.stroke=%s AND n.distance_m>0",$workouts, $lengths, 
 				$user_id,
 				$course,
 				$start,
@@ -56,9 +56,9 @@ final class Race_Readiness {
 			)
 		);
 
-		$longest = $wpdb->get_row(
+		$longest = Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM $performances p INNER JOIN $workouts w ON w.id=p.workout_id WHERE p.user_id=%d AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",
+				"SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM %i p INNER JOIN %i w ON w.id=p.workout_id WHERE p.user_id=%d AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",$performances, $workouts, 
 				$user_id,
 				$course,
 				$stroke,
@@ -67,9 +67,9 @@ final class Race_Readiness {
 			)
 		);
 
-		$lifetime_pb = $wpdb->get_row(
+		$lifetime_pb = Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT id,duration_ms,achieved_at,workout_id FROM $performances WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND is_personal_best=1 ORDER BY achieved_at ASC,id ASC LIMIT 1",
+				"SELECT id,duration_ms,achieved_at,workout_id FROM %i WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND is_personal_best=1 ORDER BY achieved_at ASC,id ASC LIMIT 1",$performances, 
 				$user_id,
 				$distance,
 				$course,
@@ -77,9 +77,9 @@ final class Race_Readiness {
 			)
 		);
 
-		$recent = $wpdb->get_results(
+		$recent = Database::read( 'get_results', 
 			$wpdb->prepare(
-				"SELECT id,duration_ms,achieved_at,workout_id FROM $performances WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND achieved_at >= %s AND achieved_at <= %s ORDER BY achieved_at ASC,id ASC",
+				"SELECT id,duration_ms,achieved_at,workout_id FROM %i WHERE user_id=%d AND distance_value=%d AND course_unit=%s AND stroke=%s AND achieved_at >= %s AND achieved_at <= %s ORDER BY achieved_at ASC,id ASC",$performances, 
 				$user_id,
 				$distance,
 				$course,
@@ -148,3 +148,4 @@ final class Race_Readiness {
 		);
 	}
 }
+

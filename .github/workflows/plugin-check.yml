@@ -1,4 +1,4 @@
-name: Plugin Check Release Package
+name: Plugin Check Production Staging
 
 on:
   workflow_dispatch:
@@ -13,41 +13,62 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Build clean release package
+      - name: Stage production plugin without distribution archive
         run: |
           set -euo pipefail
-          chmod +x ./build-release.sh
-          ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip"
-          mkdir -p "$RUNNER_TEMP/plugin-build"
-          unzip -q "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip" -d "$RUNNER_TEMP/plugin-build"
+          bash ./build-release.sh --stage-only "$RUNNER_TEMP/plugin-build/chriss-swim-training-progress-evaluation"
 
-      - name: Audit v1.1 release package
+      - name: Audit production staging
         run: |
           set -euo pipefail
-          ZIP="$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip"
-          ROOT="chriss-swim-training-progress-evaluation"
-          unzip -t "$ZIP"
-          unzip -Z1 "$ZIP" > "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/block.json" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/index.js" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/blocks/calendar/view.js" "$RUNNER_TEMP/package-files.txt"
-          grep -qx "$ROOT/assets/css/calendar.css" "$RUNNER_TEMP/package-files.txt"
-          grep -q "^ \* Version: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/swim-log-evaluation.php"
-          grep -q "^Stable tag: 1.1$" "$RUNNER_TEMP/plugin-build/$ROOT/readme.txt"
-          ! grep -Eq "^$ROOT/(\.git|\.github|tests|wordpress-org-assets|assets/wordpress-org-assets)(/|$)" "$RUNNER_TEMP/package-files.txt"
-          ! grep -Eq "^$ROOT/(composer\.json|composer\.lock|phpunit\.xml\.dist|build-release\.sh|build-release\.ps1|PLUGIN-CHECK\.md)$" "$RUNNER_TEMP/package-files.txt"
+          ROOT="$RUNNER_TEMP/plugin-build/chriss-swim-training-progress-evaluation"
+          test -f "$ROOT/composer.json"
+          test -f "$ROOT/vendor/autoload.php"
+          test -f "$ROOT/blocks/calendar/block.json"
+          test -f "$ROOT/blocks/calendar/index.js"
+          test -f "$ROOT/blocks/calendar/view.js"
+          test -f "$ROOT/assets/css/calendar.css"
+          for excluded in .git .github tests wordpress-org-assets assets/wordpress-org-assets composer.lock phpunit.xml.dist build-release.sh build-release.ps1 PLUGIN-CHECK.md docs REST-API.md; do
+            test ! -e "$ROOT/$excluded"
+          done
+          test -z "$(find "$ROOT" -type f -iname '*.pdf' -print -quit)"
 
-      - name: Retain exact v1.1 validation package
-        uses: actions/upload-artifact@v4
-        with:
-          name: chriss-swim-training-progress-evaluation-1.1
-          path: ${{ runner.temp }}/chriss-swim-training-progress-evaluation-1.1.zip
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Run WordPress Plugin Check against packaged plugin
+      - name: Run WordPress Plugin Check against production staging
         uses: wordpress/plugin-check-action@v1
         with:
+          strict: true
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
+
+      - name: Verify database cache ownership and persistence in WordPress
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/production-staging-smoke.php)"
+
+      - name: Verify training-plan import structures scheduling and permissions
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/training-plan-integration.php)"
+
+      - name: Verify recorded conversion and prescription exports
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/structured-transfer-integration.php)" | tee "$RUNNER_TEMP/structured-transfers.log"
+          python -m pip install garmin-fit-sdk==21.218.0
+          python tests/verify-structured-fit.py "$RUNNER_TEMP/structured-transfers.log"
+
+      - name: Verify PDF review controls and manually approved selection
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/pdf-review-integration.php)" | tee "$RUNNER_TEMP/pdf-review.log"
+          npm install --prefix "$RUNNER_TEMP/swimlog-browser-tests" --no-save --package-lock=false playwright@1.62.1
+          "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps chromium
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/pdf-review-browser.cjs "$RUNNER_TEMP/pdf-review.log"
+
+      - name: Verify expanded calendar day on desktop and mobile engines
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/calendar-day-integration.php)" | tee "$RUNNER_TEMP/calendar-day.log"
+          "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps webkit
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/calendar-day-browser.cjs "$RUNNER_TEMP/calendar-day.log"

@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "name": "swimlog/upcoming-events",
-  "version": "0.7.0",
+  "version": "1.2.0",
   "title": "Upcoming Events",
   "category": "widgets",
   "icon": "calendar-alt",

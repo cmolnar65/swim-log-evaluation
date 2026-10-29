@@ -50,12 +50,12 @@ final class ReleasePackagingBlockTest extends TestCase {
 		}
 	}
 
-	public function test_plugin_compatibility_headers_remain_wordpress_6_and_php_74() {
+	public function test_plugin_compatibility_headers_require_wordpress_62_and_php_74() {
 		$plugin = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
 		$readme = file_get_contents( dirname( __DIR__ ) . '/readme.txt' );
-		$this->assertStringContainsString( 'Requires at least: 6.0', $plugin );
+		$this->assertStringContainsString( 'Requires at least: 6.2', $plugin );
 		$this->assertStringContainsString( 'Requires PHP: 7.4', $plugin );
-		$this->assertStringContainsString( 'Requires at least: 6.0', $readme );
+		$this->assertStringContainsString( 'Requires at least: 6.2', $readme );
 		$this->assertStringContainsString( 'Requires PHP: 7.4', $readme );
 	}
 

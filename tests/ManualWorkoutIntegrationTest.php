@@ -28,7 +28,14 @@ final class ManualWorkoutIntegrationTest extends TestCase {
   $this->assertStringContainsString("'create_post'",$admin);$this->assertStringContainsString('wp:swimlog/workout',$admin);$this->assertStringContainsString('_swimlog_workout_id',$admin);$this->assertStringContainsString('get_edit_post_link',$admin);
  }
  public function test_dashboard_recent_workouts_keeps_workout_number_aligned_with_header(){
-  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');$start=strpos($admin,"<h2><?php esc_html_e('Recent Workouts'");$end=strpos($admin,'</div><?php',$start);$section=substr($admin,$start,$end-$start);
-  $this->assertStringContainsString("esc_html_e('Workout #'",$section);$this->assertStringContainsString('esc_html((int)$w->id)',$section);$this->assertStringContainsString("wp_date('M j, Y'",$section);
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');
+  $dashboard=file_get_contents(dirname(__DIR__).'/admin/class-admin-dashboard.php');
+  $this->assertStringContainsString('Admin_Dashboard::render()', $admin);
+  $this->assertStringContainsString('<th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th>', $dashboard);
+  $this->assertStringContainsString('foreach ( $recent as $workout )', $dashboard);
+  $this->assertStringContainsString( 'esc_html( $workout->id )' , $dashboard);
+  $this->assertStringContainsString( 'esc_html( $workout->workout_start )' , $dashboard);
+  $this->assertStringContainsString( 'Workout::recent_for_user( $user_id, 5 )' , $dashboard);
+  $this->assertStringContainsString( "array( 'workout_id' => \$workout->id )" , $dashboard);
  }
 }

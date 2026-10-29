@@ -22,26 +22,26 @@ final class Training_Trends {
 		$w = esc_sql( Database::table( 'workouts' ) );
 		$n = esc_sql( Database::table( 'lengths' ) );
 
-		$workouts = $wpdb->get_results(
+		$workouts = Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT id,workout_start,workout_type,total_distance_m,elapsed_time_ms,moving_time_ms,pool_length_unit
-				FROM $w
+				FROM %i
 				WHERE user_id=%d AND workout_start >= %s AND workout_start <= %s
-				ORDER BY workout_start ASC,id ASC",
+				ORDER BY workout_start ASC,id ASC",$w, 
 				$user_id,
 				$previous_start->format( 'Y-m-d H:i:s' ),
 				$end->format( 'Y-m-d H:i:s' )
 			)
 		);
-		$lengths = $wpdb->get_results(
+		$lengths = Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT w.id workout_id,w.workout_start,w.pool_length_unit,
 					n.distance_m,n.elapsed_time_ms,n.stroke,n.length_type
-				FROM $w w INNER JOIN $n n ON n.workout_id=w.id
+				FROM %i w INNER JOIN %i n ON n.workout_id=w.id
 				WHERE w.user_id=%d AND w.workout_type='pool'
 					AND w.workout_start >= %s AND w.workout_start <= %s
 					AND n.length_type='active' AND n.distance_m>0
-				ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",
+				ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",$w, $n, 
 				$user_id,
 				$current_start->format( 'Y-m-d H:i:s' ),
 				$end->format( 'Y-m-d H:i:s' )
@@ -243,3 +243,4 @@ final class Training_Trends {
 		return ( ( $current - $previous ) / $previous ) * 100;
 	}
 }
+

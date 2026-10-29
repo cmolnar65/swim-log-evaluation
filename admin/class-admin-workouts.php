@@ -7,7 +7,20 @@ require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ui.php';
 final class Admin_Workouts {
 	private static $workout_action_error = null;
 
-	private static function recording_device_label( $workout ) {
+	private static function linked_post_ids( $workout_id ) {
+        global $wpdb;
+        // Restrict to posts of the same types/statuses as the prior get_posts() lookup.
+        $post_table = $wpdb->posts;
+        $meta_table = $wpdb->postmeta;
+        // The shared request cache observes post/meta writes, including creation after a negative lookup.
+        $ids = Database::read( 'get_col',  $wpdb->prepare(
+            "SELECT p.ID FROM %i p INNER JOIN %i pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value = %s AND p.post_type = %s AND p.post_status IN ('draft','pending','future','publish','private') ORDER BY p.post_date DESC LIMIT 1",
+            $post_table, $meta_table, '_swimlog_workout_id', (string) absint( $workout_id ), 'post'
+        ) );
+        return $ids;
+    }
+
+    private static function recording_device_label( $workout ) {
 		$manufacturer = trim( (string) ( $workout->device_manufacturer ?? '' ) );
 		$model = trim( (string) ( $workout->device_model ?? '' ) );
 		$combined = trim( $manufacturer . ' ' . $model );
@@ -98,7 +111,10 @@ final class Admin_Workouts {
 			<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-workout-location"><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></label></th><td><select id="swimlog-workout-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected((int)$w->location_id,(int)$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php echo esc_html($is_open_water?__('Changing the location does not change imported open-water distance or GPS track data.','chriss-swim-training-progress-evaluation'):__('Changing the location does not change the pool length or course stored with this workout.','chriss-swim-training-progress-evaluation')); ?></p></td></tr>
 			<tr><th scope="row"><label for="swimlog-workout-notes"><?php esc_html_e('Notes','chriss-swim-training-progress-evaluation'); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-workout-notes" name="notes"><?php echo esc_textarea($w->notes??''); ?></textarea></td></tr><tr><th scope="row"><?php esc_html_e('Workout Photos','chriss-swim-training-progress-evaluation'); ?></th><td><p class="description"><?php esc_html_e('Attach up to three JPEG, PNG, GIF, or WebP photos. Check Delete to remove a photo, or choose a replacement image for that slot.','chriss-swim-training-progress-evaluation'); ?></p><?php for($photo_slot=0;$photo_slot<3;$photo_slot++):$photo_id=$photos[$photo_slot]??0;?><div style="margin:0 0 16px"><?php if($photo_id):?><?php echo wp_get_attachment_image($photo_id,'thumbnail',false,array('style'=>'display:block;margin-bottom:6px;max-width:150px;height:auto')); ?><label><input type="checkbox" name="delete_photo[]" value="<?php echo esc_attr($photo_slot); ?>"> <?php esc_html_e('Delete','chriss-swim-training-progress-evaluation'); ?></label><br><label><?php esc_html_e('Replace','chriss-swim-training-progress-evaluation'); ?> <input type="file" name="workout_photo_<?php echo esc_attr($photo_slot); ?>" accept="image/jpeg,image/png,image/gif,image/webp"></label><?php else:?><label><?php echo esc_html(sprintf(/* translators: %d: photo slot number. */ __('Photo %d','chriss-swim-training-progress-evaluation'),$photo_slot+1)); ?> <input type="file" name="workout_photo_<?php echo esc_attr($photo_slot); ?>" accept="image/jpeg,image/png,image/gif,image/webp"></label><?php endif;?></div><?php endfor;?></td></tr></table>
 			<?php submit_button(__('Save Changes','chriss-swim-training-progress-evaluation'),'primary','',false); ?> <a class="button" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail),admin_url('admin.php'))); ?>"><?php esc_html_e('Cancel','chriss-swim-training-progress-evaluation'); ?></a></form>
-			<?php else:?><?php $linked_posts=get_posts(array('post_type'=>'post','post_status'=>array('draft','pending','future','publish','private'),'posts_per_page'=>1,'fields'=>'ids','meta_key'=>'_swimlog_workout_id','meta_value'=>$detail)); ?><p><a class="button" href="<?php echo esc_url('manual'===($w->source_type??'')?add_query_arg(array('page'=>'swimlog-manual-workout','workout_id'=>$detail,'swimmer_id'=>$user_id),admin_url('admin.php')):add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit Workout','chriss-swim-training-progress-evaluation'); ?></a> <?php if($linked_posts):?><a class="button button-primary" href="<?php echo esc_url(get_edit_post_link((int)$linked_posts[0],'raw')); ?>"><?php esc_html_e('Edit Post','chriss-swim-training-progress-evaluation'); ?></a><?php elseif(current_user_can('edit_posts')):?><form method="post" style="display:inline-block;margin-left:4px"><?php wp_nonce_field('swimlog_create_workout_post_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="create_post"><?php submit_button(__('Create Post','chriss-swim-training-progress-evaluation'),'primary','',false); ?></form><?php endif;?></p>
+			<?php else:?><?php $linked_posts=self::linked_post_ids($detail); ?><p><a class="button" href="<?php echo esc_url('manual'===($w->source_type??'')?add_query_arg(array('page'=>'swimlog-manual-workout','workout_id'=>$detail,'swimmer_id'=>$user_id),admin_url('admin.php')):add_query_arg(array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit Workout','chriss-swim-training-progress-evaluation'); ?></a> <?php if($linked_posts):?><a class="button button-primary" href="<?php echo esc_url(get_edit_post_link((int)$linked_posts[0],'raw')); ?>"><?php esc_html_e('Edit Post','chriss-swim-training-progress-evaluation'); ?></a><?php elseif(current_user_can('edit_posts')):?><form method="post" style="display:inline-block;margin-left:4px"><?php wp_nonce_field('swimlog_create_workout_post_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="create_post"><?php submit_button(__('Create Post','chriss-swim-training-progress-evaluation'),'primary','',false); ?></form><?php endif;?></p>
+            <?php if ( ! $is_open_water && (int) $w->user_id === get_current_user_id() ) : ?>
+            <p><a class="button" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'from_workout' => $detail ), admin_url( 'admin.php' ) ), 'swimlog_structure_preview_' . $detail ) ); ?>"><?php esc_html_e( 'Create structured prescription from this swim', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+            <?php endif; ?>
 			<table class="widefat striped"><tbody>
 			<tr><th><?php esc_html_e('Date','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html(mysql2date('F j, Y g:i a',$w->workout_start,false)); ?></td></tr>
 			<tr><th><?php esc_html_e('Workout type','chriss-swim-training-progress-evaluation'); ?></th><td><?php echo esc_html($is_open_water?__('Open water','chriss-swim-training-progress-evaluation'):__('Pool','chriss-swim-training-progress-evaluation')); ?></td></tr>
@@ -265,14 +281,7 @@ final class Admin_Workouts {
 				wp_die( esc_html__( 'You do not have permission to create posts.', 'chriss-swim-training-progress-evaluation' ) );
 			}
 			$workout = Workout::get_for_user( $detail, $user_id );
-			$existing = get_posts( array(
-				'post_type'      => 'post',
-				'post_status'    => array( 'draft', 'pending', 'future', 'publish', 'private' ),
-				'posts_per_page' => 1,
-				'fields'         => 'ids',
-				'meta_key'       => '_swimlog_workout_id',
-				'meta_value'     => $detail,
-			) );
+			$existing = self::linked_post_ids( $detail );
 			if ( $existing ) {
 				wp_safe_redirect( get_edit_post_link( (int) $existing[0], 'raw' ) );
 				exit;
@@ -347,25 +356,36 @@ final class Admin_Workouts {
 
 
 	private static function save_workout_photos( $workout_id, $user_id ) {
-		$photos = Workout::photos( $workout_id, $user_id );
-		$delete_slots = isset( $_POST['delete_photo'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['delete_photo'] ) ) : array();
-		for ( $slot = 0; $slot < 3; $slot++ ) {
-			$old_id = $photos[$slot] ?? 0;
-			$field = 'workout_photo_' . $slot;
-			$has_upload = ! empty( $_FILES[$field]['name'] ) && UPLOAD_ERR_NO_FILE !== (int) ( $_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE );
-			if ( ! $has_upload && ! in_array( $slot, $delete_slots, true ) ) continue;
-			if ( $has_upload ) {
-				if ( UPLOAD_ERR_OK !== (int) $_FILES[$field]['error'] ) return new \WP_Error( 'swimlog_workout_photo_upload', __( 'A workout photo upload failed.', 'chriss-swim-training-progress-evaluation' ) );
-				$check = wp_check_filetype_and_ext( $_FILES[$field]['tmp_name'], sanitize_file_name( $_FILES[$field]['name'] ), array( 'jpg|jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp' ) );
-				if ( empty( $check['type'] ) || 0 !== strpos( $check['type'], 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be JPEG, PNG, GIF, or WebP images.', 'chriss-swim-training-progress-evaluation' ) );
-				require_once ABSPATH . 'wp-admin/includes/file.php'; require_once ABSPATH . 'wp-admin/includes/media.php'; require_once ABSPATH . 'wp-admin/includes/image.php';
-				$new_id = media_handle_upload( $field, 0, array( 'post_title' => sprintf( /* translators: %d: workout ID. */ __( 'Workout %d photo', 'chriss-swim-training-progress-evaluation' ), $workout_id ) ), array( 'test_form' => false, 'mimes' => array( 'jpg|jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp' ) ) );
-				if ( is_wp_error( $new_id ) ) return $new_id;
-				if ( $old_id ) { $photos[$slot] = $new_id; wp_delete_attachment( $old_id, true ); } else $photos[] = $new_id;
-			} elseif ( $old_id ) { wp_delete_attachment( $old_id, true ); unset( $photos[$slot] ); }
-		}
-		$photos = array_values( array_filter( array_map( 'absint', $photos ) ) );
-		return Workout::set_photos( $workout_id, $user_id, $photos );
+        check_admin_referer( 'swimlog_save_workout_metadata_' . $workout_id );
+        $photos = Workout::photos( $workout_id, $user_id );
+        $delete_slots = isset( $_POST['delete_photo'] ) && is_array( $_POST['delete_photo'] )
+            ? array_map( 'absint', wp_unslash( $_POST['delete_photo'] ) ) : array();
+        for ( $slot = 0; $slot < 3; $slot++ ) {
+            $old_id = $photos[$slot] ?? 0;
+            $field = 'workout_photo_' . $slot;
+            // Upload metadata must remain intact for WordPress media_handle_upload().
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce checked by handle_workout_actions(); sanitized filename and verified PHP upload below.
+            $upload = isset( $_FILES[$field] ) && is_array( $_FILES[$field] ) ? $_FILES[$field] : array();
+            $upload_error = isset( $upload['error'] ) && is_scalar( $upload['error'] ) ? absint( $upload['error'] ) : UPLOAD_ERR_NO_FILE;
+            $filename = isset( $upload['name'] ) && is_string( $upload['name'] ) ? sanitize_file_name( $upload['name'] ) : '';
+            $has_upload = '' !== $filename && UPLOAD_ERR_NO_FILE !== $upload_error;
+            if ( ! $has_upload && ! in_array( $slot, $delete_slots, true ) ) continue;
+            if ( $has_upload ) {
+                if ( UPLOAD_ERR_OK !== $upload_error ) return new \WP_Error( 'swimlog_workout_photo_upload', __( 'A workout photo upload failed.', 'chriss-swim-training-progress-evaluation' ) );
+                $tmp_name = isset( $upload['tmp_name'] ) && is_string( $upload['tmp_name'] ) ? $upload['tmp_name'] : '';
+                if ( '' === $tmp_name || ! is_uploaded_file( $tmp_name ) ) return new \WP_Error( 'swimlog_workout_photo_upload', __( 'A workout photo upload failed.', 'chriss-swim-training-progress-evaluation' ) );
+                $check = wp_check_filetype_and_ext( $tmp_name, $filename, array( 'jpg|jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp' ) );
+                if ( empty( $check['type'] ) || 0 !== strpos( $check['type'], 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be JPEG, PNG, GIF, or WebP images.', 'chriss-swim-training-progress-evaluation' ) );
+                require_once ABSPATH . 'wp-admin/includes/file.php'; require_once ABSPATH . 'wp-admin/includes/media.php'; require_once ABSPATH . 'wp-admin/includes/image.php';
+                $new_id = media_handle_upload( $field, 0, array( 'post_title' => sprintf( /* translators: %d: workout ID. */ __( 'Workout %d photo', 'chriss-swim-training-progress-evaluation' ), $workout_id ) ), array( 'test_form' => false, 'mimes' => array( 'jpg|jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp' ) ) );
+                if ( is_wp_error( $new_id ) ) return $new_id;
+                if ( $old_id ) { $photos[$slot] = $new_id; wp_delete_attachment( $old_id, true ); } else $photos[] = $new_id;
+            } elseif ( $old_id ) { wp_delete_attachment( $old_id, true ); unset( $photos[$slot] ); }
+        }
+        $photos = array_values( array_filter( array_map( 'absint', $photos ) ) );
+        return Workout::set_photos( $workout_id, $user_id, $photos );
+
 	}
 
 }
+

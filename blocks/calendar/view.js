@@ -51,13 +51,107 @@
 		( data.events || [] ).forEach( function ( event ) { ( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null, null, event ) ); } );
 		return byDate;
 	}
+	var dayDialogSequence = 0, openDayDialogs = 0;
+	function dayButton( key, label ) {
+		var button = document.createElement( 'button' ); button.type = 'button'; button.className = 'swimlog-calendar-date swimlog-calendar-day-toggle'; button.dataset.calendarDay = key; button.textContent = label;
+		button.setAttribute( 'aria-haspopup', 'dialog' ); button.setAttribute( 'aria-expanded', 'false' );
+		button.setAttribute( 'aria-label', 'Open day details for ' + new Date( key + 'T12:00:00' ).toLocaleDateString( undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' } ) );
+		return button;
+	}
+	function closeDayView( root, restoreFocus ) {
+		var state = root._calendarDayView; if ( ! state ) return;
+		root._calendarDayView = null;
+		if ( state.request ) state.request.abort();
+		if ( state.dialog.open ) state.dialog.close();
+		closeWorkoutDetail( root, false );
+		state.home.insertBefore( state.panel, state.next && state.next.parentNode === state.home ? state.next : null );
+		state.dialog.remove(); openDayDialogs = Math.max( 0, openDayDialogs - 1 );
+		if ( ! openDayDialogs ) document.body.classList.remove( 'swimlog-calendar-modal-open' );
+		state.trigger.setAttribute( 'aria-expanded', 'false' ); state.trigger.removeAttribute( 'aria-controls' );
+		var focusTarget = state.trigger;
+		if ( ! focusTarget.isConnected || ! focusTarget.getClientRects().length ) {
+			focusTarget = Array.prototype.find.call( root.querySelectorAll( '[data-calendar-day]' ), function ( node ) { return node.dataset.calendarDay === state.date && node.getClientRects().length; } ) || root.querySelector( '.swimlog-calendar-title' );
+		}
+		if ( restoreFocus !== false && focusTarget ) focusTarget.focus( { preventScroll: true } );
+		window.scrollTo( { left: state.scrollX, top: state.scrollY, behavior: 'instant' } );
+	}
+	function renderDayContents( root, state, data ) {
+		if ( root._calendarDayView !== state ) return;
+		var content = state.content; content.textContent = ''; content.removeAttribute( 'aria-busy' );
+		var workouts = ( data.workouts || [] ).filter( function ( row ) { return String( row.workout_start || '' ).slice( 0, 10 ) === state.date; } );
+		var plans = ( data.planned_workouts || [] ).filter( function ( row ) { return row.planned_date === state.date; } );
+		var events = ( data.events || [] ).filter( function ( row ) { return row.event_date === state.date; } );
+		var summary = document.createElement( 'p' ); summary.className = 'swimlog-calendar-day-summary';
+		var distance = workouts.reduce( function ( total, row ) { return total + Number( row.total_distance_m || 0 ); }, 0 );
+		summary.textContent = workouts.length + ' recorded · ' + Math.round( distance ).toLocaleString() + ' m recorded · ' + plans.length + ' planned · ' + events.length + ' events'; content.appendChild( summary );
+		var planButton = planDateButton( state.date, root ); if ( planButton ) content.appendChild( planButton );
+		var sections = document.createElement( 'div' ); sections.dataset.calendarDaySections = '1'; content.appendChild( sections );
+		var definitions = [ [ 'Recorded swims', workouts, 'workouts', 'swimlog-calendar-workout' ], [ 'Planned workouts', plans, 'planned_workouts', 'swimlog-calendar-planned-workout' ], [ 'Events', events, 'events', 'swimlog-calendar-event' ] ];
+		definitions.forEach( function ( definition ) {
+			if ( ! definition[1].length ) return;
+			var section = document.createElement( 'section' ); section.className = 'swimlog-calendar-day-section';
+			var heading = document.createElement( 'h3' ); heading.textContent = definition[0]; section.appendChild( heading );
+			var selected = { workouts: [], planned_workouts: [], events: [] }; selected[definition[2]] = definition[1];
+			( agendaItemsByDate( selected )[state.date] || [] ).forEach( function ( entry ) { entry.draggable = false; section.appendChild( entry ); } );
+			sections.appendChild( section );
+		} );
+		if ( ! workouts.length && ! plans.length && ! events.length ) { var empty = document.createElement( 'p' ); empty.textContent = 'No workouts or events for this day.'; sections.appendChild( empty ); }
+	}
+	function loadDayContents( root, state ) {
+		var cached = root._calendarData;
+		if ( cached && cached.range && state.date >= cached.range.start && state.date <= cached.range.end ) { renderDayContents( root, state, cached ); return; }
+		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', state.date ); url.searchParams.set( 'end', state.date );
+		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
+		if ( state.content.contains( document.activeElement ) ) state.dialog.querySelector( '[data-calendar-day-close]' ).focus( { preventScroll: true } );
+		state.content.textContent = 'Loading day…'; state.content.setAttribute( 'aria-busy', 'true' ); state.request = new AbortController();
+		fetch( url.toString(), { credentials: 'same-origin', signal: state.request.signal, headers: { 'X-WP-Nonce': ( window.wpApiSettings && window.wpApiSettings.nonce ) || '' } } )
+			.then( function ( response ) { if ( ! response.ok ) throw new Error( 'Unable to load this day.' ); return response.json(); } )
+			.then( function ( data ) { renderDayContents( root, state, data ); } )
+			.catch( function ( error ) {
+				if ( root._calendarDayView !== state || error.name === 'AbortError' ) return;
+				state.content.removeAttribute( 'aria-busy' ); state.content.textContent = 'Unable to load this day. Please try again.';
+				var retry = document.createElement( 'button' ); retry.type = 'button'; retry.className = 'swimlog-calendar-button'; retry.textContent = 'Retry'; retry.addEventListener( 'click', function () { loadDayContents( root, state ); } ); state.content.appendChild( retry );
+			} );
+	}
+	function showDayView( root, date, trigger ) {
+		if ( ! /^\d{4}-\d{2}-\d{2}$/.test( date ) || root.classList.contains( 'is-loading' ) || Date.now() < ( root._dayIgnoreClickUntil || 0 ) ) return;
+		closeDayView( root, false ); closeWorkoutDetail( root, false );
+		var panel = root.querySelector( '[data-calendar-detail]' ), dialog = document.createElement( 'dialog' );
+		dialog.className = 'swimlog-calendar-day-dialog'; dialog.id = 'swimlog-calendar-day-dialog-' + ( ++dayDialogSequence );
+		dialog.setAttribute( 'aria-modal', 'true' ); dialog.setAttribute( 'aria-labelledby', dialog.id + '-title' );
+		var header = document.createElement( 'div' ); header.className = 'swimlog-calendar-day-header';
+		var title = document.createElement( 'h2' ); title.id = dialog.id + '-title'; title.textContent = new Date( date + 'T12:00:00' ).toLocaleDateString( undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' } ); header.appendChild( title );
+		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-day-close'; close.textContent = 'Close'; close.setAttribute( 'aria-label', 'Close day details' ); close.dataset.calendarDayClose = '1'; header.appendChild( close ); dialog.appendChild( header );
+		var body = document.createElement( 'div' ); body.className = 'swimlog-calendar-day-body'; dialog.appendChild( body );
+		var content = document.createElement( 'div' ); content.dataset.calendarDayContent = '1'; content.setAttribute( 'aria-live', 'polite' ); body.appendChild( content );
+		var state = { dialog: dialog, panel: panel, content: content, date: date, trigger: trigger, home: panel.parentNode, next: panel.nextSibling, scrollX: window.scrollX, scrollY: window.scrollY };
+		body.appendChild( panel ); root.appendChild( dialog ); root._calendarDayView = state;
+		trigger.setAttribute( 'aria-controls', dialog.id ); trigger.setAttribute( 'aria-expanded', 'true' );
+		var outsideDown = false;
+		function outside( event ) { var rect = dialog.getBoundingClientRect(); return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom; }
+		dialog.addEventListener( 'pointerdown', function ( event ) { outsideDown = event.target === dialog && outside( event ); } );
+		dialog.addEventListener( 'click', function ( event ) { if ( outsideDown && event.target === dialog && outside( event ) ) { event.preventDefault(); event.stopPropagation(); closeDayView( root, true ); } } );
+		dialog.addEventListener( 'keydown', function ( event ) {
+			if ( event.key !== 'Tab' || event.ctrlKey || event.altKey || event.metaKey ) return;
+			var focusable = Array.prototype.filter.call( dialog.querySelectorAll( 'a[href], button, input, select, textarea, [tabindex]' ), function ( node ) { return ! node.disabled && node.tabIndex >= 0 && node.getClientRects().length; } );
+			var first = focusable[0], last = focusable[focusable.length - 1], active = document.activeElement;
+			if ( ! first ) { event.preventDefault(); close.focus(); return; }
+			if ( event.shiftKey && ( active === first || ! dialog.contains( active ) ) ) { event.preventDefault(); last.focus(); }
+			else if ( ! event.shiftKey && ( active === last || ! dialog.contains( active ) ) ) { event.preventDefault(); first.focus(); }
+		} );
+		dialog.addEventListener( 'cancel', function ( event ) { event.preventDefault(); closeDayView( root, true ); } );
+		dialog.addEventListener( 'close', function () { if ( root._calendarDayView === state ) closeDayView( root, true ); } );
+		// Native modal dialogs contain focus and make the background inert, including on touch devices.
+		dialog.showModal(); openDayDialogs++; document.body.classList.add( 'swimlog-calendar-modal-open' );
+		loadDayContents( root, state ); close.focus( { preventScroll: true } );
+	}
 	function renderAgenda( root, data, start, end ) {
 		var agenda = root.querySelector( '[data-calendar-agenda]' ); if ( ! agenda ) return;
 		agenda.textContent = ''; var byDate = agendaItemsByDate( data ), cursor = new Date( start.getFullYear(), start.getMonth(), start.getDate() ), itemCount = 0;
 		while ( cursor <= end ) {
 			var key = dateKey( cursor ), items = byDate[ key ] || [];
 			var group = document.createElement( 'section' ); group.className = 'swimlog-calendar-agenda-day'; group.dataset.date = key;
-			var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-agenda-date'; heading.textContent = cursor.toLocaleDateString( undefined, { weekday: 'long', month: 'long', day: 'numeric' } ); group.appendChild( heading ); var planButton = planDateButton( key, root ); if ( planButton ) group.appendChild( planButton );
+			var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-agenda-date'; heading.appendChild( dayButton( key, cursor.toLocaleDateString( undefined, { weekday: 'long', month: 'long', day: 'numeric' } ) ) ); group.appendChild( heading ); var planButton = planDateButton( key, root ); if ( planButton ) group.appendChild( planButton );
 			if ( ! items.length ) { var none = document.createElement( 'p' ); none.className = 'swimlog-calendar-agenda-day-empty'; none.textContent = 'No workouts or events.'; group.appendChild( none ); }
 			items.forEach( function ( child ) { group.appendChild( child ); itemCount++; } ); agenda.appendChild( group );
 			cursor.setDate( cursor.getDate() + 1 );
@@ -65,6 +159,7 @@
 		if ( ! itemCount ) { var empty = document.createElement( 'p' ); empty.className = 'swimlog-calendar-agenda-empty'; empty.textContent = 'No workouts or events in this period. You can still plan a workout on any date above.'; agenda.appendChild( empty ); }
 	}
 	function renderMonth( root, data, focus ) {
+		closeDayView( root, false ); root._calendarData = data;
 		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday';
 		root.dataset.firstDay = firstDay; root.dataset.year = focus.getFullYear(); root.dataset.month = focus.getMonth() + 1; root.dataset.focusDate = dateKey( focus );
 		root.querySelector( '.swimlog-calendar-title' ).textContent = monthName( focus );
@@ -92,7 +187,7 @@
 		while ( cursor <= end ) {
 			var key = dateKey( cursor ), cell = document.createElement( 'div' ); cell.className = 'swimlog-calendar-day'; cell.setAttribute( 'role', 'gridcell' ); cell.dataset.date = key;
 			if ( cursor.getMonth() !== focus.getMonth() ) cell.classList.add( 'is-outside-month' );
-			var n = document.createElement( 'span' ); n.className = 'swimlog-calendar-date'; n.textContent = cursor.getDate(); cell.appendChild( n ); var planButton = planDateButton( key, root ); if ( planButton ) cell.appendChild( planButton );
+			var n = dayButton( key, cursor.getDate() ); cell.appendChild( n ); var planButton = planDateButton( key, root ); if ( planButton ) cell.appendChild( planButton );
 			( byDate[ key ] || [] ).forEach( function ( child ) { cell.appendChild( child ); } ); grid.appendChild( cell );
 			cursor.setDate( cursor.getDate() + 1 );
 		}
@@ -228,8 +323,10 @@
 	}
 	function showCompletionCandidates( root, plan ) {
 		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
+		var dayState = root._calendarDayView, detailGeneration = root._calendarDetailGeneration || 0;
 		var panel = root.querySelector( '[data-calendar-detail]' ), status = root.querySelector( '.swimlog-calendar-status' ); status.textContent = 'Finding recorded workouts…'; root.setAttribute( 'aria-busy', 'true' );
 		calendarPlanRequest( root, { plan_action: 'candidates', id: plan.id } ).then( function ( data ) {
+			if ( root._calendarDayView !== dayState || ( root._calendarDetailGeneration || 0 ) !== detailGeneration ) return;
 			panel.textContent = ''; var heading = document.createElement( 'h3' ); heading.textContent = 'Match Recorded Workout'; panel.appendChild( heading );
 			var intro = document.createElement( 'p' ); intro.textContent = 'Choose the recorded workout that completed this plan. No match is made until you confirm it.'; panel.appendChild( intro );
 			var candidates = data.candidates || []; if ( ! candidates.length ) { var none = document.createElement( 'p' ); none.textContent = 'No same-day recorded workouts of the same type were found.'; panel.appendChild( none ); }
@@ -308,6 +405,7 @@
 		} );
 	}
 	function closeWorkoutDetail( root, restoreFocus ) {
+		root._calendarDetailGeneration = ( root._calendarDetailGeneration || 0 ) + 1;
 		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ), returnFocus = trigger || root._calendarReturnFocus;
 		var panel = root.querySelector( '[data-calendar-detail]' ); if ( panel ) { panel.hidden = true; panel.textContent = ''; panel.removeAttribute( 'id' ); }
 		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
@@ -323,6 +421,7 @@
 		return start.toLocaleDateString( undefined, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' } ) + '–' + end.toLocaleDateString( undefined, { month: 'short', day: 'numeric', year: 'numeric' } );
 	}
 	function renderWeek( root, data, focus ) {
+		closeDayView( root, false ); root._calendarData = data;
 		var firstDay = data.range.first_day || root.dataset.firstDay || 'sunday', start = weekStart( focus, firstDay ), end = new Date( start.getFullYear(), start.getMonth(), start.getDate() + 6 );
 		root.dataset.firstDay = firstDay; root.dataset.focusDate = dateKey( focus );
 		root.querySelector( '.swimlog-calendar-title' ).textContent = weekTitle( start, end );
@@ -339,7 +438,7 @@
 		for ( var i = 0; i < 7; i++ ) {
 			var date = new Date( start.getFullYear(), start.getMonth(), start.getDate() + i ), key = dateKey( date ), cell = document.createElement( 'div' );
 			cell.className = 'swimlog-calendar-day swimlog-calendar-week-day'; cell.setAttribute( 'role', 'gridcell' ); cell.dataset.date = key;
-			var heading = document.createElement( 'span' ); heading.className = 'swimlog-calendar-date'; heading.textContent = date.toLocaleDateString( undefined, { weekday: 'short', month: 'short', day: 'numeric' } ); cell.appendChild( heading ); var planButton = planDateButton( key, root ); if ( planButton ) cell.appendChild( planButton );
+			var heading = dayButton( key, date.toLocaleDateString( undefined, { weekday: 'short', month: 'short', day: 'numeric' } ) ); cell.appendChild( heading ); var planButton = planDateButton( key, root ); if ( planButton ) cell.appendChild( planButton );
 			( byDate[ key ] || [] ).forEach( function ( child ) { cell.appendChild( child ); } ); grid.appendChild( cell );
 		}
 		var duplicate = document.createElement( 'button' ); duplicate.type = 'button'; duplicate.className = 'swimlog-calendar-button swimlog-calendar-duplicate-week'; duplicate.dataset.calendarDuplicateWeek = dateKey( start ); duplicate.textContent = 'Duplicate Week'; grid.appendChild( duplicate );
@@ -366,6 +465,7 @@
 		root.querySelectorAll( '[data-calendar-view]' ).forEach( function ( button ) { var active = button.dataset.calendarView === viewName; button.classList.toggle( 'is-active', active ); button.setAttribute( 'aria-pressed', active ? 'true' : 'false' ); } );
 	}
 	function loadWeek( root, focus ) {
+		closeDayView( root, false );
 		var firstDay = root.dataset.firstDay || 'sunday', startDate = weekStart( focus, firstDay ), endDate = new Date( startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6 );
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', dateKey( startDate ) ); url.searchParams.set( 'end', dateKey( endDate ) );
 		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
@@ -377,6 +477,7 @@
 			.finally( function () { root.classList.remove( 'is-loading' ); root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function loadMonth( root, focus ) {
+		closeDayView( root, false );
 		var start = dateKey( new Date( focus.getFullYear(), focus.getMonth(), 1 ) ), end = dateKey( new Date( focus.getFullYear(), focus.getMonth() + 1, 0 ) );
 		var url = new URL( root.dataset.restUrl, window.location.origin ); url.searchParams.set( 'start', start ); url.searchParams.set( 'end', end );
 		if ( root.dataset.user ) url.searchParams.set( 'user', root.dataset.user );
@@ -391,6 +492,7 @@
 		root.dataset.view = 'month'; root.setAttribute( 'aria-busy', 'false' ); root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		loadMonth( root, new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		root.addEventListener( 'keydown', function ( event ) {
+			if ( event.key === 'Escape' && root._calendarDayView ) { event.preventDefault(); event.stopPropagation(); closeDayView( root, true ); return; }
 			if ( event.key === 'Escape' && ! root.querySelector( '[data-calendar-detail]' ).hidden ) { event.preventDefault(); closeWorkoutDetail( root, true ); }
 		} );
 		root.addEventListener( 'invalid', function ( event ) { var form = event.target.closest( '[data-calendar-plan-form]' ); if ( ! form ) return; var status = root.querySelector( '.swimlog-calendar-status' ); if ( status ) status.textContent = 'Please correct the highlighted field: ' + ( event.target.closest( 'label' ) ? event.target.closest( 'label' ).textContent.trim() : event.target.name ) + '. ' + ( event.target.validationMessage || '' ); }, true );
@@ -425,8 +527,13 @@
 			event.preventDefault(); if ( day.dataset.date === plan.planned_date ) return;
 			if ( window.confirm( 'Move ' + plan.title + ' to ' + day.dataset.date + '?' ) ) mutatePlan( root, { plan_action: 'move', id: plan.id, planned_date: day.dataset.date } );
 		} );
-		root.addEventListener( 'dragend', function () { root._dragPlan = null; root.querySelectorAll( '.is-drop-target' ).forEach( function ( node ) { node.classList.remove( 'is-drop-target' ); } ); } );
+		root.addEventListener( 'dragend', function () { root._dayIgnoreClickUntil = Date.now() + 250; root._dragPlan = null; root.querySelectorAll( '.is-drop-target' ).forEach( function ( node ) { node.classList.remove( 'is-drop-target' ); } ); } );
 		root.addEventListener( 'click', function ( event ) {
+			if ( event.target.closest( '[data-calendar-day-close]' ) ) { closeDayView( root, true ); return; }
+			var dayTrigger = event.target.closest( '[data-calendar-day]' );
+			if ( dayTrigger ) { showDayView( root, dayTrigger.dataset.calendarDay, dayTrigger ); return; }
+			var dayCell = event.target.closest( '.swimlog-calendar-day[data-date], .swimlog-calendar-agenda-day[data-date]' );
+			if ( dayCell && ! event.target.closest( 'button, a, input, select, textarea, label, form, [role="button"]' ) ) { var dateTrigger = dayCell.querySelector( '[data-calendar-day]' ); if ( dateTrigger ) showDayView( root, dayCell.dataset.date, dateTrigger ); return; }
 			var go = event.target.closest( '[data-calendar-go]' ); if ( go ) { var input = root.querySelector( '[data-calendar-go-date]' ), status = root.querySelector( '.swimlog-calendar-status' ); if ( ! input || ! input.value ) { status.textContent = 'Choose a date first.'; if ( input ) input.focus(); return; } status.textContent = ''; var selected = new Date( input.value + 'T12:00:00' ); if ( ( root.dataset.view || 'month' ) === 'week' ) loadWeek( root, selected ); else loadMonth( root, new Date( selected.getFullYear(), selected.getMonth(), 1 ) ); return; }
 			var duplicateWeek = event.target.closest( '[data-calendar-duplicate-week]' ); if ( duplicateWeek ) { showDuplicateWeekEditor( root, duplicateWeek.dataset.calendarDuplicateWeek ); return; }
 			var pasteButton = event.target.closest( '[data-calendar-paste-date]' ); if ( pasteButton ) { pastePlan( root, pasteButton.dataset.calendarPasteDate ); return; }
