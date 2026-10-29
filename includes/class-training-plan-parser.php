@@ -21,8 +21,13 @@ final class Training_Plan_Parser {
         $week = 0;
         foreach ( $lines as $line ) {
             $line = trim( $line );
-            if ( preg_match( '/^week\\s*(\\d{1,2})\\b/i', $line, $m ) ) $week = (int) $m[1];
+            if ( preg_match( '/^week\\s*(\\d{1,2})\\b/i', $line, $m ) || preg_match( '/^(\\d{1,2})\\s+of\\s+6\\b/i', $line, $m ) ) $week = (int) $m[1];
             $boundary = preg_match( '/^(?:workout|session|practice)\\s*(?:#|no\\.?\\s*)?(\\d{1,3})\\b(?:\\s*[:.\\-–]\\s*(.*))?$/iu', $line, $m );
+            // USMS/LaneMate layouts place "Swim #N of 24" inside the WEEK/WORKOUT table row.
+            if ( ! $boundary && preg_match( '/\\bSwim\\s*#\\s*(\\d{1,3})\\s+of\\s+24\\b/iu', $line, $swim ) ) {
+                $boundary = true;
+                $m = array( $line, $swim[1] );
+            }
             if ( $boundary ) {
                 if ( null !== $current ) $blocks[] = $current;
                 if ( count( $blocks ) >= self::MAX_WORKOUTS ) return new \WP_Error( 'swimlog_plan_count', 'Too many workouts.' );
