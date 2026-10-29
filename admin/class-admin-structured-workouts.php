@@ -4,6 +4,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Admin_Structured_Workouts {
     public static function handle_actions() {
+        if ( isset( $_POST['swimlog_structure_lifecycle'] ) ) {
+            if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+            check_admin_referer( 'swimlog_structure_lifecycle' );
+            $id = isset( $_POST['structure_id'] ) ? absint( wp_unslash( $_POST['structure_id'] ) ) : 0;
+            $action = isset( $_POST['swimlog_structure_lifecycle'] ) && is_string( $_POST['swimlog_structure_lifecycle'] ) ? sanitize_key( wp_unslash( $_POST['swimlog_structure_lifecycle'] ) ) : '';
+            $result = Structured_Workout_Store::lifecycle( $id, get_current_user_id(), $action );
+            if ( is_wp_error( $result ) || ! $result ) { self::error( is_wp_error( $result ) ? $result->get_error_message() : 'Unable to update workout.' ); return; }
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'lifecycle_updated' => 1 ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
         if ( isset( $_POST['swimlog_plan_schedule'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
             check_admin_referer( 'swimlog_plan_schedule' );
@@ -195,7 +205,15 @@ final class Admin_Structured_Workouts {
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
           </form><?php else : ?><pre><?php echo esc_html( wp_json_encode( $document, JSON_PRETTY_PRINT ) ); ?></pre><?php endif; ?>
           <h2><?php esc_html_e( 'Saved workouts', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-          <?php $saved_workouts = Structured_Workout_Store::all( $owner ); ?>
+          <?php
+          // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter.
+          $visibility = isset( $_GET['visibility'] ) ? sanitize_key( wp_unslash( $_GET['visibility'] ) ) : 'active';
+          if ( ! in_array( $visibility, array( 'active', 'hidden', 'all' ), true ) ) $visibility = 'active';
+          $saved_workouts = Structured_Workout_Store::all( $owner, $visibility );
+          ?>
+          <p>Show: <?php foreach ( array( 'active' => 'Active', 'hidden' => 'Hidden', 'all' => 'All' ) as $key => $label ) : ?>
+            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'visibility' => $key ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a> &nbsp;
+          <?php endforeach; ?></p>
           <?php if ( empty( $saved_workouts ) ) : ?>
             <p><?php esc_html_e( 'No structured workouts have been saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
           <?php else : ?>
@@ -217,6 +235,8 @@ final class Admin_Structured_Workouts {
                   $valid = ! is_wp_error( $summary );
                   $edit_url = add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'edit' => $item->ID ), admin_url( 'admin.php' ) );
                   $item_locked = Structured_Workout_Store::is_locked( $item->ID, $owner );
+                  $item_hidden = Structured_Workout_Store::is_hidden( $item->ID, $owner );
+                  $item_history = Structured_Workout_Store::has_history( $item->ID, $owner );
                   $stroke_parts = array();
                   if ( $valid ) {
                       foreach ( $summary['totals']['by_stroke'] as $stroke => $distance ) {
@@ -234,7 +254,13 @@ final class Admin_Structured_Workouts {
                     <td><?php echo $valid ? esc_html( (string) $summary['totals']['expanded_steps'] ) : '&mdash;'; ?></td>
                     <td><?php echo $valid ? esc_html( implode( ', ', $stroke_parts ) ) : '&mdash;'; ?></td>
                     <td><?php echo esc_html( get_date_from_gmt( $item->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
-                    <td><a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php echo $item_locked ? esc_html__( 'View locked', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a></td>
+                    <td><a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php echo $item_locked ? esc_html__( 'View locked', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a>
+                    <form method="post" style="display:inline">
+                      <?php wp_nonce_field( 'swimlog_structure_lifecycle' ); ?>
+                      <input type="hidden" name="structure_id" value="<?php echo esc_attr( $item->ID ); ?>">
+                      <button type="submit" class="button button-small" name="swimlog_structure_lifecycle" value="<?php echo esc_attr( $item_hidden ? 'unhide' : 'hide' ); ?>"><?php echo esc_html( $item_hidden ? 'Unhide' : 'Hide' ); ?></button>
+                      <?php if ( ! $item_history ) : ?><button type="submit" class="button button-small" name="swimlog_structure_lifecycle" value="delete" onclick="return confirm('Permanently delete this unused workout?');">Delete</button><?php endif; ?>
+                    </form></td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
