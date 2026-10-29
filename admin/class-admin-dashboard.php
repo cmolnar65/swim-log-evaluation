@@ -12,8 +12,8 @@ final class Admin_Dashboard {
         $where = $wpdb->prepare( 'user_id = %d', $user_id );
         if ( $start ) $where .= $wpdb->prepare( ' AND workout_start >= %s', $start );
         $where .= $wpdb->prepare( ' AND workout_start <= %s', $now->format( 'Y-m-d H:i:s' ) );
-        $totals = $wpdb->get_row( "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM $table WHERE $where" );
-        $volume = $wpdb->get_results( "SELECT DATE_FORMAT(workout_start,'%Y-%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM $table WHERE $where GROUP BY DATE_FORMAT(workout_start,'%Y-%m') ORDER BY month ASC" );
+        $totals = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE $where", $table ) );
+        $volume = $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(workout_start,'%Y-%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM $table WHERE $where GROUP BY DATE_FORMAT(workout_start,'%Y-%m') ORDER BY month ASC" );
         return array( 'totals' => $totals, 'volume' => $volume, 'start' => $start, 'end' => $now->format( 'Y-m-d H:i:s' ) );
     }
 
@@ -25,7 +25,7 @@ final class Admin_Dashboard {
         if ( $start ) $where .= $wpdb->prepare( ' AND w.workout_start >= %s', $start );
         if ( 'all' !== $stroke ) $where .= $wpdb->prepare( ' AND n.stroke = %s', $stroke );
         // Group by native pool length: a 25 m SWOLF must never be averaged with 50 m.
-        return $wpdb->get_results( "SELECT DATE_FORMAT(w.workout_start,'%Y-%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM $workouts w INNER JOIN $lengths n ON n.workout_id = w.id WHERE $where AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%Y-%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC" );
+        return $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(w.workout_start,'%Y-%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM %i w INNER JOIN %i n ON n.workout_id = w.id WHERE $where AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%Y-%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC", $workouts, $lengths ) );
     }
 
     private static function link( $page, $user_id, $args = array() ) {
