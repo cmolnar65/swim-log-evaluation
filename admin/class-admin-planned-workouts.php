@@ -166,7 +166,7 @@ final class Admin_Planned_Workouts {
 			<input type="hidden" name="structure_hash" value="<?php echo esc_attr( hash( 'sha256', wp_json_encode( $preview['linked']['document'] ) ) ); ?>">
 			<input type="hidden" name="instructions_hash" value="<?php echo esc_attr( hash( 'sha256', $preview['plan']->workout_instructions ) ); ?>">
 			<?php submit_button( __( 'Approve and replace linked structure', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false ); ?>
-			<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $preview['plan']->id ), admin_url( 'admin.php' ) ); ?>"><?php esc_html_e( 'Keep existing structure', 'chriss-swim-training-progress-evaluation' ); ?></a>
+			<a class="button" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $preview['plan']->id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Keep existing structure', 'chriss-swim-training-progress-evaluation' ); ?></a>
 			</form></div>
 			<?php endif; ?>
 

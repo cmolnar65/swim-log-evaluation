@@ -36,11 +36,11 @@ final class Training_Plan_PDF {
         }
         require_once $autoload;
         try {
-            $config = new \Smalot\\PdfParser\\Config();
+            $config = new \Smalot\PdfParser\Config();
             $config->setDecodeMemoryLimit( 32 * 1024 * 1024 );
-            $parser = new \Smalot\\PdfParser\\Parser( array(), $config );
+            $parser = new \Smalot\PdfParser\Parser( array(), $config );
             $document = $parser->parseFile( $path );
-            $text = trim( str_replace( "\\r", '', $document->getText() ) );
+            $text = trim( str_replace( "\r", '', $document->getText() ) );
         } catch ( \Throwable $error ) {
             return new \WP_Error( 'swimlog_pdf_decode', 'Could not decode PDF text safely.' );
         }
@@ -56,3 +56,4 @@ final class Training_Plan_PDF {
         return array( 'text' => $text, 'bytes' => strlen( $text ), 'sha256' => hash_file( 'sha256', $path ) );
     }
 }
+

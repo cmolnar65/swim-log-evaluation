@@ -4,6 +4,9 @@ use SwimLogEvaluation\Database;
 use SwimLogEvaluation\Workout;
 use SwimLogEvaluation\Shortcodes;
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-pdf.php';
+require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-planned-workouts.php';
+require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-structured-workouts.php';
 $verify = static function( $ok, $message ) {
     if ( ! $ok ) throw new RuntimeException( $message );
 };

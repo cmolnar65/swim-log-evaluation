@@ -28,7 +28,7 @@ final class Admin_Structured_Workouts {
             }
             $result = Training_Plan_Scheduler::schedule( get_current_user_id(), $plan_id, $assignments );
             if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
-            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'schedule_plan' => $plan_id, 'scheduled' => count( $result ) ), admin_url( 'admin.php' ) );
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'schedule_plan' => $plan_id, 'scheduled' => count( $result ) ), admin_url( 'admin.php' ) ) );
             exit;
         }
         if ( isset( $_POST['swimlog_pdf_bulk_import'] ) ) {
@@ -68,7 +68,7 @@ final class Admin_Structured_Workouts {
             $owner = get_current_user_id();
             $token = wp_generate_password( 32, false, false );
             set_transient( 'swimlog_pdf_' . $owner . '_' . $token, $result, 15 * MINUTE_IN_SECONDS );
-            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_preview' => $token ), admin_url( 'admin.php' ) );
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_preview' => $token ), admin_url( 'admin.php' ) ) );
             exit;
         }
         if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
@@ -272,3 +272,4 @@ final class Admin_Structured_Workouts {
         <?php
     }
 }
+

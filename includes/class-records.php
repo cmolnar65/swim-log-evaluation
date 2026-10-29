@@ -92,18 +92,16 @@ final class Records {
 	private static function age_group_rows( $user_id, $course, $target_group, $distance = 0, $stroke = '' ) {
 		global $wpdb;
 		$t = Database::table( 'performances' );
-		$sql = "SELECT * FROM %i WHERE user_id=%d AND course_unit=%s";
-		$args = array( $t, absint( $user_id ), $course );
-		if ( $distance ) {
-			$sql .= ' AND distance_value=%d';
-			$args[] = $distance;
+		if ( $distance && '' !== $stroke ) {
+			$query = $wpdb->prepare( 'SELECT * FROM %i WHERE user_id=%d AND course_unit=%s AND distance_value=%d AND stroke=%s ORDER BY duration_ms ASC,achieved_at ASC,id ASC', $t, absint( $user_id ), $course, $distance, $stroke );
+		} elseif ( $distance ) {
+			$query = $wpdb->prepare( 'SELECT * FROM %i WHERE user_id=%d AND course_unit=%s AND distance_value=%d ORDER BY duration_ms ASC,achieved_at ASC,id ASC', $t, absint( $user_id ), $course, $distance );
+		} elseif ( '' !== $stroke ) {
+			$query = $wpdb->prepare( 'SELECT * FROM %i WHERE user_id=%d AND course_unit=%s AND stroke=%s ORDER BY duration_ms ASC,achieved_at ASC,id ASC', $t, absint( $user_id ), $course, $stroke );
+		} else {
+			$query = $wpdb->prepare( 'SELECT * FROM %i WHERE user_id=%d AND course_unit=%s ORDER BY duration_ms ASC,achieved_at ASC,id ASC', $t, absint( $user_id ), $course );
 		}
-		if ( '' !== $stroke ) {
-			$sql .= ' AND stroke=%s';
-			$args[] = $stroke;
-		}
-		$sql .= ' ORDER BY duration_ms ASC,achieved_at ASC,id ASC';
-		$rows = Database::read( 'get_results',  $wpdb->prepare( $sql, $args ) );
+		$rows = Database::read( 'get_results', $query );
 		$out = array();
 		foreach ( $rows as $row ) {
 			$achieved_date = substr( (string) $row->achieved_at, 0, 10 );
