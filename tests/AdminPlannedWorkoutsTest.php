@@ -18,7 +18,7 @@ final class AdminPlannedWorkoutsTest extends TestCase {
 		$this->assertStringContainsString( "check_admin_referer( 'swimlog_save_planned_workout' )", $source );
 		$this->assertStringContainsString( "'swimlog_status_planned_workout_' . \$id", $source );
 		$this->assertStringContainsString( "'swimlog_delete_planned_workout_' . \$id", $source );
-		$this->assertStringContainsString( 'Planned_Workout::save( $user_id, wp_unslash( $_POST ), $id )', $source );
+		$this->assertStringContainsString( 'Planned_Workout::save( $user_id, $submitted, $id )', $source );
 		$this->assertStringContainsString( 'Planned_Workout::set_status( $id, $user_id, $status )', $source );
 		$this->assertStringContainsString( 'Planned_Workout::delete( $id, $user_id )', $source );
 		$this->assertStringContainsString( 'Planned_Workout::get_for_user( $edit_id, $user_id )', $source );
