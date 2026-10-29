@@ -4,13 +4,13 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1
+Stable tag: 1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Import or manually record, preserve, evaluate, and display swimming workout history and personal bests.
 
-== v1.2 development: Twenty Twenty-Four page templates ==
+== Twenty Twenty-Four page templates ==
 
 For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred Page/Post templates are **SwimLog Wide Content** and **SwimLog Full Width**. Select one from the editor's Template selector. Both preserve the theme header, footer, and page content while providing appropriate table width and responsive display. Wide Content is suitable for wider tables with a bounded content area; Full Width is suited to the widest tables and multi-column layouts. Both were manually verified in Twenty Twenty-Four during v1.2 Phase 03. These templates are optional, and existing pages need not change.
 
@@ -20,6 +20,8 @@ Chris's Swim Training Progress and Evaluation is a multi-user WordPress plugin f
 CSV swimming workouts, manually recording pool workouts, preserving normalized workout history, evaluating native
 meter and yard performances, tracking personal bests, managing swim events and
 locations, and displaying selected results through display-only shortcodes.
+
+Version 1.2 adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
 
 Version 1.1 adds Planned Workouts and turns the Swim Training Calendar into an interactive planning surface. Swimmers can create, edit, duplicate, repeat, skip, cancel, restore, and delete future plans; duplicate a week; explicitly match a completed recorded workout to a plan; and review simple planned-versus-actual distance and duration differences. Planned workout instructions preserve multiline free-form swim notation for future structured-workout parsing without inventing sets, send-offs, training stress, readiness, or coaching conclusions.
 
@@ -117,6 +119,16 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
 
 == Changelog ==
+
+= 1.2 =
+* Add private structured workouts, nested repeats/ladders, live totals, planned-workout linking and an improved responsive editor.
+* Add training-plan PDF extraction with editable preview, explicit review approval, workout selection, duplicate/error handling and a 24-hour preview lifetime.
+* Add owner-scoped recorded pool-swim conversion and FIT Workout, PDF and text exports without rewriting recorded history or inventing performance timings.
+* Add expanded calendar-day dialogs with keyboard, touch, outside-tap dismissal and desktop/mobile support.
+* Group administration navigation logically and add optional Twenty Twenty-Four wide/full-width templates.
+* Resolve actionable packaged Plugin Check diagnostics and validate PHP 7.4 through 8.5.
+* Preserve runtime PDF dependencies and the Composer manifest while excluding confidential PDFs and development files.
+* Retain database schema version 1.2 and existing data; no new schema migration is required.
 
 = 1.1 =
 * Add planned-workout creation and lifecycle management, recurrence, duplication, Duplicate Week, explicit recorded-workout matching/unmatching, and simple planned-versus-actual comparisons.

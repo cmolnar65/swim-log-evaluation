@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "name": "swimlog/calendar",
-  "version": "1.0.0-dev",
+  "version": "1.2.0",
   "title": "Swim Training Calendar",
   "category": "widgets",
   "icon": "calendar-alt",

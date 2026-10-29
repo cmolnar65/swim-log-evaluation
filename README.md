@@ -4,11 +4,11 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
-## v1.2 Phase 04 — Structured workout foundation (in development)
+## v1.2
 
-The first Phase 04 implementation introduces a normalized, ordered prescription tree with sections, steps, nested repeat groups, and ladder rungs. Steps support FR, BR, BK, and FL; MX is supported in standard sets but not ladders. BU input is normalized to FL. Each node supports optional pace, rest, and description; step-level drill and equipment metadata is retained. Rest is nullable (unspecified) or explicitly "0" (continuous), and neither rest nor pace changes a ladder's identity. Distances are computed in the declared meter or yard unit, with totals by stroke and bounded expansion.
+Version 1.2 adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
 
-The reference ascending ladder is 6 × (25 FR + 25 BR), 6 × (50 FR + 50 BR), and 4 × (100 FR + 100 BR): 1,700 distance units, 850 FR and 850 BR. The **Swim Training → Structured Workouts** administration page now provides an ordered nested editor for sections, steps, repeats, and ladder rungs, with pace/rest/descriptions, drills/equipment, reordering, and live distance/stroke preview. Prescriptions are saved as private, owner-scoped WordPress records and can be reopened and edited. This does not modify v1.1 free-form plans, recorded workout data, or FIT source files. Phase 04 remains in progress until live-site validation and CI checks are complete; linking prescriptions to calendar plans is reserved for Phase 05.
+PDF conversion is conservative: unsupported or ambiguous notation requires review and correction before import. Confidential source PDFs are not shipped. See [functional validation](docs/v1.2-functional-validation.md) and the [structured transfer contract](docs/v1.2-structured-transfers.md) for tested behavior and export limitations.
 
 ## v1.2 Phase 03 — Page and post layout templates
 
@@ -19,9 +19,9 @@ For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide
 
 Both templates were validated manually with Twenty Twenty-Four during v1.2 Phase 03. Their table layout, responsive behavior, and page rendering were confirmed working. They are optional; existing pages and other themes do not need to switch. The per-page SwimLog table density and font-size settings remain available.
 
-## v1.1 release candidate status
+## v1.2 release readiness
 
-The `develop` branch contains the **v1.1 release candidate**. It must pass the complete PHP 7.4–8.4 regression matrix, packaged WordPress Plugin Check, package-content audit, and exact-ZIP site validation before any protected-main merge, tag, GitHub release, or WordPress.org deployment.
+The `develop` branch identifies version **1.2**. All 18 user acceptance areas passed, including separately confirmed desktop/mobile calendar behavior and menu ordering. Automated validation covers PHP 7.4–8.5 and Plugin Check against production staging. See the [release-readiness checklist](docs/v1.2-development-checklist.md) for evidence and scope. Updating this metadata does not publish a release: protected `main` and WordPress.org stable remain at released v1.1 until separately authorized.
 
 ## v1.1
 
