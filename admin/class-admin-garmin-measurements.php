@@ -54,7 +54,16 @@ final class Admin_Garmin_Measurements {
                 foreach ( $results as $row ) :
                 ?>
                     <tr><td><?php echo esc_html( $row['date'] ); ?></td><td><?php echo esc_html( $row['category'] ); ?></td><td><?php echo esc_html( $labels[ $row['status'] ] ); ?><?php if ( isset( $row['message'] ) ) : ?><br><?php echo esc_html( $row['message'] ); ?><?php endif; ?><?php if ( isset( $row['retry_after'] ) ) : ?><br><?php echo esc_html( sprintf( /* translators: %d: waiting period in seconds. */ __( 'Wait at least %d seconds before retrying.', 'chriss-swim-training-progress-evaluation' ), $row['retry_after'] ) ); ?><?php endif; ?></td>
-                    <td><?php echo esc_html( $row['added'] . ' / ' . $row['updated'] . ' / ' . $row['skipped'] ); ?></td><td><?php echo esc_html( $row['reports_added'] . ' / ' . $row['reports_updated'] . ' / ' . $row['reports_skipped'] ); ?></td><td><?php echo esc_html( (string) $row['excluded'] ); ?></td><td><?php echo esc_html( (string) $row['failed'] ); ?></td></tr>
+                    <td><?php echo esc_html( $row['added'] . ' / ' . $row['updated'] . ' / ' . $row['skipped'] ); ?></td><td><?php echo esc_html( $row['reports_added'] . ' / ' . $row['reports_updated'] . ' / ' . $row['reports_skipped'] ); ?></td><td><?php echo esc_html( (string) $row['excluded'] ); ?></td><td><?php echo esc_html( (string) $row['failed'] ); ?><?php if ( in_array( $row['status'], array( 'failed', 'not_attempted' ), true ) ) : ?>
+                        <form method="post">
+                            <?php wp_nonce_field( 'swimlog_garmin_measurements' ); ?>
+                            <input type="hidden" name="swimlog_measurement_import" value="1">
+                            <input type="hidden" name="measurement_start" value="<?php echo esc_attr( $row['date'] ); ?>">
+                            <input type="hidden" name="measurement_end" value="<?php echo esc_attr( $row['date'] ); ?>">
+                            <input type="hidden" name="measurement_categories[]" value="<?php echo esc_attr( $row['category'] ); ?>">
+                            <?php submit_button( __( 'Retry this date and category', 'chriss-swim-training-progress-evaluation' ), 'secondary small', 'retry_measurements', false ); ?>
+                        </form>
+                    <?php endif; ?></td></tr>
                 <?php endforeach; ?>
                 </tbody></table>
             <?php endif; ?>
