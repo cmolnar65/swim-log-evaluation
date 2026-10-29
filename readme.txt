@@ -14,6 +14,10 @@ Import or manually record, preserve, evaluate, and display swimming workout hist
 
 For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred Page/Post templates are **SwimLog Wide Content** and **SwimLog Full Width**. Select one from the editor's Template selector. Both preserve the theme header, footer, and page content while providing appropriate table width and responsive display. Wide Content is suitable for wider tables with a bounded content area; Full Width is suited to the widest tables and multi-column layouts. Both were manually verified in Twenty Twenty-Four during v1.2 Phase 03. These templates are optional, and existing pages need not change.
 
+== Development status ==
+
+The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private Garmin measurement import and calendar display are planned, not implemented. Database schema remains 1.2.
+
 == Description ==
 
 Chris's Swim Training Progress and Evaluation is a multi-user WordPress plugin for importing FIT and

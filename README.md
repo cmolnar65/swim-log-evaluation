@@ -4,6 +4,12 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+## v1.3 development
+
+Development on `develop` starts from released v1.2 commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. Runtime/header version: **1.3-dev**; current public release and WordPress.org stable tag: **1.2**; database schema: **1.2**, unchanged.
+
+The initial scope is private Garmin measurement import, storage, duplicate handling and calendar indicators for supported weight, body-composition, blood-pressure and SpO2 data. Endpoint support and SpO2 sample/summary semantics must be verified before implementation. These features are planned, not yet implemented. See the [v1.3 development checklist](docs/v1.3-development-checklist.md).
+
 ## v1.2
 
 Version 1.2 redesigns the dashboard with navigation tiles and training-volume/SWOLF charts, and adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
@@ -52,9 +58,9 @@ For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide
 
 Both templates were validated manually with Twenty Twenty-Four during v1.2 Phase 03. Their table layout, responsive behavior, and page rendering were confirmed working. They are optional; existing pages and other themes do not need to switch. The per-page SwimLog table density and font-size settings remain available.
 
-## v1.2 release readiness
+## v1.2 release checkpoint
 
-The `develop` branch identifies version **1.2**. All 18 user acceptance areas passed, including separately confirmed desktop/mobile calendar behavior and menu ordering. Automated validation covers PHP 7.4–8.5 and Plugin Check against production staging. See the [release-readiness checklist](docs/v1.2-development-checklist.md) for evidence and scope. Updating this metadata does not publish a release: protected `main` and WordPress.org stable remain at released v1.1 until separately authorized.
+Version 1.2 is accepted and released through PR #10, annotated tag `v1.2`, and GitHub release at commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. WordPress.org trunk and tags/1.2 were deployed from the audited installation ZIP at release revision 3773729. All 18 user acceptance areas passed. Historical development evidence remains in the [v1.2 checklist](docs/v1.2-development-checklist.md); its pre-release authorization statements describe that earlier stage.
 
 ## v1.1
 
