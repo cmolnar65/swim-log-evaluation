@@ -57,7 +57,7 @@ final class Structured_Workout_FIT {
                     if ( null === self::seconds( $sendoff ) || self::seconds( $sendoff ) <= 0 ) return new \WP_Error( 'swimlog_fit_timing', 'Enter a positive send-off such as on 2:00.' );
                 } elseif ( preg_match( '/^(\d+:\d{2}(?:\.\d+)?)\s*\/\s*100\s*(m|yd)$/i', $pace, $m ) && self::seconds( $m[1] ) > 0 ) {
                     $speed = (int) round( ( 'yd' === strtolower( $m[2] ) ? 91.44 : 100 ) / self::seconds( $m[1] ) * 1000 );
-                    if ( $speed < 1 ) return new \WP_Error( 'swimlog_fit_pace', 'Pace is outside the FIT speed range.' );
+                    if ( $speed < 1 || $speed > 4294967294 ) return new \WP_Error( 'swimlog_fit_pace', 'Pace is outside the FIT speed range.' );
                     $step['speed'] = $speed;
                 } else return new \WP_Error( 'swimlog_fit_pace', 'FIT pace must use M:SS/100m, M:SS/100yd or on M:SS. Other text remains available in PDF/text.' );
             }

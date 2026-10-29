@@ -74,4 +74,26 @@ final class StructuredTransfersV12Test extends TestCase {
         $row = (object) array( 'length_type' => 'active', 'distance_m' => 25, 'stroke' => 'FR', 'elapsed_time_ms' => 20000 );
         $this->assertInstanceOf( WP_Error::class, Conversion::from_rows( $w, array( $row ) ) );
     }
+    public function test_fit_rejects_conflicting_sendoff_and_unrepresentable_speed() {
+        $doc = $this->document();
+        $doc['sections'][0]['children'][0]['children'][0]['rest'] = '10';
+        $this->assertInstanceOf( WP_Error::class, Fit::compile( $doc ) );
+        $doc = $this->document();
+        $doc['sections'][0]['children'][0]['children'][0]['pace'] = '0:00.0000001/100m';
+        $this->assertInstanceOf( WP_Error::class, Fit::compile( $doc ) );
+    }
+    public function test_conversion_never_turns_partly_unknown_rest_into_a_known_target() {
+        $w = (object) array( 'workout_type' => 'pool', 'pool_length_unit' => 'm', 'total_distance_m' => 25 );
+        $rows = array(
+            (object) array( 'length_type' => 'active', 'distance_m' => 25, 'stroke' => 'FR' ),
+            (object) array( 'length_type' => 'rest', 'elapsed_time_ms' => null ),
+            (object) array( 'length_type' => 'rest', 'elapsed_time_ms' => 10000 ),
+        );
+        $result = Conversion::from_rows( $w, $rows );
+        $this->assertFalse( is_wp_error( $result ) );
+        $this->assertNull( $result['document']['sections'][0]['children'][0]['rest'] );
+        $w->workout_type = 'open_water';
+        $this->assertInstanceOf( WP_Error::class, Conversion::from_rows( $w, $rows ) );
+    }
+
 }

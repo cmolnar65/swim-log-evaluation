@@ -32,6 +32,13 @@ try {
     $result = Conversion::confirm( $recorded, $owner, $preview['hash'], 'Future practice', wp_date( 'Y-m-d', time() + 3 * DAY_IN_SECONDS, wp_timezone() ) );
     $verify( ! is_wp_error( $result ), 'Confirm conversion: ' . ( is_wp_error( $result ) ? $result->get_error_message() : '' ) );
     $structures[] = $result['structure_id']; $plans[] = $result['planned_id'];
+    $verify( is_wp_error( Conversion::confirm( $recorded, $owner, $preview['hash'], 'Bad date', '2026-02-30' ) ), 'Invalid scheduled date accepted.' );
+    $copy = Conversion::confirm( $recorded, $owner, $preview['hash'], 'Unscheduled copy' );
+    $verify( ! is_wp_error( $copy ) && 0 === $copy['planned_id'], 'Unscheduled conversion created a plan or failed.' );
+    $structures[] = $copy['structure_id'];
+    $verify( $copy['structure_id'] !== $result['structure_id'], 'Conversion reused the existing prescription.' );
+    wp_cache_flush();
+    $verify( ! is_wp_error( Store::get( $copy['structure_id'], $owner ) ), 'Converted prescription did not persist after cache flush.' );
     $verify( Store::POST_TYPE === get_post_type( $result['structure_id'] ) && 'private' === get_post_status( $result['structure_id'] ), 'New structure is not private.' );
     $verify( $result['structure_id'] === Link::for_plan( $result['planned_id'], $owner )['id'], 'Optional schedule did not link.' );
     $verify( wp_json_encode( $before ) === wp_json_encode( SwimLogEvaluation\Workout::get_for_user( $recorded, $owner ) ), 'Conversion changed recorded source.' );
