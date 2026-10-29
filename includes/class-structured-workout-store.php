@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Private owner-scoped structured prescriptions; no new SQL tables. */
 final class Structured_Workout_Store {
     const POST_TYPE = 'swimlog_structure';
+    const META_HIDDEN = '_swimlog_structure_hidden';
     public static function register() {
         register_post_type( self::POST_TYPE, array(
             'label' => __( 'Structured Swim Workouts', 'chriss-swim-training-progress-evaluation' ),
@@ -22,9 +23,44 @@ final class Structured_Workout_Store {
         if ( ! is_array( $document ) ) return new \WP_Error( 'swimlog_structure_corrupt', __( 'Stored workout is invalid.', 'chriss-swim-training-progress-evaluation' ) );
         return array( 'id' => (int) $post->ID, 'title' => $post->post_title, 'document' => $document );
     }
-    public static function all( $owner_id ) {
-        return get_posts( array( 'post_type' => self::POST_TYPE, 'author' => absint( $owner_id ),
-            'post_status' => 'private', 'posts_per_page' => 100, 'orderby' => 'modified', 'order' => 'DESC' ) );
+    public static function all( $owner_id, $filter = 'active' ) {
+        if ( ! in_array( $filter, array( 'active', 'hidden', 'all' ), true ) ) $filter = 'active';
+        $posts = get_posts( array( 'post_type' => self::POST_TYPE, 'author' => absint( $owner_id ),
+            'post_status' => 'private', 'posts_per_page' => 500, 'orderby' => 'modified', 'order' => 'DESC' ) );
+        if ( 'all' === $filter ) return $posts;
+        return array_values( array_filter( $posts, function ( $post ) use ( $filter ) {
+            $hidden = (bool) get_post_meta( $post->ID, self::META_HIDDEN, true );
+            return 'hidden' === $filter ? $hidden : ! $hidden;
+        } ) );
+    }
+    public static function is_hidden( $id, $owner_id ) {
+        $item = self::get( $id, $owner_id );
+        if ( is_wp_error( $item ) ) return $item;
+        return (bool) get_post_meta( absint( $id ), self::META_HIDDEN, true );
+    }
+    public static function has_history( $id, $owner_id ) {
+        $item = self::get( $id, $owner_id );
+        if ( is_wp_error( $item ) ) return $item;
+        // Both collection membership and planned-workout linkage are historical references.
+        if ( absint( get_post_meta( absint( $id ), Training_Plan_Collection::META_PLAN, true ) ) ) return true;
+        if ( absint( get_post_meta( absint( $id ), Planned_Structure_Link::META_KEY, true ) ) ) return true;
+        return false;
+    }
+    public static function lifecycle( $id, $owner_id, $action ) {
+        $owner_id = absint( $owner_id );
+        if ( ! $owner_id || get_current_user_id() !== $owner_id || ! current_user_can( 'swimlog_manage_own_workouts' ) ) {
+            return new \\WP_Error( 'swimlog_structure_permission', 'Permission denied.' );
+        }
+        $item = self::get( $id, $owner_id );
+        if ( is_wp_error( $item ) ) return $item;
+        if ( 'hide' === $action ) return (bool) update_post_meta( absint( $id ), self::META_HIDDEN, '1' );
+        if ( 'unhide' === $action ) return delete_post_meta( absint( $id ), self::META_HIDDEN ) || ! get_post_meta( absint( $id ), self::META_HIDDEN, true );
+        if ( 'delete' !== $action ) return new \\WP_Error( 'swimlog_structure_action', 'Unknown lifecycle action.' );
+        $history = self::has_history( $id, $owner_id );
+        if ( is_wp_error( $history ) ) return $history;
+        if ( $history ) return new \\WP_Error( 'swimlog_structure_referenced', 'This workout is referenced by a training plan or scheduled swim. Hide it instead.' );
+        $deleted = wp_delete_post( absint( $id ), true );
+        return $deleted ? true : new \\WP_Error( 'swimlog_structure_delete', 'Unable to delete the workout.' );
     }
     public static function is_locked( $id, $owner_id ) {
         $structure = self::get( $id, $owner_id );
