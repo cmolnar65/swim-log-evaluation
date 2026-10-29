@@ -1,5 +1,5 @@
-#swimlog-structure-editor, #swimlog-structure-editor * { box-sizing: border-box; }
-#swimlog-structure-editor { max-width: 100%; }
+#swimlog-structure-editor, #swimlog-structure-editor *, [data-swimlog-pdf-editor], [data-swimlog-pdf-editor] * { box-sizing: border-box; }
+#swimlog-structure-editor, [data-swimlog-pdf-editor] { max-width: 100%; }
 .swimlog-structure-panel { min-width: 0; border: 1px solid #c3c4c7; padding: 12px; margin: 12px 0; background: #fff; }
 .swimlog-structure-panel legend { padding: 0 6px; font-weight: 600; }
 .swimlog-structure-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -9,7 +9,7 @@
 .swimlog-structure-field > input, .swimlog-structure-field > select { width: 100%; max-width: 100%; min-width: 0; min-height: 36px; }
 .swimlog-structure-checkbox { display: flex; align-items: center; gap: 6px; min-height: 36px; }
 .swimlog-structure-nested { margin-left: clamp(0px, 2vw, 20px); min-width: 0; }
-.swimlog-structure-panel > .button, #swimlog-structure-editor > .button { margin: 3px 6px 3px 0; }
+.swimlog-structure-panel > .button, #swimlog-structure-editor > .button, [data-swimlog-pdf-editor] > .button { margin: 3px 6px 3px 0; }
 .swimlog-structure-unit { max-width: 240px; margin-bottom: 14px; }
 .swimlog-equipment { min-width: 0; border: 1px solid #dcdcde; padding: 10px 12px; margin: 8px 0 14px; }
 .swimlog-equipment legend { font-weight: 600; }

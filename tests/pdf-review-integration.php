@@ -12,7 +12,7 @@ $checks = 0;
 $verify = static function( $condition, $message ) use ( &$checks ) { ++$checks; if ( ! $condition ) throw new RuntimeException( $message ); };
 $old_user = get_current_user_id(); $old_get = $_GET; $old_post = $_POST; $old_request = $_REQUEST;
 $users = array(); $token = wp_generate_password( 32, false );
-$text = "Workout 1\n4 x 100 yards free\nTotal: 400 yards\nWorkout 2\n100 meters free\nTotal: 200 meters\nWorkout 3\nSwim easy until tired";
+$text = "Workout 1\n4 x 100 yards free\nTotal: 400 yards\nWorkout 2\n100 meters free\nCoach cue: \"left\\right\"\nTotal: 200 meters\nWorkout 3\nSwim easy until tired";
 try {
     foreach ( array( 'owner', 'other' ) as $name ) {
         $id = wp_create_user( 'swimlog_review_' . $name . '_' . wp_generate_password( 8, false ), wp_generate_password( 32 ) );
@@ -41,11 +41,30 @@ try {
     $verify( is_wp_error( Import::run( $owner, 'Wrong distance', $parsed, array( 2 ), $fingerprint, array( 2 => $wrong ) ) ), 'Review checkbox bypassed distance validation.' );
     $verify( $before === $count_posts(), 'Failed review created records.' );
     // The real POST handler must preserve corrections on validation failure.
-    $_POST = array( 'swimlog_pdf_bulk_import' => '1', 'swimlog_pdf_token' => $token, 'swimlog_pdf_plan_name' => 'Keep my corrections', 'swimlog_pdf_selected' => array( '2' ), 'swimlog_pdf_reviews' => array( 2 => $wrong ), '_wpnonce' => wp_create_nonce( 'swimlog_pdf_bulk_import' ) );
-    $_REQUEST = $_POST; Admin::handle_actions();
+    $_POST = array( 'swimlog_pdf_bulk_import' => '1', 'swimlog_pdf_review_payload_complete' => '1', 'swimlog_pdf_token' => $token, 'swimlog_pdf_plan_name' => 'Keep my corrections', 'swimlog_pdf_selected' => array( '2' ), 'swimlog_pdf_reviews' => array( 2 => $wrong ), '_wpnonce' => wp_create_nonce( 'swimlog_pdf_bulk_import' ) );
+    $_REQUEST = $_POST;
+    $valid_nonce = $_POST['_wpnonce'];
+    $die = static function() { return static function() { throw new RuntimeException( 'nonce_denied' ); }; };
+    add_filter( 'wp_die_handler', $die ); $denied = false;
+    try {
+        $_POST['_wpnonce'] = 'invalid'; $_REQUEST = $_POST;
+        try { Admin::handle_actions(); } catch ( RuntimeException $error ) { $denied = 'nonce_denied' === $error->getMessage(); }
+    } finally { remove_filter( 'wp_die_handler', $die ); }
+    $verify( $denied, 'Review import accepted an invalid nonce.' );
+    $_POST['_wpnonce'] = $valid_nonce; $_REQUEST = $_POST;
+    unset( $_POST['swimlog_pdf_review_payload_complete'] ); $_REQUEST = $_POST;
+    Admin::handle_actions();
+    $verify( false !== strpos( $GLOBALS['swimlog_structure_error'] ?? '', 'truncated' ), 'Truncated form was accepted.' );
+    $_POST['swimlog_pdf_review_payload_complete'] = '1'; $_REQUEST = $_POST;
+    Admin::handle_actions();
     $verify( isset( $GLOBALS['swimlog_structure_error'] ), 'POST handler did not report review failure.' );
     $verify( 'Keep my corrections' === $GLOBALS['swimlog_pdf_review_input']['name'] && '100' === $GLOBALS['swimlog_pdf_review_input']['reviews'][2]['total'], 'Validation failure discarded review inputs.' );
     $verify( $before === $count_posts(), 'Failed POST created records.' );
+    $block_review_meta = static function( $check, $id, $key ) { return '_swimlog_pdf_review' === $key ? false : $check; };
+    add_filter( 'add_post_metadata', $block_review_meta, 10, 3 );
+    try { $failed = Import::run( $owner, 'Injected review write failure', $parsed, array( 2 ), hash( 'sha256', 'review failure' ), array( 2 => $review ) ); }
+    finally { remove_filter( 'add_post_metadata', $block_review_meta, 10 ); }
+    $verify( is_wp_error( $failed ) && $before === $count_posts(), 'Failed review evidence write left partial records.' );
     $result = Import::run( $owner, 'Manually reviewed selection', $parsed, array( 2 ), $fingerprint, array( 2 => $review, 3 => array( 'document' => 'invalid unselected input' ) ) );
     $verify( ! is_wp_error( $result ) && 1 === $result['count'], 'Corrected selected workout failed import: ' . ( is_wp_error( $result ) ? $result->get_error_message() : '' ) );
     wp_cache_flush(); $workouts = Collection::workouts( $owner, $result['plan_id'] );

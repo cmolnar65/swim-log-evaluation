@@ -159,6 +159,13 @@
       const selection = candidate.querySelector('[name="swimlog_pdf_selected[]"]');
       const required = Array.from(candidate.querySelectorAll('[name$="[total]"], [name$="[unit]"], [name$="[reviewed]"]'));
       const update = () => { required.forEach(input => { input.required = selection.checked; }); };
+      const approval = candidate.querySelector('[name$="[reviewed]"]');
+      const draft = event => { if (event.target !== selection && event.target !== approval) approval.checked = false; };
+      candidate.addEventListener('input', draft);
+      candidate.addEventListener('change', draft);
+      candidate.addEventListener('click', event => {
+        if (event.target.closest('[data-swimlog-pdf-editor]') && event.target.closest('button')) approval.checked = false;
+      });
       selection.addEventListener('change', update);
       update();
     });

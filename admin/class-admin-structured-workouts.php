@@ -34,6 +34,7 @@ final class Admin_Structured_Workouts {
         if ( isset( $_POST['swimlog_pdf_bulk_import'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
             check_admin_referer( 'swimlog_pdf_bulk_import' );
+            if ( ! isset( $_POST['swimlog_pdf_review_payload_complete'] ) || '1' !== sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_review_payload_complete'] ) ) ) { self::error( 'The review form was incomplete or truncated. Select fewer workouts, or increase the PHP input limit, then retry. No workouts were imported.' ); return; }
             $owner = get_current_user_id();
             $token = isset( $_POST['swimlog_pdf_token'] ) && is_string( $_POST['swimlog_pdf_token'] ) ? sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_token'] ) ) : '';
             if ( ! preg_match( '/^[a-zA-Z0-9]{32}$/', $token ) ) { self::error( 'Invalid preview token.' ); return; }
@@ -175,6 +176,7 @@ final class Admin_Structured_Workouts {
                       <p>Requires manual review before approval or import. Selection alone does not approve a workout. Original instructions and review evidence are retained privately with each imported workout.</p>
                     </details></div>
                   <?php endforeach; ?>
+                    <input type="hidden" name="swimlog_pdf_review_payload_complete" value="1">
                     <p><button class="button button-primary" type="submit">Import selected workouts</button></p>
                   </form>
                 <?php endif; ?>
