@@ -77,7 +77,7 @@ rm -rf -- "$STAGE_DIR/vendor"
     composer install --no-dev --no-interaction --prefer-dist --no-progress --no-scripts --no-plugins
 )
 test -f "$STAGE_DIR/vendor/autoload.php" || { echo "Missing runtime PDF parser." >&2; exit 1; }
-rm -f -- "$STAGE_DIR/composer.json" "$STAGE_DIR/composer.lock"
+rm -f -- "$STAGE_DIR/composer.lock"
 
 mkdir -p -- "$(dirname -- "$OUTPUT_PATH")"
 rm -f -- "$OUTPUT_PATH"
