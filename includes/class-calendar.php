@@ -290,6 +290,7 @@ final class Calendar {
 			'original_distance_unit' => null !== ( $workout->original_distance_unit ?? null ) ? (string) $workout->original_distance_unit : null,
 			'elapsed_time_ms' => null !== ( $workout->elapsed_time_ms ?? null ) ? (int) $workout->elapsed_time_ms : null,
 			'moving_time_ms' => null !== ( $workout->moving_time_ms ?? null ) ? (int) $workout->moving_time_ms : null,
+			'pool_length_m' => null !== ( $workout->pool_length_m ?? null ) ? (float) $workout->pool_length_m : null,
 			'original_pool_length' => null !== ( $workout->original_pool_length ?? null ) ? (float) $workout->original_pool_length : null,
 			'pool_length_unit' => null !== ( $workout->pool_length_unit ?? null ) ? (string) $workout->pool_length_unit : null,
 			'primary_stroke' => null !== ( $workout->primary_stroke ?? null ) ? (string) $workout->primary_stroke : null,

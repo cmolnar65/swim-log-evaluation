@@ -32,7 +32,19 @@ try {
     $start = $focus->modify( 'first day of this month' ); $end = $focus->modify( 'last day of this month' );
     $data = Calendar::for_user( $owner, $start->format( 'Y-m-d' ), $end->format( 'Y-m-d' ) );
     $verify( ! is_wp_error( $data ) && 2 === count( $data['workouts'] ) && 12 === count( $data['planned_workouts'] ) && 1 === count( $data['events'] ), 'All permitted day items in existing calendar payload.' );
-    $html = Blocks::render_calendar_for_user( $owner, array( 'year' => (int) $focus->format( 'Y' ), 'month' => (int) $focus->format( 'n' ) ) );
+    $verify( 25.0 === $data['workouts'][0]['pool_length_m'] && null === $data['workouts'][1]['pool_length_m'], 'Calendar retains measured pool length and unknown open-water length.' );
+    set_error_handler( static function ( $severity, $message, $file, $line ) {
+        if ( error_reporting() & $severity ) throw new ErrorException( $message, 0, $severity, $file, $line );
+        return false;
+    } );
+    try {
+        $html = Blocks::render_calendar_for_user( $owner, array( 'year' => (int) $focus->format( 'Y' ), 'month' => (int) $focus->format( 'n' ) ) );
+    } finally {
+        restore_error_handler();
+    }
+    preg_match_all( '/data-calendar-workout="([^"]*)"/', $html, $cards );
+    $details = array_map( static function ( $encoded ) { return json_decode( html_entity_decode( $encoded, ENT_QUOTES, 'UTF-8' ), true ); }, $cards[1] );
+    $verify( 2 === count( $details ) && 25.0 === (float) $details[0]['pool_length_m'] && array_key_exists( 'pool_length_m', $details[1] ) && null === $details[1]['pool_length_m'], 'Rendered recorded cards preserve pool-length detail without warnings.' );
     $verify( false !== strpos( $html, 'data-calendar-day="' . $key . '"' ) && false !== strpos( $html, 'aria-haspopup="dialog"' ), 'Server dates are keyboard/touch dialog triggers.' );
     $verify( false === strpos( $html . wp_json_encode( $data ), 'PRIVATE_DAY_' ), 'Private notes leaked into calendar/day payload.' );
     wp_set_current_user( $users['other'] );

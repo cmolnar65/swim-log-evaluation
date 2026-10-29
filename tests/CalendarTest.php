@@ -57,6 +57,27 @@ final class CalendarTest extends TestCase {
 		);
 	}
 
+	public function test_calendar_pool_length_is_normalized_and_missing_values_stay_null() {
+		$missing = $this->workout();
+		$data = Calendar::assemble_rows(
+			$this->range(),
+			array(
+				$this->workout( array( 'pool_length_m' => '25.000' ) ),
+				$this->workout( array( 'pool_length_m' => '22.860', 'pool_length_unit' => 'yd' ) ),
+				$this->workout( array( 'workout_type' => 'open_water', 'pool_length_m' => null ) ),
+				$missing,
+			),
+			array()
+		);
+		$this->assertSame( 25.0, $data['workouts'][0]['pool_length_m'] );
+		$this->assertSame( 22.86, $data['workouts'][1]['pool_length_m'] );
+		$this->assertSame( 'yd', $data['workouts'][1]['pool_length_unit'] );
+		$this->assertArrayHasKey( 'pool_length_m', $data['workouts'][2] );
+		$this->assertNull( $data['workouts'][2]['pool_length_m'] );
+		$this->assertArrayHasKey( 'pool_length_m', $data['workouts'][3] );
+		$this->assertNull( $data['workouts'][3]['pool_length_m'] );
+	}
+
 	public function test_calendar_model_normalizes_existing_workouts_and_events() {
 		$data = Calendar::assemble_rows( $this->range(), array( $this->workout() ), array( $this->event() ) );
 		$this->assertSame( '2026-10-01', $data['range']['start'] );
