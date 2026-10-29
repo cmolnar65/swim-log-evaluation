@@ -41,6 +41,8 @@ final class Admin_Planned_Workouts {
 			if ( ! hash_equals( hash( 'sha256', wp_json_encode( $linked['document'] ) ), $expected ) || ! hash_equals( hash( 'sha256', $plan->workout_instructions ), $instructions_hash ) ) {
 				self::$action_error = __( 'The planned instructions or structured workout changed. Preview again before approving.', 'chriss-swim-training-progress-evaluation' ); return;
 			}
+			$locked = Structured_Workout_Store::is_locked( $linked['id'], $user_id );
+			if ( is_wp_error( $locked ) || $locked ) { self::$action_error = __( 'Recorded-swim prescriptions are locked. Duplicate the workout to make changes.', 'chriss-swim-training-progress-evaluation' ); return; }
 			$parsed = self::parse_for_plan( $plan );
 			if ( is_wp_error( $parsed ) ) { self::$action_error = $parsed->get_error_message(); return; }
 			$result = Structured_Workout_Store::save( $user_id, $linked['title'], $parsed['document'], $linked['id'] );
