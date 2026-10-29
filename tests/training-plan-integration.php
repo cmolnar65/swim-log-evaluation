@@ -124,7 +124,7 @@ try {
             $verify( $week['range']['first_day'] === $first_day && 'America/Denver' === $week['range']['timezone'], 'Calendar ignored week start or site timezone.' );
         }
         $calendar = Calendar::for_user( $owner, $monday->format( 'Y-m-d' ), $monday->modify( '+6 days' )->format( 'Y-m-d' ) );
-        $verify( ! is_wp_error( $calendar ) && false !== strpos( wp_json_encode( $calendar ), $a->title ), 'Calendar did not contain scheduled workouts.' );
+        $verify( ! is_wp_error( $calendar ) && $original_plans === array_column( $calendar['planned_workouts'], 'id' ), 'Calendar did not contain scheduled workouts in date order.' );
         $copies = Plan::duplicate_week( $owner, $monday->format( 'Y-m-d' ), $monday->modify( '+7 days' )->format( 'Y-m-d' ) );
         $verify( ! is_wp_error( $copies ) && 2 === count( $copies ), 'Duplicate Week omitted the seventh day.' );
     } );
