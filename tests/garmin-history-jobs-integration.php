@@ -155,6 +155,7 @@ try {
     $denied = false; ob_start(); try { UI::render(); } catch ( RuntimeException $error ) { $denied = 'expected nonce rejection' === $error->getMessage(); } finally { ob_end_clean(); }
     $verify( $denied && 'queued' === Jobs::get( $id )['status'], 'Invalid form nonce cannot cancel job.' );
 
+    if ( ! defined( 'DOING_AJAX' ) ) define( 'DOING_AJAX', true );
     $ajax = static function () {
         ob_start(); try { UI::ajax_status(); } catch ( RuntimeException $error ) { if ( 'expected nonce rejection' !== $error->getMessage() ) throw $error; }
         return ob_get_clean();
