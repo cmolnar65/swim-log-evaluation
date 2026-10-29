@@ -96,4 +96,12 @@ final class StructuredTransfersV12Test extends TestCase {
         $this->assertInstanceOf( WP_Error::class, Conversion::from_rows( $w, $rows ) );
     }
 
+    public function test_bundled_pdf_renderer_executes_on_each_supported_php_version() {
+        $pdf = Export::pdf( 'Synthetic préparation & endurance', $this->document() );
+        $this->assertFalse( is_wp_error( $pdf ), is_wp_error( $pdf ) ? $pdf->get_error_message() : '' );
+        $this->assertIsString( $pdf );
+        $this->assertSame( '%PDF-', substr( $pdf, 0, 5 ) );
+        $this->assertStringContainsString( '%%EOF', $pdf );
+    }
+
 }
