@@ -2,12 +2,6 @@ name: Release Package
 
 on:
   workflow_dispatch:
-  push:
-    branches: [develop]
-    paths:
-      - '.github/workflows/release-package.yml'
-      - 'build-release.sh'
-      - 'build-release.ps1'
 
 permissions:
   contents: read
@@ -16,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build clean plugin package
         run: |
@@ -25,9 +19,10 @@ jobs:
           ./build-release.sh "$RUNNER_TEMP/chriss-swim-training-progress-evaluation-1.1.zip"
 
       - name: Upload release package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: chriss-swim-training-progress-evaluation-1.1
           path: ${{ runner.temp }}/chriss-swim-training-progress-evaluation-1.1.zip
           if-no-files-found: error
           retention-days: 14
+
