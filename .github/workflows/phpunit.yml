@@ -31,5 +31,7 @@ jobs:
         run: composer validate --no-check-publish
       - name: Install test dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Lint every tracked PHP file
+        run: git ls-files -z '*.php' | xargs -0 -n1 php -l
       - name: Run PHPUnit
         run: composer test
