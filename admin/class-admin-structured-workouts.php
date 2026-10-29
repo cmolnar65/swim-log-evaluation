@@ -19,7 +19,7 @@ final class Admin_Structured_Workouts {
             check_admin_referer( 'swimlog_plan_schedule' );
             require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-scheduler.php';
             $plan_id = isset( $_POST['swimlog_plan_id'] ) ? absint( wp_unslash( $_POST['swimlog_plan_id'] ) ) : 0;
-            $dates = isset( $_POST['swimlog_schedule_dates'] ) && is_array( $_POST['swimlog_schedule_dates'] ) ? wp_unslash( $_POST['swimlog_schedule_dates'] ) : array();
+            $dates = isset( $_POST['swimlog_schedule_dates'] ) && is_array( $_POST['swimlog_schedule_dates'] ) ? map_deep( wp_unslash( $_POST['swimlog_schedule_dates'] ), 'sanitize_text_field' ) : array();
             $assignments = array();
             foreach ( $dates as $id => $date ) {
                 if ( ! is_string( $date ) ) { self::error( 'Invalid date input.' ); return; }
@@ -60,7 +60,9 @@ final class Admin_Structured_Workouts {
                 return;
             }
             require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-pdf.php';
-            $file = isset( $_FILES['swimlog_training_pdf'] ) ? $_FILES['swimlog_training_pdf'] : array();
+            // PHP's uploaded temporary filename is not user-authored text. Keep it intact for is_uploaded_file()/move_uploaded_file() validation in the PDF extractor.
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Upload array must retain tmp_name and size for PHP upload validation.
+            $file = isset( $_FILES['swimlog_training_pdf'] ) && is_array( $_FILES['swimlog_training_pdf'] ) ? $_FILES['swimlog_training_pdf'] : array();
             $result = Training_Plan_PDF::extract( $file );
             if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
             $owner = get_current_user_id();
@@ -74,7 +76,7 @@ final class Admin_Structured_Workouts {
         check_admin_referer( 'swimlog_structure_save' );
         $id = isset( $_POST['structure_id'] ) ? absint( wp_unslash( $_POST['structure_id'] ) ) : 0;
         $title = isset( $_POST['structure_title'] ) && is_string( $_POST['structure_title'] ) ? sanitize_text_field( wp_unslash( $_POST['structure_title'] ) ) : '';
-        $raw = isset( $_POST['structure_document'] ) && is_string( $_POST['structure_document'] ) ? wp_unslash( $_POST['structure_document'] ) : '';
+        $raw = isset( $_POST['structure_document'] ) && is_string( $_POST['structure_document'] ) ? sanitize_textarea_field( wp_unslash( $_POST['structure_document'] ) ) : '';
         if ( strlen( $raw ) > 200000 ) {
             self::error( 'Workout definition is too large.' ); return;
         }
