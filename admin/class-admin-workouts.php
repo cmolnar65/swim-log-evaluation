@@ -13,10 +13,15 @@ final class Admin_Workouts {
         $post_table = $wpdb->posts;
         $meta_table = $wpdb->postmeta;
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Plugin-owned workout-to-post relation lookup, scoped by ID.
-        return $wpdb->get_col( $wpdb->prepare(
+        $cache_key = 'linked_post_' . absint( $workout_id );
+        $cached = wp_cache_get( $cache_key, 'swimlog_workout_posts' );
+        if ( false !== $cached ) return $cached;
+        $ids = $wpdb->get_col( $wpdb->prepare(
             "SELECT p.ID FROM %i p INNER JOIN %i pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value = %s AND p.post_type = %s AND p.post_status IN ('draft','pending','future','publish','private') ORDER BY p.post_date DESC LIMIT 1",
             $post_table, $meta_table, '_swimlog_workout_id', (string) absint( $workout_id ), 'post'
         ) );
+        wp_cache_set( $cache_key, $ids, 'swimlog_workout_posts', 60 );
+        return $ids;
     }
 
     private static function recording_device_label( $workout ) {
@@ -352,7 +357,7 @@ final class Admin_Workouts {
 
 
 	private static function save_workout_photos( $workout_id, $user_id ) {
-        // The caller has already verified the workout-specific metadata nonce.
+        check_admin_referer( 'swimlog_save_workout_metadata_' . $workout_id );
         $photos = Workout::photos( $workout_id, $user_id );
         $delete_slots = isset( $_POST['delete_photo'] ) && is_array( $_POST['delete_photo'] )
             ? array_map( 'absint', wp_unslash( $_POST['delete_photo'] ) ) : array();
