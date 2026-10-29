@@ -13,7 +13,7 @@ final class Admin_Dashboard {
         if ( $start ) $where .= $wpdb->prepare( ' AND workout_start >= %s', $start );
         $where .= $wpdb->prepare( ' AND workout_start <= %s', $now->format( 'Y-m-d H:i:s' ) );
         $totals = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE $where", $table ) );
-        $volume = $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(workout_start,'%Y-%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM $table WHERE $where GROUP BY DATE_FORMAT(workout_start,'%Y-%m') ORDER BY month ASC" );
+        $volume = $wpdb->get_results( $wpdb->prepare( "SELECT DATE_FORMAT(workout_start,'%Y-%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE $where GROUP BY DATE_FORMAT(workout_start,'%Y-%m') ORDER BY month ASC", $table ) );
         return array( 'totals' => $totals, 'volume' => $volume, 'start' => $start, 'end' => $now->format( 'Y-m-d H:i:s' ) );
     }
 
