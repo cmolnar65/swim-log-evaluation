@@ -4,6 +4,23 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class Admin_Structured_Workouts {
     public static function handle_actions() {
+        if ( isset( $_POST['swimlog_pdf_extract'] ) ) {
+            if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+            check_admin_referer( 'swimlog_pdf_extract' );
+            if ( empty( $_POST['swimlog_pdf_acknowledge'] ) ) {
+                self::error( 'Please acknowledge the intellectual-property notice before importing.' );
+                return;
+            }
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-pdf.php';
+            $file = isset( $_FILES['swimlog_training_pdf'] ) ? $_FILES['swimlog_training_pdf'] : array();
+            $result = Training_Plan_PDF::extract( $file );
+            if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
+            $owner = get_current_user_id();
+            $token = wp_generate_password( 32, false, false );
+            set_transient( 'swimlog_pdf_' . $owner . '_' . $token, $result, 15 * MINUTE_IN_SECONDS );
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_preview' => $token ), admin_url( 'admin.php' ) );
+            exit;
+        }
         if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
         if ( ! isset( $_POST['swimlog_structure_action'] ) || 'save' !== sanitize_key( wp_unslash( $_POST['swimlog_structure_action'] ) ) ) return;
         check_admin_referer( 'swimlog_structure_save' );
@@ -38,6 +55,29 @@ final class Admin_Structured_Workouts {
         <div class="wrap swimlog-admin">
           <h1><?php esc_html_e( 'Structured Workouts', 'chriss-swim-training-progress-evaluation' ); ?></h1>
           <p><?php esc_html_e( 'Create reusable structured prescriptions. These are private and do not alter existing planned or recorded workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+          <details><summary><strong><?php esc_html_e( 'Import a training plan PDF', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary>
+            <p><?php esc_html_e( 'Extract selectable PDF text for private review. No workouts are created in this phase.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+            <form method="post" enctype="multipart/form-data">
+              <?php wp_nonce_field( 'swimlog_pdf_extract' ); ?>
+              <input type="hidden" name="swimlog_pdf_extract" value="1">
+              <p><label for="swimlog-training-pdf"><?php esc_html_e( 'Training plan PDF (maximum 10 MB)', 'chriss-swim-training-progress-evaluation' ); ?></label>
+              <input type="file" id="swimlog-training-pdf" name="swimlog_training_pdf" accept=".pdf,application/pdf" required></p>
+              <p><?php esc_html_e( 'Training plans may be intellectual property of their respective owners. You are responsible for obtaining necessary rights or permissions. This plugin stores private data, does not determine copyright status, and does not automatically share imported content.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+              <p><label><input type="checkbox" name="swimlog_pdf_acknowledge" value="1" required> <?php esc_html_e( 'I acknowledge this notice.', 'chriss-swim-training-progress-evaluation' ); ?></label></p>
+              <p><button class="button" type="submit"><?php esc_html_e( 'Extract PDF text for review', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
+            </form>
+          </details>
+          <?php
+          // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only opaque preview token scoped to current user.
+          $pdf_token = isset( $_GET['pdf_preview'] ) && is_string( $_GET['pdf_preview'] ) ? sanitize_text_field( wp_unslash( $_GET['pdf_preview'] ) ) : '';
+          if ( preg_match( '/^[a-zA-Z0-9]{32}$/', $pdf_token ) ) :
+              $pdf_preview = get_transient( 'swimlog_pdf_' . $owner . '_' . $pdf_token );
+              if ( is_array( $pdf_preview ) && isset( $pdf_preview['text'] ) ) : ?>
+                <h2><?php esc_html_e( 'Extracted text preview (private, expires after 15 minutes)', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+                <p><?php echo esc_html( number_format_i18n( $pdf_preview['bytes'] ) ); ?> <?php esc_html_e( 'text bytes extracted. No workouts have been created.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                <textarea readonly rows="16" style="width:100%;max-width:1100px"><?php echo esc_textarea( $pdf_preview['text'] ); ?></textarea>
+              <?php endif;
+          endif; ?>
           <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only saved flag. ?>
           <?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
