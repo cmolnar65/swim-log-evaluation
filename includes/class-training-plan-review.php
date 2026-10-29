@@ -18,7 +18,7 @@ final class Training_Plan_Review {
         $candidate['document'] = $summary['document'];
         $candidate['calculated_distance'] = $summary['totals']['distance'];
         $candidate['unit'] = $summary['unit'];
-        $candidate['manual_review'] = array( 'source_lines' => $candidate['source_lines'], 'original_flags' => $original['flags'], 'original_stated_total' => $original['stated'], 'confirmed_total' => $total, 'unit' => $input['unit'], 'reviewed_by' => get_current_user_id() );
+        $candidate['manual_review'] = array( 'source_lines' => $candidate['source_lines'], 'heading' => $candidate['heading'] ?? '', 'source_number' => $candidate['source_number'] ?? 0, 'original_flags' => $original['flags'], 'original_stated_total' => $original['stated'], 'confirmed_total' => $total, 'unit' => $input['unit'], 'reviewed_by' => get_current_user_id() );
         return $candidate;
     }
 

@@ -10,7 +10,8 @@ final class TrainingPlanParserV12Test extends TestCase {
     public function test_preview_is_owner_scoped_and_does_not_save_candidates() {
         $s = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-structured-workouts.php' );
         $this->assertStringContainsString( "Training_Plan_Parser::parse( \$pdf_preview['text'] )", $s );
-        $this->assertStringContainsString( 'Detected workout candidates', $s );
+        $this->assertStringContainsString( 'Review and select workouts for import', $s );
         $this->assertStringContainsString( 'No workouts have been saved.', $s );
     }
 }
+

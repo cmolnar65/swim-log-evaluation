@@ -65,7 +65,7 @@ final class Training_Plan_Bulk_Import {
                 $created[] = (int) $id;
                 $review_saved = true;
                 if ( isset( $candidate['manual_review'] ) ) {
-                    update_post_meta( $id, '_swimlog_pdf_review', $candidate['manual_review'] );
+                    update_post_meta( $id, '_swimlog_pdf_review', wp_slash( $candidate['manual_review'] ) );
                     $review_saved = $candidate['manual_review'] === get_post_meta( $id, '_swimlog_pdf_review', true );
                 }
                 $linked = $review_saved ? Training_Plan_Collection::attach( $owner_id, $plan_id, $id, $index + 1, absint( $candidate['week'] ?? 0 ) ) : new \WP_Error( 'swimlog_pdf_review_save', 'Could not preserve review evidence.' );
