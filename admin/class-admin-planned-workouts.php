@@ -62,12 +62,17 @@ final class Admin_Planned_Workouts {
 
 		if ( 'save' === $action ) {
 			check_admin_referer( 'swimlog_save_planned_workout' );
-			$result = Planned_Workout::save( $user_id, wp_unslash( $_POST ), $id );
+			$prior = $id ? Planned_Workout::get_for_user( $id, $user_id ) : null;
+			$submitted = wp_unslash( $_POST );
+			$instructions_changed = $prior && isset( $submitted['workout_instructions'] ) && sanitize_textarea_field( $submitted['workout_instructions'] ) !== $prior->workout_instructions;
+			$result = Planned_Workout::save( $user_id, $submitted, $id );
 			if ( is_wp_error( $result ) ) {
 				self::$action_error = $result->get_error_message();
 				return;
 			}
-			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'saved' => 1 ), admin_url( 'admin.php' ) ) );
+			$linked = $instructions_changed ? Planned_Structure_Link::for_plan( $id, $user_id ) : null;
+			$needs_review = $linked && ! is_wp_error( $linked );
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'saved' => 1, 'edit' => $id ? $id : $result, 'structure_review' => $needs_review ? 1 : 0 ), admin_url( 'admin.php' ) ) );
 			exit;
 		}
 
@@ -138,6 +143,8 @@ final class Admin_Planned_Workouts {
 			<?php if ( isset( $_GET['status_changed'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Planned-workout status updated.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only confirmation notice. ?>
 			<?php if ( isset( $_GET['regenerated'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout regenerated with your explicit approval.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only review flag. ?>
+			<?php if ( isset( $_GET['structure_review'] ) && '1' === $_GET['structure_review'] ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'Written instructions changed. The linked structured workout was NOT modified. Review and explicitly approve regeneration below if you want to update it.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
 			<?php if ( self::$regeneration_preview ) :
