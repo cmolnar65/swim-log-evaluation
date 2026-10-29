@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members' );
 	}
 
 	public static function schema_is_complete() {
@@ -127,7 +127,37 @@ final class Database {
 				return false;
 			}
 		}
+		foreach ( self::health_schema_columns() as $name => $required ) {
+			$columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( $name ) ) );
+			if ( array_diff( $required, (array) $columns ) ) {
+				return false;
+			}
+		}
+		foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
+			$expected = 'health_report_members' === $name ? array( 'user_id', 'report_id', 'measurement_id' ) : array( 'user_id', 'identity_hash' );
+			$key = 'health_report_members' === $name ? 'owner_report_measurement' : 'owner_identity';
+			$indexes = self::read( 'get_results', $wpdb->prepare( 'SHOW INDEX FROM %i', self::table( $name ) ) );
+			$actual = array();
+			foreach ( (array) $indexes as $index ) {
+				if ( $key === $index->Key_name && 0 === (int) $index->Non_unique && null === $index->Sub_part ) {
+					$actual[ (int) $index->Seq_in_index ] = $index->Column_name;
+				}
+			}
+			ksort( $actual );
+			if ( array_values( $actual ) !== $expected ) {
+				return false;
+			}
+		}
 		return true;
+	}
+
+	/** Required measurement columns: failed partial upgrades must not advance the version. */
+	private static function health_schema_columns() {
+		return array(
+			'health_reports' => array( 'id', 'user_id', 'provider', 'category', 'provider_date', 'identity_hash', 'content_hash', 'summary_json', 'context_json', 'fetched_at_utc', 'created_at_utc', 'updated_at_utc' ),
+			'health_measurements' => array( 'id', 'user_id', 'provider', 'category', 'record_role', 'external_id', 'identity_hash', 'content_hash', 'observed_at_utc', 'source_local_time', 'source_offset_seconds', 'calendar_date', 'date_basis', 'values_json', 'provenance_json', 'created_at_utc', 'updated_at_utc' ),
+			'health_report_members' => array( 'id', 'user_id', 'report_id', 'measurement_id', 'created_at_utc' ),
+		);
 	}
 
 	public static function install_schema() {
@@ -146,6 +176,10 @@ final class Database {
 		$performances = self::table( 'performances' );
 		$events       = self::table( 'events' );
 		$planned_workouts = self::table( 'planned_workouts' );
+
+		$health_reports = self::table( 'health_reports' );
+		$health_measurements = self::table( 'health_measurements' );
+		$health_report_members = self::table( 'health_report_members' );
 
 		$sql = array();
 
@@ -378,6 +412,60 @@ final class Database {
 			KEY user_status_date (user_id,status,planned_date),
 			UNIQUE KEY completed_workout_id (completed_workout_id)
 		) $charset_collate;";
+		$sql[] = "CREATE TABLE $health_reports (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			provider varchar(32) NOT NULL,
+			category varchar(32) NOT NULL,
+			provider_date date NOT NULL,
+			identity_hash char(64) NOT NULL,
+			content_hash char(64) NOT NULL,
+			summary_json longtext NOT NULL,
+			context_json longtext NOT NULL,
+			fetched_at_utc datetime NOT NULL,
+			created_at_utc datetime NOT NULL,
+			updated_at_utc datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY owner_identity (user_id,identity_hash),
+			KEY owner_day (user_id,provider_date),
+			KEY owner_source_day (user_id,provider,category,provider_date)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_measurements (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			provider varchar(32) NOT NULL,
+			category varchar(32) NOT NULL,
+			record_role varchar(32) NOT NULL,
+			external_id varchar(191) NULL,
+			identity_hash char(64) NOT NULL,
+			content_hash char(64) NOT NULL,
+			observed_at_utc varchar(32) NULL,
+			source_local_time varchar(40) NULL,
+			source_offset_seconds int(11) NULL,
+			calendar_date date NULL,
+			date_basis varchar(32) NOT NULL,
+			values_json longtext NOT NULL,
+			provenance_json longtext NOT NULL,
+			created_at_utc datetime NOT NULL,
+			updated_at_utc datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY owner_identity (user_id,identity_hash),
+			KEY owner_day (user_id,calendar_date),
+			KEY owner_source_time (user_id,provider,category,observed_at_utc)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_report_members (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			report_id bigint(20) unsigned NOT NULL,
+			measurement_id bigint(20) unsigned NOT NULL,
+			created_at_utc datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY owner_report_measurement (user_id,report_id,measurement_id),
+			KEY owner_measurement (user_id,measurement_id)
+		) $charset_collate;";
+
 		foreach ( $sql as $statement ) {
 			dbDelta( $statement );
 		}
