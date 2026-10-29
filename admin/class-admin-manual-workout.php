@@ -10,6 +10,12 @@ final class Admin_Manual_Workout {
 
 	private static $manual_workout_action_error = null;
 
+	private static function posted_array( $key ) {
+		if ( ! isset( $_POST[ $key ] ) || ! is_array( $_POST[ $key ] ) ) return array();
+		return map_deep( wp_unslash( $_POST[ $key ] ), 'sanitize_text_field' );
+	}
+
+
 
 
 	public static function handle_manual_workout_actions() {
@@ -24,25 +30,25 @@ final class Admin_Manual_Workout {
 		$user_id = Admin_UI::selected_user_id();
 		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? '' ) );
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
-		$duration_minutes = isset( $_POST['duration_minutes'] ) && '' !== trim( (string) wp_unslash( $_POST['duration_minutes'] ) ) ? (float) wp_unslash( $_POST['duration_minutes'] ) : null;
+		$duration_minutes = isset( $_POST['duration_minutes'] ) && '' !== trim( sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ) ) ) ? (float) sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ) ) : null;
 		$document = array( 'workout' => array(
 			'workout_start' => trim( $date . ' ' . ( '' !== $time ? $time . ':00' : '12:00:00' ) ),
 			'location_id' => absint( wp_unslash( $_POST['location_id'] ?? 0 ) ),
-			'original_pool_length' => isset( $_POST['pool_length'] ) ? (float) wp_unslash( $_POST['pool_length'] ) : 0,
+			'original_pool_length' => isset( $_POST['pool_length'] ) ? (float) sanitize_text_field( wp_unslash( $_POST['pool_length'] ) ) : 0,
 			'pool_length_unit' => sanitize_key( wp_unslash( $_POST['course_unit'] ?? '' ) ),
-			'original_distance' => isset( $_POST['total_distance'] ) && '' !== trim( (string) wp_unslash( $_POST['total_distance'] ) ) ? (float) wp_unslash( $_POST['total_distance'] ) : null,
+			'original_distance' => isset( $_POST['total_distance'] ) && '' !== trim( sanitize_text_field( wp_unslash( $_POST['total_distance'] ) ) ) ? (float) sanitize_text_field( wp_unslash( $_POST['total_distance'] ) ) : null,
 			'elapsed_time_ms' => null === $duration_minutes ? null : (int) round( $duration_minutes * 60000 ),
 			'notes' => sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) ),
 		), 'segments' => array() );
-		$segment_reps = isset( $_POST['segment_repetitions'] ) ? (array) wp_unslash( $_POST['segment_repetitions'] ) : array();
-		$segment_distances = isset( $_POST['segment_distance'] ) ? (array) wp_unslash( $_POST['segment_distance'] ) : array();
-		$segment_strokes = isset( $_POST['segment_stroke'] ) ? (array) wp_unslash( $_POST['segment_stroke'] ) : array();
-		$segment_notes = isset( $_POST['segment_notes'] ) ? (array) wp_unslash( $_POST['segment_notes'] ) : array();
-		$segment_timing = isset( $_POST['segment_timing_type'] ) ? (array) wp_unslash( $_POST['segment_timing_type'] ) : array();
-		$segment_rep_times = isset( $_POST['segment_rep_times'] ) ? (array) wp_unslash( $_POST['segment_rep_times'] ) : array();
-		$segment_set_times = isset( $_POST['segment_set_time'] ) ? (array) wp_unslash( $_POST['segment_set_time'] ) : array();
-		$segment_intervals = isset( $_POST['segment_interval'] ) ? (array) wp_unslash( $_POST['segment_interval'] ) : array();
-		$segment_rests = isset( $_POST['segment_rest'] ) ? (array) wp_unslash( $_POST['segment_rest'] ) : array();
+		$segment_reps = self::posted_array( 'segment_repetitions' );
+		$segment_distances = self::posted_array( 'segment_distance' );
+		$segment_strokes = self::posted_array( 'segment_stroke' );
+		$segment_notes = self::posted_array( 'segment_notes' );
+		$segment_timing = self::posted_array( 'segment_timing_type' );
+		$segment_rep_times = self::posted_array( 'segment_rep_times' );
+		$segment_set_times = self::posted_array( 'segment_set_time' );
+		$segment_intervals = self::posted_array( 'segment_interval' );
+		$segment_rests = self::posted_array( 'segment_rest' );
 		$segment_count = max( count( $segment_reps ), count( $segment_distances ), count( $segment_strokes ), count( $segment_notes ), count( $segment_timing ), count( $segment_rep_times ), count( $segment_set_times ), count( $segment_intervals ), count( $segment_rests ) );
 		for ( $i = 0; $i < $segment_count; $i++ ) {
 			$reps_raw = trim( (string) ( $segment_reps[$i] ?? '' ) );
@@ -91,7 +97,7 @@ final class Admin_Manual_Workout {
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? ( $start_value && '12:00:00' !== substr( $start_value, 11, 8 ) ? substr( $start_value, 11, 5 ) : '' ) ) );
 		$ms_to_time = static function( $ms ){ if(null===$ms||$ms<=0)return'';$seconds=$ms/1000;$minutes=(int)floor($seconds/60);$seconds-=$minutes*60;$formatted=number_format($seconds,3,'.','');$formatted=rtrim(rtrim($formatted,'0'),'.');return $minutes>0?$minutes.':'.str_pad($formatted,2,'0',STR_PAD_LEFT):$formatted; };
 		if ( empty( $_POST ) && $editing ) { $_POST['location_id']=$workout['location_id']??0; $_POST['pool_length']=$workout['original_pool_length']??25; $_POST['course_unit']=$workout['pool_length_unit']??'yd'; $_POST['total_distance']=$workout['original_distance']??''; $_POST['duration_minutes']=null!==($workout['elapsed_time_ms']??null)?$workout['elapsed_time_ms']/60000:''; $_POST['notes']=$workout['notes']??''; foreach($segments as$segment){$_POST['segment_repetitions'][]=$segment['repetitions']??'';$_POST['segment_distance'][]=$segment['distance_per_rep']??'';$_POST['segment_stroke'][]=$segment['stroke']??'';$_POST['segment_timing_type'][]=$segment['timing_type']??'unknown';$_POST['segment_rep_times'][]=implode(', ',array_map($ms_to_time,$segment['rep_times_ms']??array()));$_POST['segment_set_time'][]=$ms_to_time($segment['set_time_ms']??null);$_POST['segment_interval'][]=$ms_to_time($segment['interval_ms']??null);$_POST['segment_rest'][]=$ms_to_time($segment['rest_time_ms']??null);$_POST['segment_notes'][]=$segment['notes']??'';} }
-		$posted_reps=(array)wp_unslash($_POST['segment_repetitions']??array());$posted_distance=(array)wp_unslash($_POST['segment_distance']??array());$posted_stroke=(array)wp_unslash($_POST['segment_stroke']??array());$posted_notes=(array)wp_unslash($_POST['segment_notes']??array());$posted_timing=(array)wp_unslash($_POST['segment_timing_type']??array());$posted_rep_times=(array)wp_unslash($_POST['segment_rep_times']??array());$posted_set_time=(array)wp_unslash($_POST['segment_set_time']??array());$posted_interval=(array)wp_unslash($_POST['segment_interval']??array());$posted_rest=(array)wp_unslash($_POST['segment_rest']??array()); $row_count=max(12,count($posted_reps));
+		$posted_reps=self::posted_array( 'segment_repetitions' );$posted_distance=self::posted_array( 'segment_distance' );$posted_stroke=self::posted_array( 'segment_stroke' );$posted_notes=self::posted_array( 'segment_notes' );$posted_timing=self::posted_array( 'segment_timing_type' );$posted_rep_times=self::posted_array( 'segment_rep_times' );$posted_set_time=self::posted_array( 'segment_set_time' );$posted_interval=self::posted_array( 'segment_interval' );$posted_rest=self::posted_array( 'segment_rest' ); $row_count=max(12,count($posted_reps));
 		?><div class="wrap swimlog-admin" data-swimlog-manual-workout="1"><h1><?php echo esc_html($editing?__('Edit Manual Workout','chriss-swim-training-progress-evaluation'):__('Add Manual Workout','chriss-swim-training-progress-evaluation')); ?></h1>
 		<p><?php esc_html_e( 'Record the workout as you know it. Timing is optional; only explicitly measured repetition times can become performance evidence.', 'chriss-swim-training-progress-evaluation' ); ?></p><p class="description"><?php esc_html_e( 'You may enter only workout totals, or add ordered sets. Measured reps require one actual swim time per repetition. Measured-set times and interval/send-off values describe the workout but are not split into personal-best times. Untimed sets still count toward training volume. Manual entry is for pool workouts and does not create open-water GPS routes.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php if($error):?><div class="notice notice-error"><p><?php echo esc_html($error); ?></p></div><?php endif;?>
 		<form method="post" id="swimlog-manual-workout-form"><?php wp_nonce_field($editing?'swimlog_update_manual_workout_'.$workout_id:'swimlog_create_manual_workout'); ?><input type="hidden" name="swimlog_manual_workout_action" value="<?php echo esc_attr($editing?'update':'create'); ?>"><?php if($editing):?><input type="hidden" name="workout_id" value="<?php echo esc_attr($workout_id); ?>"><?php endif;?>
