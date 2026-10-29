@@ -29,11 +29,12 @@ final class Training_Plan_Bulk_Import {
         $candidates = array();
         if ( ! is_array( $parsed['workouts'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Invalid candidate list.' );
         foreach ( $parsed['workouts'] as $candidate ) {
-            if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'], $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) || ! is_int( $candidate['sequence'] ) || $candidate['sequence'] < 1 ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
+            if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'] ) || ! is_int( $candidate['sequence'] ) || $candidate['sequence'] < 1 ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
+            if ( ! in_array( $candidate['sequence'], $selected, true ) ) continue;
+            if ( ! isset( $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed selected workout candidate.' );
             foreach ( $candidate['source_lines'] as $line ) {
                 if ( ! is_string( $line ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout source line.' );
             }
-            if ( ! in_array( (int) $candidate['sequence'], $selected, true ) ) continue;
             $review = Training_Plan_Review::assess( $candidate );
             if ( ! $review['ready'] ) return new \WP_Error( 'swimlog_bulk_unverified', 'All selected workouts must have verified totals and no review flags.' );
             $summary = Structured_Workout::summarize( $candidate['document'] );

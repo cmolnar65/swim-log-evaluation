@@ -39,8 +39,8 @@ try {
     }
     $owner = $users['owner'];
     wp_set_current_user( $owner );
-    $parsed = Parser::parse( "Workout 1\n4 x 100 yards free\nTotal: 400 yards\nWorkout 2\n2 x 200 meters breaststroke\nTotal: 400 meters" );
-    $verify( ! is_wp_error( $parsed ) && 2 === count( $parsed['workouts'] ), 'Synthetic parser fixture.' );
+    $parsed = Parser::parse( "Workout 1\n4 x 100 yards free\nTotal: 400 yards\nWorkout 2\n2 x 200 meters breaststroke\nTotal: 400 meters\nWorkout 3\nSwim easy until tired\nTotal: 100 yards" );
+    $verify( ! is_wp_error( $parsed ) && 3 === count( $parsed['workouts'] ), 'Synthetic parser fixture.' );
     $fingerprint = hash( 'sha256', 'synthetic integration plan' );
     $post_ids = static function( $owner ) {
         return get_posts( array( 'post_type' => array_merge( array( Store::POST_TYPE ), Collection::post_types() ), 'author' => $owner, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) );
