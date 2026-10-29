@@ -58,7 +58,7 @@
     function fetchHealth(root,start,end,signal) {
         return fetch(healthURL(root,start,end).toString(),{credentials:'same-origin',signal:signal,headers:{'X-WP-Nonce':(window.wpApiSettings&&window.wpApiSettings.nonce)||''}})
             .then(function(response){if(!response.ok)throw new Error('health');return response.json();})
-            .then(function(data){if(!data || !Array.isArray(data.days))throw new Error('health');return data;});
+            .then(function(data){if(!data || !Array.isArray(data.days) || !data.range || data.range.start!==start || data.range.end!==end)throw new Error('health');return data;});
     }
     function renderHealthDay(root,state) {
         if(root._calendarDayView!==state || root.dataset.healthEnabled!=='1')return;
@@ -97,7 +97,8 @@
         if(root.dataset.healthEnabled!=='1')return;
         if(!force && root._healthData && state.date>=root._healthData.range.start && state.date<=root._healthData.range.end){renderHealthDay(root,state);return;}
         renderHealthDay(root,state);
-        if(!force && root._healthPromise){root._healthPromise.then(function(){if(root._calendarDayView===state)loadHealthDay(root,state,true);});return;}
+        if(!force && root._healthPromise){root._healthPromise.then(function(){if(root._calendarDayView===state)renderHealthDay(root,state);});return;}
+        if(!force && root._healthError)return;
         if(state.healthRequest)state.healthRequest.abort();state.healthRequest=new AbortController();
         fetchHealth(root,state.date,state.date,state.healthRequest.signal).then(function(data){if(root._calendarDayView!==state)return;state.healthData=data;state.healthError=false;renderHealthDay(root,state);})
             .catch(function(error){if(root._calendarDayView!==state||error.name==='AbortError')return;state.healthError=true;renderHealthDay(root,state);});
