@@ -151,7 +151,7 @@ final class ImportFixture001Test extends TestCase {
   $this->assertStringContainsString('preserved_retry_source_is_valid($failed_retry,$hash)',$source);
   $this->assertStringContainsString("\$upload=array('file'=>\$failed_retry->stored_path",$source);
   $this->assertStringContainsString("\$import_id=(int)\$failed_retry->id",$source);
-  $this->assertStringContainsString("\$wpdb->update(\$it,\$row,array('id'=>\$import_id,'user_id'=>\$user_id))",$source);
+  $this->assertStringContainsString("Database::write( 'update', \$it,\$row,array('id'=>\$import_id,'user_id'=>\$user_id))",$source);
   $this->assertStringContainsString("hash_equals((string)\$hash,(string)\$stored_hash)",$source);
  }
 
@@ -249,7 +249,7 @@ final class ImportFixture001Test extends TestCase {
   $this->assertNotFalse($method_start);$this->assertNotFalse($method_end);
   $method=substr($source,$method_start,$method_end-$method_start);
   $table_init=strpos($method,"\$wt=Database::table('workouts')");
-  $authority_update=strpos($method,"\$wpdb->update(\$wt,array('authoritative_import_id'=>\$import_id)");
+  $authority_update=strpos($method,"Database::write( 'update', \$wt,array('authoritative_import_id'=>\$import_id)");
   $this->assertNotFalse($table_init,'import_file() must initialize the workouts table name.');
   $this->assertNotFalse($authority_update,'The authoritative import update must target the initialized workouts table.');
   $this->assertLessThan($authority_update,$table_init,'The workouts table must be initialized before it is used.');
@@ -261,3 +261,4 @@ final class ImportFixture001Test extends TestCase {
   $this->assertTrue($manufacturer===null||is_string($manufacturer));
  }
 }
+

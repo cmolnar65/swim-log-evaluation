@@ -15,7 +15,9 @@ final class ReleaseDocumentationTest extends TestCase {
   $plugin_check_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/plugin-check.yml');
   $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.1.zip',$release_workflow);
   $this->assertStringNotContainsString('chriss-swim-training-progress-evaluation-1.0.zip',$release_workflow);
-  $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.1.zip',$plugin_check_workflow);
+  $this->assertStringContainsString('--stage-only',$plugin_check_workflow);
+  $this->assertStringNotContainsString('.zip',$plugin_check_workflow);
+  $this->assertStringNotContainsString('  push:',$release_workflow);
   foreach(array('## Release candidate: v1.0','The `develop` branch is the v1.0 release candidate.','Stable tag: 0.7','current public stable release remains v0.7','v0.8 development status','v0.8 development — complete, not yet released')as$stale)$this->assertStringNotContainsString($stale,$readme.$github);
  }
  public function test_v11_docs_cover_planned_workout_release_features(){
@@ -64,3 +66,4 @@ final class ReleaseDocumentationTest extends TestCase {
   foreach(array('Measured reps require one actual swim time per repetition','not split into personal-best times','Untimed sets still count toward training volume','does not create open-water GPS routes')as$help)$this->assertStringContainsString($help,$admin);
  }
 }
+
