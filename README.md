@@ -6,11 +6,44 @@ The plugin supports FIT and supported CSV workout sources plus first-class manua
 
 ## v1.2
 
-Version 1.2 adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
+Version 1.2 redesigns the dashboard with navigation tiles and training-volume/SWOLF charts, and adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
 
 PDF conversion is conservative: unsupported or ambiguous notation requires review and correction before import. Confidential source PDFs are not shipped. See [functional validation](docs/v1.2-functional-validation.md) and the [structured transfer contract](docs/v1.2-structured-transfers.md) for tested behavior and export limitations.
 
-## v1.2 Phase 03 — Page and post layout templates
+## v1.2 changes since v1.1
+
+- Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.
+- Add optional SwimLog Wide Content and SwimLog Full Width Page/Post templates for Twenty Twenty-Four, with scoped responsive styles and per-page table display preferences.
+- Add private structured swimming workouts with ordered sections, steps, nested repeats and ladders; stroke, drill, equipment, pace and rest fields; and live distance/stroke totals.
+- Add a responsive structured-workout editor, equipment checklist and detailed saved-workout list, with active/hidden/all filters, hide/unhide and history-protected deletion.
+- Parse supported written swim notation conservatively, retaining meter/yard units, explicit totals, unknown versus zero rest and review flags for ambiguous instructions.
+- Link planned workouts to private structures and preview explicitly approved regeneration from changed instructions, with stale-edit protection.
+- Copy structured prescriptions independently with duplicated or recurring plans; preserve recorded-swim structures as immutable and prevent replacement or unlinking.
+- Add private training-plan collections with source sequence/week metadata and individually assigned, nonconsecutive scheduling dates.
+- Extract PDF text with bundled smalot/pdfparser 2.13.1; recognize supported workout headings, compact sets, table-header repeats, odd/even strokes, split lengths and equipment instructions.
+- Provide editable PDF candidate previews, selection checkboxes, confirmed distance/unit and explicit review approval; reset approval after edits and reject incomplete submissions.
+- Keep PDF previews available for 24 hours after upload. Retain private review provenance, preserve selected-only imports, reject duplicate imports and roll back partial failures.
+- Convert supported recorded pool swims into independent private prescriptions through preview and confirmation, without changing source history or inventing timing, sets or personal-best evidence.
+- Download standard FIT Workout files, printable Unicode PDFs using Dompdf 3.1.6, and text suitable for copying to FORM. FIT destination support varies; TrainingPeaks planned-library import is not guaranteed.
+- Expand calendar dates into accessible day dialogs in month/week views and the mobile agenda, preserving existing workout/planning/event actions, privacy and normal navigation.
+- Support empty/busy days, scrolling, keyboard focus containment, Escape/Close/outside-tap dismissal, focus restoration, phone rotation and authorized adjacent-day loading with retry handling.
+- Reorder administration navigation around Dashboard, Calendar, workouts/import/planning, analytics, events/locations and configuration, with Settings last.
+- Harden nonce/input validation, prepared SQL identifiers and values, owner-scoped query caching and invalidation, FORM import bindings and linked-post lookup freshness; retain individually justified database exceptions.
+- Extend full-file PHP lint and regression validation through PHP 8.5. Run strict Plugin Check against production staging and exercise real WordPress/MariaDB persistence, permissions, rollback and desktop/mobile browsers.
+- Use Node.js 24-compatible GitHub actions and manual-only ZIP packaging; retain the runtime Composer manifest/dependencies and exclude confidential PDFs, private extracted content and unnecessary development files.
+- Keep WordPress minimum version 6.2, PHP minimum 7.4 and database schema version 1.2. Preserve existing data and backward compatibility; no new schema migration is required.
+
+## Using training-plan PDF import
+
+Upload a PDF from Structured Workouts and review each candidate against the source instructions and stated distance. Correct its structure, confirm the distance/unit, select the workouts to import and mark review complete. Editing invalidates approval. Previews last 24 hours after upload; an expired preview must be uploaded again. Unsupported or ambiguous notation remains subject to manual correction, and successful extraction counts alone do not establish correct imports. Imported collections preserve source order/week metadata and support individually chosen scheduling dates.
+
+## Structured-workout history and exports
+
+Written-instruction regeneration requires preview and explicit approval. Copied or recurring plans receive independent prescriptions. Recorded-swim structures cannot be edited, replaced or unlinked. Hide/unhide and history-protected deletion keep library management separate from recorded history. Recorded-swim conversion creates a separate prescription and leaves source recordings, performances and personal bests intact.
+
+FIT downloads are Workout files, not fabricated Activity files. PDF exports are printable Unicode documents; text exports can be copied to FORM. See the [transfer contract](docs/v1.2-structured-transfers.md) for unsupported inputs and destination limitations. Dry-land and health/lifestyle tracking are future considerations, not v1.2 features.
+
+## Page and post layout templates
 
 For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide Content** and **SwimLog Full Width** are the preferred page templates for displaying SwimLog tables. Select either from the Page or Post editor's **Template** selector. Both retain the theme header and footer and render existing page content, including SwimLog blocks and shortcodes.
 
