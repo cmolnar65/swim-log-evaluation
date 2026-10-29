@@ -9,7 +9,7 @@ final class Workout {
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
-		return $wpdb->get_row($wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
+		return Database::read( 'get_row', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
 	}
 
 	public static function query_for_user( $user_id, $filters=array(), $page=1, $per_page=20 ) {
@@ -26,9 +26,9 @@ final class Workout {
 		if(!empty($filters['stroke'])){$where[]=$wpdb->prepare('w.primary_stroke=%s',$filters['stroke']);}
 		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
 		$sql_where=implode(' AND ',$where);
-		$total=(int)$wpdb->get_var("SELECT COUNT(*) FROM $w w WHERE $sql_where");
+		$total=(int)Database::read( 'get_var', $wpdb->prepare( 'SELECT COUNT(*) FROM %i w WHERE ', $w ) . $sql_where);
 		$offset=max(0,($page-1)*$per_page);
-		$rows=$wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $sql_where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",$w,$l,$per_page,$offset));
+		$rows=Database::read( 'get_results', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ",$w,$l) . $sql_where . $wpdb->prepare(" ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",$per_page,$offset));
 		return array('rows'=>$rows,'total'=>$total,'pages'=>(int)ceil($total/$per_page));
 	}
 
@@ -42,7 +42,7 @@ final class Workout {
 		global $wpdb;
 		$w = Database::table( 'workouts' );
 		$l = Database::table( 'locations' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT w.*, l.name AS location_name
 				FROM %i w
@@ -64,7 +64,7 @@ final class Workout {
 		$limit=max(1,min(20,(int)$limit));
 		$where=$wpdb->prepare('w.user_id=%d',$user_id);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
-		return $wpdb->get_results($wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $where ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$w,$l,$limit));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ",$w,$l) . $where . $wpdb->prepare(" ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$limit));
 	}
 
 	public static function for_month( $user_id, $year, $month, $workout_type=null ) {
@@ -72,7 +72,7 @@ final class Workout {
 		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=(new \DateTimeImmutable($start,wp_timezone()))->modify('+1 month')->format('Y-m-d H:i:s');
 		$where=$wpdb->prepare('w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
-		return $wpdb->get_results("SELECT w.*,l.name AS location_name FROM $w w LEFT JOIN $l l ON l.id=w.location_id AND l.user_id=w.user_id WHERE $where ORDER BY w.workout_start ASC,w.id ASC");
+		return Database::read( 'get_results', $wpdb->prepare( 'SELECT w.*,l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ', $w, $l ) . $where . ' ORDER BY w.workout_start ASC,w.id ASC');
 	}
 
 	public static function totals_by_month_for_year( $user_id, $year, $workout_type=null ) {
@@ -80,7 +80,7 @@ final class Workout {
 		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
 		$where=$wpdb->prepare('user_id=%d AND workout_start >= %s AND workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('workout_type=%s',$workout_type);
-		return $wpdb->get_results($wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE $where GROUP BY MONTH(workout_start) ORDER BY month_num ASC",$w));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE ",$w) . $where . " GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
 	}
 
 
@@ -101,7 +101,7 @@ final class Workout {
 			$wpdb->prepare('w.workout_start <= %s',$end)
 		);
 		$sql_where=implode(' AND ',$where);
-		return $wpdb->get_results($wpdb->prepare("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM %i w INNER JOIN %i n ON n.workout_id=w.id WHERE $sql_where GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC",$w,$n));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT w.pool_length_unit course_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') stroke,COUNT(DISTINCT w.id) workout_count,COUNT(*) length_count,SUM(CASE WHEN w.pool_length_unit='yd' THEN n.distance_m/0.9144 ELSE n.distance_m END) distance_native,SUM(COALESCE(n.elapsed_time_ms,0)) active_time_ms FROM %i w INNER JOIN %i n ON n.workout_id=w.id WHERE ",$w,$n) . $sql_where . " GROUP BY w.pool_length_unit,COALESCE(NULLIF(n.stroke,''),'UNKNOWN') ORDER BY CASE WHEN w.pool_length_unit='m' THEN 0 ELSE 1 END ASC,distance_native DESC,stroke ASC");
 	}
 
 
@@ -115,7 +115,7 @@ final class Workout {
 		global $wpdb;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
 		$t = Database::table( 'laps' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT sequence_no,start_time,start_offset_ms,distance_m,elapsed_time_ms,moving_time_ms,stroke,source_lap_index FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
 				$t,
@@ -128,7 +128,7 @@ final class Workout {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('lengths');
-		return $wpdb->get_results($wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",$t,$workout_id));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",$t,$workout_id));
 	}
 
 
@@ -136,7 +136,7 @@ final class Workout {
 		global $wpdb;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return array();
 		$t = Database::table( 'trackpoints' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT sequence_no,recorded_at,latitude,longitude,distance_m,heart_rate,cadence FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
 				$t,
@@ -155,7 +155,7 @@ final class Workout {
 		$elapsed = (int) ( $workout->elapsed_time_ms ?? 0 );
 		$moving = (int) ( $workout->moving_time_ms ?? 0 );
 		$t = Database::table( 'trackpoints' );
-		$points = $wpdb->get_results(
+		$points = Database::read( 'get_results', 
 			$wpdb->prepare(
 				"SELECT recorded_at,latitude,longitude,distance_m,cadence FROM %i WHERE workout_id=%d ORDER BY sequence_no ASC",
 				$t,
@@ -239,14 +239,14 @@ final class Workout {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('performances');
-		return $wpdb->get_results($wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY course_unit,distance_value,stroke,duration_ms",$t,$workout_id,$user_id));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT * FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY course_unit,distance_value,stroke,duration_ms",$t,$workout_id,$user_id));
 	}
 
 	public static function imports( $workout_id, $user_id ) {
 		global $wpdb;
 		if(!self::get_for_user($workout_id,$user_id)) return array();
 		$t=Database::table('imports');
-		return $wpdb->get_results($wpdb->prepare("SELECT id,source_type,original_filename,import_status,imported_at FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY imported_at ASC,id ASC",$t,$workout_id,$user_id));
+		return Database::read( 'get_results', $wpdb->prepare("SELECT id,source_type,original_filename,import_status,imported_at FROM %i WHERE workout_id=%d AND user_id=%d ORDER BY imported_at ASC,id ASC",$t,$workout_id,$user_id));
 	}
 
 
@@ -284,7 +284,7 @@ final class Workout {
 
 		if ( $location_id ) {
 			$locations = Database::table( 'locations' );
-			$owned_location = (int) $wpdb->get_var(
+			$owned_location = (int) Database::read( 'get_var', 
 				$wpdb->prepare( "SELECT id FROM %i WHERE id = %d AND user_id = %d", $locations, $location_id, $user_id )
 			);
 			if ( $owned_location !== $location_id ) {
@@ -293,7 +293,7 @@ final class Workout {
 		}
 
 		$table = Database::table( 'workouts' );
-		$result = $wpdb->update(
+		$result = Database::write( 'update', 
 			$table,
 			array(
 				'location_id' => $location_id ?: null,
@@ -328,24 +328,24 @@ final class Workout {
 		$trackpoints = Database::table( 'trackpoints' );
 		$performances = Database::table( 'performances' );
 		$workouts = Database::table( 'workouts' );
-		$source_paths = $wpdb->get_col( $wpdb->prepare( "SELECT stored_path FROM %i WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $imports, $workout_id, $user_id ) );
+		$source_paths = Database::read( 'get_col',  $wpdb->prepare( "SELECT stored_path FROM %i WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $imports, $workout_id, $user_id ) );
 		$photo_ids = self::photos( $workout_id, $user_id );
 
-		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+		if ( false === Database::write( 'query',  'START TRANSACTION' ) ) {
 			return new \WP_Error( 'swimlog_workout_delete_start', __( 'The workout deletion could not be started.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		try {
-			if ( false === $wpdb->delete( $performances, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
-			if ( false === $wpdb->delete( $lengths, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'lengths' );
-			if ( false === $wpdb->delete( $trackpoints, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'trackpoints' );
-			if ( false === $wpdb->delete( $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
-			if ( false === $wpdb->delete( $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
-			if ( 1 !== $wpdb->delete( $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
+			if ( false === Database::write( 'delete',  $performances, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'performances' );
+			if ( false === Database::write( 'delete',  $lengths, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'lengths' );
+			if ( false === Database::write( 'delete',  $trackpoints, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'trackpoints' );
+			if ( false === Database::write( 'delete',  $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
+			if ( false === Database::write( 'delete',  $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
+			if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
 			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
 			Evaluator::recalculate_personal_bests( $user_id );
-			if ( false === $wpdb->query( 'COMMIT' ) ) throw new \Exception( 'commit' );
+			if ( false === Database::write( 'query',  'COMMIT' ) ) throw new \Exception( 'commit' );
 		} catch ( \Throwable $e ) {
-			$wpdb->query( 'ROLLBACK' );
+			Database::write( 'query',  'ROLLBACK' );
 			return new \WP_Error( 'swimlog_workout_delete', __( 'The workout could not be deleted. No workout data was changed.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
@@ -376,3 +376,4 @@ final class Workout {
 		return sprintf('%d.%02d',$s,$cs);
 	}
 }
+

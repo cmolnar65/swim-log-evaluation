@@ -285,9 +285,9 @@ final class Garmin_Personal_API {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		$imports = Database::table( 'imports' );
 		$external_id = (string) $activity_id;
-		$existing_activity = $wpdb->get_row(
+		$existing_activity = Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT id, workout_id, original_filename, file_hash, import_status FROM $imports WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, workout_id, original_filename, file_hash, import_status FROM %i WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s LIMIT 1",$imports,  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$user_id,
 				'garmin',
 				$external_id
@@ -316,9 +316,9 @@ final class Garmin_Personal_API {
 			if ( false === $hash || '' === $hash ) {
 				return new \WP_Error( 'swimlog_garmin_hash_failed', __( 'The Garmin FIT file could not be fingerprinted safely.', 'chriss-swim-training-progress-evaluation' ) );
 			}
-			$existing_file = $wpdb->get_row(
+			$existing_file = Database::read( 'get_row', 
 				$wpdb->prepare(
-					"SELECT id, workout_id, source_type, source_provider, external_activity_id, original_filename, import_status FROM $imports WHERE user_id=%d AND file_hash=%s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT id, workout_id, source_type, source_provider, external_activity_id, original_filename, import_status FROM %i WHERE user_id=%d AND file_hash=%s LIMIT 1",$imports,  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$user_id,
 					$hash
 				)
@@ -403,9 +403,9 @@ final class Garmin_Personal_API {
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		$imports = Database::table( 'imports' );
-		$conflicting_activity = $wpdb->get_var(
+		$conflicting_activity = Database::read( 'get_var', 
 			$wpdb->prepare(
-				"SELECT id FROM $imports WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s AND id<>%d LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id FROM %i WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s AND id<>%d LIMIT 1",$imports,  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$user_id,
 				'garmin',
 				(string) $activity_id,
@@ -416,7 +416,7 @@ final class Garmin_Personal_API {
 			return new \WP_Error( 'swimlog_garmin_activity_conflict', __( 'This Garmin activity is already associated with a different import. No data was changed.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
-		$updated = $wpdb->update(
+		$updated = Database::write( 'update', 
 			$imports,
 			array(
 				'source_provider'      => 'garmin',
@@ -611,3 +611,4 @@ final class Garmin_Personal_API {
 		return $plaintext;
 	}
 }
+

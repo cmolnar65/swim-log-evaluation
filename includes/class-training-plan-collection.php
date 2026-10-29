@@ -66,14 +66,14 @@ final class Training_Plan_Collection {
         }
         $existing = get_posts( array(
             'post_type' => Structured_Workout_Store::POST_TYPE, 'author' => absint( $owner_id ),
-            'post_status' => 'private', 'posts_per_page' => 1,
-            'post__not_in' => array( absint( $structure_id ) ),
+            'post_status' => 'private', 'posts_per_page' => 2, 'fields' => 'ids',
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Owner-scoped private-post uniqueness check on existing metadata; two IDs suffice to detect a conflicting sequence without SQL exclusions.
             'meta_query' => array(
                 array( 'key' => self::META_PLAN, 'value' => absint( $plan_id ) ),
                 array( 'key' => self::META_SEQUENCE, 'value' => $sequence ),
             ),
         ) );
-        if ( $existing ) return new \WP_Error( 'swimlog_plan_duplicate', 'Sequence already assigned.' );
+        if ( array_diff( array_map( 'absint', $existing ), array( absint( $structure_id ) ) ) ) return new \WP_Error( 'swimlog_plan_duplicate', 'Sequence already assigned.' );
         $current = absint( get_post_meta( $structure_id, self::META_PLAN, true ) );
         if ( $current && $current !== absint( $plan_id ) ) {
             return new \WP_Error( 'swimlog_plan_assigned', 'Workout already belongs to another plan.' );
@@ -90,9 +90,13 @@ final class Training_Plan_Collection {
         return get_posts( array(
             'post_type' => Structured_Workout_Store::POST_TYPE,
             'author' => absint( $owner_id ), 'post_status' => 'private',
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Existing private plan metadata supplies numeric sequence ordering; bounded to the supported 500 workouts and one owner.
             'posts_per_page' => 500, 'meta_key' => self::META_SEQUENCE,
             'orderby' => 'meta_value_num', 'order' => 'ASC',
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Owner-scoped private-post uniqueness check on existing metadata; two IDs suffice to detect a conflicting sequence without SQL exclusions.
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Owner-scoped membership lookup uses existing post metadata through core, preserving legacy plans without a schema migration.
             'meta_query' => array( array( 'key' => self::META_PLAN, 'value' => absint( $plan_id ) ) ),
         ) );
     }
 }
+

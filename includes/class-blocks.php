@@ -208,7 +208,7 @@ final class Blocks {
 		if ( 'save' === $operation ) {
 			$time = isset( $_POST['result_time'] ) ? sanitize_text_field( wp_unslash( $_POST['result_time'] ) ) : '';
 			$place = isset( $_POST['placement'] ) ? sanitize_text_field( wp_unslash( $_POST['placement'] ) ) : '';
-			$notes = isset( $_POST['notes'] ) ? wp_unslash( $_POST['notes'] ) : '';
+			$notes = isset( $_POST['notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['notes'] ) ) : '';
 			$result = Event::save_result( $id, $user_id, $time, $place, $notes );
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
 			$event = Event::get_for_user( $id, $user_id );
@@ -246,7 +246,7 @@ final class Blocks {
 			$existing = $id ? Planned_Workout::get_for_user( $id, $user_id ) : null;
 			$data = array();
 			foreach ( array( 'planned_date', 'planned_start_time', 'title', 'workout_type', 'planned_distance_m', 'planned_duration_ms', 'pool_length_m', 'pool_course', 'primary_stroke', 'workout_instructions' ) as $key ) {
-				$data[ $key ] = isset( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : '';
+				$data[ $key ] = isset( $_POST[ $key ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ $key ] ) ) : '';
 			}
 			// Calendar deliberately does not receive private notes; preserve them on edit.
 			$data['notes'] = $existing ? $existing->notes : '';
@@ -415,3 +415,4 @@ final class Blocks {
 		return 'yes';
 	}
 }
+

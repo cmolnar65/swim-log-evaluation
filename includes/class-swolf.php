@@ -39,20 +39,21 @@ final class Swolf {
         $workouts = Database::table( 'workouts' );
         $lengths = Database::table( 'lengths' );
         $last = (int) get_option( 'swimlog_swolf_backfill_last_id', 0 );
-        $ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM $workouts WHERE id > %d ORDER BY id ASC LIMIT %d", $last, max( 1, min( 200, (int) $batch_size ) ) ) );
+        $ids = Database::read( 'get_col',  $wpdb->prepare( "SELECT id FROM %i WHERE id > %d ORDER BY id ASC LIMIT %d",$workouts,  $last, max( 1, min( 200, (int) $batch_size ) ) ) );
         foreach ( $ids as $id ) {
             $id = (int) $id;
-            $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM $lengths WHERE workout_id = %d ORDER BY sequence_no ASC", $id ) );
+            $rows = Database::read( 'get_results',  $wpdb->prepare( "SELECT * FROM %i WHERE workout_id = %d ORDER BY sequence_no ASC",$lengths,  $id ) );
             $scores = array();
             foreach ( $rows as $row ) {
                 $score = self::length_score( $row );
-                $wpdb->update( $lengths, array( 'swolf_score' => $score ), array( 'id' => (int) $row->id, 'workout_id' => $id ) );
+                Database::write( 'update',  $lengths, array( 'swolf_score' => $score ), array( 'id' => (int) $row->id, 'workout_id' => $id ) );
                 if ( null !== $score ) $scores[] = $score;
             }
             $avg = $scores ? round( array_sum( $scores ) / count( $scores ), 2 ) : null;
-            $wpdb->update( $workouts, array( 'avg_swolf' => $avg ), array( 'id' => $id ) );
+            Database::write( 'update',  $workouts, array( 'avg_swolf' => $avg ), array( 'id' => $id ) );
             update_option( 'swimlog_swolf_backfill_last_id', $id, false );
         }
         return count( $ids );
     }
 }
+

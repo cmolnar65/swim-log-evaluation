@@ -30,12 +30,12 @@ final class Pool_Analytics {
 		$lengths = Database::table( 'lengths' );
 
 		if ( '' !== $stroke ) {
-			$rows = $wpdb->get_results(
+			$rows = Database::read( 'get_results', 
 				$wpdb->prepare(
 					"SELECT w.id workout_id,w.workout_start,w.pool_length_unit,w.original_pool_length,w.pool_length_m,
 						n.sequence_no,n.distance_m,n.elapsed_time_ms,n.stroke,n.stroke_count,n.length_type
-					FROM $workouts w
-					INNER JOIN $lengths n ON n.workout_id=w.id
+					FROM %i w
+					INNER JOIN %i n ON n.workout_id=w.id
 					WHERE w.user_id=%d
 						AND w.workout_type='pool'
 						AND w.pool_length_unit=%s
@@ -44,7 +44,7 @@ final class Pool_Analytics {
 						AND n.length_type='active'
 						AND n.distance_m>0
 						AND n.stroke=%s
-					ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",
+					ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",$workouts, $lengths, 
 					$user_id,
 					$course,
 					$start->format( 'Y-m-d H:i:s' ),
@@ -53,12 +53,12 @@ final class Pool_Analytics {
 				)
 			);
 		} else {
-			$rows = $wpdb->get_results(
+			$rows = Database::read( 'get_results', 
 				$wpdb->prepare(
 					"SELECT w.id workout_id,w.workout_start,w.pool_length_unit,w.original_pool_length,w.pool_length_m,
 						n.sequence_no,n.distance_m,n.elapsed_time_ms,n.stroke,n.stroke_count,n.length_type
-					FROM $workouts w
-					INNER JOIN $lengths n ON n.workout_id=w.id
+					FROM %i w
+					INNER JOIN %i n ON n.workout_id=w.id
 					WHERE w.user_id=%d
 						AND w.workout_type='pool'
 						AND w.pool_length_unit=%s
@@ -66,7 +66,7 @@ final class Pool_Analytics {
 						AND w.workout_start <= %s
 						AND n.length_type='active'
 						AND n.distance_m>0
-					ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",
+					ORDER BY w.workout_start ASC,w.id ASC,n.sequence_no ASC",$workouts, $lengths, 
 					$user_id,
 					$course,
 					$start->format( 'Y-m-d H:i:s' ),
@@ -241,3 +241,4 @@ final class Pool_Analytics {
 		);
 	}
 }
+

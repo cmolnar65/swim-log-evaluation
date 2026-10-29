@@ -8,7 +8,7 @@ final class Location {
 	public static function all_for_user( $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'locations' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d ORDER BY name ASC, id ASC', $table, $user_id )
 		);
 	}
@@ -16,7 +16,7 @@ final class Location {
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'locations' );
-		return $wpdb->get_row(
+		return Database::read( 'get_row', 
 			$wpdb->prepare( 'SELECT * FROM %i WHERE id = %d AND user_id = %d', $table, $id, $user_id )
 		);
 	}
@@ -69,12 +69,12 @@ final class Location {
 			if ( ! self::get_for_user( $id, $user_id ) ) {
 				return new \WP_Error( 'swimlog_location_not_found', __( 'Location not found.', 'chriss-swim-training-progress-evaluation' ) );
 			}
-			$result = $wpdb->update( $table, $values, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
+			$result = Database::write( 'update',  $table, $values, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
 			return false === $result ? new \WP_Error( 'swimlog_location_save', __( 'The location could not be saved.', 'chriss-swim-training-progress-evaluation' ) ) : (int) $id;
 		}
 
 		$values['created_at'] = $now;
-		$result = $wpdb->insert( $table, $values );
+		$result = Database::write( 'insert',  $table, $values );
 		return false === $result ? new \WP_Error( 'swimlog_location_save', __( 'The location could not be saved.', 'chriss-swim-training-progress-evaluation' ) ) : (int) $wpdb->insert_id;
 	}
 
@@ -94,6 +94,7 @@ final class Location {
 		}
 		// Historical workouts retain their pool snapshot. Existing references may
 		// retain this ID; display code must tolerate a missing location record.
-		return false !== $wpdb->delete( $table, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
+		return false !== Database::write( 'delete',  $table, array( 'id' => (int) $id, 'user_id' => (int) $user_id ) );
 	}
 }
+

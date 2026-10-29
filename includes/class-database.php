@@ -10,6 +10,74 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * used; relationships are maintained by plugin code for WordPress/dbDelta compatibility.
  */
 final class Database {
+	/** Request-only cache: never share private rows between HTTP requests. */
+	private static $reads = array();
+	private static $transaction = false;
+	private static $observing = false;
+
+	/** Observe core/plugin writes too, including post metadata and transaction SQL. */
+	public static function observe_query( $sql ) {
+		if ( ! preg_match( '/^\s*(SELECT|SHOW|DESCRIBE|EXPLAIN)\b/i', $sql ) ) {
+			self::$reads = array();
+		}
+		if ( preg_match( '/^\s*(START\s+TRANSACTION|BEGIN)\b/i', $sql ) ) self::$transaction = true;
+		if ( preg_match( '/^\s*(COMMIT|ROLLBACK)\b/i', $sql ) ) self::$transaction = false;
+		return $sql;
+	}
+
+	private static function observe_writes() {
+		if ( ! self::$observing && function_exists( 'add_filter' ) ) {
+			add_filter( 'query', array( __CLASS__, 'observe_query' ), PHP_INT_MAX );
+			self::$observing = true;
+		}
+	}
+
+	private static function copy_result( $value ) {
+		if ( is_object( $value ) ) return clone $value;
+		if ( is_array( $value ) ) return array_map( array( __CLASS__, 'copy_result' ), $value );
+		return $value;
+	}
+
+	/**
+	 * Execute a caller-prepared custom-table SELECT, preserving wpdb output modes.
+	 * Cache only within this request, bounded to 128 results. Every observed write
+	 * invalidates it; transactions/locking reads bypass it. Failed queries are not
+	 * cached. Cached objects are copied so callers cannot change subsequent reads.
+	 * Core has no CRUD API for these normalized custom tables.
+	 */
+	public static function read( $method, $sql, ...$args ) {
+		global $wpdb;
+		if ( ! in_array( $method, array( 'get_results', 'get_row', 'get_col', 'get_var' ), true ) ) {
+			throw new \InvalidArgumentException( 'Unsupported database read method.' );
+		}
+		self::observe_writes();
+		$cacheable = self::$observing && ! self::$transaction && preg_match( '/^\s*SELECT\b/i', $sql ) && ! preg_match( '/FOR\s+UPDATE|LOCK\s+IN\s+SHARE|SQL_NO_CACHE|RAND\s*\(|NOW\s*\(/i', $sql );
+		$key = spl_object_hash( $wpdb ) . ':' . (string) $wpdb->prefix . ':' . md5( serialize( array( $method, $sql, $args ) ) );
+		if ( $cacheable && array_key_exists( $key, self::$reads ) ) return self::copy_result( self::$reads[ $key ] );
+		// Each SQL argument is assembled/prepared at the domain service call site.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Central custom-table boundary; bounded request cache and write invalidation are above.
+		$result = $wpdb->$method( $sql, ...$args );
+		if ( $cacheable && empty( $wpdb->last_error ) ) {
+			if ( count( self::$reads ) >= 128 ) array_shift( self::$reads );
+			self::$reads[ $key ] = self::copy_result( $result );
+		}
+		return $result;
+	}
+
+	/** Preserve wpdb mutation return values and invalidate before every attempt. */
+	public static function write( $method, ...$args ) {
+		global $wpdb;
+		if ( ! in_array( $method, array( 'insert', 'update', 'delete', 'replace', 'query' ), true ) ) {
+			throw new \InvalidArgumentException( 'Unsupported database write method.' );
+		}
+		self::observe_writes();
+		self::$reads = array();
+		if ( 'query' === $method ) self::observe_query( $args[0] );
+		// wpdb CRUD methods escape values; query callers supply prepared SQL or fixed transaction statements.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom-table writes have no core API and invalidate the request cache here.
+		return $wpdb->$method( ...$args );
+	}
+
 	public static function table( $name ) {
 		global $wpdb;
 		return $wpdb->prefix . 'swimlog_' . $name;
@@ -23,7 +91,7 @@ final class Database {
 		global $wpdb;
 		foreach ( self::required_tables() as $name ) {
 			$table = self::table( $name );
-			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) );
+			$found = self::read( 'get_var',  $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) );
 			if ( $found !== $table ) {
 				return false;
 			}
@@ -286,4 +354,5 @@ final class Database {
 		return self::schema_is_complete();
 	}
 }
+
 

@@ -14,9 +14,9 @@ final class Planned_Workout {
 	public static function get_for_user( $id, $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'planned_workouts' );
-		return $wpdb->get_row(
+		return Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT * FROM $table WHERE id = %d AND user_id = %d",
+				"SELECT * FROM %i WHERE id = %d AND user_id = %d",$table, 
 				absint( $id ),
 				absint( $user_id )
 			)
@@ -27,9 +27,9 @@ final class Planned_Workout {
 	public static function all_for_user( $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'planned_workouts' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
-				"SELECT * FROM $table WHERE user_id = %d ORDER BY planned_date DESC, CASE WHEN planned_start_time IS NULL THEN 1 ELSE 0 END ASC, planned_start_time ASC, id DESC",
+				"SELECT * FROM %i WHERE user_id = %d ORDER BY planned_date DESC, CASE WHEN planned_start_time IS NULL THEN 1 ELSE 0 END ASC, planned_start_time ASC, id DESC",$table, 
 				absint( $user_id )
 			)
 		);
@@ -39,13 +39,13 @@ final class Planned_Workout {
 	public static function range_for_user( $user_id, $start, $end ) {
 		global $wpdb;
 		$table = Database::table( 'planned_workouts' );
-		return $wpdb->get_results(
+		return Database::read( 'get_results', 
 			$wpdb->prepare(
-				"SELECT * FROM $table
+				"SELECT * FROM %i
 				WHERE user_id = %d AND planned_date >= %s AND planned_date < %s
 				ORDER BY planned_date ASC,
 					CASE WHEN planned_start_time IS NULL THEN 1 ELSE 0 END ASC,
-					planned_start_time ASC, id ASC",
+					planned_start_time ASC, id ASC",$table, 
 				absint( $user_id ),
 				$start,
 				$end
@@ -91,7 +91,7 @@ final class Planned_Workout {
 		);
 
 		if ( $id ) {
-			$result = $wpdb->update( $table, $values, array( 'id' => $id, 'user_id' => $user_id ) );
+			$result = Database::write( 'update',  $table, $values, array( 'id' => $id, 'user_id' => $user_id ) );
 			return false === $result
 				? new \WP_Error( 'swimlog_planned_workout_save', __( 'The planned workout could not be saved.', 'chriss-swim-training-progress-evaluation' ) )
 				: $id;
@@ -100,7 +100,7 @@ final class Planned_Workout {
 		$values['status'] = 'planned';
 		$values['completed_workout_id'] = null;
 		$values['created_at'] = $now;
-		$result = $wpdb->insert( $table, $values );
+		$result = Database::write( 'insert',  $table, $values );
 		return false === $result
 			? new \WP_Error( 'swimlog_planned_workout_save', __( 'The planned workout could not be saved.', 'chriss-swim-training-progress-evaluation' ) )
 			: (int) $wpdb->insert_id;
@@ -115,7 +115,7 @@ final class Planned_Workout {
 		$date = (string) $date;
 		$parsed = \DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
 		if ( ! $parsed || $parsed->format( 'Y-m-d' ) !== $date || $date < wp_date( 'Y-m-d', null, wp_timezone() ) ) return new \WP_Error( 'swimlog_planned_workout_move_date', __( 'Choose a valid current or future date.', 'chriss-swim-training-progress-evaluation' ) );
-		$result = $wpdb->update( Database::table( 'planned_workouts' ), array( 'planned_date' => $date, 'updated_at' => current_time( 'mysql' ) ), array( 'id' => (int) $plan->id, 'user_id' => absint( $user_id ) ) );
+		$result = Database::write( 'update',  Database::table( 'planned_workouts' ), array( 'planned_date' => $date, 'updated_at' => current_time( 'mysql' ) ), array( 'id' => (int) $plan->id, 'user_id' => absint( $user_id ) ) );
 		return false === $result ? new \WP_Error( 'swimlog_planned_workout_move_failed', __( 'Unable to move planned workout.', 'chriss-swim-training-progress-evaluation' ) ) : (int) $plan->id;
 	}
 
@@ -229,7 +229,7 @@ final class Planned_Workout {
 		if ( 'completed' === $status ) return new \WP_Error( 'swimlog_planned_workout_completion', __( 'Associate the recorded workout to mark this plan completed.', 'chriss-swim-training-progress-evaluation' ) );
 
 		$table = Database::table( 'planned_workouts' );
-		$result = $wpdb->update(
+		$result = Database::write( 'update', 
 			$table,
 			array( 'status' => $status, 'completed_workout_id' => null, 'updated_at' => current_time( 'mysql' ) ),
 			array( 'id' => $id, 'user_id' => $user_id )
@@ -270,16 +270,16 @@ final class Planned_Workout {
 		if ( ! $workout_id || ! Workout::get_for_user( $workout_id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_recorded_workout', __( 'Select a recorded workout owned by this swimmer.', 'chriss-swim-training-progress-evaluation' ) );
 
 		$table = Database::table( 'planned_workouts' );
-		$existing = (int) $wpdb->get_var(
+		$existing = (int) Database::read( 'get_var', 
 			$wpdb->prepare(
-				"SELECT id FROM $table WHERE completed_workout_id = %d AND id <> %d",
+				"SELECT id FROM %i WHERE completed_workout_id = %d AND id <> %d",$table, 
 				$workout_id,
 				$id
 			)
 		);
 		if ( $existing ) return new \WP_Error( 'swimlog_planned_workout_recorded_workout_used', __( 'That recorded workout is already associated with another plan.', 'chriss-swim-training-progress-evaluation' ) );
 
-		$result = $wpdb->update(
+		$result = Database::write( 'update', 
 			$table,
 			array( 'status' => 'completed', 'completed_workout_id' => $workout_id, 'updated_at' => current_time( 'mysql' ) ),
 			array( 'id' => $id, 'user_id' => $user_id )
@@ -295,7 +295,7 @@ final class Planned_Workout {
 		$user_id = absint( $user_id );
 		if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$table = Database::table( 'planned_workouts' );
-		$result = $wpdb->update(
+		$result = Database::write( 'update', 
 			$table,
 			array( 'status' => 'planned', 'completed_workout_id' => null, 'updated_at' => current_time( 'mysql' ) ),
 			array( 'id' => $id, 'user_id' => $user_id )
@@ -311,7 +311,7 @@ final class Planned_Workout {
 		$user_id = absint( $user_id );
 		if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$table = Database::table( 'planned_workouts' );
-		$result = $wpdb->delete( $table, array( 'id' => $id, 'user_id' => $user_id ), array( '%d', '%d' ) );
+		$result = Database::write( 'delete',  $table, array( 'id' => $id, 'user_id' => $user_id ), array( '%d', '%d' ) );
 		return false === $result
 			? new \WP_Error( 'swimlog_planned_workout_delete', __( 'The planned workout could not be deleted.', 'chriss-swim-training-progress-evaluation' ) )
 			: true;
@@ -372,3 +372,4 @@ final class Planned_Workout {
 		return (int) $value;
 	}
 }
+

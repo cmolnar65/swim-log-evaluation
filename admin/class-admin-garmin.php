@@ -16,8 +16,8 @@ final class Admin_Garmin {
 		if ( ! $activity_id ) return array( 'status' => 'none', 'workout_id' => 0 );
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		$imports = Database::table( 'imports' );
-		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT workout_id,import_status FROM $imports WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s ORDER BY id DESC LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row = Database::read( 'get_row',  $wpdb->prepare(
+			"SELECT workout_id,import_status FROM %i WHERE user_id=%d AND source_provider=%s AND external_activity_id=%s ORDER BY id DESC LIMIT 1",$imports,  // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$user_id, 'garmin', (string) $activity_id
 		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		if ( ! $row ) return array( 'status' => 'none', 'workout_id' => 0 );
@@ -554,3 +554,4 @@ final class Admin_Garmin {
 	}
 
 }
+

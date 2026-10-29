@@ -36,6 +36,7 @@ final class Training_Plan_Bulk_Import {
         if ( count( $candidates ) !== count( $selected ) ) return new \WP_Error( 'swimlog_bulk_missing', 'A selected workout was not found.' );
         $existing = get_posts( array( 'post_type' => Training_Plan_Collection::POST_TYPE, 'author' => $owner_id,
             'post_status' => 'private', 'posts_per_page' => 1, 'fields' => 'ids',
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Exact SHA-256 deduplication key on an owner's existing private plans, returns at most one ID; core owns metadata caching and invalidation.
             'meta_query' => array( array( 'key' => self::META_FINGERPRINT, 'value' => $fingerprint ) ) ) );
         if ( $existing ) return new \WP_Error( 'swimlog_bulk_duplicate', 'This PDF has already been imported. No duplicates were created.' );
         $plan_id = Training_Plan_Collection::create( $owner_id, $name, count( $candidates ), 'PDF import' );
@@ -60,3 +61,4 @@ final class Training_Plan_Bulk_Import {
         return array( 'plan_id' => (int) $plan_id, 'count' => count( $created ) );
     }
 }
+

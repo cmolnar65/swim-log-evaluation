@@ -32,21 +32,22 @@ final class Equivalent_Steps {
   global $wpdb;
   $table=Database::table('workouts');$lengths=Database::table('lengths');
   $last=(int)get_option('swimlog_steps_backfill_last_id',0);
-  $ids=$wpdb->get_col($wpdb->prepare("SELECT id FROM $table WHERE id > %d ORDER BY id ASC LIMIT %d",$last,max(1,min(200,(int)$batch_size))));
+  $ids=Database::read( 'get_col', $wpdb->prepare("SELECT id FROM %i WHERE id > %d ORDER BY id ASC LIMIT %d",$table, $last,max(1,min(200,(int)$batch_size))));
   if (!is_array($ids)) return 0;
   $processed=0;
   foreach($ids as $id) {
    $id=(int)$id;
-   $w=$wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d",$id));
+   $w=Database::read( 'get_row', $wpdb->prepare("SELECT * FROM %i WHERE id = %d",$table, $id));
    if (!$w) break;
-   $rows=$wpdb->get_results($wpdb->prepare("SELECT length_type, elapsed_time_ms FROM $lengths WHERE workout_id = %d",$id));
+   $rows=Database::read( 'get_results', $wpdb->prepare("SELECT length_type, elapsed_time_ms FROM %i WHERE workout_id = %d",$lengths, $id));
    if (!is_array($rows)) break;
    $values=self::calculate($w,$rows);
    if (null === $values) $values=array_fill_keys(array('equivalent_steps','steps_active_ms','steps_rate','steps_method','steps_version'),null);
-   if (false === $wpdb->update($table,$values,array('id'=>$id))) break;
+   if (false === Database::write( 'update', $table,$values,array('id'=>$id))) break;
    update_option('swimlog_steps_backfill_last_id',$id,false);
    $processed++;
   }
   return $processed;
  }
 }
+

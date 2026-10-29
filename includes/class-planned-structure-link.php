@@ -16,7 +16,9 @@ final class Planned_Structure_Link {
             'post_type' => Structured_Workout_Store::POST_TYPE,
             'post_status' => 'private',
             'author' => absint( $owner_id ),
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Existing association metadata queried through core, constrained to private structures and one owner; two IDs detect corrupt duplicate links.
             'meta_key' => self::META_KEY,
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Exact validated plan ID is required to preserve existing associations; same bounded owner-scoped lookup.
             'meta_value' => (string) absint( $plan_id ),
             'posts_per_page' => 2,
             'fields' => 'ids',
@@ -69,3 +71,4 @@ final class Planned_Structure_Link {
         return true;
     }
 }
+

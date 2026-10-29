@@ -66,9 +66,10 @@ final class Calendar {
 		$pb_ids = array();
 		if ( $workout_ids ) {
 			$placeholders = implode( ',', array_fill( 0, count( $workout_ids ), '%d' ) );
-			$pb_ids = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
-				"SELECT DISTINCT workout_id FROM $pb_table WHERE user_id = %d AND is_personal_best = 1 AND workout_id IN ($placeholders)",
-				array_merge( array( $user_id ), $workout_ids )
+			$pb_ids = array_map( 'intval', Database::read( 'get_col',  $wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Only generated integer placeholders are interpolated; values and the identifier are bound below.
+				"SELECT DISTINCT workout_id FROM %i WHERE user_id = %d AND is_personal_best = 1 AND workout_id IN ($placeholders)",
+				array_merge( array( $pb_table, $user_id ), $workout_ids )
 			) ) );
 		}
 		foreach ( (array) $workouts as $workout ) {
@@ -325,3 +326,4 @@ final class Calendar {
 		);
 	}
 }
+
