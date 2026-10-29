@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Admin_UI {
 	public static function selected_user_id() {
 		$uid = get_current_user_id();
-				if ( current_user_can( 'swimlog_manage_all_users' ) && isset( $_GET['swimmer_id'] ) && is_scalar( $_GET['swimmer_id'] ) && isset( $_GET['_swimlog_swimmer_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_swimlog_swimmer_nonce'] ) ), 'swimlog_swimmer_selector' ) ) {
+		if ( current_user_can( 'swimlog_manage_all_users' ) && isset( $_GET['swimmer_id'] ) && is_scalar( $_GET['swimmer_id'] ) && isset( $_GET['_swimlog_swimmer_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_swimlog_swimmer_nonce'] ) ), 'swimlog_swimmer_selector' ) ) {
 			$requested = absint( wp_unslash( $_GET['swimmer_id'] ) );
 			if ( $requested && get_userdata( $requested ) ) $uid = $requested;
 		}
