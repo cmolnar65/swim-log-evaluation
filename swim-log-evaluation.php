@@ -24,6 +24,8 @@ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( 'SwimLogEvaluation\\Activator', 'activate' ) );
 
+register_deactivation_hook( __FILE__, array( 'SwimLogEvaluation\\Garmin_Measurement_Sync', 'deactivate' ) );
+
 function swimlog_evaluation_run() {
 	$plugin = new SwimLogEvaluation\Plugin();
 	$plugin->run();

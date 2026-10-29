@@ -6,6 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-sync.php';
+		Garmin_Measurement_Sync::register();
 		// Database is a foundational dependency for workout, event, planned-workout,
 		// calendar, shortcode, block, and administration services. Load it before
 		// any of those services can be invoked through WordPress hooks or admin pages.
