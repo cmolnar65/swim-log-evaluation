@@ -45,10 +45,12 @@ final class Workout {
 		return $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT w.*, l.name AS location_name
-				FROM $w w
-				LEFT JOIN $l l ON l.id = w.location_id AND l.user_id = w.user_id
+				FROM %i w
+				LEFT JOIN %i l ON l.id = w.location_id AND l.user_id = w.user_id
 				WHERE w.user_id = %d AND w.workout_start >= %s AND w.workout_start < %s
 				ORDER BY w.workout_start ASC, w.id ASC",
+				$w,
+				$l,
 				absint( $user_id ),
 				$start,
 				$end
