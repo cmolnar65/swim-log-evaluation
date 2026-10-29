@@ -83,7 +83,7 @@ async function scenario(engine, name, options) {
   // Tab remains within the native modal; Escape closes it and restores the date trigger.
   for(let i=0;i<20;i++) {await page.keyboard.press('Tab');assert(await dialog.evaluate(el=>el.contains(document.activeElement)),'Focus escaped modal');}
   await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'});
-  assert(await dayButton(data.date).evaluate(el=>el===document.activeElement),'Focus not restored');
+  assert(await preview.evaluate(el=>el.contains(document.activeElement) && document.activeElement.dataset.calendarDay===el.dataset.date),'Focus not restored to day trigger');
   assert.deepEqual(await root.evaluate(el=>({view:el.dataset.view,date:el.dataset.focusDate,user:el.dataset.user})),state);
   // Existing direct-item behavior remains inline and does not open a day modal.
   await dayArea().locator('[data-calendar-workout]').first().click();

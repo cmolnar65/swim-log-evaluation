@@ -8,7 +8,7 @@ The plugin supports FIT and supported CSV workout sources plus first-class manua
 
 Development on `develop` starts from released v1.2 commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. Runtime/header version: **1.3-dev**; current public release and WordPress.org stable tag: **1.2**; development database schema: **1.3** (additive private-measurement storage).
 
-The initial scope is private Garmin measurement import, storage, duplicate handling and calendar indicators for supported weight, body-composition, blood-pressure and SpO2 data. Endpoint support and SpO2 sample/summary semantics must be verified before implementation. Private storage, verified-field manual import and internal owner-only calendar retrieval are implemented. Visible calendar indicators are planned, not yet implemented. See the [v1.3 development checklist](docs/v1.3-development-checklist.md).
+The initial scope is private Garmin measurement import, storage, duplicate handling and calendar indicators for supported weight, body-composition, blood-pressure and SpO2 data. Endpoint support and SpO2 sample/summary semantics must be verified before implementation. Private storage, verified-field manual import and internal owner-only calendar retrieval are implemented. Private measurement badges follow workouts and events; compact previews show an accessible overflow control that opens the complete day list. Scheduled measurement synchronization is planned, not yet implemented. See the [v1.3 development checklist](docs/v1.3-development-checklist.md).
 
 ## v1.2
 
