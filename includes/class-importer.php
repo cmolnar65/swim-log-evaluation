@@ -31,7 +31,31 @@ final class Importer {
 		return self::import_file($user_id,$tmp_path,$name,$size,'fit',$location_id,array('source_provider'=>$provider,'external_activity_id'=>$external,'preserve_filename'=>$name,'require_ows_location'=>(bool)$require_ows_location));
 	}
 
-	private static function import_file($user_id,$tmp_path,$name,$size,$ext,$location_id,$source_meta){
+
+    /** Serialize incoming files and Garmin associations for one owner/site. */
+    public static function owner_lock( $owner, $release = false ) {
+        global $wpdb;
+        static $depth = array();
+        $owner = absint( $owner );
+        $key = $wpdb->prefix . ':' . $owner;
+        $lock = 'swimlog_import_' . substr( hash( 'sha256', $key ), 0, 48 );
+        if ( $release ) {
+            if ( ! empty( $depth[$key] ) && 0 === --$depth[$key] ) Database::read( 'get_var', $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+            return true;
+        }
+        if ( ! empty( $depth[$key] ) ) { ++$depth[$key]; return true; }
+        if ( 1 !== (int) Database::read( 'get_var', $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock ) ) ) return new \WP_Error( 'swimlog_import_busy', __( 'Another import is running for this swimmer. Retry shortly.', 'chriss-swim-training-progress-evaluation' ) );
+        $depth[$key] = 1;
+        return true;
+    }
+
+    private static function import_file($user_id,$tmp_path,$name,$size,$ext,$location_id,$source_meta) {
+        $locked = self::owner_lock( $user_id );
+        if ( is_wp_error( $locked ) ) return $locked;
+        try { return self::import_file_unlocked($user_id,$tmp_path,$name,$size,$ext,$location_id,$source_meta); }
+        finally { self::owner_lock( $user_id, true ); }
+    }
+	private static function import_file_unlocked($user_id,$tmp_path,$name,$size,$ext,$location_id,$source_meta){
 		global $wpdb;
 		$user_id=absint($user_id);$location_id=absint($location_id);$source_meta=(array)$source_meta;
 		$provider=trim((string)($source_meta['source_provider']??''));$external=trim((string)($source_meta['external_activity_id']??''));$preserve_filename=(string)($source_meta['preserve_filename']??'');
@@ -57,10 +81,11 @@ final class Importer {
 		$identity=array('source_provider'=>$provider!==''?$provider:null,'external_activity_id'=>$external!==''?$external:null);
 		if($match_info['status']==='probable'){
 			$row=array_merge(array('user_id'=>$user_id,'workout_id'=>(int)$match_info['workout']->id,'source_type'=>$ext,'original_filename'=>$name,'stored_filename'=>basename($upload['file']),'stored_path'=>$upload['file'],'file_hash'=>$hash,'file_size'=>$size,'parser_version'=>$parsed['parser_version'],'import_status'=>'pending','error_message'=>null,'imported_at'=>$now,'updated_at'=>$now),$identity);
-			$ok=Database::write( 'insert', $it,$row);
-			if(!$ok){self::cleanup_unowned_source($upload['file'],$user_id,$hash);return new \WP_Error('swimlog_import_failed',__('The pending import could not be saved.','chriss-swim-training-progress-evaluation'));}
-			self::remember_pending_location($user_id,(int)$wpdb->insert_id,$location_id);
-			return array('pending'=>true,'import_id'=>(int)$wpdb->insert_id,'candidate_workout_id'=>(int)$match_info['workout']->id,'source'=>$ext,'workout'=>$parsed['workout']);
+			$ok=$failed_retry?Database::write( 'update', $it,$row,array('id'=>(int)$failed_retry->id,'user_id'=>$user_id)):Database::write( 'insert', $it,$row);
+            $pending_id=$failed_retry?(int)$failed_retry->id:(int)$wpdb->insert_id;
+			if(false===$ok){self::cleanup_unowned_source($upload['file'],$user_id,$hash);return new \WP_Error('swimlog_import_failed',__('The pending import could not be saved.','chriss-swim-training-progress-evaluation'));}
+			self::remember_pending_location($user_id,$pending_id,$location_id);
+			return array('pending'=>true,'import_id'=>$pending_id,'candidate_workout_id'=>(int)$match_info['workout']->id,'source'=>$ext,'workout'=>$parsed['workout']);
 		}
 		Database::write( 'query', 'START TRANSACTION');$import_id=0;
 		try{

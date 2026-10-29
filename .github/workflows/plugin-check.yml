@@ -41,6 +41,11 @@ jobs:
           strict: true
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
 
+      - name: Verify historical Garmin traversal and activity retries
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-integration.php)"
+
       - name: Verify private measurement schema migration
         run: |
           set -euo pipefail
