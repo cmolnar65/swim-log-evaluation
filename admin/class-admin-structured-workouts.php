@@ -74,6 +74,7 @@ final class Admin_Structured_Workouts {
               $pdf_preview = get_transient( 'swimlog_pdf_' . $owner . '_' . $pdf_token );
               if ( is_array( $pdf_preview ) && isset( $pdf_preview['text'] ) ) :
                   require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-parser.php';
+                  require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-review.php';
                   $candidate_plan = Training_Plan_Parser::parse( $pdf_preview['text'] );
                   ?>
 
@@ -86,10 +87,16 @@ final class Admin_Structured_Workouts {
                 <?php else : ?>
                   <p><?php echo esc_html( sprintf( '%d candidate workout boundaries found. No workouts have been saved.', count( $candidate_plan['workouts'] ) ) ); ?></p>
                   <?php foreach ( $candidate_plan['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
-                  <?php foreach ( $candidate_plan['workouts'] as $candidate ) : ?>
-                    <details><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $candidate['flags'] ) . ' review flags' ); ?></summary>
-                      <?php foreach ( $candidate['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
-                      <pre style="white-space:pre-wrap"><?php echo esc_html( wp_json_encode( $candidate['document'], JSON_PRETTY_PRINT ) ); ?></pre>
+                  <?php foreach ( $candidate_plan['workouts'] as $candidate ) : $review = Training_Plan_Review::assess( $candidate ); ?>
+                    <details><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $review['flags'] ) . ' review flags' ); ?></summary>
+                      <p><?php echo esc_html( 'Distance verification: ' . $review['status'] ); ?></p>
+                      <p><?php echo esc_html( 'Stated total: ' . ( $review['stated'] ? $review['stated']['distance'] . ' ' . $review['stated']['unit'] : 'not found' ) ); ?></p>
+                      <p><?php echo esc_html( 'Calculated total: ' . ( null !== $review['calculated'] ? $review['calculated'] . ' ' . $review['unit'] : 'unknown' ) ); ?></p>
+                      <?php if ( null !== $review['difference'] ) : ?><p><?php echo esc_html( 'Difference: ' . $review['difference'] . ' ' . $review['unit'] ); ?></p><?php endif; ?>
+                      <?php foreach ( $review['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
+                      <h4>Original instructions</h4><pre style="white-space:pre-wrap"><?php echo esc_html( implode( "\n", $candidate['source_lines'] ) ); ?></pre>
+                      <h4>Proposed structure (read-only)</h4><pre style="white-space:pre-wrap"><?php echo esc_html( wp_json_encode( $candidate['document'], JSON_PRETTY_PRINT ) ); ?></pre>
+                      <p><?php echo esc_html( $review['ready'] ? 'Distance verified and no conversion flags; candidate is ready for explicit approval in a later phase.' : 'Requires manual review before approval or import.' ); ?></p>
                     </details>
                   <?php endforeach; ?>
                 <?php endif; ?>
