@@ -3,6 +3,7 @@ use PHPUnit\Framework\TestCase;
 use SwimLogEvaluation\Structured_Workout_Export as Export;
 use SwimLogEvaluation\Structured_Workout_FIT as Fit;
 use SwimLogEvaluation\Recorded_Workout_Structure as Conversion;
+require_once dirname( __DIR__ ) . '/includes/class-structured-workout.php';
 require_once dirname( __DIR__ ) . '/includes/class-structured-workout-export.php';
 require_once dirname( __DIR__ ) . '/includes/class-structured-workout-fit.php';
 require_once dirname( __DIR__ ) . '/includes/class-recorded-workout-structure.php';

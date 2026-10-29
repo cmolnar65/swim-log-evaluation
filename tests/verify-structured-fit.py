@@ -12,6 +12,8 @@ data = base64.b64decode(match.group(1), validate=True)
 decoder = Decoder(Stream.from_byte_array(bytearray(data)))
 assert decoder.is_fit(), "Invalid FIT signature"
 assert decoder.check_integrity(), "FIT CRC/integrity failure"
+# Integrity checking consumes the stream; decode from a fresh stream.
+decoder = Decoder(Stream.from_byte_array(bytearray(data)))
 messages, errors = decoder.read()
 assert not errors, errors
 print(json.dumps(messages, default=str, indent=2))

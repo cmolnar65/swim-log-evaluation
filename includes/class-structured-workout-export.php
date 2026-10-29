@@ -54,7 +54,15 @@ final class Structured_Workout_Export {
             $options->set( 'defaultFont', 'DejaVu Sans' );
             $pdf = new \Dompdf\Dompdf( $options );
             $pdf->setPaper( 'letter', 'portrait' );
-            $html = '<!doctype html><html><head><meta charset="UTF-8"><style>@page{margin:44pt 42pt 48pt}body{font-family:"DejaVu Sans",sans-serif;font-size:10pt;color:#172d40}h1{font-size:19pt;margin:0 0 8pt}.subtitle{font-size:9pt;color:#536475;border-bottom:2pt solid #286d86;padding-bottom:12pt;margin-bottom:18pt}pre{font-family:"DejaVu Sans Mono",monospace;font-size:9pt;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}</style></head><body><h1>' . esc_html( $title ) . '</h1><div class="subtitle">Swim workout prescription | ' . esc_html__( 'Private workout export', 'chriss-swim-training-progress-evaluation' ) . '</div><pre>' . esc_html( $text ) . '</pre></body></html>';
+            $summary = Structured_Workout::summarize( $document );
+            $body = '<p>Distance unit: ' . esc_html( $summary['unit'] ) . '</p>';
+            foreach ( $summary['document']['sections'] as $section ) {
+                $lines = array(); self::lines( $section, $summary['unit'], 0, $lines );
+                $body .= '<div class="section"><pre>' . esc_html( implode( "\n", $lines ) ) . '</pre></div>';
+            }
+            $total = substr( $text, strrpos( $text, "\nTotal:" ) + 1 );
+            $body .= '<div class="section totals"><pre>' . esc_html( $total ) . '</pre></div>';
+            $html = '<!doctype html><html><head><meta charset="UTF-8"><style>@page{margin:44pt 42pt 48pt}body{font-family:"DejaVu Sans",sans-serif;font-size:10pt;color:#172d40}h1{font-size:19pt;margin:0 0 8pt}.subtitle{font-size:9pt;color:#536475;border-bottom:2pt solid #286d86;padding-bottom:12pt;margin-bottom:18pt}.section{page-break-inside:avoid;margin-bottom:14pt}.totals{border-top:1pt solid #286d86;padding-top:8pt}pre{margin:0;font-family:"DejaVu Sans Mono",monospace;font-size:9pt;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}</style></head><body><h1>' . esc_html( $title ) . '</h1><div class="subtitle">Swim workout prescription | ' . esc_html__( 'Private workout export', 'chriss-swim-training-progress-evaluation' ) . '</div>' . $body . '</body></html>';
             $pdf->loadHtml( $html, 'UTF-8' );
             $pdf->render();
             $pdf->getCanvas()->page_text( 42, 756, 'Swim workout  |  Page {PAGE_NUM} of {PAGE_COUNT}', $pdf->getFontMetrics()->getFont( 'DejaVu Sans' ), 8, array( 0.33, 0.39, 0.45 ) );
