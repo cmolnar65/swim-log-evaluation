@@ -90,7 +90,7 @@ try {
         $verify( $before === count( $post_ids( $owner ) ), 'Failed import left partial posts.' );
     } );
     $run( 'metadata failures cannot report a successful import', function() use ( $verify, $owner, $parsed, $post_ids ) {
-        foreach ( array( Collection::META_PLAN, Import::META_FINGERPRINT ) as $key ) {
+        foreach ( array( Collection::META_PLAN, Collection::META_SEQUENCE, Collection::META_WEEK, Import::META_FINGERPRINT ) as $key ) {
             $before = count( $post_ids( $owner ) );
             $inject = static function( $check, $id, $name ) use ( $key ) { return $key === $name ? false : $check; };
             add_filter( 'update_post_metadata', $inject, 10, 3 );
@@ -198,6 +198,39 @@ try {
         $verify( ! get_post_type_object( Store::POST_TYPE )->public && ! get_post_type_object( Store::POST_TYPE )->show_in_rest, 'Structures are publicly registered.' );
         $verify( ! get_post_type_object( Collection::POST_TYPE )->public && ! get_post_type_object( Collection::POST_TYPE )->show_in_rest, 'Collections are publicly registered.' );
         wp_set_current_user( $owner );
+    } );
+    $run( 'calendar AJAX nonce and mutation authorization', function() use ( $verify, $owner, $users, &$original_plans ) {
+        if ( ! defined( 'DOING_AJAX' ) ) define( 'DOING_AJAX', true );
+        $old_post = $_POST; $old_request = $_REQUEST;
+        $die_message = null;
+        $die_handler = static function() use ( &$die_message ) {
+            return static function( $message = '' ) use ( &$die_message ) { $die_message = $message; throw new RuntimeException( 'synthetic_ajax_exit' ); };
+        };
+        add_filter( 'wp_die_ajax_handler', $die_handler );
+        $call = static function( $actor, $payload, $valid_nonce ) use ( &$die_message ) {
+            wp_set_current_user( $actor );
+            $_POST = $payload; $_POST['nonce'] = $valid_nonce ? wp_create_nonce( 'swimlog_calendar_plan' ) : 'invalid nonce'; $_REQUEST = $_POST;
+            $die_message = null; ob_start();
+            try { SwimLogEvaluation\Blocks::calendar_plan_action(); }
+            catch ( RuntimeException $error ) { if ( 'synthetic_ajax_exit' !== $error->getMessage() ) throw $error; }
+            finally { $output = ob_get_clean(); }
+            return array( 'body' => json_decode( $output, true ), 'die' => $die_message );
+        };
+        try {
+            $id = $original_plans[1]; $before = Plan::get_for_user( $id, $owner )->planned_date;
+            $date = ( new DateTimeImmutable( 'today', wp_timezone() ) )->modify( '+40 days' )->format( 'Y-m-d' );
+            $payload = array( 'plan_action' => 'move', 'user' => $owner, 'id' => $id, 'planned_date' => $date );
+            $bad = $call( $owner, $payload, false );
+            $verify( '-1' === (string) $bad['die'], 'Invalid AJAX nonce was accepted.' );
+            $foreign = $call( $users['other'], $payload, true );
+            $verify( isset( $foreign['body']['success'] ) && false === $foreign['body']['success'], 'Foreign AJAX mutation accepted.' );
+            $anonymous = $call( 0, $payload, true );
+            $verify( isset( $anonymous['body']['success'] ) && false === $anonymous['body']['success'], 'Anonymous AJAX mutation accepted.' );
+            $verify( $before === Plan::get_for_user( $id, $owner )->planned_date, 'Denied mutation changed data.' );
+            $valid = $call( $owner, $payload, true );
+            $verify( ! empty( $valid['body']['success'] ), 'Owner AJAX move failed.' );
+            $verify( $date === Plan::get_for_user( $id, $owner )->planned_date, 'Owner AJAX move did not persist.' );
+        } finally { remove_filter( 'wp_die_ajax_handler', $die_handler ); $_POST = $old_post; $_REQUEST = $old_request; }
     } );
 } finally {
     global $wpdb;
