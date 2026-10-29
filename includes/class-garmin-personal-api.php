@@ -123,7 +123,7 @@ final class Garmin_Personal_API {
 		}
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status < 200 || $status >= 300 ) {
-			return new \WP_Error( 'swimlog_garmin_download_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the activity file request (HTTP %d).', 'chriss-swim-training-progress-evaluation' ), $status ) );
+			return new \WP_Error( 'swimlog_garmin_download_failed', sprintf( /* translators: %d: HTTP response status. */ __( 'Garmin Connect rejected the activity file request (HTTP %d).', 'chriss-swim-training-progress-evaluation' ), $status ), array( 'status' => $status ) );
 		}
 		$body = wp_remote_retrieve_body( $response );
 		if ( '' === $body ) {

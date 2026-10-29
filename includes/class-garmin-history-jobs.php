@@ -239,6 +239,7 @@ final class Garmin_History_Jobs {
             if ( self::allowed( $waiting, $owner ) && self::runnable( $waiting ) ) self::arm( $owner, $id, 60 );
             return;
         }
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history.php';
         $previous = (int) get_current_user_id();
         try {
             $claim = self::mutate( $owner, static function () use ( $owner, $id ) {

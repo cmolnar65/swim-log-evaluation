@@ -162,7 +162,7 @@ try {
     $_POST = array( 'job' => $id, 'nonce' => wp_create_nonce( 'swimlog_history_status' ) ); $_REQUEST = $_POST;
     $answer = json_decode( $ajax(), true );
     $verify( ! empty( $answer['success'] ) && false !== strpos( $answer['data']['html'], $id ) && false === strpos( $answer['data']['html'], '82.5' ), 'Actual AJAX status accepts owner nonce and returns safe HTML.' );
-    wp_set_current_user( $other ); ( new WP_User( $other ) )->add_cap( 'swimlog_manage_all_users' );
+    ( new WP_User( $other ) )->add_cap( 'swimlog_manage_all_users' ); wp_set_current_user( 0 ); wp_set_current_user( $other );
     $_POST['nonce'] = wp_create_nonce( 'swimlog_history_status' ); $_REQUEST = $_POST;
     $answer = json_decode( $ajax(), true );
     $verify( is_array( $answer ) && false === $answer['success'] && empty( $answer['data'] ), 'Actual AJAX denies foreign job even with manage-all capability.' );
