@@ -20,7 +20,8 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $code=file_get_contents(dirname(__DIR__).'/includes/class-planned-workout.php');$start=strpos($code,'public static function duplicate');$end=strpos($code,'/** Mark a plan',$start);$body=substr($code,$start,$end-$start);
   $this->assertStringContainsString('self::get_for_user( absint( $id ), absint( $user_id ) )',$body);
   foreach(array("'workout_instructions' => \$plan->workout_instructions","'notes' => \$plan->notes","'title' => \$plan->title")as$needle)$this->assertStringContainsString($needle,$body);
-  $this->assertStringContainsString('return self::save( $user_id, $data );',$body);
+  $this->assertStringContainsString('self::save( $user_id, $data )',$body);
+  $this->assertStringContainsString('Planned_Structure_Link::attach( $copy_id, $copy_structure_id, $user_id )',$body);
  }
  public function test_calendar_client_never_receives_or_requests_private_notes(){
   $view=strtolower(file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js'));
