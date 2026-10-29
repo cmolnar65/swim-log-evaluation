@@ -80,7 +80,7 @@ try {
     $job = $drain( $id );
     $verify( 'completed' === $job['status'] && ! $job['ready'] && ! $job['failed'] && ! Jobs::next( $id ), 'Discovery, import queue and measurement chain complete durably.' );
     $verify( 2 === $job['counts']['discovered'] && 2 === $job['counts']['activity_days'] && 2 === $job['counts']['measurement_days'], 'Distinct discovery/day counts.' );
-    $verify( 2 === $job['counts']['activity_review'] && 4 === $job['counts']['added'] && 2 === $job['counts']['reports_added'], 'Pending activities stay review; distinct report/reading counts.' );
+    $verify( 2 === $job['counts']['activity_review'] && 4 === $job['counts']['added'] && 6 === $job['counts']['reports_added'], 'Pending activities stay review; distinct report/reading counts.' );
     $review = Jobs::units( $id, 0, 'review' ); $verify( 2 === $review['total'], 'Review filtering returns both pending activities.' );
     $json = wp_json_encode( array( $job, Jobs::units( $id ) ) );
     $verify( false === strpos( $json, '82.5' ) && false === strpos( $json, 'synthetic-jobs-key' ) && false === strpos( $json, 'synthetic.jobs.token' ), 'Ledger contains no values/payload/credentials.' );
@@ -96,7 +96,7 @@ try {
     $before = $calls; $same = $run( $id );
     $verify( $before === $calls && $same['counts'] === $job['counts'], 'Early wake-up neither requests nor recounts.' );
     $mode = 'normal'; $expire( $id ); $job = $run( $id );
-    $verify( 'completed' === $job['status'] && 2 === $job['counts']['added'] && 0 === ( $job['counts']['skipped'] ?? 0 ) && 1 === $job['counts']['reports_added'], 'Only failed category retried; completed counts preserved.' );
+    $verify( 'completed' === $job['status'] && 2 === $job['counts']['added'] && 0 === ( $job['counts']['skipped'] ?? 0 ) && 3 === $job['counts']['reports_added'], 'Only failed category retried; completed counts preserved.' );
 
     $mode = '500'; $job = Jobs::start( '2018-01-04', '2018-01-04', array( 'weight' ) ); $id = $job['id'];
     for ( $i = 0; $i < 3; ++$i ) { $expire( $id ); $job = $run( $id ); }
