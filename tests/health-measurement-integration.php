@@ -81,7 +81,7 @@ try {
     wp_set_current_user( 0 );
     $verify( is_wp_error( Store::get_for_user( $id, $owner ) ), 'Anonymous read denied.' );
     wp_set_current_user( $owner );
-    ( new WP_User( $owner ) )->remove_cap( 'swimlog_manage_own_workouts' );
+    ( new WP_User( $owner ) )->add_cap( 'swimlog_manage_own_workouts', false );
     wp_set_current_user( 0 ); wp_set_current_user( $owner );
     $verify( is_wp_error( Store::save_report( $owner, $updated, array() ) ), 'Missing capability denied.' );
     ( new WP_User( $owner ) )->add_cap( 'swimlog_manage_own_workouts' );
