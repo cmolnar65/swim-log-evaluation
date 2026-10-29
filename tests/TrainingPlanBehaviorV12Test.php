@@ -62,4 +62,19 @@ final class TrainingPlanBehaviorV12Test extends TestCase {
         $this->assertFalse( $review['ready'] );
         $this->assertNotEmpty( $review['flags'] );
     }
+    public function test_usms_table_headings_from_all_four_uploaded_plans() {
+        $samples = array(
+            "WEEK 1 of 6 Swim #1 of 24    *3x: 50 free, 100 free, 150 free",
+            "1 of 6          Swim #1 of 24    Do 1x (rest :10 for all):",
+            "WEEK 1 of 6 Swim #1 of 24    Repeat 2x (rest :20 btw reps)",
+            "1 of 6          Swim #1 of 24    Warm-up (rest :10 for all):",
+        );
+        foreach ( $samples as $heading ) {
+            $parsed = \\SwimLogEvaluation\\Training_Plan_Parser::parse( $heading . "\\n200 yards free\\nTotal: 200 yards" );
+            $this->assertCount( 1, $parsed['workouts'] );
+            $this->assertSame( 1, $parsed['workouts'][0]['source_number'] );
+            $this->assertSame( 1, $parsed['workouts'][0]['week'] );
+        }
+    }
+
 }
