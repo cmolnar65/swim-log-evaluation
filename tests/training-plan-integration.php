@@ -43,7 +43,7 @@ try {
     $verify( ! is_wp_error( $parsed ) && 2 === count( $parsed['workouts'] ), 'Synthetic parser fixture.' );
     $fingerprint = hash( 'sha256', 'synthetic integration plan' );
     $post_ids = static function( $owner ) {
-        return get_posts( array( 'post_type' => array( Store::POST_TYPE, Collection::POST_TYPE ), 'author' => $owner, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) );
+        return get_posts( array( 'post_type' => array_merge( array( Store::POST_TYPE ), Collection::post_types() ), 'author' => $owner, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) );
     };
     $run( 'import persistence, selection, duplicates and ownership', function() use ( $verify, $owner, $users, $parsed, $fingerprint, &$imported, &$structures ) {
         $verify( is_wp_error( Import::run( $owner, 'Malformed', array( 'workouts' => array( array() ) ), array( 1 ), $fingerprint ) ), 'Malformed candidate accepted.' );
@@ -53,6 +53,7 @@ try {
         $verify( is_wp_error( Import::run( $owner, 'Mismatched', $bad, array( 1 ), $fingerprint ) ), 'Unverified total must fail.' );
         $imported = Import::run( $owner, 'Synthetic private collection', $parsed, array( 1, 2 ), $fingerprint );
         $verify( ! is_wp_error( $imported ) && 2 === $imported['count'], 'Import two verified candidates: ' . ( is_wp_error( $imported ) ? $imported->get_error_code() . ' ' . $imported->get_error_message() : wp_json_encode( $imported ) ) );
+        wp_cache_flush();
         $structures = Collection::workouts( $owner, $imported['plan_id'] );
         $verify( 2 === count( $structures ), 'Persist both structures.' );
         $verify( 'private' === get_post_status( $imported['plan_id'] ), 'Collection must be private.' );
@@ -69,13 +70,23 @@ try {
         $verify( ! is_wp_error( $own ), 'Duplicate fingerprint is owner scoped.' );
         wp_set_current_user( $owner );
     } );
+    $run( 'legacy collection data stays readable and participates in duplicate checks', function() use ( $verify, $owner, $parsed ) {
+        $legacy = wp_insert_post( array( 'post_type' => Collection::LEGACY_POST_TYPE, 'post_status' => 'private', 'post_author' => $owner, 'post_title' => 'Synthetic legacy collection' ), true );
+        $verify( ! is_wp_error( $legacy ), 'Create legacy compatibility fixture.' );
+        $hash = hash( 'sha256', 'legacy fingerprint' );
+        update_post_meta( $legacy, Import::META_FINGERPRINT, $hash );
+        $verify( ! is_wp_error( Collection::get( $legacy, $owner ) ), 'Legacy collection inaccessible.' );
+        $duplicate = Import::run( $owner, 'Legacy duplicate', $parsed, array( 1 ), $hash );
+        $verify( is_wp_error( $duplicate ) && 'swimlog_bulk_duplicate' === $duplicate->get_error_code(), 'Legacy duplicate fingerprint ignored.' );
+        $verify( Collection::LEGACY_POST_TYPE === get_post_type( $legacy ), 'Legacy record was rewritten.' );
+    } );
     $run( 'partial import failure rolls back all new posts', function() use ( $verify, $owner, $parsed, $post_ids ) {
         wp_set_current_user( $owner ); $before = count( $post_ids( $owner ) ); $attempt = 0;
         $inject = static function( $empty, $post ) use ( &$attempt ) { if ( Store::POST_TYPE !== $post['post_type'] ) return $empty; return 2 === ++$attempt ? true : $empty; };
         add_filter( 'wp_insert_post_empty_content', $inject, 10, 2 );
         try { $result = Import::run( $owner, 'Injected failure', $parsed, array( 1, 2 ), hash( 'sha256', 'insert failure' ) ); }
         finally { remove_filter( 'wp_insert_post_empty_content', $inject, 10 ); }
-        $verify( is_wp_error( $result ), 'An inserted-post failure must report failure.' );
+        $verify( is_wp_error( $result ) && 'swimlog_bulk_rollback' === $result->get_error_code(), 'An inserted-post failure must report rollback.' );
         $verify( $before === count( $post_ids( $owner ) ), 'Failed import left partial posts.' );
     } );
     $run( 'metadata failures cannot report a successful import', function() use ( $verify, $owner, $parsed, $post_ids ) {
@@ -85,7 +96,7 @@ try {
             add_filter( 'update_post_metadata', $inject, 10, 3 );
             try { $result = Import::run( $owner, 'Metadata failure', $parsed, array( 1, 2 ), hash( 'sha256', $key ) ); }
             finally { remove_filter( 'update_post_metadata', $inject, 10 ); }
-            $verify( is_wp_error( $result ), 'Failed metadata write was reported as success: ' . $key );
+            $verify( is_wp_error( $result ) && 'swimlog_bulk_rollback' === $result->get_error_code(), 'Failed metadata write did not trigger rollback: ' . $key );
             $verify( $before === count( $post_ids( $owner ) ), 'Metadata failure left imported posts.' );
         }
     } );
@@ -94,7 +105,9 @@ try {
         $verify( is_array( $imported ) && 2 === count( $structures ), 'Import prerequisite.' );
         $ids = array_map( static function( $p ) { return (int) $p->ID; }, $structures );
         $before = count( Plan::all_for_user( $owner ) );
-        $verify( is_wp_error( Scheduler::schedule( $owner, $imported['plan_id'], array( $ids[0] => '2026-02-30' ) ) ), 'Invalid date accepted.' );
+        foreach ( array( '2026-02-30', "2026-10-30\0", 'not a date' ) as $invalid_date ) {
+            $verify( is_wp_error( Scheduler::schedule( $owner, $imported['plan_id'], array( $ids[0] => $invalid_date ) ) ), 'Invalid date accepted.' );
+        }
         $yesterday = ( new DateTimeImmutable( 'yesterday', wp_timezone() ) )->format( 'Y-m-d' );
         $verify( is_wp_error( Scheduler::schedule( $owner, $imported['plan_id'], array( $ids[0] => $monday->format( 'Y-m-d' ), $ids[1] => $yesterday ) ) ), 'Past date accepted.' );
         $verify( $before === count( Plan::all_for_user( $owner ) ), 'Validation failure partially scheduled workouts.' );
@@ -125,7 +138,7 @@ try {
         add_filter( 'update_post_metadata', $inject, 10, 3 );
         try { $result = Scheduler::schedule( $owner, $batch['plan_id'], array( $items[0]->ID => wp_date( 'Y-m-d' ), $second => wp_date( 'Y-m-d' ) ) ); }
         finally { remove_filter( 'update_post_metadata', $inject, 10 ); }
-        $verify( is_wp_error( $result ), 'Link failure must fail scheduling.' );
+        $verify( is_wp_error( $result ) && 'swimlog_link_failed' === $result->get_error_code(), 'Link failure must fail scheduling.' );
         $verify( $before === count( Plan::all_for_user( $owner ) ), 'Schedule rollback left rows.' );
         foreach ( $items as $post ) {
             $verify( ! get_post_meta( $post->ID, Link::META_KEY, true ), 'Schedule rollback left a link.' );
@@ -161,8 +174,11 @@ try {
             foreach ( $params as $key => $value ) $request->set_param( $key, $value );
             return rest_do_request( $request );
         };
+        if ( isset( $original_plans[1] ) ) Database::write( 'update', Database::table( 'planned_workouts' ), array( 'notes' => 'PRIVATE-NOTE-SENTINEL' ), array( 'id' => $original_plans[1], 'user_id' => $owner ) );
         $params = array( 'user' => $owner, 'start' => wp_date( 'Y-m-d' ), 'end' => wp_date( 'Y-m-d', time() + 60 * DAY_IN_SECONDS ) );
-        $verify( 200 === $request( $owner, 'GET', '/swimlog/v1/calendar', $params )->get_status(), 'Owner calendar denied.' );
+        $response = $request( $owner, 'GET', '/swimlog/v1/calendar', $params );
+        $verify( 200 === $response->get_status(), 'Owner calendar denied.' );
+        $verify( false === strpos( wp_json_encode( $response->get_data() ), 'PRIVATE-NOTE-SENTINEL' ), 'Calendar leaked private notes.' );
         $verify( $request( $users['other'], 'GET', '/swimlog/v1/calendar', $params )->get_status() >= 400, 'Foreign calendar exposed.' );
         $verify( 200 === $request( $users['admin'], 'GET', '/swimlog/v1/calendar', $params )->get_status(), 'Privileged admin calendar denied.' );
         $verify( $request( 0, 'GET', '/swimlog/v1/calendar', $params )->get_status() >= 400, 'Anonymous calendar exposed.' );
@@ -170,6 +186,14 @@ try {
         $verify( $request( $owner, 'GET', '/swimlog/v1/workouts' )->get_status() >= 400, 'External REST opt-in bypassed.' );
         update_user_meta( $owner, 'swimlog_rest_api_access', '1' );
         $verify( 200 === $request( $owner, 'GET', '/swimlog/v1/workouts' )->get_status(), 'Opted-in owner REST denied.' );
+        global $wpdb;
+        $recorded_id = (int) Database::read( 'get_var', $wpdb->prepare( 'SELECT id FROM %i WHERE user_id=%d LIMIT 1', Database::table( 'workouts' ), $owner ) );
+        $verify( 200 === $request( $owner, 'GET', '/swimlog/v1/workouts/' . $recorded_id )->get_status(), 'Owner recorded detail denied.' );
+        update_user_meta( $users['other'], 'swimlog_rest_api_access', '1' );
+        $verify( 404 === $request( $users['other'], 'GET', '/swimlog/v1/workouts/' . $recorded_id )->get_status(), 'Foreign recorded detail leaked.' );
+        update_user_meta( $owner, 'swimlog_public_results', '0' );
+        wp_set_current_user( 0 );
+        $verify( false !== strpos( SwimLogEvaluation\Shortcodes::workout( array( 'id' => $recorded_id ) ), 'unavailable' ), 'Anonymous shortcode leaked private workout.' );
         $verify( $request( 0, 'GET', '/wp/v2/posts/' . $imported['plan_id'] )->get_status() >= 400, 'Private plan exposed through core REST.' );
         $verify( ! get_post_type_object( Store::POST_TYPE )->public && ! get_post_type_object( Store::POST_TYPE )->show_in_rest, 'Structures are publicly registered.' );
         $verify( ! get_post_type_object( Collection::POST_TYPE )->public && ! get_post_type_object( Collection::POST_TYPE )->show_in_rest, 'Collections are publicly registered.' );
@@ -178,7 +202,7 @@ try {
 } finally {
     global $wpdb;
     foreach ( $users as $id ) {
-        foreach ( get_posts( array( 'post_type' => array( Store::POST_TYPE, Collection::POST_TYPE ), 'author' => $id, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) ) as $post ) wp_delete_post( $post, true );
+        foreach ( get_posts( array( 'post_type' => array_merge( array( Store::POST_TYPE ), Collection::post_types() ), 'author' => $id, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) ) as $post ) wp_delete_post( $post, true );
         foreach ( array( 'planned_workouts', 'workouts' ) as $table ) Database::write( 'delete', Database::table( $table ), array( 'user_id' => $id ) );
         require_once ABSPATH . 'wp-admin/includes/user.php'; wp_delete_user( $id );
     }
