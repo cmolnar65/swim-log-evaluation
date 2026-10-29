@@ -77,4 +77,26 @@ final class TrainingPlanBehaviorV12Test extends TestCase {
         }
     }
 
+    public function test_four_six_week_plans_keep_all_96_boundaries_and_block_unverified_sets() {
+        $prefixes = array( 'WEEK ', '', 'WEEK ', '' );
+        foreach ( $prefixes as $prefix ) {
+            $lines = array();
+            for ( $number = 1; $number <= 24; ++$number ) {
+                $week = (int) ceil( $number / 4 );
+                $lines[] = $prefix . $week . ' of 6 Swim #' . $number . ' of 24';
+                $lines[] = 'Repeat 2x (rest :30 btw reps)';
+                $lines[] = '2x 100 free';
+                $lines[] = 'TOTAL 400 yds';
+            }
+            $parsed = \SwimLogEvaluation\Training_Plan_Parser::parse( implode( "\n", $lines ) );
+            $this->assertFalse( is_wp_error( $parsed ) );
+            $this->assertCount( 24, $parsed['workouts'] );
+            foreach ( $parsed['workouts'] as $index => $candidate ) {
+                $this->assertSame( $index + 1, $candidate['source_number'] );
+                $this->assertSame( (int) floor( $index / 4 ) + 1, $candidate['week'] );
+                $this->assertFalse( \SwimLogEvaluation\Training_Plan_Review::assess( $candidate )['ready'] );
+            }
+        }
+    }
+
 }
