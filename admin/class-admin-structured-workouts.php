@@ -46,7 +46,10 @@ final class Admin_Structured_Workouts {
             if ( is_wp_error( $parsed ) ) { self::error( $parsed->get_error_message() ); return; }
             $name = isset( $_POST['swimlog_pdf_plan_name'] ) && is_string( $_POST['swimlog_pdf_plan_name'] ) ? sanitize_text_field( wp_unslash( $_POST['swimlog_pdf_plan_name'] ) ) : '';
             $selected = isset( $_POST['swimlog_pdf_selected'] ) && is_array( $_POST['swimlog_pdf_selected'] ) ? array_map( 'absint', wp_unslash( $_POST['swimlog_pdf_selected'] ) ) : array();
-            $result = Training_Plan_Bulk_Import::run( $owner, $name, $parsed, $selected, hash( 'sha256', $preview['text'] ) );
+            // Textarea sanitization retains JSON syntax while removing unsafe markup from scalar input.
+            $reviews = isset( $_POST['swimlog_pdf_reviews'] ) && is_array( $_POST['swimlog_pdf_reviews'] ) ? map_deep( wp_unslash( $_POST['swimlog_pdf_reviews'] ), 'sanitize_textarea_field' ) : array();
+            $GLOBALS['swimlog_pdf_review_input'] = array( 'reviews' => $reviews, 'selected' => $selected, 'name' => $name );
+            $result = Training_Plan_Bulk_Import::run( $owner, $name, $parsed, $selected, hash( 'sha256', $preview['text'] ), $reviews );
             if ( is_wp_error( $result ) ) { self::error( $result->get_error_message() ); return; }
             delete_transient( 'swimlog_pdf_' . $owner . '_' . $token );
             wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'pdf_imported' => $result['count'], 'schedule_plan' => $result['plan_id'] ), admin_url( 'admin.php' ) ) );
@@ -108,6 +111,7 @@ final class Admin_Structured_Workouts {
         <div class="wrap swimlog-admin">
           <h1><?php esc_html_e( 'Structured Workouts', 'chriss-swim-training-progress-evaluation' ); ?></h1>
           <p><?php esc_html_e( 'Create reusable structured prescriptions. These are private and do not alter existing planned or recorded workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+          <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php Admin_Structured_Transfers::preview_panel(); ?>
           <details><summary><strong><?php esc_html_e( 'Import a training plan PDF', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary>
             <p><?php esc_html_e( 'Extract selectable PDF text for private review. No workouts are created in this phase.', 'chriss-swim-training-progress-evaluation' ); ?></p>
@@ -130,38 +134,48 @@ final class Admin_Structured_Workouts {
                   require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-parser.php';
                   require_once SWIMLOG_EVALUATION_DIR . 'includes/class-training-plan-review.php';
                   $candidate_plan = Training_Plan_Parser::parse( $pdf_preview['text'] );
+                  $review_input = $GLOBALS['swimlog_pdf_review_input'] ?? array( 'reviews' => array(), 'selected' => array(), 'name' => '' );
                   ?>
 
                 <h2><?php esc_html_e( 'Extracted text preview (private, expires after 15 minutes)', 'chriss-swim-training-progress-evaluation' ); ?></h2>
                 <p><?php echo esc_html( number_format_i18n( $pdf_preview['bytes'] ) ); ?> <?php esc_html_e( 'text bytes extracted. No workouts have been created.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 <textarea readonly rows="16" style="width:100%;max-width:1100px"><?php echo esc_textarea( $pdf_preview['text'] ); ?></textarea>
-                <h3><?php esc_html_e( 'Detected workout candidates — review only', 'chriss-swim-training-progress-evaluation' ); ?></h3>
+                <h3><?php esc_html_e( 'Review and select workouts for import', 'chriss-swim-training-progress-evaluation' ); ?></h3>
                 <?php if ( is_wp_error( $candidate_plan ) ) : ?>
                   <p><?php echo esc_html( $candidate_plan->get_error_message() ); ?></p>
                 <?php else : ?>
                   <p><?php echo esc_html( sprintf( '%d candidate workout boundaries found. No workouts have been saved.', count( $candidate_plan['workouts'] ) ) ); ?></p>
                   <?php foreach ( $candidate_plan['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
-                  <form method="post">
+                  <form method="post" data-swimlog-pdf-import>
                     <?php wp_nonce_field( 'swimlog_pdf_bulk_import' ); ?>
                     <input type="hidden" name="swimlog_pdf_bulk_import" value="1">
                     <input type="hidden" name="swimlog_pdf_token" value="<?php echo esc_attr( $pdf_token ); ?>">
                     <p><label for="swimlog-pdf-plan-name">Private plan name</label>
-                    <input type="text" id="swimlog-pdf-plan-name" name="swimlog_pdf_plan_name" maxlength="120" required></p>
-                    <p>Only checked workouts with exact stated-distance matches and no review flags may be imported. Unverified workouts cannot be imported.</p>
-                  <?php foreach ( $candidate_plan['workouts'] as $candidate ) : $review = Training_Plan_Review::assess( $candidate ); ?>
-                    <?php if ( $review['ready'] ) : ?><p><label><input type="checkbox" name="swimlog_pdf_selected[]" value="<?php echo esc_attr( $candidate['sequence'] ); ?>"> Select verified workout <?php echo esc_html( $candidate['source_number'] ); ?> for import</label></p><?php endif; ?>
-                    <details><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $review['flags'] ) . ' review flags' ); ?></summary>
+                    <input type="text" id="swimlog-pdf-plan-name" name="swimlog_pdf_plan_name" maxlength="120" value="<?php echo esc_attr( $review_input['name'] ); ?>" required></p>
+                    <p>For each workout you want to import: open its review, compare the original instructions with the proposed structure, correct the structure if needed, enter its confirmed total and unit, and check Review complete. Then select it for import. Only selected, explicitly reviewed workouts are saved.</p>
+                  <?php foreach ( $candidate_plan['workouts'] as $candidate ) : $review = Training_Plan_Review::assess( $candidate ); $candidate_input = $review_input['reviews'][$candidate['sequence']] ?? array(); $candidate_input = is_array( $candidate_input ) ? array_filter( $candidate_input, 'is_string' ) : array(); $candidate_selected = in_array( $candidate['sequence'], $review_input['selected'], true ); ?>
+                    <div class="swimlog-pdf-candidate">
+                    <p><label><input type="checkbox" name="swimlog_pdf_selected[]" value="<?php echo esc_attr( $candidate['sequence'] ); ?>" <?php checked( $candidate_selected ); ?>> <?php echo esc_html( 'Select workout ' . $candidate['source_number'] . ' for import' ); ?></label></p>
+                    <details <?php if ( $candidate_selected ) echo 'open'; ?>><summary><?php echo esc_html( $candidate['heading'] . ' — week ' . $candidate['week'] . ' — ' . ( null === $candidate['calculated_distance'] ? 'distance unknown' : $candidate['calculated_distance'] . ' ' . $candidate['unit'] ) . ' — ' . count( $review['flags'] ) . ' review flags' ); ?></summary>
                       <p><?php echo esc_html( 'Distance verification: ' . $review['status'] ); ?></p>
                       <p><?php echo esc_html( 'Stated total: ' . ( $review['stated'] ? $review['stated']['distance'] . ' ' . $review['stated']['unit'] : 'not found' ) ); ?></p>
                       <p><?php echo esc_html( 'Calculated total: ' . ( null !== $review['calculated'] ? $review['calculated'] . ' ' . $review['unit'] : 'unknown' ) ); ?></p>
                       <?php if ( null !== $review['difference'] ) : ?><p><?php echo esc_html( 'Difference: ' . $review['difference'] . ' ' . $review['unit'] ); ?></p><?php endif; ?>
                       <?php foreach ( $review['flags'] as $flag ) : ?><p><?php echo esc_html( $flag ); ?></p><?php endforeach; ?>
                       <h4>Original instructions</h4><pre style="white-space:pre-wrap"><?php echo esc_html( implode( "\n", $candidate['source_lines'] ) ); ?></pre>
-                      <h4>Proposed structure (read-only)</h4><pre style="white-space:pre-wrap"><?php echo esc_html( wp_json_encode( $candidate['document'], JSON_PRETTY_PRINT ) ); ?></pre>
-                      <p><?php echo esc_html( $review['ready'] ? 'Distance verified and no conversion flags; candidate is ready for explicit approval in a later phase.' : 'Requires manual review before approval or import.' ); ?></p>
-                    </details>
+                      <h4>Proposed structure — review and edit</h4><noscript><p>Enable JavaScript to review and edit workout structures before importing.</p></noscript>
+                      <p>Review every instruction, stroke, repetition, rest interval, drill and equipment item. The parser may have omitted or misread instructions flagged above; use the editor to correct them before approval. Totals alone do not prove the structure is correct.</p>
+                      <?php $review_document = isset( $candidate_input['document'] ) && is_string( $candidate_input['document'] ) ? json_decode( $candidate_input['document'], true ) : $candidate['document']; if ( ! is_array( $review_document ) ) $review_document = $default; $review_input_id = 'swimlog-pdf-document-' . $candidate['sequence']; ?>
+                      <?php if ( ! $candidate['document'] ) : ?><p><strong>No reliable structure was extracted. The editor contains a starter workout: replace it completely with the correct prescription before approving.</strong></p><?php endif; ?>
+                      <div data-swimlog-pdf-editor data-input="<?php echo esc_attr( $review_input_id ); ?>" data-document="<?php echo esc_attr( wp_json_encode( $review_document ) ); ?>"></div>
+                      <input type="hidden" id="<?php echo esc_attr( $review_input_id ); ?>" name="swimlog_pdf_reviews[<?php echo esc_attr( $candidate['sequence'] ); ?>][document]" value="<?php echo esc_attr( wp_json_encode( $review_document ) ); ?>">
+                      <p><label>Confirmed total distance <input type="number" min="0.001" step="0.001" name="swimlog_pdf_reviews[<?php echo esc_attr( $candidate['sequence'] ); ?>][total]" value="<?php echo esc_attr( is_string( $candidate_input['total'] ?? null ) ? $candidate_input['total'] : '' ); ?>"></label>
+                      <label>Confirmed unit <select name="swimlog_pdf_reviews[<?php echo esc_attr( $candidate['sequence'] ); ?>][unit]"><option value="">Choose unit</option><option value="m" <?php selected( $candidate_input['unit'] ?? '', 'm' ); ?>>Meters</option><option value="yd" <?php selected( $candidate_input['unit'] ?? '', 'yd' ); ?>>Yards</option></select></label></p>
+                      <p><label><input type="checkbox" name="swimlog_pdf_reviews[<?php echo esc_attr( $candidate['sequence'] ); ?>][reviewed]" value="1" <?php checked( $candidate_input['reviewed'] ?? '', '1' ); ?>> Review complete: I compared the original instructions with this structure, corrected omissions and review flags, and confirm the distance and unit above. If the source total was missing or wrong, this is my corrected total.</label></p>
+                      <p>Requires manual review before approval or import. Selection alone does not approve a workout. Original instructions and review evidence are retained privately with each imported workout.</p>
+                    </details></div>
                   <?php endforeach; ?>
-                    <p><button class="button button-primary" type="submit">Import selected verified workouts</button></p>
+                    <p><button class="button button-primary" type="submit">Import selected workouts</button></p>
                   </form>
                 <?php endif; ?>
               <?php endif;
@@ -194,11 +208,10 @@ final class Admin_Structured_Workouts {
           endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only scheduling result notice. ?>
           <?php if ( isset( $_GET['scheduled'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['scheduled'] ) ) . ' workouts scheduled.' ); ?></p></div><?php endif; ?>
-          <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only saved flag. ?>
           <?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only import result notice. ?>
-          <?php if ( isset( $_GET['pdf_imported'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['pdf_imported'] ) ) . ' verified workouts imported into a private training plan.' ); ?></p></div><?php endif; ?>
+          <?php if ( isset( $_GET['pdf_imported'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['pdf_imported'] ) ) . ' reviewed workouts imported into a private training plan.' ); ?></p></div><?php endif; ?>
           <?php if ( $locked ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'This prescription is locked because it is associated with a recorded swim. Duplicate it to create an editable copy.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
           <?php if ( ! $locked ) : ?><form method="post" id="swimlog-structure-form">
             <?php wp_nonce_field( 'swimlog_structure_save' ); ?>

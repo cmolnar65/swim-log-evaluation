@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Training_Plan_Bulk_Import {
     const META_FINGERPRINT = '_swimlog_pdf_import_fingerprint';
 
-    public static function run( $owner_id, $name, $parsed, $sequences, $fingerprint ) {
+    public static function run( $owner_id, $name, $parsed, $sequences, $fingerprint, $reviews = null ) {
         $owner_id = absint( $owner_id );
         if ( ! $owner_id || get_current_user_id() !== $owner_id || ! current_user_can( 'swimlog_manage_own_workouts' ) ) {
             return new \WP_Error( 'swimlog_bulk_permission', 'Permission denied.' );
@@ -26,19 +26,25 @@ final class Training_Plan_Bulk_Import {
         if ( ! $selected || count( $selected ) > 500 || in_array( 0, $selected, true ) ) {
             return new \WP_Error( 'swimlog_bulk_selection', 'Select one or more workouts.' );
         }
+        if ( null !== $reviews && ! is_array( $reviews ) ) return new \WP_Error( 'swimlog_pdf_review_required', 'Invalid review input.' );
         $candidates = array();
         if ( ! is_array( $parsed['workouts'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Invalid candidate list.' );
         foreach ( $parsed['workouts'] as $candidate ) {
             if ( ! is_array( $candidate ) || ! isset( $candidate['sequence'] ) || ! is_int( $candidate['sequence'] ) || $candidate['sequence'] < 1 ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout candidate.' );
             if ( ! in_array( $candidate['sequence'], $selected, true ) ) continue;
-            if ( ! isset( $candidate['document'], $candidate['source_lines'] ) || ! is_array( $candidate['document'] ) || ! is_array( $candidate['source_lines'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed selected workout candidate.' );
+            if ( ! array_key_exists( 'document', $candidate ) || ! isset( $candidate['source_lines'] ) || ( null === $reviews && ! is_array( $candidate['document'] ) ) || ! is_array( $candidate['source_lines'] ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed selected workout candidate.' );
             foreach ( $candidate['source_lines'] as $line ) {
                 if ( ! is_string( $line ) ) return new \WP_Error( 'swimlog_bulk_input', 'Malformed workout source line.' );
             }
+            if ( null !== $reviews ) {
+                $sequence = $candidate['sequence'];
+                $candidate = Training_Plan_Review::approve( $candidate, $reviews[$candidate['sequence']] ?? array() );
+                if ( is_wp_error( $candidate ) ) return new \WP_Error( $candidate->get_error_code(), 'Workout ' . $sequence . ': ' . $candidate->get_error_message() );
+            }
             $review = Training_Plan_Review::assess( $candidate );
-            if ( ! $review['ready'] ) return new \WP_Error( 'swimlog_bulk_unverified', 'All selected workouts must have verified totals and no review flags.' );
+            if ( null === $reviews && ! $review['ready'] ) return new \WP_Error( 'swimlog_bulk_unverified', 'All selected workouts must have verified totals and no review flags.' );
             $summary = Structured_Workout::summarize( $candidate['document'] );
-            if ( is_wp_error( $summary ) || $summary['unit'] !== $review['unit'] || abs( (float) $summary['totals']['distance'] - (float) $review['calculated'] ) > 0.001 ) {
+            if ( is_wp_error( $summary ) || $summary['unit'] !== $candidate['unit'] || abs( (float) $summary['totals']['distance'] - (float) $candidate['calculated_distance'] ) > 0.001 ) {
                 return new \WP_Error( 'swimlog_bulk_invalid', 'A selected workout failed structure validation.' );
             }
             $candidates[] = $candidate;
@@ -57,7 +63,12 @@ final class Training_Plan_Bulk_Import {
             $id = Structured_Workout_Store::save( $owner_id, $title, $candidate['document'] );
             if ( ! is_wp_error( $id ) ) {
                 $created[] = (int) $id;
-                $linked = Training_Plan_Collection::attach( $owner_id, $plan_id, $id, $index + 1, absint( $candidate['week'] ?? 0 ) );
+                $review_saved = true;
+                if ( isset( $candidate['manual_review'] ) ) {
+                    update_post_meta( $id, '_swimlog_pdf_review', $candidate['manual_review'] );
+                    $review_saved = $candidate['manual_review'] === get_post_meta( $id, '_swimlog_pdf_review', true );
+                }
+                $linked = $review_saved ? Training_Plan_Collection::attach( $owner_id, $plan_id, $id, $index + 1, absint( $candidate['week'] ?? 0 ) ) : new \WP_Error( 'swimlog_pdf_review_save', 'Could not preserve review evidence.' );
             } else {
                 $linked = $id;
             }

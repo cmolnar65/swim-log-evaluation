@@ -1,10 +1,9 @@
 /* Structured workout tree editor: DOM-only, no remote calls or HTML injection. */
 (function () {
   'use strict';
-  const root = document.getElementById('swimlog-structure-editor');
-  if (!root) return;
-  const hidden = document.getElementById('swimlog-structure-document');
-  const form = document.getElementById('swimlog-structure-form');
+  const initialize = function (root) {
+  const hidden = document.getElementById(root.dataset.input || 'swimlog-structure-document');
+  const form = root.closest('form');
   let doc;
   try { doc = JSON.parse(root.dataset.document); } catch (e) { return; }
   const strokes = ['FR', 'BR', 'BK', 'FL', 'MX'];
@@ -131,7 +130,7 @@
   };
   const preview = () => {
     hidden.value=JSON.stringify(doc);
-    const output=document.getElementById('swimlog-structure-preview');
+    const output=root.querySelector('[data-swimlog-preview]');
     const totals={distance:0,steps:0,strokes:{FR:0,BR:0,BK:0,FL:0,MX:0}};
     try {
       doc.sections.forEach(s=>summarize(s,1,totals,false));
@@ -148,9 +147,39 @@
     const box=make('div',null,root);
     box.style.cssText='margin:16px 0;padding:12px;background:#f0f6fc;border-left:4px solid #2271b1';
     make('strong','Workout preview',box);
-    const out=make('p',null,box);out.id='swimlog-structure-preview';
+    const out=make('p',null,box);out.dataset.swimlogPreview='1';
     preview();
   };
   form.addEventListener('submit',()=>{hidden.value=JSON.stringify(doc);});
   render();
+  };
+  document.querySelectorAll('[data-swimlog-pdf-import]').forEach(form => {
+    const candidates = Array.from(form.querySelectorAll('.swimlog-pdf-candidate'));
+    candidates.forEach(candidate => {
+      const selection = candidate.querySelector('[name="swimlog_pdf_selected[]"]');
+      const required = Array.from(candidate.querySelectorAll('[name$="[total]"], [name$="[unit]"], [name$="[reviewed]"]'));
+      const update = () => { required.forEach(input => { input.required = selection.checked; }); };
+      selection.addEventListener('change', update);
+      update();
+    });
+    form.addEventListener('submit', () => {
+      // Exclude unselected candidates so large plans do not exhaust PHP max_input_vars.
+      candidates.forEach(candidate => {
+        if (candidate.querySelector('[name="swimlog_pdf_selected[]"]').checked) return;
+        candidate.querySelectorAll('input, select, textarea').forEach(input => { input.disabled = true; });
+      });
+    });
+  });
+  document.querySelectorAll('#swimlog-structure-editor, [data-swimlog-pdf-editor]').forEach(root => {
+    const details = root.closest('details');
+    if (!root.hasAttribute('data-swimlog-pdf-editor') || !details || details.open) initialize(root);
+    else {
+      const open = () => {
+        if (!details.open) return;
+        details.removeEventListener('toggle', open);
+        initialize(root);
+      };
+      details.addEventListener('toggle', open);
+    }
+  });
 }());

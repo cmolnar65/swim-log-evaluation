@@ -57,3 +57,11 @@ jobs:
           wp-env run cli wp eval "$(tail -n +2 tests/structured-transfer-integration.php)" | tee "$RUNNER_TEMP/structured-transfers.log"
           python -m pip install garmin-fit-sdk==21.218.0
           python tests/verify-structured-fit.py "$RUNNER_TEMP/structured-transfers.log"
+
+      - name: Verify PDF review controls and manually approved selection
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/pdf-review-integration.php)" | tee "$RUNNER_TEMP/pdf-review.log"
+          npm install --prefix "$RUNNER_TEMP/swimlog-browser-tests" --no-save --package-lock=false playwright@1.62.1
+          "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps chromium
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/pdf-review-browser.cjs "$RUNNER_TEMP/pdf-review.log"

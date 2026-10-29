@@ -1,0 +1,76 @@
+<?php
+// Real staged WordPress/MariaDB and rendered admin HTML; synthetic text only.
+use SwimLogEvaluation\Training_Plan_Parser as Parser;
+use SwimLogEvaluation\Training_Plan_Bulk_Import as Import;
+use SwimLogEvaluation\Training_Plan_Collection as Collection;
+use SwimLogEvaluation\Structured_Workout_Store as Store;
+use SwimLogEvaluation\Admin_Structured_Workouts as Admin;
+foreach ( array( 'training-plan-parser', 'training-plan-review', 'training-plan-bulk-import' ) as $file ) require_once SWIMLOG_EVALUATION_DIR . 'includes/class-' . $file . '.php';
+require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-structured-workouts.php';
+if ( ! defined( 'WP_ADMIN' ) ) define( 'WP_ADMIN', true );
+$checks = 0;
+$verify = static function( $condition, $message ) use ( &$checks ) { ++$checks; if ( ! $condition ) throw new RuntimeException( $message ); };
+$old_user = get_current_user_id(); $old_get = $_GET; $old_post = $_POST; $old_request = $_REQUEST;
+$users = array(); $token = wp_generate_password( 32, false );
+$text = "Workout 1\n4 x 100 yards free\nTotal: 400 yards\nWorkout 2\n100 meters free\nTotal: 200 meters\nWorkout 3\nSwim easy until tired";
+try {
+    foreach ( array( 'owner', 'other' ) as $name ) {
+        $id = wp_create_user( 'swimlog_review_' . $name . '_' . wp_generate_password( 8, false ), wp_generate_password( 32 ) );
+        $verify( ! is_wp_error( $id ), 'Create synthetic review user.' ); $users[$name] = $id;
+        ( new WP_User( $id ) )->add_cap( 'swimlog_manage_own_workouts' );
+    }
+    $owner = $users['owner']; wp_set_current_user( $owner );
+    $parsed = Parser::parse( $text );
+    $verify( ! is_wp_error( $parsed ) && 3 === count( $parsed['workouts'] ), 'Three synthetic candidates.' );
+    set_transient( 'swimlog_pdf_' . $owner . '_' . $token, array( 'text' => $text, 'bytes' => strlen( $text ) ), 900 );
+    $_GET = array( 'pdf_preview' => $token );
+    ob_start(); Admin::page(); $html = ob_get_clean();
+    $dom = new DOMDocument(); $previous_errors = libxml_use_internal_errors( true ); $dom->loadHTML( $html ); libxml_clear_errors(); libxml_use_internal_errors( $previous_errors );
+    $xpath = new DOMXPath( $dom );
+    $verify( 3 === $xpath->query( '//form[@data-swimlog-pdf-import]//input[@name="swimlog_pdf_selected[]"]' )->length, 'Every candidate needs a selection checkbox, including flagged/null structures.' );
+    $verify( 3 === $xpath->query( '//form[@data-swimlog-pdf-import]//div[@data-swimlog-pdf-editor]' )->length, 'Each candidate needs an independent editable structure.' );
+    $verify( 3 === $xpath->query( '//form[@data-swimlog-pdf-import]//input[contains(@name,"[reviewed]")]' )->length, 'Each candidate needs explicit approval.' );
+    WP_CLI::log( 'SWIMLOG_PDF_REVIEW_HTML_BASE64=' . base64_encode( $html ) );
+    $doc = $parsed['workouts'][1]['document']; $doc['sections'][0]['children'][0]['distance'] = 200;
+    $review = array( 'document' => wp_json_encode( $doc ), 'total' => '200', 'unit' => 'm', 'reviewed' => '1' );
+    $fingerprint = hash( 'sha256', $text );
+    $count_posts = static function() use ( $owner ) { return count( get_posts( array( 'post_type' => array_merge( array( Store::POST_TYPE ), Collection::post_types() ), 'author' => $owner, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) ) ); };
+    $before = $count_posts();
+    $verify( is_wp_error( Import::run( $owner, 'Missing review', $parsed, array( 2 ), $fingerprint, array() ) ), 'Selected flagged workout imported without review.' );
+    $wrong = $review; $wrong['total'] = '100';
+    $verify( is_wp_error( Import::run( $owner, 'Wrong distance', $parsed, array( 2 ), $fingerprint, array( 2 => $wrong ) ) ), 'Review checkbox bypassed distance validation.' );
+    $verify( $before === $count_posts(), 'Failed review created records.' );
+    // The real POST handler must preserve corrections on validation failure.
+    $_POST = array( 'swimlog_pdf_bulk_import' => '1', 'swimlog_pdf_token' => $token, 'swimlog_pdf_plan_name' => 'Keep my corrections', 'swimlog_pdf_selected' => array( '2' ), 'swimlog_pdf_reviews' => array( 2 => $wrong ), '_wpnonce' => wp_create_nonce( 'swimlog_pdf_bulk_import' ) );
+    $_REQUEST = $_POST; Admin::handle_actions();
+    $verify( isset( $GLOBALS['swimlog_structure_error'] ), 'POST handler did not report review failure.' );
+    $verify( 'Keep my corrections' === $GLOBALS['swimlog_pdf_review_input']['name'] && '100' === $GLOBALS['swimlog_pdf_review_input']['reviews'][2]['total'], 'Validation failure discarded review inputs.' );
+    $verify( $before === $count_posts(), 'Failed POST created records.' );
+    $result = Import::run( $owner, 'Manually reviewed selection', $parsed, array( 2 ), $fingerprint, array( 2 => $review, 3 => array( 'document' => 'invalid unselected input' ) ) );
+    $verify( ! is_wp_error( $result ) && 1 === $result['count'], 'Corrected selected workout failed import: ' . ( is_wp_error( $result ) ? $result->get_error_message() : '' ) );
+    wp_cache_flush(); $workouts = Collection::workouts( $owner, $result['plan_id'] );
+    $verify( 1 === count( $workouts ), 'Unselected workouts were imported.' );
+    $item = Store::get( $workouts[0]->ID, $owner );
+    $verify( 200.0 === (float) $item['document']['sections'][0]['children'][0]['distance'], 'Reviewed edits did not persist.' );
+    $evidence = get_post_meta( $workouts[0]->ID, '_swimlog_pdf_review', true );
+    $verify( $parsed['workouts'][1]['source_lines'] === $evidence['source_lines'] && $owner === $evidence['reviewed_by'], 'Original instructions/review provenance were lost.' );
+    $verify( is_wp_error( Import::run( $owner, 'Duplicate', $parsed, array( 2 ), $fingerprint, array( 2 => $review ) ) ), 'Manual review bypassed duplicate detection.' );
+    // A previously unparsed candidate can be authored explicitly instead of being permanently blocked.
+    $created = Import::run( $owner, 'Authored after review', $parsed, array( 3 ), hash( 'sha256', 'separate synthetic source' ), array( 3 => $review ) );
+    $verify( ! is_wp_error( $created ), 'Null candidate could not be corrected into a valid structure.' );
+    wp_set_current_user( $users['other'] );
+    $verify( is_wp_error( Store::get( $workouts[0]->ID, $users['other'] ) ), 'Private review exposed another owner workout.' );
+    $verify( is_wp_error( Import::run( $owner, 'Foreign', $parsed, array( 2 ), hash( 'sha256', 'foreign' ), array( 2 => $review ) ) ), 'Foreign owner review import accepted.' );
+    $_POST['_wpnonce'] = wp_create_nonce( 'swimlog_pdf_bulk_import' ); $_REQUEST = $_POST; unset( $GLOBALS['swimlog_structure_error'] );
+    Admin::handle_actions();
+    $verify( false !== strpos( $GLOBALS['swimlog_structure_error'] ?? '', 'expired' ), 'Preview token was not owner scoped.' );
+    WP_CLI::success( 'PDF review UI and selected-import integration passed ' . $checks . ' assertions.' );
+} finally {
+    foreach ( $users as $id ) {
+        foreach ( get_posts( array( 'post_type' => array_merge( array( Store::POST_TYPE ), Collection::post_types() ), 'author' => $id, 'post_status' => 'private', 'posts_per_page' => -1, 'fields' => 'ids' ) ) as $post ) wp_delete_post( $post, true );
+        delete_transient( 'swimlog_pdf_' . $id . '_' . $token );
+        require_once ABSPATH . 'wp-admin/includes/user.php'; wp_delete_user( $id );
+    }
+    $_GET = $old_get; $_POST = $old_post; $_REQUEST = $old_request; wp_set_current_user( $old_user );
+    unset( $GLOBALS['swimlog_pdf_review_input'], $GLOBALS['swimlog_structure_error'] );
+}
