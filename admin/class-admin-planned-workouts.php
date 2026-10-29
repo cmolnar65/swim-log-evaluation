@@ -47,7 +47,7 @@ final class Admin_Planned_Workouts {
 			if ( is_wp_error( $parsed ) ) { self::$action_error = $parsed->get_error_message(); return; }
 			$result = Structured_Workout_Store::save( $user_id, $linked['title'], $parsed['document'], $linked['id'] );
 			if ( is_wp_error( $result ) ) { self::$action_error = $result->get_error_message(); return; }
-			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $id, 'regenerated' => 1 ), admin_url( 'admin.php' ) );
+			wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $id, 'regenerated' => 1 ), admin_url( 'admin.php' ) ) );
 			exit;
 		}
 
@@ -244,3 +244,4 @@ final class Admin_Planned_Workouts {
 		</div><?php
 	}
 }
+
