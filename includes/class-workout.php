@@ -80,7 +80,7 @@ final class Workout {
 		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
 		$where=$wpdb->prepare('user_id=%d AND workout_start >= %s AND workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('workout_type=%s',$workout_type);
-		return $wpdb->get_results("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM $w WHERE $where GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
+		return $wpdb->get_results($wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE $where GROUP BY MONTH(workout_start) ORDER BY month_num ASC",$w));
 	}
 
 
