@@ -49,18 +49,18 @@ final class Structured_Workout_Store {
     public static function lifecycle( $id, $owner_id, $action ) {
         $owner_id = absint( $owner_id );
         if ( ! $owner_id || get_current_user_id() !== $owner_id || ! current_user_can( 'swimlog_manage_own_workouts' ) ) {
-            return new \\WP_Error( 'swimlog_structure_permission', 'Permission denied.' );
+            return new \WP_Error( 'swimlog_structure_permission', 'Permission denied.' );
         }
         $item = self::get( $id, $owner_id );
         if ( is_wp_error( $item ) ) return $item;
         if ( 'hide' === $action ) return (bool) update_post_meta( absint( $id ), self::META_HIDDEN, '1' );
         if ( 'unhide' === $action ) return delete_post_meta( absint( $id ), self::META_HIDDEN ) || ! get_post_meta( absint( $id ), self::META_HIDDEN, true );
-        if ( 'delete' !== $action ) return new \\WP_Error( 'swimlog_structure_action', 'Unknown lifecycle action.' );
+        if ( 'delete' !== $action ) return new \WP_Error( 'swimlog_structure_action', 'Unknown lifecycle action.' );
         $history = self::has_history( $id, $owner_id );
         if ( is_wp_error( $history ) ) return $history;
-        if ( $history ) return new \\WP_Error( 'swimlog_structure_referenced', 'This workout is referenced by a training plan or scheduled swim. Hide it instead.' );
+        if ( $history ) return new \WP_Error( 'swimlog_structure_referenced', 'This workout is referenced by a training plan or scheduled swim. Hide it instead.' );
         $deleted = wp_delete_post( absint( $id ), true );
-        return $deleted ? true : new \\WP_Error( 'swimlog_structure_delete', 'Unable to delete the workout.' );
+        return $deleted ? true : new \WP_Error( 'swimlog_structure_delete', 'Unable to delete the workout.' );
     }
     public static function is_locked( $id, $owner_id ) {
         $structure = self::get( $id, $owner_id );
