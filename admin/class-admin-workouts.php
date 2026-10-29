@@ -12,10 +12,10 @@ final class Admin_Workouts {
         // Restrict to posts of the same types/statuses as the prior get_posts() lookup.
         $post_table = $wpdb->posts;
         $meta_table = $wpdb->postmeta;
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Plugin-owned workout-to-post relation lookup, scoped by ID.
         $cache_key = 'linked_post_' . absint( $workout_id );
         $cached = wp_cache_get( $cache_key, 'swimlog_workout_posts' );
         if ( false !== $cached ) return $cached;
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Prepared, scoped lookup of the plugin's post relationship, cached for 60 seconds.
         $ids = $wpdb->get_col( $wpdb->prepare(
             "SELECT p.ID FROM %i p INNER JOIN %i pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value = %s AND p.post_type = %s AND p.post_status IN ('draft','pending','future','publish','private') ORDER BY p.post_date DESC LIMIT 1",
             $post_table, $meta_table, '_swimlog_workout_id', (string) absint( $workout_id ), 'post'
