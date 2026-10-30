@@ -42,6 +42,27 @@ final class Garmin_Measurement_Import {
         }
     }
 
+    /**
+     * Weight timestampGMT also arrives as Unix milliseconds in verified live responses.
+     * Keep this exception scoped to weight; do not infer units for other Garmin epochs.
+     */
+    private static function weight_utc( $value, $day ) {
+        if ( ! is_int( $value ) ) return self::source_utc( $value, true );
+        if ( $value < 0 || $value > 253402300799999 ) return self::error();
+        $seconds = intdiv( $value, 1000 );
+        $milliseconds = $value % 1000;
+        $time = gmdate( 'Y-m-d\TH:i:s', $seconds );
+        if ( $milliseconds ) $time .= '.' . str_pad( (string) $milliseconds, 3, '0', STR_PAD_LEFT );
+        $time = Health_Measurement_Store::timestamp( $time . 'Z' );
+        if ( is_wp_error( $time ) ) return $time;
+        // Provider dates are local. Adjacent UTC dates are valid; remote epochs are not.
+        $date = \DateTimeImmutable::createFromFormat( '!Y-m-d', $day, new \DateTimeZone( 'UTC' ) );
+        if ( ! $date || $date->format( 'Y-m-d' ) !== $day ) return self::error();
+        $utc_date = new \DateTimeImmutable( substr( $time, 0, 10 ), new \DateTimeZone( 'UTC' ) );
+        if ( $date->diff( $utc_date )->days > 1 ) return self::error();
+        return $time;
+    }
+
     private static function number( $value, $percent = false ) {
         return ( is_int( $value ) || is_float( $value ) || is_string( $value ) ) && is_numeric( $value ) && is_finite( (float) $value ) && (float) $value > 0 && ( ! $percent || (float) $value <= 100 );
     }
@@ -89,7 +110,7 @@ final class Garmin_Measurement_Import {
             if ( count( $data ) > 1000 ) return self::error();
             foreach ( $data as $entry ) {
                 if ( ! is_array( $entry ) || ! isset( $entry['calendarDate'] ) || $entry['calendarDate'] !== $day ) { ++$excluded; continue; }
-                $utc = self::source_utc( $entry['timestampGMT'] ?? '', true );
+                $utc = self::weight_utc( $entry['timestampGMT'] ?? '', $day );
                 if ( is_wp_error( $utc ) ) { ++$excluded; continue; }
                 $values = array();
                 if ( 'weight' === $category && isset( $entry['weight'] ) && self::number( $entry['weight'] ) ) $values['weight'] = array( 'value' => self::decimal_value( $entry['weight'] ), 'unit' => 'kg' );

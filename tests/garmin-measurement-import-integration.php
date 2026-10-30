@@ -26,6 +26,15 @@ $http = static function ( $preempt, $args, $url ) use ( &$calls, &$scenario ) {
     $body = false !== strpos( $url, 'weight/all' )
         ? wp_json_encode( array( array( 'calendarDate' => '2026-10-01', 'timestampGMT' => '2026-10-01T06:00:00Z', 'date' => '2026-10-01T00:00:00', 'weight' => 82.5, 'bmi' => 24.1, 'bodyFat' => 19.2, 'boneMass' => 4000 ), array( 'calendarDate' => '2026-10-01', 'timestampGMT' => '2026-10-01T07:00:00Z', 'weight' => 82.6, 'bmi' => 24.2 ) ) )
         : wp_json_encode( array( 'calendarDate' => '2026-10-01', 'averageSpO2' => 96.33333333333333, 'lowestSpO2' => 91, 'avgSleepSpO2' => 95.12345678912345, 'startTimestampGMT' => '2026-10-01T06:00:00', 'endTimestampGMT' => '2026-10-02T06:00:00', 'spO2SingleValues' => array( array( 1790834400000, 94 ) ) ) );
+    if ( 'milliseconds' === $scenario && false !== strpos( $url, 'weight/all' ) ) {
+        $entries = json_decode( $body, true );
+        foreach ( $entries as $index => &$entry ) {
+            $entry['timestampGMT'] = 0 === $index ? 1790834400000 : 1790838000000;
+            $entry['date'] = 0 === $index ? 1790812800000 : 1790816400000;
+        }
+        unset( $entry );
+        $body = wp_json_encode( $entries );
+    }
     $status = 200;
     if ( in_array( $scenario, array( '401', '403', '429', '500' ), true ) ) $status = (int) $scenario;
     if ( 'invalid_json' === $scenario ) $body = '{not-json';
@@ -53,6 +62,12 @@ try {
     $verify( 8 === $calls[1]['timeout'] && 8 === $calls[2]['timeout'], 'Measurement timeout bounded.' );
     $repeat = Importer::run( $owner, '2026-10-01', '2026-10-01', array( 'weight', 'body_composition', 'spo2' ) );
     $verify( 2 === $repeat[0]['skipped'] && 0 === $repeat[0]['added'] && 1 === $repeat[2]['reports_skipped'], 'Reimport is duplicate safe.' );
+    $scenario = 'milliseconds';
+    $millisecond_repeat = Importer::run( $owner, '2026-10-01', '2026-10-01', array( 'weight', 'body_composition' ) );
+    $verify( 'complete' === $millisecond_repeat[0]['status'] && 2 === $millisecond_repeat[0]['skipped'] && 0 === $millisecond_repeat[0]['added'], 'Live integer GMT timestamps identify existing string-format weight readings.' );
+    $verify( 'complete' === $millisecond_repeat[1]['status'] && 2 === $millisecond_repeat[1]['skipped'] && 0 === $millisecond_repeat[1]['added'], 'Live integer GMT timestamps identify existing BMI readings.' );
+    $verify( 2 === $millisecond_repeat[0]['excluded'], 'Numeric local date is excluded without blocking valid UTC readings.' );
+    $scenario = 'normal';
     $snapshot = array();
     foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
         $snapshot[$name] = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d', Database::table( $name ), $owner ) );

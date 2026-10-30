@@ -82,4 +82,25 @@ final class GarminMeasurementImportTest extends TestCase {
         $this->assertCount( 1, $weight['observations'] );
         $this->assertSame( '82.123456789', $weight['observations'][0]['values']['weight']['value'] );
     }
+
+    public function test_live_weight_millisecond_format_preserves_utc_and_provider_day() {
+        $entry = array( 'calendarDate' => '2018-01-01', 'timestampGMT' => 1514786400123, 'date' => 1514764800123, 'weight' => 82.125, 'bmi' => 24.1 );
+        foreach ( array( 'weight', 'body_composition' ) as $category ) {
+            $result = Importer::normalize( $category, '2018-01-01', array( $entry ), '2026-10-02T12:00:00Z' );
+            $this->assertCount( 1, $result['observations'] );
+            $this->assertSame( '2018-01-01T06:00:00.123Z', $result['observations'][0]['observed_at_utc'] );
+            $this->assertSame( '2018-01-01', $result['observations'][0]['calendar_date'] );
+            $this->assertArrayNotHasKey( 'source_local_time', $result['observations'][0] );
+            $this->assertSame( 1, $result['excluded'] ); // Unverified numeric local date is not guessed.
+        }
+        $entry = array( 'calendarDate' => '2026-10-01', 'timestampGMT' => 1790811000001, 'weight' => 82.125 );
+        $result = Importer::normalize( 'weight', '2026-10-01', array( $entry ), '2026-10-02T12:00:00Z' );
+        $this->assertSame( '2026-09-30T23:30:00.001Z', $result['observations'][0]['observed_at_utc'] );
+        $this->assertSame( '2026-10-01', $result['observations'][0]['calendar_date'] );
+        foreach ( array( 1790811000, -1, 253402300800000, 1790811000001.5, '1790811000001', true ) as $invalid ) {
+            $entry['timestampGMT'] = $invalid;
+            $bad = Importer::normalize( 'weight', '2026-10-01', array( $entry ), '2026-10-02T12:00:00Z' );
+            $this->assertCount( 0, $bad['observations'] );
+        }
+    }
 }

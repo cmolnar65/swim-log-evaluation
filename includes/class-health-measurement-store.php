@@ -212,6 +212,9 @@ final class Health_Measurement_Store {
                 $identity = self::hash( array( $provider, $category, $row['record_role'], null !== $row['external_id'] ? array( 'external_id', $row['external_id'] ) : array( 'fingerprint', $row['observed_at_utc'], $row['values'] ) ) );
                 $old = self::read_identity( $measurements, $owner, $identity );
                 $data = array( 'provider' => $provider, 'category' => $category, 'record_role' => $row['record_role'], 'external_id' => $row['external_id'], 'identity_hash' => $identity, 'observed_at_utc' => $row['observed_at_utc'], 'source_local_time' => $row['source_local_time'], 'source_offset_seconds' => $row['source_offset_seconds'], 'calendar_date' => $row['calendar_date'], 'date_basis' => $row['date_basis'], 'values_json' => $values_json );
+                // A provider encoding change can omit optional local time on an identical reading.
+                // Preserve previously verified metadata; absence is not a correction or deletion.
+                if ( $old && null === $data['source_local_time'] ) $data['source_local_time'] = $old->source_local_time;
                 // Provenance and containing report do not create a second source measurement.
                 $data['content_hash'] = self::hash( $data );
                 if ( $old && $old->content_hash !== $data['content_hash'] && ( ! $row['confirmed_correction'] || null === $row['external_id'] || $row['expected_content_hash'] !== $old->content_hash ) ) throw new \RuntimeException( 'ambiguous_correction' );
