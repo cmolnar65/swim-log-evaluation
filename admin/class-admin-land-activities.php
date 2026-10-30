@@ -22,7 +22,7 @@ final class Admin_Land_Activities {
             __( 'Recorded average heart rate', 'chriss-swim-training-progress-evaluation' ) => null !== $workout->average_heart_rate ? $workout->average_heart_rate . ' bpm' : '—',
             __( 'Notes', 'chriss-swim-training-progress-evaluation' ) => $workout->notes ?? '',
         );
-        ?><div class="wrap swimlog-admin"><h1><?php echo esc_html( $labels[$workout->workout_type] ); ?></h1>
+        ?><div class="wrap swimlog-admin swimlog-land-activity"><h1><?php echo esc_html( $labels[$workout->workout_type] ); ?></h1>
         <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-workouts' ) ); ?>"><?php esc_html_e( 'Back to Workouts', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
         <table class="widefat striped"><tbody><?php foreach ( $fields as $label => $value ) : ?><tr><th><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( '' === $value ? '—' : $value ); ?></td></tr><?php endforeach; ?></tbody></table>
         <h2><?php esc_html_e( 'GPS Route', 'chriss-swim-training-progress-evaluation' ); ?></h2>

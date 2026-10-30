@@ -104,3 +104,15 @@
 @media(prefers-reduced-motion:reduce){.swimlog-dashboard .swimlog-dash-chart-track{scroll-behavior:auto}}
 @media(max-width:782px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.swimlog-dashboard .swimlog-dash-chart{padding:10px}}
 @media(max-width:420px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:1fr}}
+
+
+/* Recorded land summaries have few columns and fit directly on phones. */
+.swimlog-land-activity table.widefat {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+.swimlog-land-activity table.widefat th,
+.swimlog-land-activity table.widefat td {
+    overflow-wrap: anywhere;
+}
