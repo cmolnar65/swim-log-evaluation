@@ -6,6 +6,11 @@ const log=fs.readFileSync(process.argv[2],'utf8');
 const match=log.match(/SWIMLOG_HISTORY_HTML_BASE64=([A-Za-z0-9+/=]+)/);
 assert(match,'Missing actual WordPress historical controls fixture.');
 const html=Buffer.from(match[1],'base64').toString();
+const variants={};
+for(const state of ['FAILED','PAUSED','REVIEW']){
+ const item=log.match(new RegExp('SWIMLOG_HISTORY_'+state+'_HTML_BASE64=([A-Za-z0-9+/=]+)'));
+ assert(item,'Missing real WordPress '+state+' result fixture.');variants[state]=Buffer.from(item[1],'base64').toString();
+}
 const css=fs.readFileSync(path.join(__dirname,'../assets/css/garmin-history.css'),'utf8');
 const js=fs.readFileSync(path.join(__dirname,'../assets/js/garmin-history.js'),'utf8');
 async function scenario(engine,name,options){
@@ -40,11 +45,27 @@ async function scenario(engine,name,options){
   await root.getByRole('button',{name:'Cancel — keep imported records',exact:true}).click();sent=await page.evaluate(()=>window.historySubmissions.pop());assert.equal(sent.swimlog_history_action,'cancel');
   assert.equal(await root.getByRole('link',{name:'Failed items',exact:true}).count(),1);assert.equal(await root.getByRole('link',{name:'Needs review',exact:true}).count(),1);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Horizontal page overflow');
+  const initialStatus=await page.locator('#swimlog-history-status').evaluate(el=>el.outerHTML);
+  async function show(html){await page.locator('#swimlog-history-status').evaluate((el,value)=>{el.outerHTML=value;},html);}
+  await show(variants.PAUSED);
+  assert.equal(await root.getByRole('button',{name:'Pause',exact:true}).count(),0);
+  const resume=root.getByRole('button',{name:'Resume / repair schedule',exact:true});assert((await resume.boundingBox()).height>=44);await resume.click();
+  sent=await page.evaluate(()=>window.historySubmissions.pop());assert.equal(sent.swimlog_history_action,'resume');assert(sent._wpnonce);
+  await show(variants.FAILED);
+  const retry=root.getByRole('button',{name:'Retry failed items',exact:true});assert((await retry.boundingBox()).height>=44);await retry.click();
+  sent=await page.evaluate(()=>window.historySubmissions.pop());assert.equal(sent.swimlog_history_action,'retry');assert(sent._wpnonce);assert(!('owner' in sent));
+  assert.equal(await root.getByRole('button',{name:'Pause',exact:true}).count(),0);
+  await show(variants.REVIEW);
+  const reviewLinks=root.getByRole('link',{name:'Review Garmin activity / assign location',exact:true});assert.equal(await reviewLinks.count(),2);
+  assert.equal(await root.getByRole('link',{name:'Review pending import',exact:true}).count(),2);
+  for(const link of await reviewLinks.all()){const url=new URL(await link.getAttribute('href'));assert.equal(url.searchParams.get('page'),'swimlog-garmin');assert(['12345','12346'].includes(url.searchParams.get('garmin_activity_id')));}
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Review state horizontal page overflow');
+  await show(initialStatus);
   await page.evaluate(()=>{window.swimlogHistorySettings={url:'http://history.test/admin-ajax.php',nonce:'synthetic-status-nonce'};const original=window.setTimeout;window.setTimeout=(fn,ms,...args)=>original(fn,ms===10000?40:ms,...args);});
   await pause.focus();await page.addScriptTag({content:js});await page.waitForTimeout(120);assert.equal(requests,0,'Focused controls should not be replaced');
   await pause.evaluate(el=>el.blur());await page.getByText('Completed test refresh',{exact:true}).waitFor();
   assert.equal(requests,1);assert.equal(await page.locator('#swimlog-history-status').getAttribute('data-active'),'0');
-  console.log(name+': historical date/category form, nonce/job controls, touch targets, responsive layout and private focus-safe status refresh passed.');
+  console.log(name+': historical forms, queued/paused/failed/review controls, authorized review links, touch targets, responsive layout and private focus-safe status refresh passed.');
   await context.close();
  }finally{await browser.close();}
 }

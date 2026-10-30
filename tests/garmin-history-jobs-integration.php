@@ -82,6 +82,8 @@ try {
     $verify( 'completed' === $job['status'] && ! $job['ready'] && ! $job['failed'] && ! Jobs::next( $id ), 'Discovery, import queue and measurement chain complete durably.' );
     $verify( 2 === $job['counts']['discovered'] && 2 === $job['counts']['activity_days'] && 2 === $job['counts']['measurement_days'], 'Distinct discovery/day counts.' );
     $verify( 2 === $job['counts']['activity_review'] && 4 === $job['counts']['added'] && 6 === $job['counts']['reports_added'], 'Pending activities stay review; distinct report/reading counts.' );
+    ob_start(); UI::status( $job, 0, 'review' ); $review_html = ob_get_clean();
+    WP_CLI::log( 'SWIMLOG_HISTORY_REVIEW_HTML_BASE64=' . base64_encode( $review_html ) );
     $review = Jobs::units( $id, 0, 'review' ); $verify( 2 === $review['total'], 'Review filtering returns both pending activities.' );
     $json = wp_json_encode( array( $job, Jobs::units( $id ) ) );
     $verify( false === strpos( $json, '82.5' ) && false === strpos( $json, 'synthetic-jobs-key' ) && false === strpos( $json, 'synthetic.jobs.token' ), 'Ledger contains no values/payload/credentials.' );
@@ -102,6 +104,8 @@ try {
     $mode = '500'; $job = Jobs::start( '2018-01-04', '2018-01-04', array( 'weight' ) ); $id = $job['id'];
     for ( $i = 0; $i < 3; ++$i ) { $expire( $id ); $job = $run( $id ); }
     $verify( 'completed_with_errors' === $job['status'] && 1 === count( $job['failed'] ) && 1 === Jobs::units( $id, 0, 'failed' )['total'], 'Three failed attempts finish explicitly incomplete.' );
+    ob_start(); UI::status( $job, 0, 'failed' ); $failed_html = ob_get_clean();
+    WP_CLI::log( 'SWIMLOG_HISTORY_FAILED_HTML_BASE64=' . base64_encode( $failed_html ) );
     $mode = 'normal'; $verify( 'queued' === Jobs::control( $id, 'retry' )['status'], 'Explicit failed-only retry requeues ledger.' );
     $job = $run( $id );
     $verify( 'completed' === $job['status'] && ! $job['failed'] && 1 === $job['counts']['measurement_days'] && 1 === $job['counts']['added'], 'Failed-only retry resolves once without double day/import counts.' );
@@ -121,6 +125,8 @@ try {
     $mode = 'pause'; $job = Jobs::start( '2018-01-07', '2018-01-07', array( 'weight' ) ); $id = $job['id']; $active_id = $id;
     $job = $run( $id );
     $verify( 'paused' === $job['status'] && 1 === $job['counts']['added'] && ! Jobs::next( $id ), 'Pause during HTTP preserves outcome without resurrection.' );
+    ob_start(); UI::status( $job ); $paused_html = ob_get_clean();
+    WP_CLI::log( 'SWIMLOG_HISTORY_PAUSED_HTML_BASE64=' . base64_encode( $paused_html ) );
     Jobs::control( $id, 'resume' ); $job = $run( $id );
     $verify( 'completed' === $job['status'], 'Paused final unit can resume to completion.' );
 
