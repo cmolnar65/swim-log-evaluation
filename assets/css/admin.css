@@ -164,3 +164,5 @@
 .swimlog-swimmer-context nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .swimlog-swimmer-context nav a { display: inline-flex; align-items: center; min-height: 36px; }
 .swimlog-swimmer-context nav a[aria-current=page] { font-weight: 700; }
+
+.swimlog-admin .swimlog-prescription-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; border: 1px solid #c3c4c7; background: #fff; }

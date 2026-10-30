@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-admin-ui.php';
 
 final class Admin_Structured_Workouts {
     // A full plan needs time for manual review; private previews expire 24 hours after upload.
@@ -234,7 +235,7 @@ final class Admin_Structured_Workouts {
             <div id="swimlog-structure-editor" data-document="<?php echo esc_attr( wp_json_encode( $document ) ); ?>"></div>
             <input type="hidden" id="swimlog-structure-document" name="structure_document">
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
-          </form><?php else : ?><pre><?php echo esc_html( wp_json_encode( $document, JSON_PRETTY_PRINT ) ); ?></pre><?php endif; ?>
+          </form><?php else : ?><pre class="swimlog-prescription-preview"><?php echo esc_html( Admin_UI::prescription_text( $form_title, $document ) ); ?></pre><?php endif; ?>
           <?php if ( $current ) Admin_Structured_Transfers::controls( $current['id'], true ); ?>
           <h2><?php esc_html_e( 'Saved workouts', 'chriss-swim-training-progress-evaluation' ); ?></h2>
           <?php

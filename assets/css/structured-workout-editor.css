@@ -21,3 +21,11 @@
  .swimlog-structure-fields { grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); }
  .swimlog-structure-nested { margin-left: 8px; }
 }
+
+
+.swimlog-equipment-disclosure { min-width: 0; margin-block: 8px 14px; }
+.swimlog-equipment-disclosure > summary { cursor: pointer; min-height: 36px; font-weight: 500; }
+.swimlog-structure-panel legend:focus, .swimlog-equipment-disclosure > summary:focus-visible { outline: 2px solid #2271b1; outline-offset: 3px; }
+.swimlog-prescription-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; border: 1px solid #c3c4c7; background: #fff; }
+@media (max-width: 782px) { .swimlog-equipment-disclosure > summary, .swimlog-structure-actions .button { min-height: 44px; } }
+@media (max-width: 782px) { .swimlog-structure-field > input, .swimlog-structure-field > select { font-size: 16px; } }

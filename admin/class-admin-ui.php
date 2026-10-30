@@ -92,6 +92,14 @@ final class Admin_UI {
         return rtrim( rtrim( number_format( (float) $meters / ( 'yd' === $unit ? 0.9144 : 1 ), 9, '.', '' ), '0' ), '.' );
     }
 
+    public static function prescription_text( $title, $document ) {
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-export.php';
+        $text = Structured_Workout_Export::text( $title, $document );
+        if ( is_wp_error( $text ) ) return $text->get_error_message();
+        $labels = array( 'FR' => __( 'Freestyle', 'chriss-swim-training-progress-evaluation' ), 'BR' => __( 'Breaststroke', 'chriss-swim-training-progress-evaluation' ), 'BK' => __( 'Backstroke', 'chriss-swim-training-progress-evaluation' ), 'FL' => __( 'Butterfly', 'chriss-swim-training-progress-evaluation' ), 'MX' => __( 'Mixed', 'chriss-swim-training-progress-evaluation' ) );
+        return preg_replace_callback( '/^(\s*\d+(?:\.\d+)? (?:m|yd) |)(FR|BR|BK|FL|MX)(?= |:|$)/m', static function ( $match ) use ( $labels ) { return $match[1] . $labels[$match[2]]; }, $text );
+    }
+
 	public static function display_measurement( $value, $unit ) {
 		if ( null === $value || '' === $value ) return '—';
 		$number = (float) $value;

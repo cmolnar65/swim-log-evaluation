@@ -192,7 +192,7 @@ final class Admin_Planned_Workouts {
 			<p><?php esc_html_e( 'This will replace the linked structured definition, including any manual edits. The written instructions remain unchanged.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<p><?php echo esc_html( 'Current: ' . ( is_wp_error( $old ) ? 'Invalid' : $old['totals']['distance'] . ' ' . $old['unit'] . ', ' . $old['totals']['expanded_steps'] . ' steps' ) ); ?></p>
 			<p><?php echo esc_html( 'Proposed: ' . $new['totals']['distance'] . ' ' . $new['unit'] . ', ' . $new['totals']['expanded_steps'] . ' steps' ); ?></p>
-			<details><summary><?php esc_html_e( 'Review complete proposed structure (JSON)', 'chriss-swim-training-progress-evaluation' ); ?></summary><pre style="white-space:pre-wrap;overflow:auto"><?php echo esc_html( wp_json_encode( $new['document'], JSON_PRETTY_PRINT ) ); ?></pre></details>
+			<details><summary><?php esc_html_e( 'Review complete proposed workout', 'chriss-swim-training-progress-evaluation' ); ?></summary><pre class="swimlog-prescription-preview"><?php echo esc_html( Admin_UI::prescription_text( $preview['linked']['title'], $new['document'] ) ); ?></pre></details>
 			<form method="post">
 			<?php wp_nonce_field( 'swimlog_regenerate_structure_' . $preview['plan']->id ); ?>
 			<input type="hidden" name="swimlog_planned_workout_action" value="apply_regeneration">

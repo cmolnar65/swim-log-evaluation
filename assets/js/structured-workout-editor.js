@@ -7,6 +7,11 @@
   let doc;
   try { doc = JSON.parse(root.dataset.document); } catch (e) { return; }
   const strokes = ['FR', 'BR', 'BK', 'FL', 'MX'];
+  const strokeLabels = {FR:'Freestyle', BR:'Breaststroke', BK:'Backstroke', FL:'Butterfly', MX:'Mixed'};
+  const unitLabels = {m:'Meters', yd:'Yards'};
+  const nodeKeys = new WeakMap(), equipmentOpen = new WeakMap();
+  let nextNodeKey = 0;
+  const nodeKey = node => { if (!nodeKeys.has(node)) nodeKeys.set(node, String(++nextNodeKey)); return nodeKeys.get(node); };
   const standardEquipment = ['Kickboard', 'Pull buoy', 'Paddles', 'Fins', 'Snorkel', 'Ankle strap', 'Tempo trainer', 'Parachute'];
   const make = (tag, label, parent) => {
     const el = document.createElement(tag);
@@ -30,17 +35,25 @@
     wrap.className = 'swimlog-structure-field';
     make('span', label + ' ', wrap);
     const input = make('select', null, wrap);
-    choices.forEach(x => { const opt = make('option', x, input); opt.value = x; });
+    choices.forEach(x => { const opt = make('option', strokeLabels[x] || unitLabels[x] || x, input); opt.value = x; });
     input.value = value;
-    input.addEventListener('change', () => { callback(input.value); render(); });
+    input.addEventListener('change', () => { callback(input.value); preview(); });
   };
   const button = (parent, label, action) => {
     const b = make('button', label, parent);
     b.type = 'button'; b.className = 'button';
     b.addEventListener('click', action);
+    return b;
   };
   const equipmentField = (parent, node) => {
-    const group = make('fieldset', null, parent);
+    const disclosure = make('details', null, parent);
+    disclosure.className = 'swimlog-equipment-disclosure';
+    const summary = make('summary', null, disclosure);
+    const updateSummary = () => { summary.textContent = 'Equipment (' + (node.equipment || []).length + ' selected)'; };
+    disclosure.open = equipmentOpen.has(node) ? equipmentOpen.get(node) : !!(node.equipment || []).length;
+    disclosure.addEventListener('toggle', () => { equipmentOpen.set(node, disclosure.open); });
+    updateSummary();
+    const group = make('fieldset', null, disclosure);
     group.className = 'swimlog-equipment';
     make('legend', 'Equipment', group);
     const selected = Array.isArray(node.equipment) ? node.equipment.slice() : [];
@@ -56,7 +69,7 @@
       check.addEventListener('change', () => {
         node.equipment = (node.equipment || []).filter(x => x.toLowerCase() !== name.toLowerCase());
         if (check.checked) node.equipment.push(name);
-        preview();
+        updateSummary(); preview();
       });
     });
     const custom = make('label', null, group);
@@ -69,7 +82,7 @@
       const standard = (node.equipment || []).filter(x => known.includes(x.toLowerCase()));
       const extra = input.value.split(',').map(x => x.trim()).filter(Boolean);
       node.equipment = standard.concat(extra);
-      preview();
+      updateSummary(); preview();
     });
   };
   const step = () => ({type:'step', distance:25, stroke:'FR', pace:null, rest:null, description:null, drill:false, equipment:[]});
@@ -77,21 +90,25 @@
   const ladder = () => ({type:'ladder', rungs:[repeat()], rest:'0'});
   const section = () => ({type:'section', label:'New Section', children:[step()]});
   const addControls = (el, children, isLadder) => {
-    button(el, '+ Step', () => { children.push(step()); render(); });
-    button(el, '+ Repeat', () => { children.push(repeat()); render(); });
-    if (!isLadder) button(el, '+ Ladder', () => { children.push(ladder()); render(); });
+    button(el, '+ Step', () => { const added=step(); children.push(added); render(added, null, 'Step added.'); });
+    button(el, '+ Repeat', () => { const added=repeat(); children.push(added); render(added, null, 'Repeat added.'); });
+    if (!isLadder) button(el, '+ Ladder', () => { const added=ladder(); children.push(added); render(added, null, 'Ladder added.'); });
   };
   const nodeUI = (parent, node, siblings, index, inLadder) => {
     const panel = make('fieldset', null, parent);
-    panel.className = 'swimlog-structure-panel';
-    make('legend', node.type.toUpperCase(), panel);
+    panel.className = 'swimlog-structure-panel'; panel.dataset.nodeKey = nodeKey(node);
+    const legend = make('legend', node.type.charAt(0).toUpperCase()+node.type.slice(1)+' '+(index+1), panel);
+    legend.tabIndex = -1;
     const actions = make('div', null, panel);
     actions.className = 'swimlog-structure-actions';
     const fields = make('div', null, panel);
     fields.className = 'swimlog-structure-fields';
-    button(actions, '↑', () => { if(index){ [siblings[index-1],siblings[index]]=[siblings[index],siblings[index-1]];render(); } });
-    button(actions, '↓', () => { if(index<siblings.length-1){ [siblings[index+1],siblings[index]]=[siblings[index],siblings[index+1]];render(); } });
-    button(actions, 'Remove', () => { if(siblings.length>1){siblings.splice(index,1);render();} else alert('At least one item is required in each group.'); });
+    const up = button(actions, 'Move up', () => { if(index){ [siblings[index-1],siblings[index]]=[siblings[index],siblings[index-1]];render(node, 'up', 'Item moved up.'); } });
+    up.dataset.control = 'up'; up.disabled = index === 0;
+    const down = button(actions, 'Move down', () => { if(index<siblings.length-1){ [siblings[index+1],siblings[index]]=[siblings[index],siblings[index+1]];render(node, 'down', 'Item moved down.'); } });
+    down.dataset.control = 'down'; down.disabled = index === siblings.length-1;
+    const remove = button(actions, 'Remove', () => { if(siblings.length>1){siblings.splice(index,1);render(siblings[Math.min(index,siblings.length-1)], null, 'Item removed.');} });
+    remove.disabled = siblings.length <= 1;
     if (node.type === 'section') field(fields, 'Section', node.label, v=>node.label=v);
     if (node.type === 'repeat') field(fields, 'Repeat count', node.count, v=>node.count=Number(v), 'number');
     if (node.type === 'step') {
@@ -135,20 +152,29 @@
     try {
       doc.sections.forEach(s=>summarize(s,1,totals,false));
       output.textContent='Total: '+fmt(totals.distance)+' '+doc.unit+' · '+totals.steps+' swim steps · '+
-        Object.entries(totals.strokes).filter(x=>x[1]).map(x=>x[0]+': '+fmt(x[1])).join(' · ');
+        Object.entries(totals.strokes).filter(x=>x[1]).map(x=>strokeLabels[x[0]]+': '+fmt(x[1])).join(' · ');
     } catch(e) { output.textContent='Check workout: '+e.message; }
   };
-  const render = () => {
+  const render = (focusNode = null, control = null, announcement = '') => {
     root.replaceChildren();
     const unitRow = make('div', null, root); unitRow.className = 'swimlog-structure-unit';
     select(unitRow,'Distance unit',doc.unit,['m','yd'],v=>doc.unit=v);
     doc.sections.forEach((s,i)=>nodeUI(root,s,doc.sections,i,false));
-    button(root,'+ Section',()=>{doc.sections.push(section());render();});
+    button(root,'+ Section',()=>{const added=section();doc.sections.push(added);render(added, null, 'Section added.');});
     const box=make('div',null,root);
     box.style.cssText='margin:16px 0;padding:12px;background:#f0f6fc;border-left:4px solid #2271b1';
     make('strong','Workout preview',box);
-    const out=make('p',null,box);out.dataset.swimlogPreview='1';
+    const out=make('p',null,box);out.dataset.swimlogPreview='1';out.setAttribute('aria-live','polite');out.setAttribute('aria-atomic','true');
+    const status=make('p',announcement,root);status.className='screen-reader-text';status.setAttribute('role','status');
     preview();
+    if (focusNode) {
+      const panel=root.querySelector('[data-node-key="'+nodeKey(focusNode)+'"]');
+      if(panel){
+        const requested=control ? panel.querySelector('[data-control="'+control+'"]') : null;
+        const target=requested && !requested.disabled ? requested : panel.querySelector('legend');
+        if(target) target.focus();
+      }
+    }
   };
   form.addEventListener('submit',()=>{hidden.value=JSON.stringify(doc);});
   render();
@@ -190,3 +216,4 @@
     }
   });
 }());
+
