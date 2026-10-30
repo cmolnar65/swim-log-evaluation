@@ -74,10 +74,10 @@
             return;
         }
         var day=data.days.find(function(row){return row.date===state.date;}), groups=healthGroups(day);
-        if(!Object.keys(groups).length){var empty=document.createElement('p');empty.textContent='No private measurements for this day.';section.appendChild(empty);}
+        if(!Object.keys(groups).length && !(day&&day.sleep_periods&&day.sleep_periods.length)){var empty=document.createElement('p');empty.textContent='No private measurements for this day.';section.appendChild(empty);}
         Object.keys(healthCategories).forEach(function(category){
             var group=groups[category];if(!group)return;
-            var heading=document.createElement('h4');heading.textContent=healthCategories[category][1]+' · '+group.readings.length+' imported reading'+(group.readings.length===1?'':'s');section.appendChild(heading);
+            var heading=document.createElement('h4');heading.textContent=healthCategories[category][1]+' · '+(group.readings.length ? group.readings.length+' imported reading'+(group.readings.length===1?'':'s') : (group.reports.length ? 'Garmin summary' : 'Imported aggregates'));section.appendChild(heading);
             ['reports','readings','aggregates'].forEach(function(role){
                 group[role].forEach(function(row){
                     var article=document.createElement('article');article.className='swimlog-calendar-measurement-record';
@@ -91,6 +91,22 @@
                 });
             });
         });
+        var periods=(day&&day.sleep_periods)||[];
+        if(periods.length){
+            var sleepHeading=document.createElement('h4');sleepHeading.textContent='Sleep period';section.appendChild(sleepHeading);
+            var note=document.createElement('p');note.textContent='Elapsed time between Garmin sleep boundaries; may include time awake. Shown on the local wake-up date.';section.appendChild(note);
+            periods.forEach(function(period){
+                var minutes=Math.floor(Number(period.duration_seconds)/60);
+                if(!Number.isFinite(minutes)||minutes<0)return;
+                var list=document.createElement('dl');list.className='swimlog-calendar-detail-list';list.dataset.calendarSleepPeriod='1';
+                detailRow(list,'Sleep period',Math.floor(minutes/60)+'h '+String(minutes%60).padStart(2,'0')+'m');
+                detailRow(list,'Bedtime (Garmin local)',period.start_local ? period.start_local.replace('T',' ') : 'Unavailable');
+                detailRow(list,'Wake time (Garmin local)',period.end_local.replace('T',' '));
+                section.appendChild(list);
+            });
+        } else if(groups.spo2&&groups.spo2.reports.length) {
+            var unavailable=document.createElement('p');unavailable.textContent='Sleep period unavailable: complete, valid sleep boundaries for this wake-up date were not available.';section.appendChild(unavailable);
+        }
         if(data.invalid_records){var warning=document.createElement('p');warning.textContent='Some stored records could not be displayed because their format was invalid.';section.appendChild(warning);}
     }
     function loadHealthDay(root,state,force) {

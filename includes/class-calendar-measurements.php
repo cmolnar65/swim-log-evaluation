@@ -34,10 +34,41 @@ final class Calendar_Measurements {
     }
 
     private static function day( &$days, $date ) {
-        if ( ! isset( $days[ $date ] ) ) $days[ $date ] = array( 'date' => $date, 'reports' => array(), 'readings' => array(), 'aggregates' => array() );
+        if ( ! isset( $days[ $date ] ) ) $days[ $date ] = array( 'date' => $date, 'reports' => array(), 'readings' => array(), 'aggregates' => array(), 'sleep_periods' => array() );
     }
 
-    /** Indexed half-open queries; no date inference or averaging at retrieval time. */
+    /** Derive elapsed time only from verified UTC boundaries; local wake time supplies the day. */
+    public static function sleep_periods( $context ) {
+        require_once __DIR__ . '/class-health-measurement-store.php';
+        if ( ! is_array( $context ) ) return array();
+        $periods = array();
+        foreach ( array( 'sleep', 'next_sleep' ) as $prefix ) {
+            $start = Health_Measurement_Store::timestamp( $context[ $prefix . '_start_utc' ] ?? null );
+            $end = Health_Measurement_Store::timestamp( $context[ $prefix . '_end_utc' ] ?? null );
+            $local_end = Health_Measurement_Store::timestamp( $context[ $prefix . '_end_local' ] ?? null, false );
+            if ( is_wp_error( $start ) || is_wp_error( $end ) || is_wp_error( $local_end ) ) continue;
+            $a = new \DateTimeImmutable( $start );
+            $b = new \DateTimeImmutable( $end );
+            $seconds = (float) $b->format( 'U.u' ) - (float) $a->format( 'U.u' );
+            // Refuse reversed, zero or implausibly long windows instead of inventing sleep.
+            if ( $seconds < 1 || $seconds > 36 * 3600 ) continue;
+            $wake = new \DateTimeImmutable( $local_end, new \DateTimeZone( 'UTC' ) );
+            if ( abs( $wake->getTimestamp() - $b->getTimestamp() ) > 14 * 3600 ) continue;
+            $local_start = Health_Measurement_Store::timestamp( $context[ $prefix . '_start_local' ] ?? null, false );
+            if ( is_wp_error( $local_start ) ) $local_start = null;
+            if ( null !== $local_start ) {
+                $bed = new \DateTimeImmutable( $local_start, new \DateTimeZone( 'UTC' ) );
+                if ( abs( $bed->getTimestamp() - $a->getTimestamp() ) > 14 * 3600 ) $local_start = null;
+            }
+            $key = $start . '|' . $end;
+            $periods[ $key ] = array( 'source' => 'Garmin', 'date' => substr( $local_end, 0, 10 ),
+                'start_utc' => $start, 'end_utc' => $end, 'start_local' => $local_start, 'end_local' => $local_end,
+                'duration_seconds' => (int) floor( $seconds ) );
+        }
+        return array_values( $periods );
+    }
+
+    /** Indexed, bounded owner queries; derived sleep does not alter stored measurement dates. */
     public static function for_user( $owner, $start, $end ) {
         global $wpdb;
         if ( ! self::authorized( $owner ) ) return self::error( 'forbidden' );
@@ -48,7 +79,7 @@ final class Calendar_Measurements {
         $measurements_table = Database::table( 'health_measurements' );
         $reports = Database::read( 'get_results', $wpdb->prepare(
             'SELECT category,provider,provider_date,summary_json,context_json,fetched_at_utc FROM %i WHERE user_id = %d AND provider_date >= %s AND provider_date < %s ORDER BY provider_date,category,id LIMIT 501',
-            $reports_table, $owner, $range['start'], $range['end_exclusive']
+            $reports_table, $owner, ( new \DateTimeImmutable( $start ) )->modify( '-2 days' )->format( 'Y-m-d' ), ( new \DateTimeImmutable( $range['end_exclusive'] ) )->modify( '+2 days' )->format( 'Y-m-d' )
         ) );
         if ( ! empty( $wpdb->last_error ) ) return self::error( 'read', 500 );
         $rows = Database::read( 'get_results', $wpdb->prepare(
@@ -59,11 +90,12 @@ final class Calendar_Measurements {
         if ( count( (array) $reports ) > 500 || count( (array) $rows ) > 2000 ) return self::error( 'dense', 413 );
         $days = array();
         $invalid = 0;
+        $sleep = array();
         foreach ( (array) $reports as $report ) {
             $source = self::envelope( $report->summary_json, 'values' );
             $values = null !== $source ? Health_Measurement_Store::normalize_values( $report->category, $source, true ) : null;
             if ( 'garmin' !== $report->provider || null === $values || is_wp_error( $values ) ) { ++$invalid; continue; }
-            if ( ! $values ) continue; // Import bookkeeping for weight is not a numeric daily summary.
+
             $window = array();
             $context = self::envelope( $report->context_json, 'context' );
             foreach ( array( 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'sleep_start_utc', 'sleep_end_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_utc', 'next_sleep_end_utc', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_utc', 'latest_time_local' ) as $key ) {
@@ -71,6 +103,17 @@ final class Calendar_Measurements {
                 $time = Health_Measurement_Store::timestamp( $context[ $key ], false !== strpos( $key, '_utc' ) );
                 if ( ! is_wp_error( $time ) ) $window[ $key ] = $time;
             }
+            if ( 'spo2' === $report->category ) {
+                foreach ( self::sleep_periods( $window ) as $period ) {
+                    if ( $period['date'] < $start || $period['date'] > $end ) continue;
+                    $key = $period['start_utc'] . '|' . $period['end_utc'];
+                    // Same interval in adjacent sleep/next-sleep reports displays once.
+                    if ( ! isset( $sleep[ $key ] ) || $report->fetched_at_utc >= $sleep[ $key ]['fetched'] ) {
+                        $sleep[ $key ] = array( 'period' => $period, 'fetched' => $report->fetched_at_utc );
+                    }
+                }
+            }
+            if ( ! $values || $report->provider_date < $start || $report->provider_date > $end ) continue;
             self::day( $days, $report->provider_date );
             $days[ $report->provider_date ]['reports'][] = array( 'category' => $report->category, 'source' => 'Garmin', 'role' => 'provider_report', 'values' => $values, 'window' => $window );
         }
@@ -97,6 +140,12 @@ final class Calendar_Measurements {
             self::day( $days, $row->calendar_date );
             $bucket = 'sample' === $row->record_role ? 'readings' : 'aggregates';
             $days[ $row->calendar_date ][ $bucket ][] = $item;
+        }
+        ksort( $sleep );
+        foreach ( $sleep as $entry ) {
+            $period = $entry['period'];
+            self::day( $days, $period['date'] );
+            $days[ $period['date'] ]['sleep_periods'][] = $period;
         }
         ksort( $days );
         return array( 'range' => array( 'start' => $start, 'end' => $end, 'date_policy' => 'stored_source_calendar_date' ), 'days' => array_values( $days ), 'invalid_records' => $invalid );

@@ -149,6 +149,7 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 == Changelog ==
 
 = 1.3-dev (unreleased) =
+* Show derived sleep periods, Garmin-local bedtime and wake time in private calendar-day details, using UTC elapsed time, local wake dates and duplicate-window handling; clarify summary-only SpO2 headings.
 * Add private weight/BMI and Garmin-reported SpO2 measurement imports with additive schema 1.3, owner-only storage, duplicate handling and source-date preservation.
 * Add separate opt-in scheduled measurement checks and bounded manual imports, retaining existing records on failure.
 * Display private measurement indicators after workouts/events, with accessible overflow and complete calendar-day details on desktop and mobile.

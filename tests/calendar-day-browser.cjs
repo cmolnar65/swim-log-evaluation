@@ -23,7 +23,7 @@ async function scenario(engine, name, options) {
    }
    if(url.pathname.endsWith('/measurements')) {
     if(failHealth)return route.fulfill({status:500,json:{message:'Synthetic health failure'}});
-    const day={date:data.date,reports:[{category:'spo2',source:'Garmin',role:'provider_report',values:{average:{value:'96.4',unit:'%'},sleep_average:{value:'95.8',unit:'%'},seven_day_average:{value:'96.8',unit:'%'}},window:{window_start_utc:data.date+'T00:00:00Z'}}],readings:[{id:1,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.5',unit:'kg'}},time_utc:data.date+'T07:00:00Z'},{id:2,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.6',unit:'kg'}},time_utc:data.date+'T08:00:00Z'},{id:3,category:'body_composition',source:'Garmin',role:'sample',values:{bmi:{value:'24.1',unit:'kg/m2'}}}],aggregates:[]};
+    const day={date:data.date,sleep_periods:[{source:'Garmin',date:data.date,start_utc:data.date+'T04:00:00Z',end_utc:data.date+'T10:53:00Z',start_local:data.date+'T00:00:00',end_local:data.date+'T06:53:00',duration_seconds:24780}],reports:[{category:'spo2',source:'Garmin',role:'provider_report',values:{average:{value:'96.4',unit:'%'},sleep_average:{value:'95.8',unit:'%'},seven_day_average:{value:'96.8',unit:'%'}},window:{window_start_utc:data.date+'T00:00:00Z'}}],readings:[{id:1,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.5',unit:'kg'}},time_utc:data.date+'T07:00:00Z'},{id:2,category:'weight',source:'Garmin',role:'sample',values:{weight:{value:'82.6',unit:'kg'}},time_utc:data.date+'T08:00:00Z'},{id:3,category:'body_composition',source:'Garmin',role:'sample',values:{bmi:{value:'24.1',unit:'kg/m2'}}}],aggregates:[]};
     const start=url.searchParams.get('start'),end=url.searchParams.get('end');
     return route.fulfill({json:{range:{start,end},days:data.date>=start&&data.date<=end?[day]:[],invalid_records:0}});
    }
@@ -62,6 +62,12 @@ async function scenario(engine, name, options) {
   let dialog=page.getByRole('dialog');
   await dialog.locator('[data-calendar-health-details]').getByText('Garmin average SpO₂',{exact:true}).waitFor();
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/96.4%/);
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/SpO₂ · Garmin summary/);
+  assert.doesNotMatch(await dialog.locator('[data-calendar-health-details]').innerText(),/0 imported readings/);
+  assert.equal(await dialog.locator('[data-calendar-sleep-period]').count(),1);
+  assert.match(await dialog.locator('[data-calendar-sleep-period]').innerText(),/6h 53m/);
+  assert.match(await dialog.locator('[data-calendar-sleep-period]').innerText(),/Bedtime \(Garmin local\)/);
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/may include time awake/);
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Weight · 2 imported readings/);
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Garmin seven-day baseline/);
   assert(await dialog.evaluate(el=>el.querySelector('[data-calendar-day-sections]').compareDocumentPosition(el.querySelector('[data-calendar-health-details]'))&Node.DOCUMENT_POSITION_FOLLOWING),'Workout list before measurements');

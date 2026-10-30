@@ -35,7 +35,7 @@ try {
     $login( $owner );
     $report = array( 'provider' => 'garmin', 'category' => 'spo2', 'calendar_date' => '2026-11-01', 'fetched_at_utc' => '2026-11-02T12:00:00Z',
         'summary' => array( 'average' => array( 'value' => 96.4, 'unit' => '%' ), 'sleep_average' => array( 'value' => 95.8, 'unit' => '%' ), 'seven_day_average' => array( 'value' => 96.8, 'unit' => '%' ) ),
-        'context' => array( 'device' => 'PRIVATE_HEALTH_PROVENANCE_SENTINEL', 'window_start_utc' => '2026-10-31T23:00:00Z', 'window_end_utc' => '2026-11-01T23:00:00Z' ) );
+        'context' => array( 'sleep_start_utc' => '2026-11-01T04:00:00Z', 'sleep_end_utc' => '2026-11-01T14:00:00Z', 'sleep_start_local' => '2026-10-31T22:00:00', 'sleep_end_local' => '2026-11-01T07:00:00', 'device' => 'PRIVATE_HEALTH_PROVENANCE_SENTINEL', 'window_start_utc' => '2026-10-31T23:00:00Z', 'window_end_utc' => '2026-11-01T23:00:00Z' ) );
     $sample = array( 'role' => 'sample', 'observed_at_utc' => '2026-10-31T23:30:00Z', 'calendar_date' => '2026-11-01', 'date_basis' => 'provider_calendar',
         'values' => array( 'spo2' => array( 'value' => 97, 'unit' => '%' ) ), 'provenance' => array( 'device' => 'PRIVATE_HEALTH_PROVENANCE_SENTINEL' ) );
     $second = $sample; $second['observed_at_utc'] = '2026-11-01T00:30:00Z';
@@ -45,6 +45,9 @@ try {
     $verify( ! is_wp_error( Store::save_report( $owner, $report, array( $sample, $second, $conflict, $hourly, $unknown ) ) ), 'Seed private report and sample roles.' );
     $adjacent = $report; $adjacent['calendar_date'] = '2026-11-02'; $adjacent['summary'] = array();
     $verify( ! is_wp_error( Store::save_report( $owner, $adjacent, array( $sample ) ) ), 'Overlap membership does not duplicate source sample.' );
+    $previous = $report; $previous['calendar_date'] = '2026-10-31'; $previous['summary'] = array(); $previous['context'] = array();
+    foreach ( array( 'start_utc', 'end_utc', 'start_local', 'end_local' ) as $part ) $previous['context'][ 'next_sleep_' . $part ] = $report['context'][ 'sleep_' . $part ];
+    $verify( ! is_wp_error( Store::save_report( $owner, $previous, array() ) ), 'Seed adjacent next-sleep context without numeric summary.' );
     $weight = $report; $weight['category'] = 'weight'; $weight['summary'] = array();
     $weight_sample = $sample; $weight_sample['values'] = array( 'weight' => array( 'value' => 82.5, 'unit' => 'kg' ) );
     $verify( ! is_wp_error( Store::save_report( $owner, $weight, array( $weight_sample ) ) ), 'Seed weight.' );
@@ -55,6 +58,8 @@ try {
     $data = Measurements::for_user( $owner, '2026-11-01', '2026-11-01' );
     $verify( ! is_wp_error( $data ) && 1 === count( $data['days'] ) && '2026-11-01' === $data['days'][0]['date'], 'Source date controls day despite different UTC date.' );
     $day = $data['days'][0];
+    $verify( 1 === count( $day['sleep_periods'] ) && 36000 === $day['sleep_periods'][0]['duration_seconds'], 'Deduplicate adjacent sleep/next-sleep contexts and use UTC across DST.' );
+    $verify( '2026-11-01' === $day['sleep_periods'][0]['date'] && '2026-11-01T07:00:00' === $day['sleep_periods'][0]['end_local'], 'Place sleep on local wake day even for a single-day query.' );
     $verify( 5 === count( $day['readings'] ) && 1 === count( $day['reports'] ) && 1 === count( $day['aggregates'] ), 'Samples, provider summaries and aggregates separate; unknown day excluded.' );
     $verify( '96.4' === $day['reports'][0]['values']['average']['value'] && '96.8' === $day['reports'][0]['values']['seven_day_average']['value'], 'Provider and baseline values remain distinct, no recomputed mean.' );
     $conflicts = array_filter( $day['readings'], static function ( $row ) { return $row['has_conflict']; } );
