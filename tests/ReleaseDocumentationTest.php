@@ -13,7 +13,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $this->assertStringContainsString('## v1.2 release checkpoint',$github);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.3'",$plugin);
   $this->assertStringContainsString('## v1.3 development',$github);
-  $this->assertStringContainsString('planned, not yet implemented',$github);
+  $this->assertStringContainsString('opt-in automatic measurement synchronization',$github);
   $release_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/release-package.yml');
   $plugin_check_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/plugin-check.yml');
   $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.2.zip',$release_workflow);
