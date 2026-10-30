@@ -156,6 +156,8 @@ final class FIT_Importer {
         }
         unset( $lap );
         foreach ( $p['trackpoints'] as &$point ) {
+            $raw = $o['records'][$point['sequence_no'] - 1];
+            if ( ! isset( $raw[253] ) || $raw[253] >= 4294967295 ) $point['recorded_at'] = null;
             if ( null === $point['latitude'] || null === $point['longitude'] || abs( $point['latitude'] ) > 90 || abs( $point['longitude'] ) > 180 || $point['latitude'] >= 179.9999999 || $point['longitude'] >= 179.9999999 ) { $point['latitude'] = null; $point['longitude'] = null; }
             if ( null !== $point['distance_m'] && $point['distance_m'] >= 42949672.95 ) $point['distance_m'] = null;
             if ( null !== $point['heart_rate'] && $point['heart_rate'] >= 255 ) $point['heart_rate'] = null;

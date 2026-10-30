@@ -46,7 +46,7 @@ final class Admin_Workouts {
 	private static function open_water_route_svg( $trackpoints, $land = false ) {
         $points=array();$segment=0;$previous=null;
         foreach((array)$trackpoints as $point){
-            if(null===$point->latitude||null===$point->longitude||abs((float)$point->latitude)>90||abs((float)$point->longitude)>180){if($land){$segment++;$previous=null;}continue;}
+            if(($land&&empty($point->recorded_at))||null===$point->latitude||null===$point->longitude||abs((float)$point->latitude)>90||abs((float)$point->longitude)>180){if($land){$segment++;$previous=null;}continue;}
             if($land && $previous && ((int)$point->sequence_no !== (int)$previous->sequence_no+1 || empty($point->recorded_at) || empty($previous->recorded_at) || strtotime($point->recorded_at.' UTC')-strtotime($previous->recorded_at.' UTC')>300 || strtotime($point->recorded_at.' UTC')<strtotime($previous->recorded_at.' UTC')))$segment++;
             $points[]=array((float)$point->latitude,(float)$point->longitude,$segment);$previous=$point;
         }

@@ -43,7 +43,11 @@ try {
     $verify( '1.3' === get_option( 'swimlog_db_version' ), 'Failed environment migration advanced version.' );
     ( new Plugin() )->maybe_upgrade_schema();
     $verify( SWIMLOG_EVALUATION_DB_VERSION === get_option( 'swimlog_db_version' ), 'Environment migration did not advance on success.' );
-    $verify( $legacy_row === $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i LIMIT 1', $workouts ), ARRAY_A ), 'Environment migration rewrote old data or guessed environment.' );
+    $migrated = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i LIMIT 1', $workouts ), ARRAY_A );
+    ksort( $legacy_row ); ksort( $migrated );
+    $verify( $legacy_row === $migrated, 'Environment migration rewrote old data or guessed environment.' );
+    $legacy_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i LIMIT 1', $workouts ), ARRAY_A );
+    $legacy_schema['workouts'] = $wpdb->get_row( $wpdb->prepare( 'SHOW CREATE TABLE %i', $workouts ), ARRAY_N )[1];
     foreach ( $health as $name ) $wpdb->query( $wpdb->prepare( 'DROP TABLE %i', Database::table( $name ) ) );
     update_option( 'swimlog_db_version', '1.2' );
     wp_set_current_user( (int) $admin[0] );

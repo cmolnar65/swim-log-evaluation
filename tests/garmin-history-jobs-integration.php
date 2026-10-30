@@ -88,7 +88,7 @@ try {
     $json = wp_json_encode( array( $job, Jobs::units( $id ) ) );
     $verify( false === strpos( $json, '82.5' ) && false === strpos( $json, 'synthetic-jobs-key' ) && false === strpos( $json, 'synthetic.jobs.token' ), 'Ledger contains no values/payload/credentials.' );
     $autoload = $wpdb->get_var( $wpdb->prepare( 'SELECT autoload FROM %i WHERE option_name = %s', $wpdb->options, 'swimlog_hj_' . $owner . '_' . $id ) );
-    $verify( 'no' === $autoload && '1.3' === get_option( 'swimlog_db_version' ), 'Private ledger non-autoloaded; schema unchanged.' );
+    $verify( 'no' === $autoload && SWIMLOG_EVALUATION_DB_VERSION === get_option( 'swimlog_db_version' ), 'Private ledger non-autoloaded; schema unchanged.' );
     ob_start(); UI::status( $job, 0, 'review' ); $html = ob_get_clean();
     $verify( false !== strpos( $html, 'Review pending import' ) && false !== strpos( $html, 'garmin_activity_id' ) && false === strpos( $html, '82.5' ), 'Authorized review links rendered without raw values.' );
 
