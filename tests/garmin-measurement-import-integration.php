@@ -25,7 +25,7 @@ $http = static function ( $preempt, $args, $url ) use ( &$calls, &$scenario ) {
     if ( 'timeout' === $scenario ) return new WP_Error( 'http_request_failed', 'synthetic timeout' );
     $body = false !== strpos( $url, 'weight/all' )
         ? wp_json_encode( array( array( 'calendarDate' => '2026-10-01', 'timestampGMT' => '2026-10-01T06:00:00Z', 'date' => '2026-10-01T00:00:00', 'weight' => 82.5, 'bmi' => 24.1, 'bodyFat' => 19.2, 'boneMass' => 4000 ), array( 'calendarDate' => '2026-10-01', 'timestampGMT' => '2026-10-01T07:00:00Z', 'weight' => 82.6, 'bmi' => 24.2 ) ) )
-        : wp_json_encode( array( 'calendarDate' => '2026-10-01', 'averageSpO2' => 96.4, 'lowestSpO2' => 91, 'avgSleepSpO2' => 95.8, 'startTimestampGMT' => '2026-10-01T06:00:00', 'endTimestampGMT' => '2026-10-02T06:00:00', 'spO2SingleValues' => array( array( 1790834400000, 94 ) ) ) );
+        : wp_json_encode( array( 'calendarDate' => '2026-10-01', 'averageSpO2' => 96.33333333333333, 'lowestSpO2' => 91, 'avgSleepSpO2' => 95.12345678912345, 'startTimestampGMT' => '2026-10-01T06:00:00', 'endTimestampGMT' => '2026-10-02T06:00:00', 'spO2SingleValues' => array( array( 1790834400000, 94 ) ) ) );
     $status = 200;
     if ( in_array( $scenario, array( '401', '403', '429', '500' ), true ) ) $status = (int) $scenario;
     if ( 'invalid_json' === $scenario ) $body = '{not-json';

@@ -46,6 +46,11 @@ final class Garmin_Measurement_Import {
         return ( is_int( $value ) || is_float( $value ) || is_string( $value ) ) && is_numeric( $value ) && is_finite( (float) $value ) && (float) $value > 0 && ( ! $percent || (float) $value <= 100 );
     }
 
+    /** Match storage precision without letting binary float serialization reject valid provider averages. */
+    private static function decimal_value( $value ) {
+        return is_float( $value ) ? rtrim( rtrim( number_format( $value, 9, '.', '' ), '0' ), '.' ) : $value;
+    }
+
     /** Pure schema adapter. Unsupported fields are counted, never assigned guessed units. */
     public static function normalize( $category, $day, $data, $fetched ) {
         if ( ! in_array( $category, array( 'weight', 'body_composition', 'spo2' ), true ) || ! is_array( $data ) ) return self::error();
@@ -59,7 +64,7 @@ final class Garmin_Measurement_Import {
             foreach ( $fields as $source => $target ) {
                 if ( ! isset( $data[ $source ] ) ) continue;
                 if ( ! self::number( $data[ $source ], true ) ) { ++$excluded; continue; }
-                $report['summary'][ $target ] = array( 'value' => $data[ $source ], 'unit' => '%' );
+                $report['summary'][ $target ] = array( 'value' => self::decimal_value( $data[ $source ] ), 'unit' => '%' );
             }
             $times = array( 'startTimestampGMT' => 'window_start_utc', 'endTimestampGMT' => 'window_end_utc', 'sleepStartTimestampGMT' => 'sleep_start_utc', 'sleepEndTimestampGMT' => 'sleep_end_utc', 'tomorrowSleepStartTimestampGMT' => 'next_sleep_start_utc', 'tomorrowSleepEndTimestampGMT' => 'next_sleep_end_utc', 'latestSpO2TimestampGMT' => 'latest_time_utc' );
             foreach ( $times as $source => $target ) {
@@ -87,9 +92,9 @@ final class Garmin_Measurement_Import {
                 $utc = self::source_utc( $entry['timestampGMT'] ?? '', true );
                 if ( is_wp_error( $utc ) ) { ++$excluded; continue; }
                 $values = array();
-                if ( 'weight' === $category && isset( $entry['weight'] ) && self::number( $entry['weight'] ) ) $values['weight'] = array( 'value' => $entry['weight'], 'unit' => 'kg' );
+                if ( 'weight' === $category && isset( $entry['weight'] ) && self::number( $entry['weight'] ) ) $values['weight'] = array( 'value' => self::decimal_value( $entry['weight'] ), 'unit' => 'kg' );
                 if ( 'body_composition' === $category ) {
-                    if ( isset( $entry['bmi'] ) && self::number( $entry['bmi'] ) ) $values['bmi'] = array( 'value' => $entry['bmi'], 'unit' => 'kg/m2' );
+                    if ( isset( $entry['bmi'] ) && self::number( $entry['bmi'] ) ) $values['bmi'] = array( 'value' => self::decimal_value( $entry['bmi'] ), 'unit' => 'kg/m2' );
                     // BMI is dimensionally defined; the other entry units remain unverified.
                     foreach ( array( 'bodyFat', 'bodyWater', 'boneMass', 'muscleMass', 'visceralFat', 'physiqueRating', 'metabolicAge' ) as $field ) if ( isset( $entry[ $field ] ) ) ++$excluded;
                 }
@@ -149,7 +154,7 @@ final class Garmin_Measurement_Import {
                     if ( $bundle['empty'] ) $result['status'] = $bundle['excluded'] ? 'unsupported_data' : 'no_data';
                     else {
                         $saved = Health_Measurement_Store::save_report( $owner, $bundle['report'], $bundle['observations'] );
-                        if ( is_wp_error( $saved ) ) { $result['status'] = 'failed'; $result['failed'] = 1; $result['message'] = $saved->get_error_message(); }
+                        if ( is_wp_error( $saved ) ) { $result['status'] = 'failed'; $result['failed'] = 1; $result['message'] = $saved->get_error_message(); $result['error_code'] = $saved->get_error_code(); }
                         else {
                             $result['status'] = 'complete';
                             foreach ( array( 'added', 'updated', 'skipped', 'conflicts' ) as $key ) $result[ $key ] = $saved['counts'][ $key ];

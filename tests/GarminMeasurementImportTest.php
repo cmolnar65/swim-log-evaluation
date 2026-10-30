@@ -50,9 +50,9 @@ final class GarminMeasurementImportTest extends TestCase {
     public function test_spo2_preserves_provider_summary_roles_and_excludes_unverified_samples() {
         $data = array( 'calendarDate' => '2026-10-01', 'averageSpO2' => 96.4, 'lowestSpO2' => 91, 'latestSpO2' => 98, 'avgSleepSpO2' => 95.2, 'lastSevenDaysAvgSpO2' => 96.8, 'spO2SingleValues' => array( array( 1790834400000, 94 ), array( 1790838000000, 98 ) ), 'spO2HourlyAverages' => array( array( 1790834400000, 96 ) ), 'startTimestampGMT' => '2026-10-01T06:00:00', 'startTimestampLocal' => '2026-10-01T00:00:00', 'sleepStartTimestampGMT' => '2026-10-01T06:00:00' );
         $result = Importer::normalize( 'spo2', '2026-10-01', $data, '2026-10-02T12:00:00Z' );
-        $this->assertSame( 96.4, $result['report']['summary']['average']['value'] );
-        $this->assertSame( 96.8, $result['report']['summary']['seven_day_average']['value'] );
-        $this->assertSame( 95.2, $result['report']['summary']['sleep_average']['value'] );
+        $this->assertSame( '96.4', $result['report']['summary']['average']['value'] );
+        $this->assertSame( '96.8', $result['report']['summary']['seven_day_average']['value'] );
+        $this->assertSame( '95.2', $result['report']['summary']['sleep_average']['value'] );
         $this->assertSame( '2026-10-01T06:00:00Z', $result['report']['context']['sleep_start_utc'] );
         $this->assertSame( '2026-10-01T00:00:00', $result['report']['context']['window_start_local'] );
         $this->assertCount( 0, $result['observations'] );
@@ -66,5 +66,20 @@ final class GarminMeasurementImportTest extends TestCase {
         $this->assertTrue( $bad['empty'] );
         $this->assertSame( 2, $bad['excluded'] );
         $this->assertTrue( is_wp_error( Importer::normalize( 'spo2', '2026-10-01', array( 'calendarDate' => '2026-10-02', 'averageSpO2' => 97 ), '2026-10-02T12:00:00Z' ) ) );
+    }
+
+    public function test_provider_float_precision_is_canonical_and_repeatable() {
+        $data = array( 'calendarDate' => '2026-10-01', 'averageSpO2' => 96.33333333333333, 'avgSleepSpO2' => 95.12345678912345, 'latestSpO2' => 98 );
+        $result = Importer::normalize( 'spo2', '2026-10-01', $data, '2026-10-02T12:00:00Z' );
+        $values = \SwimLogEvaluation\Health_Measurement_Store::normalize_values( 'spo2', $result['report']['summary'], true );
+        $this->assertFalse( is_wp_error( $values ) );
+        $this->assertSame( '96.333333333', $values['average']['value'] );
+        $this->assertSame( '95.123456789', $values['sleep_average']['value'] );
+        $this->assertSame( '98', $values['latest']['value'] );
+        $repeat = Importer::normalize( 'spo2', '2026-10-01', $data, '2026-10-02T12:00:00Z' );
+        $this->assertSame( $result, $repeat );
+        $weight = Importer::normalize( 'weight', '2026-10-01', array( array( 'calendarDate' => '2026-10-01', 'timestampGMT' => '2026-10-01T06:00:00Z', 'weight' => 82.12345678912345 ) ), '2026-10-02T12:00:00Z' );
+        $this->assertCount( 1, $weight['observations'] );
+        $this->assertSame( '82.123456789', $weight['observations'][0]['values']['weight']['value'] );
     }
 }

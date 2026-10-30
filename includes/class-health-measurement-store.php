@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class Health_Measurement_Store {
     private static function error( $code ) {
-        return new \WP_Error( 'swimlog_health_' . $code, __( 'The private measurement operation could not be completed.', 'chriss-swim-training-progress-evaluation' ) );
+        return new \WP_Error( 'swimlog_health_' . $code, sprintf( /* translators: %s: Internal validation or storage error code; contains no measurement values. */ __( 'The private measurement operation could not be completed (%s).', 'chriss-swim-training-progress-evaluation' ), $code ) );
     }
 
     private static function authorized( $owner ) {
