@@ -30,7 +30,7 @@ final class Admin_Analytics {
 		$stroke_volume_by_course=array('m'=>array(),'yd'=>array());foreach($stroke_volume as$volume){if(isset($stroke_volume_by_course[$volume->course_unit]))$stroke_volume_by_course[$volume->course_unit][]=$volume;}
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Pool Training Volume by Stroke','chriss-swim-training-progress-evaluation'); ?></h1>
 		<p><?php echo esc_html(sprintf(/* translators: %d: training-volume period in months. */ __('Last %d months','chriss-swim-training-progress-evaluation'),$training_volume_months)); ?></p>
-		<p class="description"><?php esc_html_e('Swimming only: distance and time come from active pool lengths. Rest, open-water swims, running and walking are excluded. Meter and yard courses stay separate. The rolling period below applies to this report; your saved preference is unchanged.','chriss-swim-training-progress-evaluation'); ?></p>
+		<p class="description"><?php esc_html_e('Swimming only: distance and time come from active pool lengths. Rest, open-water swims, running and walking are excluded. Meter and yard courses are kept separate and strokes are ranked by total distance. The rolling period below applies to this report; your saved preference is unchanged.','chriss-swim-training-progress-evaluation'); ?></p>
         <form method="get" class="swimlog-analytics-filters">
         <input type="hidden" name="page" value="swimlog-training-volume"><?php Admin_UI::context_fields( $user_id ); ?>
         <label for="swimlog-volume-months"><?php esc_html_e('Period (months)','chriss-swim-training-progress-evaluation'); ?></label>
@@ -78,7 +78,7 @@ final class Admin_Analytics {
 		?>
 		<div class="wrap swimlog-admin">
 			<h1><?php esc_html_e( 'Swimming Volume Trends', 'chriss-swim-training-progress-evaluation' ); ?></h1>
-			<p><?php esc_html_e( 'Swimming only: compare recorded pool and open-water distance, sessions and active time over rolling periods. Running and walking are excluded. These are volume trends, not a measure of physiological stress, recovery or fitness. Course and stroke comparisons are available in the pool reports.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'Swimming only: compare recorded pool and open-water distance, sessions and active time over rolling periods. Running and walking are excluded. This report does not estimate physiological stress, recovery, fitness, or injury risk. Course and stroke comparisons are available in the pool reports.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<form method="get" class="swimlog-analytics-filters">
 				<input type="hidden" name="page" value="swimlog-training-trends">
 				<?php Admin_UI::context_fields( $user_id ); ?>

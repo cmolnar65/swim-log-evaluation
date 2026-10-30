@@ -23,7 +23,7 @@ final class ManualWorkoutAdminTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-manual-workout.php');
   foreach(array('segment_repetitions[]','segment_distance[]','segment_stroke[]','segment_notes[]') as $field)$this->assertStringContainsString('name="'.$field.'"',$admin);
   $this->assertStringContainsString("'timing_type' => \$timing_raw",$admin);
-  $this->assertStringContainsString("max(12,count(\$posted_reps))",$admin);
+  $this->assertStringContainsString("max(1,count(\$posted_reps),count(\$posted_distance)",$admin);
   $this->assertStringContainsString("if ( '' === \$reps_raw && '' === \$distance_raw && '' === \$stroke_raw && '' === \$notes_raw && '' === \$rep_times_raw && '' === \$set_time_raw && '' === \$interval_raw && '' === \$rest_raw ) continue;",$admin);
  }
  public function test_phase5_collects_explicit_timing_provenance_without_deriving_length_times(){
@@ -43,3 +43,4 @@ final class ManualWorkoutAdminTest extends TestCase {
   $this->assertStringContainsString("cloneNode(true)",$js);
  }
 }
+
