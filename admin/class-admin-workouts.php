@@ -246,7 +246,7 @@ final class Admin_Workouts {
 		}
 		foreach(Importer::pending_all_for_user($user_id) as $row){$already=false;foreach($pending as $p){if((int)$p['import_id']===(int)$row->id){$already=true;break;}}if(!$already)$pending[]=array('pending'=>true,'import_id'=>(int)$row->id,'candidate_workout_id'=>(int)$row->workout_id,'source'=>$row->source_type,'workout'=>null);}
 		?><div class="wrap swimlog-admin"><h1><?php esc_html_e('Upload Workout','chriss-swim-training-progress-evaluation'); ?></h1>
-		<p><?php esc_html_e('Upload FORM CSV files, FIT pool-swim files, or both files from the same workout. High-confidence matches attach automatically. Probable matches require your confirmation before any workout history is changed.','chriss-swim-training-progress-evaluation'); ?></p>
+		<p><?php esc_html_e('Upload FIT files for pool swims, open-water swims, running or walking; FORM swim-export CSV files; or GPX/TCX open-water swimming tracks. Running and walking require FIT. Gzip files and ZIP archives containing exactly one supported workout file are accepted. High-confidence matches attach automatically. Probable matches require your confirmation before any workout history is changed.','chriss-swim-training-progress-evaluation'); ?></p>
 		<?php foreach($errors as $e):?><div class="notice notice-error"><p><?php echo esc_html($e); ?></p></div><?php endforeach;?>
 		<?php foreach($results as $res):?><div class="notice notice-success"><p><?php echo esc_html($res['attached']?__('Source file attached to an existing matching workout.','chriss-swim-training-progress-evaluation'):__('Workout imported successfully.','chriss-swim-training-progress-evaluation')); ?> <a href="<?php echo esc_url(Admin_UI::url( array('page'=>'swimlog-workouts','workout_id'=>$res['workout_id']), $user_id )); ?>"><?php esc_html_e('View workout','chriss-swim-training-progress-evaluation'); ?></a></p></div><?php endforeach;?>
 		<?php foreach($pending as $p):
@@ -403,6 +403,7 @@ final class Admin_Workouts {
 	}
 
 }
+
 
 
 

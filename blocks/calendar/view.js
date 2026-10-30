@@ -236,10 +236,10 @@
 		var events = ( data.events || [] ).filter( function ( row ) { return row.event_date === state.date; } );
 		var summary = document.createElement( 'p' ); summary.className = 'swimlog-calendar-day-summary';
 		var distance = workouts.filter(function(row){return !isLand(row.workout_type);}).reduce( function ( total, row ) { return total + Number( row.total_distance_m || 0 ); }, 0 );
-		summary.textContent = workouts.length + ' recorded · ' + Math.round( distance ).toLocaleString() + ' m recorded (swimming)' + landDistanceText(workouts) + ' · ' + plans.length + ' planned · ' + events.length + ' events'; content.appendChild( summary );
+		summary.textContent = workouts.length + (workouts.length === 1 ? ' recorded activity · ' : ' recorded activities · ') + Math.round( distance ).toLocaleString() + ' m recorded (swimming)' + landDistanceText(workouts) + ' · ' + plans.length + (plans.length === 1 ? ' planned workout · ' : ' planned workouts · ') + events.length + (events.length === 1 ? ' event' : ' events'); content.appendChild( summary );
 		var planButton = planDateButton( state.date, root ); if ( planButton ) content.appendChild( planButton );
 		var sections = document.createElement( 'div' ); sections.dataset.calendarDaySections = '1'; content.appendChild( sections );
-		var definitions = [ [ 'Recorded swims', workouts, 'workouts', 'swimlog-calendar-workout' ], [ 'Planned workouts', plans, 'planned_workouts', 'swimlog-calendar-planned-workout' ], [ 'Events', events, 'events', 'swimlog-calendar-event' ] ];
+		var definitions = [ [ 'Recorded activities', workouts, 'workouts', 'swimlog-calendar-workout' ], [ 'Planned workouts', plans, 'planned_workouts', 'swimlog-calendar-planned-workout' ], [ 'Events', events, 'events', 'swimlog-calendar-event' ] ];
 		definitions.forEach( function ( definition ) {
 			if ( ! definition[1].length ) return;
 			var section = document.createElement( 'section' ); section.className = 'swimlog-calendar-day-section';
@@ -722,3 +722,4 @@
 	}
 	document.addEventListener( 'DOMContentLoaded', function () { document.querySelectorAll( '[data-swimlog-calendar="1"]' ).forEach( init ); } );
 } )();
+

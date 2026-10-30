@@ -75,7 +75,7 @@ final class Admin_Garmin_History {
     private static function label( $value ) {
         $labels = array(
             'page' => __( 'Activity discovery', 'chriss-swim-training-progress-evaluation' ),
-            'activity' => __( 'Recorded swim', 'chriss-swim-training-progress-evaluation' ),
+            'activity' => __( 'Recorded activity', 'chriss-swim-training-progress-evaluation' ),
             'measurement' => __( 'Measurements', 'chriss-swim-training-progress-evaluation' ),
             'weight' => __( 'Weight', 'chriss-swim-training-progress-evaluation' ),
             'body_composition' => __( 'BMI', 'chriss-swim-training-progress-evaluation' ),
@@ -119,7 +119,7 @@ final class Admin_Garmin_History {
             <h3><?php echo esc_html( $job['start'] . ' — ' . $job['end'] ); ?></h3>
             <p role="status"><strong><?php echo esc_html( $labels[$job['status']] ?? $job['status'] ); ?></strong></p>
             <?php if ( $job['error'] ) : ?><p role="alert"><?php echo esc_html( self::failure_message( $job['error'] ) ); ?></p><?php endif; ?>
-            <p><?php echo esc_html( sprintf( /* translators: 1: queued units, 2: failed units, 3: discovered swim activities, 4: fully scanned activity days, 5: attempted measurement days. */ __( 'Unfinished checks/imports: %1$d; failed checks/imports: %2$d; discovered activities: %3$d; fully scanned activity days: %4$d; attempted measurement days: %5$d.', 'chriss-swim-training-progress-evaluation' ), count( $job['ready'] ), count( $job['failed'] ), $job['counts']['discovered'], $job['counts']['activity_days'], $job['counts']['measurement_days'] ) ); ?></p>
+            <p><?php echo esc_html( sprintf( /* translators: 1: queued units, 2: failed units, 3: discovered activities, 4: fully scanned activity days, 5: attempted measurement days. */ __( 'Unfinished checks/imports: %1$d; failed checks/imports: %2$d; discovered activities: %3$d; fully scanned activity days: %4$d; attempted measurement days: %5$d.', 'chriss-swim-training-progress-evaluation' ), count( $job['ready'] ), count( $job['failed'] ), $job['counts']['discovered'], $job['counts']['activity_days'], $job['counts']['measurement_days'] ) ); ?></p>
             <dl class="swimlog-history-counts">
             <?php foreach ( array( 'activity_imported' => __( 'Activities imported', 'chriss-swim-training-progress-evaluation' ), 'activity_already' => __( 'Activities already present', 'chriss-swim-training-progress-evaluation' ), 'activity_review' => __( 'Activities needing review', 'chriss-swim-training-progress-evaluation' ), 'added' => __( 'Readings added', 'chriss-swim-training-progress-evaluation' ), 'updated' => __( 'Readings updated', 'chriss-swim-training-progress-evaluation' ), 'skipped' => __( 'Duplicate readings skipped', 'chriss-swim-training-progress-evaluation' ), 'reports_added' => __( 'Daily category records added', 'chriss-swim-training-progress-evaluation' ), 'reports_updated' => __( 'Daily category records updated', 'chriss-swim-training-progress-evaluation' ), 'reports_skipped' => __( 'Unchanged daily category records', 'chriss-swim-training-progress-evaluation' ), 'measurement_no_data' => __( 'Empty date/category responses', 'chriss-swim-training-progress-evaluation' ), 'excluded' => __( 'Unsupported fields/rows excluded', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?><div><dt><?php echo esc_html( $label ); ?></dt><dd><?php echo esc_html( (string) ( $job['counts'][$key] ?? 0 ) ); ?></dd></div><?php endforeach; ?>
             </dl>
@@ -161,5 +161,6 @@ final class Admin_Garmin_History {
         <?php
     }
 }
+
 
 

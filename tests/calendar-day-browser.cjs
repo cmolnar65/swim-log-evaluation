@@ -75,6 +75,8 @@ async function scenario(engine, name, options) {
   assert.equal(await dialog.locator('[data-calendar-planned-workout]').count(),12);
   assert.equal(await dialog.locator('[data-calendar-event]').count(),1);
   assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/1,800 m recorded/);
+  assert.equal(await dialog.getByRole('heading',{name:'Recorded activities',exact:true}).count(),1);
+  assert.doesNotMatch(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/\b1 events\b|\b1 planned workouts\b|\b1 recorded activities\b/);
   assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Running: 5,000 m/);
   assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Walking: 300 m/);
   const bounds=await dialog.boundingBox(); assert(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=options.viewport.width+1&&bounds.y+bounds.height<=options.viewport.height+1,'Dialog exceeds viewport');
@@ -169,3 +171,4 @@ async function scenario(engine, name, options) {
  await scenario(chromium,'Android-sized touch Chromium',{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
  await scenario(webkit,'iPhone-sized touch WebKit',{viewport:{width:375,height:812},isMobile:true,hasTouch:true,deviceScaleFactor:2});
 })().catch(error=>{console.error(error);process.exit(1);});
+
