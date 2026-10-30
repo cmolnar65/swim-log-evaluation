@@ -1,7 +1,7 @@
 <?php
 // Actual disposable WordPress owner records and synthetic scheduling metadata only.
 use SwimLogEvaluation\{Admin_UI as UI,Admin_Events_Locations as Events_UI,Admin_Planned_Workouts as Plans_UI,Admin_Structured_Workouts as Structures_UI,Admin_Workouts as Workouts_UI,Admin_Garmin_Measurements as Measurements_UI,Event,Location,Planned_Workout as Plans,Structured_Workout_Store as Store,Workout,Database,Garmin_Personal_API as API,Garmin_Measurement_Sync as Sync};
-foreach(array('ui','events-locations','planned-workouts','structured-workouts','workouts','garmin-measurements','race-readiness')as$file)require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-'.$file.'.php';
+foreach(array('ui','events-locations','planned-workouts','structured-workouts','workouts','garmin-measurements','race-readiness','settings')as$file)require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-'.$file.'.php';
 foreach(array('database','workout','event','location','planned-workout','structured-workout','structured-workout-store','planned-structure-link','garmin-measurement-sync')as$file)require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
 $old_user=get_current_user_id();$get=$_GET;$post=$_POST;$request=$_REQUEST;$screen=$GLOBALS['current_screen']??null;
 $options=array();foreach(array('timezone_string','date_format','time_format')as$key)$options[$key]=get_option($key);
@@ -12,7 +12,7 @@ $render=static function($call){ob_start();try{call_user_func($call);return ob_ge
 $xp=static function($html){$d=new DOMDocument();$old=libxml_use_internal_errors(true);$d->loadHTML('<?xml encoding="UTF-8">'.$html);libxml_clear_errors();libxml_use_internal_errors($old);return new DOMXPath($d);};
 try{
  require_once ABSPATH.'wp-admin/includes/class-wp-screen.php';require_once ABSPATH.'wp-admin/includes/screen.php';set_current_screen('dashboard');
- foreach(array('owner','other')as$name){$id=wp_create_user('swimlog_hierarchy_'.$name.'_'.wp_generate_password(8,false),wp_generate_password(32));if(is_wp_error($id))throw new RuntimeException('Synthetic user');$users[$name]=(int)$id;foreach(array('swimlog_view_own_results','swimlog_manage_own_workouts','swimlog_manage_own_events','swimlog_manage_own_locations','swimlog_upload_workouts')as$cap)(new WP_User($id))->add_cap($cap);}
+ foreach(array('owner','other')as$name){$id=wp_create_user('swimlog_hierarchy_'.$name.'_'.wp_generate_password(8,false),wp_generate_password(32));if(is_wp_error($id))throw new RuntimeException('Synthetic user');$users[$name]=(int)$id;foreach(array('swimlog_view_own_results','swimlog_manage_own_workouts','swimlog_manage_own_events','swimlog_manage_own_locations','swimlog_upload_workouts','swimlog_manage_settings')as$cap)(new WP_User($id))->add_cap($cap);}
  $owner=$users['owner'];wp_set_current_user($owner);
  update_option('timezone_string','America/Denver');update_option('date_format','Y-m-d');update_option('time_format','H:i');
  $verify('2026-11-01'===UI::date_text('2026-11-01'),'Calendar date remains the captured date');
@@ -46,6 +46,13 @@ try{
  $set('swimlog-events');$filtered=$render(array(Events_UI::class,'events'));$verify(false!==strpos($filtered,'No events match this view.')&&false!==strpos($filtered,'Clear filters'),'Empty event view offers full-history recovery');
  $set('swimlog-workouts');$fixtures['EMPTY']=$render(array(Workouts_UI::class,'workouts'));$verify(false!==strpos($fixtures['EMPTY'],'No recorded activities yet.'),'Genuinely empty account has first-use guidance');
  global$wpdb;Database::write('insert',Database::table('workouts'),array('user_id'=>$owner,'workout_type'=>'pool','source_type'=>'manual','workout_start'=>$today.' 10:00:00','total_distance_m'=>100,'created_at'=>current_time('mysql'),'updated_at'=>current_time('mysql')));$ids['workout']=(int)$wpdb->insert_id;
+ // Maintenance and permanent deletion remain separate, with original action nonces/confirmations.
+ $set('swimlog-workouts',array('workout_id'=>$ids['workout']));$fixtures['MAINTENANCE']=$render(array(Workouts_UI::class,'workouts'));$d=$xp($fixtures['MAINTENANCE']);
+ $verify(1===$d->query('//section[@class="swimlog-workout-maintenance"]//input[@name="swimlog_workout_action" and @value="rebuild"]')->length&&0===$d->query('//section[@class="swimlog-workout-maintenance"]//input[@value="delete"]')->length,'Repair is in its own maintenance section');
+ $verify(1===$d->query('//section[@class="swimlog-workout-deletion"]//input[@name="swimlog_workout_action" and @value="delete"]')->length&&0===$d->query('//section[@class="swimlog-workout-deletion"]//input[@value="rebuild"]')->length,'Permanent deletion is separate from repair');
+ foreach(array('swimlog-workout-maintenance'=>'swimlog_rebuild_workout_','swimlog-workout-deletion'=>'swimlog_delete_workout_')as$class=>$action){$nonce=$d->query('//section[@class="'.$class.'"]//input[@name="_wpnonce"]')->item(0)->getAttribute('value');$verify((bool)wp_verify_nonce($nonce,$action.$ids['workout']),'Existing action nonce remains valid: '.$class);$verify(false!==strpos($d->query('//section[@class="'.$class.'"]//button')->item(0)->getAttribute('onclick'),'confirm('),'Confirmation remains specific to action: '.$class);}
+ $set('swimlog-settings');$fixtures['SETTINGS']=$render(array(SwimLogEvaluation\Admin_Settings::class,'settings'));$verify(false===strpos($fixtures['SETTINGS'],'v0.2')&&false===strpos($fixtures['SETTINGS'],'their Privacy page')&&false!==strpos($fixtures['SETTINGS'],'Swimmer Configuration'),'Settings use current preservation and screen names');
+ $verify(false!==strpos($fixtures['SETTINGS'],'for every swimmer')&&false!==strpos($fixtures['SETTINGS'],'original source files remain unchanged'),'Global maintenance scope and retention are explicit');
  $set('swimlog-workouts',array('date_to'=>'2000-01-01'));$fixtures['FILTERED']=$render(array(Workouts_UI::class,'workouts'));$verify(false!==strpos($fixtures['FILTERED'],'No recorded activities match these filters or this page.'),'Filtered history does not claim the account is empty');
  $d=$xp($fixtures['FILTERED']);foreach($d->query('//a[text()="Clear filters"]')as$a){parse_str((string)wp_parse_url($a->getAttribute('href'),PHP_URL_QUERY),$q);$verify(!isset($q['date_to'])&&!isset($q['paged']),'Clear filters discards filters and pagination');}
  // Synthetic ready connection: never contact a real Garmin account.
