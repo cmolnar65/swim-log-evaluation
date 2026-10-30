@@ -136,6 +136,7 @@ try {
     $_POST = array( 'swimlog_measurement_import' => '1', '_wpnonce' => wp_create_nonce( 'swimlog_garmin_measurements' ), 'measurement_start' => '2026-10-01', 'measurement_end' => '2026-10-01', 'measurement_categories' => array( 'weight', 'spo2' ) );
     $_REQUEST = $_POST;
     ob_start();
+    $verify( true === API::test_connection( $owner ), 'Test current synthetic credential before showing import controls.' );
     UI::render();
     $html = ob_get_clean();
     $verify( false !== strpos( $html, 'Measurement import results' ) && false !== strpos( $html, 'Readings: added / updated / skipped' ), 'Actual form submits and renders import results.' );
@@ -168,3 +169,4 @@ try {
     }
     wp_set_current_user( $original_user );
 }
+

@@ -9,14 +9,16 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
-		var garminPage = document.querySelector('.swimlog-admin[data-swimlog-garmin-configured="1"]');
-		var garminActivities = document.getElementById('swimlog-garmin-activities');
-		if (garminPage && garminActivities) {
-			var statusTable = garminPage.querySelector('.form-table');
-			if (statusTable) {
-				statusTable.insertAdjacentElement('afterend', garminActivities);
-			}
-		}
+
+        document.querySelectorAll('.swimlog-garmin-nav a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                var target = document.querySelector(link.getAttribute('href'));
+                if (target && target.tagName === 'DETAILS') {
+                    target.open = true;
+                    target.querySelector('summary').focus();
+                }
+            });
+        });
 
 		var apiKey = document.getElementById('swimlog-garmin-api-key');
 		var apiKeySubmit = document.getElementById('swimlog-garmin-api-key-submit');
@@ -99,3 +101,4 @@
 		updateGarminBatchButtons(form);
 	});
 }());
+

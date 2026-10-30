@@ -7,6 +7,7 @@ require_once __DIR__ . '/class-land-activity.php';
 /** Secure per-user storage and connection testing for Garmin Connect Personal API credentials. */
 final class Garmin_Personal_API {
 	const META_KEY = 'swimlog_garmin_personal_api_key';
+	const TESTED_KEY = 'swimlog_garmin_tested_credential';
 	const TOKEN_ENDPOINT = 'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token';
 	const API_BASE = 'https://personal.connectapi.garmin.com/';
 
@@ -23,17 +24,45 @@ final class Garmin_Personal_API {
 		if ( is_wp_error( $encrypted ) ) {
 			return $encrypted;
 		}
-		return (bool) update_user_meta( (int) $user_id, self::META_KEY, $encrypted );
+		if ( ! update_user_meta( (int) $user_id, self::META_KEY, $encrypted ) ) {
+            return new \WP_Error( 'swimlog_garmin_save_failed', __( 'The Garmin API key could not be saved. Please try again.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        delete_user_meta( (int) $user_id, self::TESTED_KEY );
+        return true;
 	}
 
 	public static function remove_key( $user_id ) {
 		delete_user_meta( (int) $user_id, self::META_KEY );
+        delete_user_meta( (int) $user_id, self::TESTED_KEY );
 	}
 
-	public static function test_connection( $user_id ) {
-		$token = self::access_token( $user_id );
-		return is_wp_error( $token ) ? $token : true;
-	}
+    /** The saved credential must have passed an explicit owner connection test. */
+    public static function connection_ready( $user_id ) {
+        $stored = (string) get_user_meta( (int) $user_id, self::META_KEY, true );
+        $tested = (string) get_user_meta( (int) $user_id, self::TESTED_KEY, true );
+        return '' !== $stored && '' !== $tested && hash_equals( self::credential_marker( $user_id, $stored ), $tested );
+    }
+
+    private static function credential_marker( $user_id, $stored ) {
+        return hash_hmac( 'sha256', (int) $user_id . ':' . $stored, wp_salt( 'auth' ) );
+    }
+
+    public static function test_connection( $user_id ) {
+        $stored = (string) get_user_meta( (int) $user_id, self::META_KEY, true );
+        $token = self::access_token( $user_id );
+        if ( is_wp_error( $token ) ) {
+            delete_user_meta( (int) $user_id, self::TESTED_KEY );
+            return $token;
+        }
+        if ( '' === $stored || ! hash_equals( $stored, (string) get_user_meta( (int) $user_id, self::META_KEY, true ) ) ) {
+            return new \WP_Error( 'swimlog_garmin_key_changed', __( 'The saved key changed during the test. Test the current key again.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        update_user_meta( (int) $user_id, self::TESTED_KEY, self::credential_marker( $user_id, $stored ) );
+        if ( ! self::connection_ready( $user_id ) ) {
+            return new \WP_Error( 'swimlog_garmin_test_not_saved', __( 'The connection test could not be saved. Please test again.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        return true;
+    }
 
 	public static function recent_activities( $user_id, $limit = 50, $start_date = '', $end_date = '', $activity_types = array() ) {
 		$token = self::access_token( $user_id );
@@ -732,5 +761,6 @@ final class Garmin_Personal_API {
 		return $plaintext;
 	}
 }
+
 
 

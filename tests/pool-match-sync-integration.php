@@ -20,6 +20,7 @@ try{
  $verify(5486.4===(float)Workout::get_for_user($pool_id,$owner)->total_distance_m,'Existing workout remains unchanged');
  $verify(array('lap_swimming','open_water_swimming')===API::scheduled_types($owner),'Legacy users keep pool and open-water defaults');
  $verify(!is_wp_error(API::save_key($owner,'synthetic-match-sync-key')),'Save synthetic credential');
+ $test_http=static function(){return array('response'=>array('code'=>200),'headers'=>array(),'body'=>'synthetic.setup.token');};add_filter('pre_http_request',$test_http);try{$verify(true===API::test_connection($owner),'Explicit synthetic connection test');}finally{remove_filter('pre_http_request',$test_http);}
  $save=static function($types,$nonce=null){$_GET=array();$_POST=array('swimlog_garmin_action'=>'save_sync','garmin_sync_enabled'=>'1','garmin_sync_types_present'=>'1','garmin_sync_types'=>$types,'_wpnonce'=>$nonce??wp_create_nonce('swimlog_save_garmin_sync'));$_REQUEST=$_POST;ob_start();try{Admin_Garmin::garmin();return ob_get_contents();}finally{ob_end_clean();}};
  $types=array('lap_swimming','open_water_swimming','running','walking');$html=$save($types);
  $verify($types===API::scheduled_types($owner),'Save and reload all four scheduled categories');

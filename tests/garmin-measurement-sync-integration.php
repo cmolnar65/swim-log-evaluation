@@ -127,14 +127,15 @@ try {
     wp_set_current_user( $owner );
     $_POST = array( 'swimlog_measurement_schedule' => '1', '_wpnonce' => wp_create_nonce( 'swimlog_measurement_schedule' ), 'scheduled_categories' => array( 'weight' ) );
     $_REQUEST = $_POST;
-    ob_start(); SwimLogEvaluation\Admin_Garmin_Measurements::render(); $html = ob_get_clean();
+    $verify( true === API::test_connection( $owner ), 'Test current synthetic credential before showing schedule controls.' );
+    ob_start(); SwimLogEvaluation\Admin_Garmin_Measurements::schedule_controls(); $html = ob_get_clean();
     $verify( array( 'weight' ) === Sync::categories( $owner ) && false !== strpos( $html, 'Measurement schedule saved.' ), 'Actual settings form saves opt-in.' );
     $verify( false === strpos( $html, 'synthetic-only-schedule-key' ) && false === strpos( $html, '82.5' ), 'Schedule UI exposes no payload/key.' );
     $nonce_filter = static function () { return static function () { throw new RuntimeException( 'nonce denied' ); }; };
     add_filter( 'wp_die_handler', $nonce_filter ); add_filter( 'wp_die_ajax_handler', $nonce_filter );
     $_POST['_wpnonce'] = 'bad'; $_POST['scheduled_categories'] = array( 'spo2' ); $_REQUEST = $_POST;
     $denied = false; ob_start();
-    try { SwimLogEvaluation\Admin_Garmin_Measurements::render(); } catch ( RuntimeException $error ) { $denied = 'nonce denied' === $error->getMessage(); } finally { ob_end_clean(); }
+    try { SwimLogEvaluation\Admin_Garmin_Measurements::schedule_controls(); } catch ( RuntimeException $error ) { $denied = 'nonce denied' === $error->getMessage(); } finally { ob_end_clean(); }
     $verify( $denied && array( 'weight' ) === Sync::categories( $owner ), 'Invalid nonce cannot alter schedule.' );
     $_POST = array(); $_REQUEST = array();
     $verify( Sync::configure( array() ) && ! Sync::categories( $owner ) && ! wp_next_scheduled( Sync::HOOK, array( $owner ) ) && ! wp_next_scheduled( Sync::RETRY_HOOK, array( $owner ) ), 'Opt-out removes both job types.' );
@@ -152,3 +153,4 @@ try {
     }
     wp_set_current_user( $previous );
 }
+

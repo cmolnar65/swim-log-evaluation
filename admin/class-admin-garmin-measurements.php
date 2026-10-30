@@ -2,11 +2,13 @@
 namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once dirname( __DIR__ ) . '/includes/class-garmin-personal-api.php';
 
 /** Owner-only manual measurement import controls on the existing Garmin page. */
 final class Admin_Garmin_Measurements {
-    private static function schedule_controls() {
+    public static function schedule_controls() {
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-sync.php';
+        if ( ! current_user_can( 'swimlog_manage_own_workouts' ) || ! Garmin_Personal_API::connection_ready( get_current_user_id() ) ) return;
         $owner = (int) get_current_user_id();
         $notice = null;
         if ( isset( $_POST['swimlog_measurement_schedule'] ) ) {
@@ -40,23 +42,22 @@ final class Admin_Garmin_Measurements {
             <?php if ( is_array( $state ) ) : ?>
                 <p><?php echo esc_html( sprintf( /* translators: 1: latest attempt UTC timestamp, 2: job status. */ __( 'Latest attempt (UTC): %1$s. Status: %2$s.', 'chriss-swim-training-progress-evaluation' ), $state['attempt_utc'] ?? '', $state['status'] ?? '' ) ); ?></p>
                 <p><?php esc_html_e( 'Failed or unattempted items preserve existing data and can also be retried through manual import below.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-                <table class="widefat striped"><caption><?php esc_html_e( 'Latest automatic import window', 'chriss-swim-training-progress-evaluation' ); ?></caption><thead><tr>
+                <div class="swimlog-table-wrap"><table class="widefat striped"><caption><?php esc_html_e( 'Latest automatic import window', 'chriss-swim-training-progress-evaluation' ); ?></caption><thead><tr>
                 <?php foreach ( array( __( 'Date / category', 'chriss-swim-training-progress-evaluation' ), __( 'Result', 'chriss-swim-training-progress-evaluation' ), __( 'Readings: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Reports: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ) ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
                 </tr></thead><tbody>
                 <?php foreach ( (array) ( $state['results'] ?? array() ) as $row ) : ?>
                 <tr><td><?php echo esc_html( $row['date'] . ' / ' . $row['category'] ); ?></td><td><?php echo esc_html( $row['status'] ); ?></td><td><?php echo esc_html( $row['added'] . ' / ' . $row['updated'] . ' / ' . $row['skipped'] ); ?></td><td><?php echo esc_html( $row['reports_added'] . ' / ' . $row['reports_updated'] . ' / ' . $row['reports_skipped'] ); ?></td></tr>
                 <?php endforeach; ?>
-                </tbody></table>
+                </tbody></table></div>
             <?php endif; ?>
         </section>
         <?php
     }
 
     public static function render() {
-        if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
+        if ( ! current_user_can( 'swimlog_manage_own_workouts' ) || ! Garmin_Personal_API::connection_ready( get_current_user_id() ) ) return;
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-import.php';
-        self::schedule_controls();
         $today = wp_date( 'Y-m-d', null, wp_timezone() );
         $start = $today;
         $end = $today;
@@ -74,8 +75,8 @@ final class Admin_Garmin_Measurements {
             $results = Garmin_Measurement_Import::run( (int) get_current_user_id(), $start, $end, $selected );
         }
         ?>
-        <section id="swimlog-garmin-measurements" aria-labelledby="swimlog-measurement-title">
-            <h2 id="swimlog-measurement-title"><?php esc_html_e( 'Private measurements', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+        <section id="swimlog-garmin-measurements" class="swimlog-garmin-section" aria-labelledby="swimlog-measurement-title">
+            <h2 id="swimlog-measurement-title"><?php esc_html_e( 'Import Measurements', 'chriss-swim-training-progress-evaluation' ); ?></h2>
             <p><?php esc_html_e( 'Import measurements into your private records. Weight, BMI and Garmin-reported SpO2 summaries are currently supported. Body-fat, body-water and mass fields, blood pressure and individual/hourly SpO2 readings await format verification and are not imported. Imported measurements appear on your private calendar.', 'chriss-swim-training-progress-evaluation' ); ?></p>
             <form method="post">
                 <?php wp_nonce_field( 'swimlog_garmin_measurements' ); ?>
@@ -94,7 +95,7 @@ final class Admin_Garmin_Measurements {
                 <div class="notice notice-error inline"><p><?php echo esc_html( $results->get_error_message() ); ?></p></div>
             <?php elseif ( is_array( $results ) ) : ?>
                 <div role="status"><h3><?php esc_html_e( 'Measurement import results', 'chriss-swim-training-progress-evaluation' ); ?></h3></div>
-                <table class="widefat striped"><thead><tr>
+                <div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr>
                     <?php foreach ( array( __( 'Date', 'chriss-swim-training-progress-evaluation' ), __( 'Category', 'chriss-swim-training-progress-evaluation' ), __( 'Result', 'chriss-swim-training-progress-evaluation' ), __( 'Readings: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Reports: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Excluded fields or rows', 'chriss-swim-training-progress-evaluation' ), __( 'Failed requests or bundles', 'chriss-swim-training-progress-evaluation' ) ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
                 </tr></thead><tbody>
                 <?php
@@ -113,9 +114,10 @@ final class Admin_Garmin_Measurements {
                         </form>
                     <?php endif; ?></td></tr>
                 <?php endforeach; ?>
-                </tbody></table>
+                </tbody></table></div>
             <?php endif; ?>
         </section>
         <?php
     }
 }
+
