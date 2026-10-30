@@ -16,7 +16,23 @@ For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred 
 
 == Development status ==
 
-The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private storage, verified-field manual Garmin import and internal owner-only calendar retrieval are implemented; private measurement indicators follow workouts, with overflow opening full day details. Development database schema is 1.3 for additive private-measurement storage; released v1.2 used schema 1.2.
+The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private weight/BMI/provider-SpO2 imports, separate opt-in automatic measurement synchronization, owner-only calendar indicators and historical Garmin background jobs are implemented. Workouts appear first; overflow opens full day details. Test-site/live-account acceptance is pending and release remains on hold. Development database schema is 1.3 for additive private-measurement storage; released v1.2 used schema 1.2.
+
+== Garmin measurements and historical imports (v1.3 development) ==
+
+On the Garmin Connect page, use your own saved Personal API connection. Private measurements supports up to seven inclusive days per manual submission. Automatic private measurement imports are off by default and separately selectable by category; historical imports do not enable regular sync.
+
+Import historical Garmin data accepts inclusive dates and selected pool/open-water swims, weight, BMI and provider SpO2 summaries. Start with a short known range, then select a longer range such as 2018-01-01 through 2018-12-31. Background jobs persist after browser closure and process small batches through WordPress cron; long ranges can take hours or longer and depend on site traffic. Garmin may not expose every old record.
+
+Pause/Resume retains progress. Cancel is terminal and retains already imported data. Retry failed items is available after completion with errors. A request already in progress may finish. Missing permissions/keys block work without dropping progress; after plugin reactivation, resume jobs explicitly. Use Refresh job status or Resume / repair schedule if needed.
+
+Exact duplicates are skipped; distinct same-day readings stay. Activity identities and FIT fingerprints are checked with existing conservative matching/location review. Pending/failed activity records are not silently labelled imported. Follow existing Garmin activity/location and pending-import review links for explicit decisions.
+
+Result filters show all, failed or needs-review items, twenty per page. Counts distinguish swims, individual readings and daily category records (including weight/BMI bookkeeping and SpO2 reports). Empty responses are not proof that no historical data ever existed. An interrupted committed import can replay as already present/skipped without a second record. Review counts reflect the scan outcome, not subsequent decisions on another screen.
+
+Jobs and health data are private to the signed-in owner and excluded from public sharing/existing external portability responses. Calendar measurements follow workouts/events and retain source dates, units and multiple readings. SpO2 daily/window averages, sleep summaries and seven-day baselines remain distinct; no unverified raw-sample average is invented. Blood pressure, other composition fields and individual/hourly SpO2 are not imported.
+
+The repository contains docs/v1.3-garmin-user-guide.md with installation, recovery, limitations and the pending test-site acceptance checklist. Documentation/development scripts and confidential source PDFs are excluded from installable packages.
 
 == Description ==
 
@@ -131,6 +147,15 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
 
 == Changelog ==
+
+= 1.3-dev (unreleased) =
+* Add private weight/BMI and Garmin-reported SpO2 measurement imports with additive schema 1.3, owner-only storage, duplicate handling and source-date preservation.
+* Add separate opt-in scheduled measurement checks and bounded manual imports, retaining existing records on failure.
+* Display private measurement indicators after workouts/events, with accessible overflow and complete calendar-day details on desktop and mobile.
+* Add historical Garmin activity/measurement background jobs with inclusive date ranges, full pagination, status-aware activity retries, persistent progress, pause/resume/cancel, failed-item retries and private review results.
+* Serialize incoming activity imports and preserve conservative matching/location review and recorded history.
+* Repair calendar pool-length normalization; expand migration, persistence, full-year/restart/privacy and desktop/mobile regressions.
+* Keep unverified composition fields, blood pressure and individual/hourly SpO2 transport disabled. Live-account/test-site acceptance is pending; release remains on hold.
 
 = 1.2 =
 * Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.

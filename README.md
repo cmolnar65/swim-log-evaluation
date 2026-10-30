@@ -8,7 +8,11 @@ The plugin supports FIT and supported CSV workout sources plus first-class manua
 
 Development on `develop` starts from released v1.2 commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. Runtime/header version: **1.3-dev**; current public release and WordPress.org stable tag: **1.2**; development database schema: **1.3** (additive private-measurement storage).
 
-The initial scope is private Garmin measurement import, storage, duplicate handling and calendar indicators for supported weight, body-composition, blood-pressure and SpO2 data. Endpoint support and SpO2 sample/summary semantics must be verified before implementation. Private storage, verified-field manual import and internal owner-only calendar retrieval are implemented. Private measurement badges follow workouts and events; compact previews show an accessible overflow control that opens the complete day list. Scheduled measurement synchronization is planned, not yet implemented. See the [v1.3 development checklist](docs/v1.3-development-checklist.md).
+Private Garmin weight readings, BMI and provider SpO2 summaries can be imported manually or through separate opt-in automatic measurement synchronization. Blood pressure, other composition fields and raw/hourly SpO2 imports remain unavailable pending verified support. Owner-only calendar indicators follow workouts/events, with overflow opening the complete day list.
+
+The Garmin page also provides historical date/category imports with persistent background jobs, complete activity pagination, duplicate-safe observations, conservative activity review, pause/resume/cancel, failed-item retries and private result counts. Jobs preserve progress across browser closure/process interruptions and require explicit resume after plugin deactivation. Garmin's available history is account-dependent.
+
+See the [Garmin user guide and test-site acceptance checklist](docs/v1.3-garmin-user-guide.md), [historical import contract](docs/v1.3-historical-garmin-import.md), and [development checklist](docs/v1.3-development-checklist.md). A [pinned development test ZIP build wrapper](docs/build-v1.3-test.sh) uses the existing production packager, includes runtime dependencies and audits exclusions; it does not publish a release. Test-site/live-account acceptance is pending, and v1.3 release remains explicitly on hold.
 
 ## v1.2
 
