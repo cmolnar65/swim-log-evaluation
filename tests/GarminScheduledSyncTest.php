@@ -31,4 +31,23 @@ final class GarminScheduledSyncTest extends TestCase {
   $this->assertStringContainsString('Next scheduled check:',$code);
   $this->assertStringContainsString("wp_next_scheduled('swimlog_garmin_scheduled_sync',array(\$user_id))",$code);
  }
+ public function test_all_four_scheduled_types_and_legacy_defaults_are_preserved(){
+  global $swimlog_test_user_meta;
+  $previous=$swimlog_test_user_meta;
+  try{
+   $swimlog_test_user_meta=array();
+   $api='SwimLogEvaluation\\Garmin_Personal_API';
+   require_once dirname(__DIR__).'/includes/class-garmin-personal-api.php';
+   $this->assertSame(array('lap_swimming','open_water_swimming'),$api::scheduled_types(42));
+   $swimlog_test_user_meta[42]['swimlog_garmin_land_sync_types']=array('walking');
+   $this->assertSame(array('lap_swimming','open_water_swimming','walking'),$api::scheduled_types(42));
+   $swimlog_test_user_meta[42]['swimlog_garmin_sync_types']=array('lap_swimming','open_water_swimming','running','walking','cycling');
+   $this->assertSame(array('lap_swimming','open_water_swimming','running','walking'),$api::scheduled_types(42));
+   $swimlog_test_user_meta[42]['swimlog_garmin_sync_types']=array('running');
+   $this->assertSame(array('running'),$api::scheduled_types(42));
+   $swimlog_test_user_meta[42]['swimlog_garmin_sync_types']=array();
+   $this->assertSame(array(),$api::scheduled_types(42));
+  }finally{$swimlog_test_user_meta=$previous;}
+ }
+
 }

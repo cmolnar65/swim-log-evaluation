@@ -574,6 +574,13 @@ final class Garmin_Personal_API {
         return $rows;
     }
 
+    /** Preserve legacy swim defaults until this owner explicitly saves the four-sport selection. */
+    public static function scheduled_types( $user_id ) {
+        $saved = get_user_meta( $user_id, 'swimlog_garmin_sync_types', true );
+        if ( ! is_array( $saved ) ) $saved = array_merge( array('lap_swimming','open_water_swimming'), (array) get_user_meta( $user_id, 'swimlog_garmin_land_sync_types', true ) );
+        return array_values( array_intersect( Land_Activity::garmin_types(), array_filter( $saved, 'is_string' ) ) );
+    }
+
     public static function scheduled_sync( $user_id ) {
         $previous = get_current_user_id();
         wp_set_current_user( absint( $user_id ) );
@@ -584,7 +591,7 @@ final class Garmin_Personal_API {
 	private static function scheduled_sync_for_owner( $user_id ) {
 		$user_id=absint($user_id);if(!$user_id||!self::is_configured($user_id))return new \WP_Error('swimlog_garmin_not_configured',__('No Garmin Connect Personal API key is configured.','chriss-swim-training-progress-evaluation'));
 		update_user_meta($user_id,'swimlog_garmin_sync_last_attempt',current_time('mysql'));
-		$end=wp_date('Y-m-d');$start=wp_date('Y-m-d',current_time('timestamp')-(7*DAY_IN_SECONDS));$types=array('lap_swimming','open_water_swimming');if(Land_Activity::enabled()&&Land_Activity::authorized($user_id)&&current_user_can('swimlog_upload_workouts'))$types=array_merge($types,array_intersect(array('running','walking'),(array)get_user_meta($user_id,'swimlog_garmin_land_sync_types',true)));$activities=self::recent_activities($user_id,100,$start,$end,$types);if(is_wp_error($activities)){update_user_meta($user_id,'swimlog_garmin_sync_last_error',array('code'=>$activities->get_error_code(),'message'=>$activities->get_error_message()));return $activities;}
+		$end=wp_date('Y-m-d');$start=wp_date('Y-m-d',current_time('timestamp')-(7*DAY_IN_SECONDS));$types=self::scheduled_types($user_id);if(!Land_Activity::authorized($user_id)||!current_user_can('swimlog_upload_workouts'))$types=array_values(array_diff($types,array('running','walking')));if(!$types)return array('imported'=>0,'already'=>0,'pending'=>0,'open_water_review'=>0,'failed'=>0);$activities=self::recent_activities($user_id,100,$start,$end,$types);if(is_wp_error($activities)){update_user_meta($user_id,'swimlog_garmin_sync_last_error',array('code'=>$activities->get_error_code(),'message'=>$activities->get_error_message()));return $activities;}
 		$result=array('imported'=>0,'already'=>0,'pending'=>0,'open_water_review'=>0,'failed'=>0);
 		foreach((array)$activities as$activity){$id=absint($activity['activityId']??0);$type=(string)($activity['activityType']['typeKey']??'');if(!$id)continue;
 			if(!in_array($type,$types,true))continue;$import=self::import_activity($user_id,$id,0,'open_water_swimming'===$type);if(is_wp_error($import)){if('swimlog_ows_location_review'===$import->get_error_code())$result['open_water_review']++;else$result['failed']++;continue;}$status=(string)($import['status']??'');
