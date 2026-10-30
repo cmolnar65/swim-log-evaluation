@@ -186,17 +186,28 @@ final class Importer {
 
 		$course=$w['pool_length_unit']??'';
 		$pool=(float)($w['pool_length_m']??0);
-		if(!in_array($course,array('m','yd'),true)||$pool<=0)return array('status'=>'none','workout'=>null);
+		$known_course=in_array($course,array('m','yd'),true)&&$pool>0;
 
 		$near=Database::read( 'get_results', $wpdb->prepare("SELECT * FROM %i WHERE user_id=%d AND workout_type='pool' AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$t,$uid,$start,$elapsed,$start));
 		foreach((array)$near as $candidate){
 			$candidate_course=$candidate->pool_length_unit??'';
 			$candidate_pool=(float)($candidate->pool_length_m??0);
-			if($candidate_course!==$course||($candidate_pool>0&&abs($candidate_pool-$pool)>0.02))return array('status'=>'disagreement','workout'=>$candidate);
+			if($known_course&&($candidate_course!==$course||($candidate_pool>0&&abs($candidate_pool-$pool)>0.02)))return array('status'=>'disagreement','workout'=>$candidate);
 		}
 
-		$candidates=Database::read( 'get_results', $wpdb->prepare("SELECT * FROM %i WHERE user_id=%d AND workout_type='pool' AND pool_length_unit=%s AND ABS(TIMESTAMPDIFF(SECOND,workout_start,%s))<=300 AND ABS(COALESCE(total_distance_m,0)-%f)<=%f AND ABS(COALESCE(elapsed_time_ms,0)-%d)<=120000 ORDER BY ABS(TIMESTAMPDIFF(SECOND,workout_start,%s)) ASC,id ASC",$t,$uid,$course,$start,$dist,$pool,$elapsed,$start));
-		foreach((array)$candidates as $candidate){if(abs((float)$candidate->pool_length_m-$pool)<=0.02)return array('status'=>'probable','workout'=>$candidate);}
+        // Device recordings can differ by multiple lengths; broaden review only, never automatic attachment.
+        foreach ( (array) $near as $candidate ) {
+            $candidate_start = strtotime( self::normalize_match_start( $candidate->workout_start ?? '' ) . ' UTC' );
+            $incoming_start = strtotime( $start . ' UTC' );
+            $candidate_elapsed = (int) ( $candidate->elapsed_time_ms ?? 0 );
+            if ( false === $candidate_start || false === $incoming_start || $elapsed <= 0 || $candidate_elapsed <= 0 ) continue;
+            $overlap = min( $incoming_start * 1000 + $elapsed, $candidate_start * 1000 + $candidate_elapsed ) - max( $incoming_start, $candidate_start ) * 1000;
+            if ( $overlap < min( $elapsed, $candidate_elapsed ) * 0.8 ) continue;
+            $candidate_distance = (float) ( $candidate->total_distance_m ?? 0 );
+            $candidate_pool = (float) ( $candidate->pool_length_m ?? 0 );
+            $tolerance = max( 2 * max( $pool, $candidate_pool ), max( $dist, $candidate_distance ) * 0.02 );
+            if ( $dist > 0 && $candidate_distance > 0 && abs( $candidate_distance - $dist ) <= $tolerance ) return array( 'status' => 'probable', 'workout' => $candidate );
+        }
 		return array('status'=>'none','workout'=>null);
 	}
 	public static function pending_for_user($import_id,$uid){global $wpdb;$it=Database::table('imports');$wt=Database::table('workouts');$row=Database::read( 'get_row', $wpdb->prepare("SELECT i.*,w.workout_start candidate_start,w.total_distance_m candidate_distance_m,w.elapsed_time_ms candidate_elapsed_ms,w.original_distance candidate_original_distance,w.original_distance_unit candidate_distance_unit,w.original_pool_length candidate_pool_length,w.pool_length_unit candidate_course,w.location_id candidate_location_id,w.workout_type candidate_type FROM %i i JOIN %i w ON w.id=i.workout_id AND w.user_id=i.user_id WHERE i.id=%d AND i.user_id=%d AND i.import_status='pending'",$it,$wt,$import_id,$uid));return $row&&Land_Activity::is_land($row->candidate_type??'')&&!Land_Activity::authorized($uid)?null:$row;}
