@@ -42,7 +42,11 @@
   const button = (parent, label, action) => {
     const b = make('button', label, parent);
     b.type = 'button'; b.className = 'button';
-    b.addEventListener('click', action);
+    b.addEventListener('click', event => {
+      // Notify the existing PDF review form before rendering detaches the clicked control.
+      if (root.hasAttribute('data-swimlog-pdf-editor')) root.dispatchEvent(new Event('input', {bubbles:true}));
+      action(event);
+    });
     return b;
   };
   const equipmentField = (parent, node) => {

@@ -33,6 +33,11 @@ const { chromium } = require('playwright');
     await first.getByLabel('Pace target', {exact:true}).last().fill('easy');
     if (await first.locator('[name$="[reviewed]"]').isChecked()) throw Error('Editing did not invalidate earlier approval');
     await first.locator('[name$="[reviewed]"]').check();
+    const editor = first.locator('[data-swimlog-pdf-editor]');
+    await editor.getByRole('button', {name:'+ Section', exact:true}).click();
+    if (await first.locator('[name$="[reviewed]"]').isChecked()) throw Error('Structural editing did not invalidate approval');
+    await editor.locator(':scope > .swimlog-structure-panel').last().getByRole('button', {name:'Remove', exact:true}).first().click();
+    await first.locator('[name$="[reviewed]"]').check();
     const second = candidates.nth(1);
     await second.locator('[name="swimlog_pdf_selected[]"]').check();
     await second.getByLabel('Distance', {exact:true}).fill('200');
@@ -55,3 +60,4 @@ const { chromium } = require('playwright');
     console.log('PDF review browser: selection, required approval, independent correction editors, totals, lazy rendering and selected-only form submission passed.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exit(1);});
+
