@@ -16,6 +16,9 @@ async function scenario(engine,name,options){
    await page.addStyleTag({path:path.resolve('assets/css/structured-workout-editor.css')});
    await page.addScriptTag({path:path.resolve('assets/js/admin.js')});
    await page.evaluate(()=>document.dispatchEvent(new Event('DOMContentLoaded')));
+   // Optional set tables must be opened before checking their scroll geometry.
+   const sets=page.locator('.swimlog-manual-sets');
+   if(await sets.count() && await sets.getAttribute('open')===null)await sets.locator('summary').click();
    const bad=await page.locator('.swimlog-admin table.widefat').evaluateAll(tables=>tables.filter(t=>!t.closest('.swimlog-table-wrap,.swimlog-history-results')).length);
    assert.equal(bad,0,fixture.name+': every data table has a contained scrolling region');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,fixture.name+': page must fit viewport');

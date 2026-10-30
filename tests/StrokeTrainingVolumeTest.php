@@ -37,7 +37,7 @@ final class StrokeTrainingVolumeTest extends TestCase {
   $this->assertStringNotContainsString("Workout::stroke_volume_for_user(\$user_id,\$filters)",$analytics);
   $this->assertStringContainsString("\$stroke_volume_by_course=array('m'=>array(),'yd'=>array())",$analytics);
   $this->assertStringContainsString('Meter and yard courses are kept separate and strokes are ranked by total distance.',$analytics);
-  $this->assertStringContainsString('Change the period on Swimmer Configuration.',$analytics);
+  $this->assertStringContainsString('The rolling period below applies to this report; your saved preference is unchanged.',$analytics);
   $this->assertStringContainsString('Active swim time',$analytics);
  }
 
@@ -54,3 +54,4 @@ final class StrokeTrainingVolumeTest extends TestCase {
   $this->assertStringContainsString("if(!\$result['rows'])",$workouts);
  }
 }
+
