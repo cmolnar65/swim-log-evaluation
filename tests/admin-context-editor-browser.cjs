@@ -25,9 +25,9 @@ async function scenario(engine,name,options){const browser=await engine.launch({
   }
  }
  await mount(fixture('EDITOR'),true);const root=page.locator('#swimlog-structure-editor');
- const stroke=root.getByLabel('Stroke',{exact:true}).first();await stroke.waitFor({state:'visible'});assert.deepEqual(await stroke.locator('option').allTextContents(),['Freestyle','Breaststroke','Backstroke','Butterfly','Mixed']);
+ assert.deepEqual(errors,[]);assert.equal(await root.locator('select').count(),3,'Editor initialized');const stroke=root.getByRole('combobox',{name:'Stroke',exact:true}).first();await stroke.waitFor({state:'visible'});assert.deepEqual(await stroke.locator('option').allTextContents(),['Freestyle','Breaststroke','Backstroke','Butterfly','Mixed']);
  await stroke.focus();await stroke.selectOption('BR');assert.equal(await stroke.evaluate(e=>e===document.activeElement),true);
- const unit=root.getByLabel('Distance unit',{exact:true});await unit.focus();await unit.selectOption('yd');assert.equal(await unit.evaluate(e=>e===document.activeElement),true);
+ const unit=root.getByRole('combobox',{name:'Distance unit',exact:true});await unit.focus();await unit.selectOption('yd');assert.equal(await unit.evaluate(e=>e===document.activeElement),true);
  const equipment=root.locator('.swimlog-equipment-disclosure');assert.equal(await equipment.nth(0).getAttribute('open'),null);assert.notEqual(await equipment.nth(1).getAttribute('open'),null);
  await equipment.nth(0).locator('summary').click();await equipment.nth(0).getByLabel('Paddles',{exact:true}).check();await equipment.nth(0).getByLabel('Other equipment (comma separated)',{exact:true}).fill('Synthetic custom');
  const stepPanels=()=>root.locator('.swimlog-structure-panel').filter({has:page.locator('legend')});
