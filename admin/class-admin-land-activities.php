@@ -24,7 +24,7 @@ final class Admin_Land_Activities {
         );
         ?><div class="wrap swimlog-admin swimlog-land-activity"><h1><?php echo esc_html( $labels[$workout->workout_type] ); ?></h1>
         <p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-workouts' ) ); ?>"><?php esc_html_e( 'Back to Workouts', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
-        <table class="widefat striped"><tbody><?php foreach ( $fields as $label => $value ) : ?><tr><th><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( '' === $value ? '—' : $value ); ?></td></tr><?php endforeach; ?></tbody></table>
+        <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><tbody><?php foreach ( $fields as $label => $value ) : ?><tr><th><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( '' === $value ? '—' : $value ); ?></td></tr><?php endforeach; ?></tbody></table></div>
         <h2><?php esc_html_e( 'GPS Route', 'chriss-swim-training-progress-evaluation' ); ?></h2>
         <?php $svg = Admin_Workouts::activity_route_svg( $points ); ?>
         <?php if ( '' !== $svg ) : ?>
@@ -32,7 +32,8 @@ final class Admin_Land_Activities {
         <p><?php esc_html_e( 'Recorded GPS only. Missing points and recording gaps are not filled in.', 'chriss-swim-training-progress-evaluation' ); ?></p>
         <?php else : ?><p><?php esc_html_e( 'No usable GPS route is stored for this activity.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
         <h2><?php esc_html_e( 'Recorded laps / splits', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-        <table class="widefat striped"><thead><tr><th>#</th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Elapsed', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><?php foreach ( $laps as $lap ) : ?><tr><td><?php echo esc_html( $lap->sequence_no ); ?></td><td><?php echo esc_html( null !== $lap->distance_m ? Admin_UI::display_measurement( $lap->distance_m, 'm' ) : '—' ); ?></td><td><?php echo esc_html( Workout::format_duration( $lap->elapsed_time_ms ) ); ?></td></tr><?php endforeach; ?></tbody></table>
+        <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th>#</th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Elapsed', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><?php foreach ( $laps as $lap ) : ?><tr><td><?php echo esc_html( $lap->sequence_no ); ?></td><td><?php echo esc_html( null !== $lap->distance_m ? Admin_UI::display_measurement( $lap->distance_m, 'm' ) : '—' ); ?></td><td><?php echo esc_html( Workout::format_duration( $lap->elapsed_time_ms ) ); ?></td></tr><?php endforeach; ?></tbody></table></div>
         </div><?php
     }
 }
+

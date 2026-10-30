@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Admin_Structured_Workouts {
     // A full plan needs time for manual review; private previews expire 24 hours after upload.
     const PDF_PREVIEW_TTL = 86400;
+    private static $submitted_form = null;
     public static function handle_actions() {
         if ( isset( $_POST['swimlog_structure_lifecycle'] ) ) {
             if ( ! is_admin() || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return;
@@ -83,6 +84,7 @@ final class Admin_Structured_Workouts {
         $id = isset( $_POST['structure_id'] ) ? absint( wp_unslash( $_POST['structure_id'] ) ) : 0;
         $title = isset( $_POST['structure_title'] ) && is_string( $_POST['structure_title'] ) ? sanitize_text_field( wp_unslash( $_POST['structure_title'] ) ) : '';
         $raw = isset( $_POST['structure_document'] ) && is_string( $_POST['structure_document'] ) ? sanitize_textarea_field( wp_unslash( $_POST['structure_document'] ) ) : '';
+        self::$submitted_form = array( 'title' => $title, 'document' => $raw );
         if ( strlen( $raw ) > 200000 ) {
             self::error( 'Workout definition is too large.' ); return;
         }
@@ -107,6 +109,12 @@ final class Admin_Structured_Workouts {
         if ( is_wp_error( $current ) ) { $error = $current->get_error_message(); $current = null; }
         $default = array( 'version' => 1, 'unit' => 'm', 'sections' => array( array( 'type' => 'section', 'label' => 'Main Set', 'children' => array( array( 'type' => 'step', 'distance' => 100, 'stroke' => 'FR' ) ) ) ) );
         $document = $current ? $current['document'] : $default;
+        $form_title = $current ? $current['title'] : '';
+        if ( self::$submitted_form ) {
+            $form_title = self::$submitted_form['title'];
+            $attempted = json_decode( self::$submitted_form['document'], true );
+            if ( is_array( $attempted ) && isset( $attempted['sections'] ) && is_array( $attempted['sections'] ) ) $document = $attempted;
+        }
         $locked = $current ? Structured_Workout_Store::is_locked( $current['id'], $owner ) : false;
         wp_enqueue_style( 'swimlog-structured-editor-layout', SWIMLOG_EVALUATION_URL . 'assets/css/structured-workout-editor.css', array(), SWIMLOG_EVALUATION_VERSION );
         wp_enqueue_script( 'swimlog-structured-editor', SWIMLOG_EVALUATION_URL . 'assets/js/structured-workout-editor.js', array(), SWIMLOG_EVALUATION_VERSION, true );
@@ -114,7 +122,7 @@ final class Admin_Structured_Workouts {
         <div class="wrap swimlog-admin">
           <h1><?php esc_html_e( 'Structured Workouts', 'chriss-swim-training-progress-evaluation' ); ?></h1>
           <p><?php esc_html_e( 'Create reusable structured prescriptions. These are private and do not alter existing planned or recorded workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-          <?php if ( $error ) : ?><div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+          <?php if ( $error ) : ?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
           <?php Admin_Structured_Transfers::preview_panel(); ?>
           <details><summary><strong><?php esc_html_e( 'Import a training plan PDF', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary>
             <p><?php esc_html_e( 'Extract selectable PDF text for private review. No workouts are created in this phase.', 'chriss-swim-training-progress-evaluation' ); ?></p>
@@ -222,7 +230,7 @@ final class Admin_Structured_Workouts {
             <input type="hidden" name="swimlog_structure_action" value="save">
             <input type="hidden" name="structure_id" value="<?php echo esc_attr( $current ? $current['id'] : 0 ); ?>">
             <p><label for="swimlog-structure-title"><strong><?php esc_html_e( 'Workout title', 'chriss-swim-training-progress-evaluation' ); ?></strong></label>
-              <input id="swimlog-structure-title" class="regular-text" name="structure_title" maxlength="191" required value="<?php echo esc_attr( $current ? $current['title'] : '' ); ?>"></p>
+              <input id="swimlog-structure-title" class="regular-text" name="structure_title" maxlength="191" required value="<?php echo esc_attr( $form_title ); ?>"></p>
             <div id="swimlog-structure-editor" data-document="<?php echo esc_attr( wp_json_encode( $document ) ); ?>"></div>
             <input type="hidden" id="swimlog-structure-document" name="structure_document">
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
@@ -241,7 +249,7 @@ final class Admin_Structured_Workouts {
           <?php if ( empty( $saved_workouts ) ) : ?>
             <p><?php esc_html_e( 'No structured workouts have been saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
           <?php else : ?>
-            <table class="widefat striped">
+            <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped">
               <thead><tr>
                 <th scope="col"><?php esc_html_e( 'ID', 'chriss-swim-training-progress-evaluation' ); ?></th>
                 <th scope="col"><?php esc_html_e( 'Workout', 'chriss-swim-training-progress-evaluation' ); ?></th>
@@ -289,10 +297,11 @@ final class Admin_Structured_Workouts {
                   </tr>
                 <?php endforeach; ?>
               </tbody>
-            </table>
+            </table></div>
           <?php endif; ?>
         </div>
         <?php
     }
 }
+
 

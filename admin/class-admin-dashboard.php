@@ -133,7 +133,7 @@ final class Admin_Dashboard {
         echo '<h2>' . esc_html__( 'Recent workouts', 'chriss-swim-training-progress-evaluation' ) . '</h2>';
         if ( ! $recent ) echo '<p>' . esc_html__( 'No recorded workouts yet.', 'chriss-swim-training-progress-evaluation' ) . '</p>';
         else {
-            echo '<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th></tr></thead><tbody>';
+            echo '<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th></tr></thead><tbody>';
             foreach ( $recent as $workout ) echo '<tr><td>' . esc_html( $workout->id ) . '</td><td>' . esc_html( $workout->workout_start ) . '</td><td>' . esc_html( Admin_UI::display_measurement( $workout->original_distance, $workout->original_distance_unit ) ) . '</td><td>' . esc_html( Workout::format_duration( $workout->elapsed_time_ms ) ) . '</td><td><a href="' . esc_url( self::link( 'swimlog-workouts', $user_id, array( 'workout_id' => $workout->id ) ) ) . '">View</a></td></tr>';
             echo '</tbody></table></div>';
         }
@@ -151,4 +151,5 @@ final class Admin_Dashboard {
         echo '</div>';
     }
 }
+
 

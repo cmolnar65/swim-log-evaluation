@@ -145,3 +145,15 @@
     .swimlog-garmin .form-table { table-layout: fixed; }
     .swimlog-garmin .form-table tbody, .swimlog-garmin .form-table tr { display: block; width: 100%; }
 }
+
+/* All administration data tables scroll locally without widening the page. */
+.swimlog-admin .swimlog-table-wrap { box-sizing: border-box; max-width: 100%; min-width: 0; margin-block: 12px; overscroll-behavior-inline: contain; }
+.swimlog-admin .swimlog-table-wrap:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
+.swimlog-admin .swimlog-table-wrap > table { width: 100%; }
+.swimlog-admin [data-swimlog-form-error]:focus { outline: 2px solid #2271b1; outline-offset: 2px; }
+@media (max-width: 782px) {
+    .swimlog-admin input, .swimlog-admin select, .swimlog-admin textarea { box-sizing: border-box; max-width: 100%; min-width: 0; }
+    .swimlog-admin .form-table, .swimlog-admin .form-table tbody, .swimlog-admin .form-table tr, .swimlog-admin .form-table th, .swimlog-admin .form-table td { box-sizing: border-box; display: block; width: 100%; }
+    .swimlog-admin .form-table { table-layout: fixed; }
+    .swimlog-admin .form-table th, .swimlog-admin .form-table td { padding-inline: 0; }
+}

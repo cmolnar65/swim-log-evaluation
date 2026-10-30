@@ -139,7 +139,7 @@ final class Admin_Garmin_History {
                 <?php foreach ( array( 'all' => __( 'All results', 'chriss-swim-training-progress-evaluation' ), 'failed' => __( 'Failed items', 'chriss-swim-training-progress-evaluation' ), 'review' => __( 'Needs review', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $job['id'], 'history_filter' => $key ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a> <?php endforeach; ?>
             </nav>
             <div class="swimlog-history-results" tabindex="0" role="region" aria-label="<?php esc_attr_e( 'Historical import results', 'chriss-swim-training-progress-evaluation' ); ?>">
-            <table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Work item', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Outcome', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Details / review', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+            <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Work item', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Outcome', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Details / review', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
             <?php foreach ( $units['items'] ?? array() as $unit ) :
                 $date = $unit['data']['date'] ?? ( $unit['data']['cursor']['day'] ?? '' );
                 ?>
@@ -151,7 +151,7 @@ final class Admin_Garmin_History {
                     <?php if ( ! empty( $unit['outcomes']['activity']['import_id'] ) ) : ?><p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-upload' ) ); ?>"><?php esc_html_e( 'Review pending import', 'chriss-swim-training-progress-evaluation' ); ?></a></p><?php endif; ?>
                 <?php endif; ?></td></tr>
             <?php endforeach; ?>
-            </tbody></table></div>
+            </tbody></table></div></div>
             <nav aria-label="<?php esc_attr_e( 'Historical result pages', 'chriss-swim-training-progress-evaluation' ); ?>">
             <?php foreach ( array( max( 0, $offset - 20 ) => __( 'Previous results', 'chriss-swim-training-progress-evaluation' ), $offset + 20 => __( 'Next results', 'chriss-swim-training-progress-evaluation' ) ) as $target => $label ) : if ( $target === $offset || $target >= ( $units['total'] ?? 0 ) ) continue; ?>
                 <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $job['id'], 'history_filter' => $filter, 'history_offset' => $target ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a>

@@ -349,7 +349,7 @@ final class Admin_Garmin {
 				?>
 					<hr><h2><?php esc_html_e( 'Garmin Activity Details', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 					<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-garmin' ) ); ?>"><?php esc_html_e( 'Back to Garmin Connect', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
-					<div class="swimlog-table-wrap"><table class="widefat striped"><tbody>
+					<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><tbody>
 						<tr><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( (string) $detail_id ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $aname ?: '—' ); ?></td></tr>
 						<tr><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( $atype ?: '—' ); ?></td></tr>
@@ -453,7 +453,7 @@ final class Admin_Garmin {
 					?>
 						<h3><?php esc_html_e( 'Activity Detail Structure', 'chriss-swim-training-progress-evaluation' ); ?></h3>
 						<p><?php esc_html_e( 'This diagnostic view shows which documented detail sections Garmin returned for this activity. Nothing is imported or stored.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-						<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Section', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Returned', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Fields / Items', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+						<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Section', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Returned', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Fields / Items', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 						<?php foreach ( $detail_sections as $detail_key => $detail_label ) :
 							$detail_value = $activity_full_detail[ $detail_key ] ?? null;
 							$returned = null !== $detail_value && array() !== $detail_value && '' !== $detail_value;
@@ -469,7 +469,7 @@ final class Admin_Garmin {
 							}
 						?>
 							<h4><?php echo esc_html( $field_section_label ); ?></h4>
-							<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Field', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Value', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+							<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Field', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Value', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 							<?php foreach ( $field_section as $field_name => $field_value ) :
 								if ( is_array( $field_value ) ) {
 									$display_value = sprintf(
@@ -504,7 +504,7 @@ final class Admin_Garmin {
 							__( '%1$d selected — %2$d imported, %3$d already imported, %4$d require review, %5$d failed.', 'chriss-swim-training-progress-evaluation' ),
 							(int) $batch_summary['selected'], (int) $batch_summary['imported'], (int) $batch_summary['already'], (int) $batch_summary['pending'], (int) $batch_summary['failed']
 						) ); ?></p></div>
-						<div class="swimlog-table-wrap"><table class="widefat striped" style="margin-bottom:16px"><thead><tr><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Result', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Action', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+						<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped" style="margin-bottom:16px"><thead><tr><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Result', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Action', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 						<?php foreach ( $batch_results as $batch_result ) : $batch_status = (string) ( $batch_result['status'] ?? 'failed' ); ?>
 							<tr><td><?php echo esc_html( (string) $batch_result['activity_id'] ); ?></td><td><?php
 								if ( 'imported' === $batch_status ) esc_html_e( 'Imported', 'chriss-swim-training-progress-evaluation' );
@@ -531,7 +531,7 @@ final class Admin_Garmin {
 							<p><label for="swimlog-garmin-batch-location"><strong><?php esc_html_e( 'Open Water Location', 'chriss-swim-training-progress-evaluation' ); ?></strong></label> <select id="swimlog-garmin-batch-location" name="garmin_batch_location_id"><option value="0"><?php esc_html_e( 'No location selected', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( $garmin_locations as $location ) : ?><option value="<?php echo esc_attr( $location->id ); ?>" <?php selected( $garmin_batch_location_id, (int) $location->id ); ?>><?php echo esc_html( $location->name ); ?></option><?php endforeach; ?></select> <span class="description"><?php esc_html_e( 'Applied only to selected open-water activities. Pool imports ignore this setting.', 'chriss-swim-training-progress-evaluation' ); ?></span></p>
 							<p><?php submit_button( __( 'Import Selected', 'chriss-swim-training-progress-evaluation' ), 'primary', 'submit', false, array( 'id' => 'swimlog-garmin-import-selected', 'data-swimlog-garmin-import-selected' => '1', 'disabled' => 'disabled' ) ); ?> <span class="description"><?php esc_html_e( 'Select up to 25 activities.', 'chriss-swim-training-progress-evaluation' ); ?></span></p>
 							<div id="swimlog-garmin-import-progress" hidden aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong class="swimlog-garmin-import-progress-text"></strong></div>
-							<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th scope="col"><?php esc_html_e( 'Select', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Duration', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Import Status', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+							<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th scope="col"><?php esc_html_e( 'Select', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Activity ID', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Duration', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Import Status', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 							<?php foreach ( $activities as $activity ) :
 								$activity_id = isset( $activity['activityId'] ) ? (string) $activity['activityId'] : '';
 								$date = isset( $activity['startTimeLocal'] ) ? (string) $activity['startTimeLocal'] : '';

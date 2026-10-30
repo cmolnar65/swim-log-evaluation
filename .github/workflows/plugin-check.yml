@@ -72,6 +72,11 @@ jobs:
           set -euo pipefail
           wp-env run cli wp eval "eval('?>' . base64_decode('$(base64 -w0 tests/land-activity-fixtures.php)')); $(tail -n +2 tests/land-activity-integration.php)" | tee "$RUNNER_TEMP/land-activity.log"
 
+      - name: Verify friendly planned entry and failed-save recovery
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/admin-usability-integration.php)" | tee "$RUNNER_TEMP/admin-usability.log"
+
       - name: Verify Garmin workspace setup and section order
         run: |
           set -euo pipefail
@@ -155,3 +160,8 @@ jobs:
         run: |
           set -euo pipefail
           NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/garmin-workspace-browser.cjs "$RUNNER_TEMP/garmin-workspace.log"
+
+      - name: Verify administration table and recovery layouts on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/admin-usability-browser.cjs "$RUNNER_TEMP/admin-usability.log"

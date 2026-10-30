@@ -9,6 +9,15 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
+        var formError = document.querySelector('[data-swimlog-form-error]');
+        if (formError) formError.focus();
+        document.querySelectorAll('.swimlog-admin .swimlog-table-wrap').forEach(function (region) {
+            var heading = region.previousElementSibling;
+            while (heading && !/^H[1-6]$/.test(heading.tagName)) heading = heading.previousElementSibling;
+            if (!heading) heading = region.closest('.swimlog-admin').querySelector('h1');
+            if (heading) region.setAttribute('aria-label', heading.textContent.trim());
+        });
+
 
         document.querySelectorAll('.swimlog-garmin-nav a').forEach(function (link) {
             link.addEventListener('click', function () {

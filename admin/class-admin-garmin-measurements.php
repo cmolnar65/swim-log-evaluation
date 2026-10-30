@@ -42,7 +42,7 @@ final class Admin_Garmin_Measurements {
             <?php if ( is_array( $state ) ) : ?>
                 <p><?php echo esc_html( sprintf( /* translators: 1: latest attempt UTC timestamp, 2: job status. */ __( 'Latest attempt (UTC): %1$s. Status: %2$s.', 'chriss-swim-training-progress-evaluation' ), $state['attempt_utc'] ?? '', $state['status'] ?? '' ) ); ?></p>
                 <p><?php esc_html_e( 'Failed or unattempted items preserve existing data and can also be retried through manual import below.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-                <div class="swimlog-table-wrap"><table class="widefat striped"><caption><?php esc_html_e( 'Latest automatic import window', 'chriss-swim-training-progress-evaluation' ); ?></caption><thead><tr>
+                <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><caption><?php esc_html_e( 'Latest automatic import window', 'chriss-swim-training-progress-evaluation' ); ?></caption><thead><tr>
                 <?php foreach ( array( __( 'Date / category', 'chriss-swim-training-progress-evaluation' ), __( 'Result', 'chriss-swim-training-progress-evaluation' ), __( 'Readings: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Reports: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ) ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
                 </tr></thead><tbody>
                 <?php foreach ( (array) ( $state['results'] ?? array() ) as $row ) : ?>
@@ -95,7 +95,7 @@ final class Admin_Garmin_Measurements {
                 <div class="notice notice-error inline"><p><?php echo esc_html( $results->get_error_message() ); ?></p></div>
             <?php elseif ( is_array( $results ) ) : ?>
                 <div role="status"><h3><?php esc_html_e( 'Measurement import results', 'chriss-swim-training-progress-evaluation' ); ?></h3></div>
-                <div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr>
+                <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr>
                     <?php foreach ( array( __( 'Date', 'chriss-swim-training-progress-evaluation' ), __( 'Category', 'chriss-swim-training-progress-evaluation' ), __( 'Result', 'chriss-swim-training-progress-evaluation' ), __( 'Readings: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Reports: added / updated / skipped', 'chriss-swim-training-progress-evaluation' ), __( 'Excluded fields or rows', 'chriss-swim-training-progress-evaluation' ), __( 'Failed requests or bundles', 'chriss-swim-training-progress-evaluation' ) ) as $label ) : ?><th scope="col"><?php echo esc_html( $label ); ?></th><?php endforeach; ?>
                 </tr></thead><tbody>
                 <?php

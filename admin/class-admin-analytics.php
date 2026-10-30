@@ -28,7 +28,7 @@ final class Admin_Analytics {
 		<?php if(!$stroke_volume):?><p><?php esc_html_e('No active pool lengths are available in the configured training-volume period.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?>
 		<?php foreach(array('m'=>__('Meters','chriss-swim-training-progress-evaluation'),'yd'=>__('Yards','chriss-swim-training-progress-evaluation')) as$course_unit=>$course_label):if(empty($stroke_volume_by_course[$course_unit]))continue;?>
 		<h2><?php echo esc_html($course_label); ?></h2>
-		<table class="widefat striped"><thead><tr><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Workouts','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active lengths','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active swim time','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach($stroke_volume_by_course[$course_unit] as$volume):?><tr><td><?php echo esc_html($strokes[$volume->stroke]??$volume->stroke); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->workout_count)); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->length_count)); ?></td><td><?php echo esc_html(Admin_UI::display_measurement((float)$volume->distance_native,$volume->course_unit)); ?></td><td><?php echo esc_html(Workout::format_duration((int)$volume->active_time_ms)); ?></td></tr><?php endforeach;?></tbody></table>
+		<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Workouts','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active lengths','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Active swim time','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach($stroke_volume_by_course[$course_unit] as$volume):?><tr><td><?php echo esc_html($strokes[$volume->stroke]??$volume->stroke); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->workout_count)); ?></td><td><?php echo esc_html(number_format_i18n((int)$volume->length_count)); ?></td><td><?php echo esc_html(Admin_UI::display_measurement((float)$volume->distance_native,$volume->course_unit)); ?></td><td><?php echo esc_html(Workout::format_duration((int)$volume->active_time_ms)); ?></td></tr><?php endforeach;?></tbody></table></div>
 		<?php endforeach;endif;?></div><?php
 	}
 
@@ -72,7 +72,7 @@ final class Admin_Analytics {
 			</form>
 
 			<h2><?php esc_html_e( 'Current Period vs Previous Period', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<table class="widefat striped">
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped">
 				<thead><tr><th><?php esc_html_e( 'Metric', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Current', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Previous', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Change', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead>
 				<tbody>
 					<tr><th><?php esc_html_e( 'Total distance', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( Admin_UI::display_measurement( $data['current']['distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $data['previous']['distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( $change( $data['comparison']['distance_percent'] ) ); ?></td></tr>
@@ -80,35 +80,35 @@ final class Admin_Analytics {
 					<tr><th><?php esc_html_e( 'Active swim time', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( Workout::format_duration( $data['current']['active_time_ms'] ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $data['previous']['active_time_ms'] ) ); ?></td><td><?php echo esc_html( $change( $data['comparison']['active_time_percent'] ) ); ?></td></tr>
 					<tr><th><?php esc_html_e( 'Workout frequency', 'chriss-swim-training-progress-evaluation' ); ?></th><td><?php echo esc_html( number_format_i18n( $data['current']['workouts_per_week'], 2 ) . ' / week' ); ?></td><td><?php echo esc_html( number_format_i18n( $data['previous']['workouts_per_week'], 2 ) . ' / week' ); ?></td><td><?php echo esc_html( $change( $data['comparison']['frequency_percent'] ) ); ?></td></tr>
 				</tbody>
-			</table>
+			</table></div>
 
 			<h2><?php esc_html_e( 'Pool vs Open Water', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Type', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 				<tr><td><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php echo esc_html( number_format_i18n( $data['current']['pool_workouts'] ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $data['current']['pool_distance_m'], 'm' ) ); ?></td></tr>
 				<tr><td><?php esc_html_e( 'Open Water', 'chriss-swim-training-progress-evaluation' ); ?></td><td><?php echo esc_html( number_format_i18n( $data['current']['open_water_workouts'] ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $data['current']['open_water_distance_m'], 'm' ) ); ?></td></tr>
-			</tbody></table>
+			</tbody></table></div>
 
 			<h2><?php esc_html_e( 'Weekly Trend', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<?php if ( ! $data['weekly'] ) : ?><p><?php esc_html_e( 'No workouts are available in this period.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php else : ?>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Week', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Open water', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( '4-week avg distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( '4-week avg workouts', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Week', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Open water', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( '4-week avg distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( '4-week avg workouts', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 			<?php foreach ( $data['weekly'] as $week ) : ?><tr><td><?php echo esc_html( $week['period'] ); ?></td><td><?php echo esc_html( $week['workout_count'] ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $week['distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $week['active_time_ms'] ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $week['pool_distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $week['open_water_distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $week['rolling_4_week_avg_distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( number_format_i18n( $week['rolling_4_week_avg_workouts'], 2 ) ); ?></td></tr><?php endforeach; ?>
-			</tbody></table><?php endif; ?>
+			</tbody></table></div><?php endif; ?>
 
 			<h2><?php esc_html_e( 'Monthly Trend', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<?php if ( $data['monthly'] ) : ?><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Month', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Open water', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+			<?php if ( $data['monthly'] ) : ?><div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Month', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Open water', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 			<?php foreach ( $data['monthly'] as $month ) : ?><tr><td><?php echo esc_html( $month['period'] ); ?></td><td><?php echo esc_html( $month['workout_count'] ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $month['distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $month['active_time_ms'] ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $month['pool_distance_m'], 'm' ) ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $month['open_water_distance_m'], 'm' ) ); ?></td></tr><?php endforeach; ?>
-			</tbody></table><?php endif; ?>
+			</tbody></table></div><?php endif; ?>
 
 			<h2><?php esc_html_e( 'Pool Course Volume', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Course', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active lengths', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active length time', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Course', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workouts', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active lengths', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active length time', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 			<?php foreach ( array( 'm' => __( 'Meters', 'chriss-swim-training-progress-evaluation' ), 'yd' => __( 'Yards', 'chriss-swim-training-progress-evaluation' ) ) as $unit => $label ) : $course = $data['pool_course'][ $unit ]; ?><tr><td><?php echo esc_html( $label ); ?></td><td><?php echo esc_html( $course['workout_count'] ); ?></td><td><?php echo esc_html( $course['length_count'] ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $course['distance_native'], $unit ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $course['active_time_ms'] ) ); ?></td></tr><?php endforeach; ?>
-			</tbody></table>
+			</tbody></table></div>
 
 			<h2><?php esc_html_e( 'Pool Distance by Stroke', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<?php foreach ( array( 'm' => __( 'Meters', 'chriss-swim-training-progress-evaluation' ), 'yd' => __( 'Yards', 'chriss-swim-training-progress-evaluation' ) ) as $unit => $label ) : if ( empty( $data['stroke_volume'][ $unit ] ) ) continue; ?>
-				<h3><?php echo esc_html( $label ); ?></h3><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active lengths', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active length time', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+				<h3><?php echo esc_html( $label ); ?></h3><div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active lengths', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Active length time', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 				<?php foreach ( $data['stroke_volume'][ $unit ] as $stroke => $volume ) : ?><tr><td><?php echo esc_html( $strokes[ $stroke ] ?? $stroke ); ?></td><td><?php echo esc_html( $volume['length_count'] ); ?></td><td><?php echo esc_html( Admin_UI::display_measurement( $volume['distance_native'], $unit ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $volume['active_time_ms'] ) ); ?></td></tr><?php endforeach; ?>
-				</tbody></table>
+				</tbody></table></div>
 			<?php endforeach; ?>
 			<p class="description"><?php esc_html_e( 'Total-distance trends use normalized meters so pool and open-water training can be compared together. Course and stroke tables preserve native meter/yard units. Active swim time uses recorded moving time when available and otherwise recorded elapsed time; pool stroke tables use recorded active-length timing only.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 		</div>
@@ -177,7 +177,7 @@ final class Admin_Analytics {
 				<p><?php esc_html_e( 'No qualifying active length data are available for these filters.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<?php else : ?>
 				<h2><?php esc_html_e( 'Summary', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-				<table class="widefat striped">
+				<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped">
 					<thead><tr>
 						<th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th>
 						<th><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></th>
@@ -210,10 +210,10 @@ final class Admin_Analytics {
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
-				</table>
+				</table></div>
 
 				<h2><?php esc_html_e( 'Monthly Trends', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-				<table class="widefat striped">
+				<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped">
 					<thead><tr>
 						<th><?php esc_html_e( 'Month', 'chriss-swim-training-progress-evaluation' ); ?></th>
 						<th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th>
@@ -240,10 +240,11 @@ final class Admin_Analytics {
 						</tr>
 					<?php endforeach; endforeach; ?>
 					</tbody>
-				</table>
+				</table></div>
 			<?php endif; ?>
 		</div>
 		<?php
 	}
 
 }
+
