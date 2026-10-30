@@ -2,6 +2,7 @@
 // Actual disposable WordPress forms and persistence, using only synthetic records.
 use SwimLogEvaluation\{Admin_UI,Admin_Planned_Workouts as Plans_UI,Admin_Events_Locations as Events_UI,Admin_Structured_Workouts as Structures_UI,Planned_Workout as Plans,Location,Event,Structured_Workout_Store as Store};
 foreach ( array( 'ui', 'planned-workouts', 'events-locations', 'structured-workouts', 'analytics', 'personal-bests', 'shortcodes', 'settings', 'workouts', 'manual-workout', 'dashboard' ) as $file ) require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-' . $file . '.php';
+foreach ( array( 'location', 'event', 'workout' ) as $file ) require_once SWIMLOG_EVALUATION_DIR . 'includes/class-' . $file . '.php';
 $old_user = get_current_user_id(); $post = $_POST; $get = $_GET; $request = $_REQUEST; $screen = $GLOBALS['current_screen'] ?? null;
 $users = array(); $ids = array(); $checks = 0; $die = null; $html = array();
 $verify = static function ( $ok, $message ) use ( &$checks ) { ++$checks; if ( ! $ok ) throw new RuntimeException( $message ); };
