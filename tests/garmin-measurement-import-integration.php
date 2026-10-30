@@ -139,7 +139,7 @@ try {
     $verify( true === API::test_connection( $owner ), 'Test current synthetic credential before showing import controls.' );
     UI::render();
     $html = ob_get_clean();
-    $verify( false !== strpos( $html, 'Measurement import results' ) && false !== strpos( $html, 'Readings: added / updated / skipped' ), 'Actual form submits and renders import results.' );
+    $verify( false !== strpos( $html, 'Measurement import results' ) && false !== strpos( $html, '>Readings</th>' ) && false !== strpos( $html, 'unchanged/skipped' ), 'Actual form submits and renders import results.' );
     $verify( false === strpos( $html, 'synthetic-only-not-a-real-key' ) && false === strpos( $html, 'synthetic.token.fixture' ) && false === strpos( $html, '82.5' ), 'Results do not expose credentials or raw measurements.' );
     $verify( false !== strpos( $html, 'BMI only' ) && false !== strpos( $html, 'not imported' ), 'Limitations visible.' );
     $_POST['_wpnonce'] = 'invalid';
@@ -169,4 +169,5 @@ try {
     }
     wp_set_current_user( $original_user );
 }
+
 
