@@ -134,3 +134,8 @@ Do not add broad PHPCS or Plugin Check suppressions simply to hide this baseline
 Where a targeted inline suppression is ever necessary, it should identify the exact false-positive condition and remain narrow enough that nearby new issues are still detected.
 
 The preferred approach is to keep Plugin Check output visible, compare it with this documented baseline, and investigate changes.
+
+
+## v1.3 private land calendar/log cache exception
+
+`includes/class-land-activity.php`, `Land_Activity::no_cache()`: one statement-level `WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound` exception permits defining `DONOTCACHEPAGE` for authorized current-owner private calendar/training-log views. This is the established cache-plugin interoperability name; a plugin-prefixed replacement would not be recognized. It is defined only if absent, alongside WordPress no-cache headers. The exception covers this constant only; all other findings remain subject to strict production-staging Plugin Check. No broad code or file exclusion is added.

@@ -9,7 +9,7 @@ final class RaceReadinessTest extends TestCase {
 		$this->assertStringContainsString( "w.workout_type='pool'", $code );
 		$this->assertStringContainsString( 'w.pool_length_unit=%s', $code );
 		$this->assertStringContainsString( 'n.stroke=%s', $code );
-		$this->assertStringContainsString( 'p.user_id=%d AND p.course_unit=%s AND p.stroke=%s', $code );
+		$this->assertStringContainsString( "p.user_id=%d AND w.workout_type='pool' AND p.course_unit=%s AND p.stroke=%s", $code );
 		$this->assertStringContainsString( 'distance_value=%d AND course_unit=%s AND stroke=%s', $code );
 		$this->assertStringContainsString( 'is_personal_best=1', $code );
 		$this->assertStringContainsString( "'recent_performance_count' => \$recent_count", $code );

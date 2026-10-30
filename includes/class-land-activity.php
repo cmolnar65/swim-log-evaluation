@@ -14,6 +14,8 @@ final class Land_Activity {
             && current_user_can( 'swimlog_view_own_results' ) && current_user_can( 'swimlog_manage_own_workouts' );
     }
     public static function no_cache() {
+        // Cache plugins recognize this shared constant; prefixing it would not prevent private-page caching.
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Established cache-plugin interoperability constant, only for authorized private owner views.
         if ( ! defined( 'DONOTCACHEPAGE' ) ) define( 'DONOTCACHEPAGE', true );
         if ( function_exists( 'nocache_headers' ) && ! headers_sent() ) nocache_headers();
     }

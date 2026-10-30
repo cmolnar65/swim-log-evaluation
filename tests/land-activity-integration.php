@@ -103,6 +103,13 @@ try{
  $annual=\SwimLogEvaluation\Shortcodes::render_log(array('user'=>$owner,'year'=>$year));
  $verify(false!==strpos($annual,'<h3>Running</h3>')&&false!==strpos($annual,'<h3>Walking</h3>'),'Annual land distance totals are separate tables');
  $verify(false!==strpos(\SwimLogEvaluation\Shortcodes::render_workout(array('id'=>$w->id)),'unavailable'),'Public workout shortcode cannot publish a land route');
+
+ require_once SWIMLOG_EVALUATION_DIR.'includes/class-recorded-workout-structure.php';
+ $verify(is_wp_error(\SwimLogEvaluation\Recorded_Workout_Structure::preview($w->id,$owner)),'Running cannot become a swimming prescription');
+ $verify(0===\SwimLogEvaluation\Evaluator::evaluate_workout($w->id,$owner)&&array()===Workout::performances($w->id,$owner),'Running never generates swim personal-best evidence');
+ $plan_id=\SwimLogEvaluation\Planned_Workout::save($owner,array('title'=>'Synthetic swim plan','planned_date'=>(new DateTimeImmutable('tomorrow',wp_timezone()))->format('Y-m-d'),'workout_type'=>'pool','planned_distance_m'=>1000,'pool_course'=>'m','pool_length_m'=>25,'primary_stroke'=>'FR'));
+ $verify(!is_wp_error($plan_id)&&is_wp_error(\SwimLogEvaluation\Planned_Workout::associate_completed_workout($plan_id,$owner,$w->id)),'Swim plan rejects recorded land completion');
+ Database::write('delete',Database::table('planned_workouts'),array('user_id'=>$owner));
  $request=new WP_REST_Request('GET');$request->set_param('start',$date);$request->set_param('end',$date);
  $external=\SwimLogEvaluation\REST_API::workouts($request)->get_data();$request->set_param('id',$w->id);
  $verify(1===count($external['workouts'])&&is_wp_error(\SwimLogEvaluation\REST_API::workout($request)),'Existing portability REST routes do not expose private land activities');

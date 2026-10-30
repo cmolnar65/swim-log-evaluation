@@ -36,4 +36,12 @@ final class LandActivityTest extends TestCase {
         $this->assertSame(array('lap_swimming','open_water_swimming','running','walking'),Land_Activity::garmin_types());
         $this->assertFalse(is_wp_error(Land_Activity::validate($this->parse())));
     }
+    public function test_distances_stay_separate_and_missing_is_not_a_zero_reading() {
+        $rows=array((object)array('workout_type'=>'pool','total_distance_m'=>1000),(object)array('workout_type'=>'running','total_distance_m'=>5000),(object)array('workout_type'=>'walking','total_distance_m'=>null),(object)array('workout_type'=>'walking','total_distance_m'=>0));
+        $totals=Land_Activity::distances($rows);
+        $this->assertSame(5000.0,$totals['running']);$this->assertSame(0.0,$totals['walking']);
+        $this->assertSame(1,$totals['running_count']);$this->assertSame(2,$totals['walking_count']);
+        $this->assertSame(1,$totals['walking_known']);
+    }
+
 }
