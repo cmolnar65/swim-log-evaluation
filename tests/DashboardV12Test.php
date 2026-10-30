@@ -8,7 +8,8 @@ final class DashboardV12Test extends TestCase {
         $this->assertStringContainsString( 'w.user_id = %d', $source );
         $this->assertStringContainsString( 'user_id = %d', $source );
         $this->assertStringContainsString( 'swimlog_view_own_results', $source );
-        $this->assertStringContainsString( 'swimlog_manage_all_users', $source );
+        $this->assertStringContainsString( 'Admin_UI::context_fields(', $source );
+        $this->assertStringContainsString( 'swimlog_manage_all_users', file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-ui.php' ) );
         $this->assertStringContainsString( "array( '1', '3', '6', '12', 'all' )", $source );
     }
 
@@ -47,3 +48,4 @@ final class DashboardV12Test extends TestCase {
         $this->assertStringContainsString( 'prefers-reduced-motion', $css );
     }
 }
+
