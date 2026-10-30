@@ -26,7 +26,7 @@ final class Training_Trends {
 			$wpdb->prepare(
 				"SELECT id,workout_start,workout_type,total_distance_m,elapsed_time_ms,moving_time_ms,pool_length_unit
 				FROM %i
-				WHERE user_id=%d AND workout_start >= %s AND workout_start <= %s
+				WHERE user_id=%d AND workout_type IN ('pool','open_water') AND workout_start >= %s AND workout_start <= %s
 				ORDER BY workout_start ASC,id ASC",$w, 
 				$user_id,
 				$previous_start->format( 'Y-m-d H:i:s' ),
@@ -94,6 +94,7 @@ final class Training_Trends {
 		$monthly = array();
 
 		foreach ( (array) $workouts as $row ) {
+            if ( ! in_array( $row->workout_type ?? 'pool', array( 'pool', 'open_water' ), true ) ) continue;
 			$ts = strtotime( (string) ( $row->workout_start ?? '' ) );
 			if ( false === $ts || $ts < $previous_start || $ts > $end ) continue;
 			$target = $ts >= $current_start ? 'current' : 'previous';
@@ -208,6 +209,7 @@ final class Training_Trends {
 	}
 
 	private static function add_workout( &$summary, $row ) {
+        if ( ! in_array( $row->workout_type ?? 'pool', array( 'pool', 'open_water' ), true ) ) return;
 		$distance = max( 0.0, (float) ( $row->total_distance_m ?? 0 ) );
 		$moving = max( 0, (int) ( $row->moving_time_ms ?? 0 ) );
 		$elapsed = max( 0, (int) ( $row->elapsed_time_ms ?? 0 ) );

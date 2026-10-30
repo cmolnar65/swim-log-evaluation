@@ -49,7 +49,7 @@ final class REST_API {
 
  public static function workouts($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-  $uid=get_current_user_id();$page=max(1,(int)$request->get_param('page'));$per=max(1,min(100,(int)($request->get_param('per_page')?:20)));$filters=array();
+  $uid=get_current_user_id();$page=max(1,(int)$request->get_param('page'));$per=max(1,min(100,(int)($request->get_param('per_page')?:20)));$filters=array('swim_only'=>true);
   foreach(array('workout_type','date_from','date_to')as$key){$v=$request->get_param($key);if(null!==$v&&''!==$v)$filters[$key]=$v;}
   $result=Workout::query_for_user($uid,$filters,$page,$per);$rows=array();foreach($result['rows']as$w)$rows[]=self::summary($w);
   return rest_ensure_response(array('workouts'=>$rows,'page'=>$page,'per_page'=>$per,'total'=>(int)$result['total'],'pages'=>(int)$result['pages']));
@@ -57,7 +57,7 @@ final class REST_API {
 
  public static function workout($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-  $uid=get_current_user_id();$id=absint($request->get_param('id'));$w=Workout::get_for_user($id,$uid);if(!$w)return new \WP_Error('swimlog_rest_not_found',__('Workout not found.','chriss-swim-training-progress-evaluation'),array('status'=>404));
+  $uid=get_current_user_id();$id=absint($request->get_param('id'));$w=Workout::get_for_user($id,$uid);if(!$w||Land_Activity::is_land($w->workout_type??''))return new \WP_Error('swimlog_rest_not_found',__('Workout not found.','chriss-swim-training-progress-evaluation'),array('status'=>404));
   $data=self::summary($w);$data['laps']=array_map(array(__CLASS__,'lap'),Workout::laps($id,$uid));$data['performances']=array_map(array(__CLASS__,'performance'),Workout::performances($id,$uid));
   if('open_water'===($w->workout_type??'pool'))$data['analytics']=self::safe_analytics(Workout::open_water_analytics($id,$uid));
   else $data['lengths']=array_map(array(__CLASS__,'length'),Workout::lengths($id,$uid));
@@ -96,7 +96,10 @@ final class REST_API {
   if($uid!==$current&&!current_user_can('swimlog_manage_all_users'))return new \WP_Error('swimlog_calendar_forbidden',__('You cannot view this swimmer calendar.','chriss-swim-training-progress-evaluation'),array('status'=>403));
   $start=trim((string)$request->get_param('start'));$end=trim((string)$request->get_param('end'));
   $range_error=self::calendar_range_error($start,$end);if($range_error)return $range_error;
-  return rest_ensure_response(Calendar::for_user($uid,$start,$end));
+  $include_land=function_exists('wp_validate_auth_cookie')&&method_exists($request,'get_header')&&Land_Activity::authorized($uid)&&$uid===(int)wp_validate_auth_cookie('','logged_in')&&(bool)wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),'wp_rest');
+  $response=rest_ensure_response(Calendar::for_user($uid,$start,$end,$include_land));
+  if($include_land&&!is_wp_error($response))$response->header('Cache-Control','private, no-store');
+  return $response;
  }
 
  private static function calendar_range_error($start,$end){

@@ -273,3 +273,6 @@ Historical data is preserved by default. Deactivation and ordinary updates do
 not delete workout history or original source imports. Derived performances are
 designed to be rebuildable from preserved authoritative workout data.
 
+
+
+Development note (1.3-dev): Owner-only running/walking log and calendar display is enabled, with separate distance totals; swimming totals and evaluations remain swim-only. Cycling and real-device acceptance remain pending. No v1.3 release is published.

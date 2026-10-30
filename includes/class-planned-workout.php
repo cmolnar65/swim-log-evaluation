@@ -272,6 +272,8 @@ final class Planned_Workout {
 		if ( ! self::get_for_user( $id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		if ( ! $workout_id || ! Workout::get_for_user( $workout_id, $user_id ) ) return new \WP_Error( 'swimlog_planned_workout_recorded_workout', __( 'Select a recorded workout owned by this swimmer.', 'chriss-swim-training-progress-evaluation' ) );
 
+        $plan = self::get_for_user( $id, $user_id ); $recorded = Workout::get_for_user( $workout_id, $user_id );
+        if ( ! $recorded || ! in_array( $recorded->workout_type ?? 'pool', self::WORKOUT_TYPES, true ) || $recorded->workout_type !== $plan->workout_type ) return new \WP_Error( 'swimlog_plan_type', __( 'A swim plan can only match a recorded swim of the same type.', 'chriss-swim-training-progress-evaluation' ) );
 		$table = Database::table( 'planned_workouts' );
 		$existing = (int) Database::read( 'get_var', 
 			$wpdb->prepare(

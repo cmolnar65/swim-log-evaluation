@@ -18,7 +18,8 @@ final class GarminHistoryTest extends TestCase {
             $cursor = History::cursor( '2018-01-01', '2018-01-01' ); $cursor['done'] = true;
             $this->assertSame( array(), History::activity_step( 42, $cursor, array( 'lap_swimming' ) )['activities'] );
             $this->assertSame( array(), History::measurement_step( 42, $cursor, array( 'weight' ) )['results'] );
-            $this->assertTrue( is_wp_error( History::activity_step( 42, $cursor, array( 'running' ) ) ) );
+            $this->assertSame( array(), History::activity_step( 42, $cursor, array( 'running' ) )['activities'] );
+            $this->assertTrue( is_wp_error( History::activity_step( 42, $cursor, array( 'cycling' ) ) ) );
             $this->assertTrue( is_wp_error( History::measurement_step( 42, $cursor, array( 'blood_pressure' ) ) ) );
             $this->assertTrue( is_wp_error( History::activity_step( 43, $cursor, array( 'lap_swimming' ) ) ) );
             $cursor['offset'] = '0';

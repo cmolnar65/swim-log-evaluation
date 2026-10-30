@@ -58,7 +58,7 @@ final class Race_Readiness {
 
 		$longest = Database::read( 'get_row', 
 			$wpdb->prepare(
-				"SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM %i p INNER JOIN %i w ON w.id=p.workout_id WHERE p.user_id=%d AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",$performances, $workouts, 
+				"SELECT p.distance_value,p.duration_ms,p.achieved_at,p.workout_id FROM %i p INNER JOIN %i w ON w.id=p.workout_id WHERE p.user_id=%d AND w.workout_type='pool' AND p.course_unit=%s AND p.stroke=%s AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY p.distance_value DESC,p.duration_ms ASC,p.achieved_at DESC,p.id DESC LIMIT 1",$performances, $workouts, 
 				$user_id,
 				$course,
 				$stroke,

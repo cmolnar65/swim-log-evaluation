@@ -3,6 +3,8 @@ namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/class-land-activity.php';
+
 /**
  * Reusable calendar data service built from existing normalized workout/event data.
  *
@@ -27,7 +29,7 @@ final class Calendar {
 	 *
 	 * @return array|\WP_Error
 	 */
-	public static function for_user( $user_id, $start, $end ) {
+	public static function for_user( $user_id, $start, $end, $include_land = false ) {
 		$user_id = absint( $user_id );
 		if ( ! $user_id ) {
 			return new \WP_Error(
@@ -46,7 +48,8 @@ final class Calendar {
 		$workouts = Workout::range_for_user(
 			$user_id,
 			$range['start_datetime'],
-			$range['end_exclusive_datetime']
+			$range['end_exclusive_datetime'],
+            $include_land
 		);
 		$events = Event::range_for_user(
 			$user_id,
@@ -117,7 +120,7 @@ final class Calendar {
 			}
 		}
 		foreach ( $workout_rows as &$workout_row ) {
-			$workout_row['matched_to_plan'] = isset( $matched_workout_ids[ $workout_row['id'] ] );
+			$workout_row['matched_to_plan'] = in_array( $workout_row['workout_type'], array( 'pool', 'open_water' ), true ) && isset( $matched_workout_ids[ $workout_row['id'] ] );
 		}
 		unset( $workout_row );
 
@@ -184,6 +187,7 @@ final class Calendar {
 		$weeks = array();
 		foreach ( $buckets as $bucket ) {
 			$summary = Training_Trends::summarize_workouts( $bucket['rows'] );
+            $land = Land_Activity::distances( $bucket['rows'] );
 			$planned_count = 0; $planned_distance = 0.0; $planned_duration = 0; $completed_planned_count = 0;
 			foreach ( $bucket['plans'] as $plan ) {
 				if ( 'cancelled' === (string) $plan->status ) continue;
@@ -194,6 +198,9 @@ final class Calendar {
 				'end' => $bucket['end'],
 				'workout_count' => $summary['workout_count'],
 				'distance_m' => $summary['distance_m'],
+                'running_distance_m' => $land['running'], 'walking_distance_m' => $land['walking'],
+                'running_count' => $land['running_count'], 'walking_count' => $land['walking_count'],
+                'running_distance_samples' => $land['running_known'], 'walking_distance_samples' => $land['walking_known'],
 				'active_time_ms' => $summary['active_time_ms'],
 				'pool_distance_m' => $summary['pool_distance_m'],
 				'open_water_distance_m' => $summary['open_water_distance_m'],
@@ -209,7 +216,7 @@ final class Calendar {
 	}
 
 	private static function planned_actual_comparison( $plan, $workout ) {
-		if ( ! $workout ) return null;
+		if ( ! $workout || ! in_array( $workout->workout_type ?? 'pool', array( 'pool', 'open_water' ), true ) || ( $workout->workout_type ?? 'pool' ) !== ( $plan->workout_type ?? 'pool' ) ) return null;
 		$actual_distance = null !== ( $workout->total_distance_m ?? null ) ? (float) $workout->total_distance_m : null;
 		$actual_duration = null !== ( $workout->moving_time_ms ?? null ) && (int) $workout->moving_time_ms > 0 ? (int) $workout->moving_time_ms : ( null !== ( $workout->elapsed_time_ms ?? null ) ? (int) $workout->elapsed_time_ms : null );
 		$planned_distance = null !== ( $plan->planned_distance_m ?? null ) ? (float) $plan->planned_distance_m : null;
@@ -280,8 +287,9 @@ final class Calendar {
 		return array(
 			'id' => absint( $workout->id ?? 0 ),
 			'kind' => 'workout',
-			'has_personal_best' => ! empty( $workout->has_personal_best ),
-			'workout_type' => 'open_water' === (string) ( $workout->workout_type ?? 'pool' ) ? 'open_water' : 'pool',
+			'has_personal_best' => 'pool' === ( $workout->workout_type ?? 'pool' ) && ! empty( $workout->has_personal_best ),
+			'workout_type' => (string) ( $workout->workout_type ?? 'pool' ),
+            'activity_environment' => $workout->activity_environment ?? null,
 			'workout_start' => (string) ( $workout->workout_start ?? '' ),
 			'workout_end' => null !== ( $workout->workout_end ?? null ) ? (string) $workout->workout_end : null,
 			'location' => null !== ( $workout->location_name ?? null ) ? (string) $workout->location_name : null,

@@ -296,7 +296,9 @@ final class Blocks {
 		}
 		$first = new \DateTimeImmutable( sprintf( '%04d-%02d-01', $year, $month ), $timezone );
 		$last = $first->modify( 'last day of this month' );
-		$data = Calendar::for_user( $user_id, $first->format( 'Y-m-d' ), $last->format( 'Y-m-d' ) );
+		$include_land = Land_Activity::authorized( $user_id );
+        if ( $include_land ) Land_Activity::no_cache();
+        $data = Calendar::for_user( $user_id, $first->format( 'Y-m-d' ), $last->format( 'Y-m-d' ), $include_land );
 		if ( is_wp_error( $data ) ) {
 			return '<div class="swimlog-calendar swimlog-calendar-unavailable">' . esc_html__( 'Calendar unavailable.', 'chriss-swim-training-progress-evaluation' ) . '</div>';
 		}
@@ -364,7 +366,10 @@ final class Blocks {
 	}
 
 	private static function calendar_workout_html( $workout ) {
-		$type = 'open_water' === $workout['workout_type'] ? __( 'Open Water', 'chriss-swim-training-progress-evaluation' ) : __( 'Pool Swim', 'chriss-swim-training-progress-evaluation' );
+		$labels = Land_Activity::labels();
+        $type = $labels[$workout['workout_type']] ?? ( 'open_water' === $workout['workout_type'] ? __( 'Open Water', 'chriss-swim-training-progress-evaluation' ) : __( 'Pool Swim', 'chriss-swim-training-progress-evaluation' ) );
+        if ( 'running' === $workout['workout_type'] ) $type = '🏃 ' . $type;
+        if ( 'walking' === $workout['workout_type'] ) $type = '🚶 ' . $type;
 		$parts = array( esc_html( $type ) );
 		if ( null !== $workout['total_distance_m'] ) $parts[] = esc_html( number_format_i18n( $workout['total_distance_m'], 0 ) . ' m' );
 		$active = (int) ( $workout['moving_time_ms'] ?: $workout['elapsed_time_ms'] );
@@ -373,6 +378,7 @@ final class Blocks {
 			'id' => (int) $workout['id'],
 			'has_personal_best' => ! empty( $workout['has_personal_best'] ),
 			'workout_type' => $workout['workout_type'],
+            'activity_environment' => $workout['activity_environment'] ?? null,
 			'workout_start' => $workout['workout_start'],
 			'location' => $workout['location'],
 			'total_distance_m' => $workout['total_distance_m'],

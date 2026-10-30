@@ -31,9 +31,9 @@ final class LandActivityTest extends TestCase {
     public function test_cycling_ambiguous_sport_and_multisession_remain_rejected() {
         foreach(array(array(2,7),array(0,0),array(1,18),array(11,17),array(1,2,true,0,2)) as $args)$this->assertTrue(is_wp_error($this->parse(...$args)));
     }
-    public function test_land_import_gate_defaults_closed_and_swim_types_are_unchanged() {
-        $this->assertFalse(Land_Activity::enabled());
-        $this->assertSame(array('lap_swimming','open_water_swimming'),Land_Activity::garmin_types());
-        $this->assertTrue(is_wp_error(Land_Activity::validate($this->parse())));
+    public function test_land_imports_are_enabled_and_swim_types_are_preserved() {
+        $this->assertTrue(Land_Activity::enabled());
+        $this->assertSame(array('lap_swimming','open_water_swimming','running','walking'),Land_Activity::garmin_types());
+        $this->assertFalse(is_wp_error(Land_Activity::validate($this->parse())));
     }
 }

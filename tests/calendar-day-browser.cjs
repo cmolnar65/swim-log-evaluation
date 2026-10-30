@@ -71,10 +71,12 @@ async function scenario(engine, name, options) {
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Weight · 2 imported readings/);
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Garmin seven-day baseline/);
   assert(await dialog.evaluate(el=>el.querySelector('[data-calendar-day-sections]').compareDocumentPosition(el.querySelector('[data-calendar-health-details]'))&Node.DOCUMENT_POSITION_FOLLOWING),'Workout list before measurements');
-  assert.equal(await dialog.locator('[data-calendar-workout]').count(),2);
+  assert.equal(await dialog.locator('[data-calendar-workout]').count(),4);
   assert.equal(await dialog.locator('[data-calendar-planned-workout]').count(),12);
   assert.equal(await dialog.locator('[data-calendar-event]').count(),1);
   assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/1,800 m recorded/);
+  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Running: 5,000 m/);
+  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Walking: 300 m/);
   const bounds=await dialog.boundingBox(); assert(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=options.viewport.width+1&&bounds.y+bounds.height<=options.viewport.height+1,'Dialog exceeds viewport');
   assert(await dialog.locator('.swimlog-calendar-day-body').evaluate(el=>el.scrollHeight>el.clientHeight),'Busy day must scroll internally');
   assert(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Horizontal dialog overflow');

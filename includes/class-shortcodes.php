@@ -51,8 +51,8 @@ final class Shortcodes {
 	private static function local_date($format,$value){$ts=self::local_timestamp($value);return false===$ts?'':wp_date($format,$ts,wp_timezone());}
 	private static function close(){return '</div>';}
 	private static function distance_label($d,$c){if($c==='yd'&&$d===1650)return __('1650 yd / 1 Mile','chriss-swim-training-progress-evaluation');if($c==='yd'&&$d===3300)return __('3300 yd / 2 Miles','chriss-swim-training-progress-evaluation');if($c==='m'&&$d===5000)return __('5000 m / 5K','chriss-swim-training-progress-evaluation');return $d.' '.$c;}
-	private static function workout_type($w){return(($w->workout_type??'pool')==='open_water')?'open_water':'pool';}
-	private static function workout_type_label($w){return self::workout_type($w)==='open_water'?__('Open Water','chriss-swim-training-progress-evaluation'):__('Pool','chriss-swim-training-progress-evaluation');}
+	private static function workout_type($w){return (string)($w->workout_type??'pool');}
+	private static function workout_type_label($w){$labels=Land_Activity::labels();if(isset($labels[self::workout_type($w)]))return $labels[self::workout_type($w)];return self::workout_type($w)==='open_water'?__('Open Water','chriss-swim-training-progress-evaluation'):__('Pool','chriss-swim-training-progress-evaluation');}
 	private static function workout_distance($w){return null!==$w->original_distance?$w->original_distance.' '.$w->original_distance_unit:($w->total_distance_m?$w->total_distance_m.' m':'—');}
 	private static function styles(){
 		wp_enqueue_style(
@@ -133,23 +133,46 @@ final class Shortcodes {
 		return$months[strtolower($value)]??0;
 	}
 	private static function distance_totals($rows){
-		$t=array('m'=>0.0,'yd'=>0.0);foreach($rows as$w){$u=$w->original_distance_unit;if(in_array($u,array('m','yd'),true)&&null!==$w->original_distance)$t[$u]+=(float)$w->original_distance;}return$t;
+		$t=array('m'=>0.0,'yd'=>0.0);foreach($rows as$w){if(!in_array(self::workout_type($w),array('pool','open_water'),true))continue;$u=$w->original_distance_unit;if(in_array($u,array('m','yd'),true)&&null!==$w->original_distance)$t[$u]+=(float)$w->original_distance;}return$t;
 	}
 	private static function total_label($m,$y){
 		$p=array();if($m>0)$p[]=number_format_i18n($m,0).' m';if($y>0)$p[]=number_format_i18n($y,0).' yd';return$p?implode(' + ',$p):'—';
 	}
+    private static function land_month_html( $rows ) {
+        $html='';
+        foreach ( Land_Activity::labels() as $type=>$label ) {
+            $items=array_values(array_filter($rows,static function($row)use($type){return $type===($row->workout_type??'');}));
+            if(!$items)continue;
+            $distance=0.0;$known=0;$elapsed=0;
+            foreach($items as $row){if(null!==$row->total_distance_m){$distance+=(float)$row->total_distance_m;$known++;}$elapsed+=(int)$row->elapsed_time_ms;}
+            $html.='<p><strong>'.esc_html($label).'</strong>: '.esc_html($known?number_format_i18n($distance,0).' m':'—').' · '.esc_html(Workout::format_duration($elapsed)).'</p>';
+        }
+        return $html;
+    }
+    private static function land_year_html( $uid, $year ) {
+        if(!Land_Activity::authorized($uid))return '';
+        $html='';
+        foreach(Land_Activity::labels() as $type=>$label){
+            $rows=Workout::totals_by_month_for_year($uid,$year,$type);if(!$rows)continue;
+            $html.='<h3>'.esc_html($label).'</h3><div class="swimlog-table-wrap"><table><thead><tr><th>'.esc_html__('Month','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Elapsed','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';$distance=0.0;$elapsed=0;$known=0;
+            foreach($rows as $row){$meters=(float)$row->meters+(float)$row->yards*0.9144;$distance+=$meters;$elapsed+=(int)$row->elapsed_ms;$samples=(int)($row->distance_samples??$row->workout_count);$known+=$samples;$html.='<tr><th>'.esc_html(sprintf('%04d-%02d',$year,(int)$row->month_num)).'</th><td>'.esc_html($samples?number_format_i18n($meters,0).' m':'—').'</td><td>'.esc_html(Workout::format_duration((int)$row->elapsed_ms)).'</td></tr>';}
+            $html.='<tr><th>'.esc_html__('Total','chriss-swim-training-progress-evaluation').'</th><td>'.esc_html($known?number_format_i18n($distance,0).' m':'—').'</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';
+        }
+        return $html;
+    }
 	public static function log($atts){return self::render_log($atts);}
 	public static function render_log($atts){
 		self::load();$raw=(array)$atts;$a=self::attrs($atts,array('month'=>'','year'=>''));$uid=self::owner($a);if(!self::allowed($uid))return self::unavailable();
 		$has_year=array_key_exists('year',$raw);$has_month=array_key_exists('month',$raw);$year=absint($a['year']??0);if(!$year)$year=(int)current_time('Y');
-		$annual=$has_year&&!$has_month;$o=self::styles();
+		$annual=$has_year&&!$has_month;$o=self::styles();if(Land_Activity::authorized($uid))Land_Activity::no_cache();
 		if($annual){
 			if($year<1900||$year>2100)return self::unavailable();
 			$pool_rows=Workout::totals_by_month_for_year($uid,$year,'pool');
 			$open_water_rows=Workout::totals_by_month_for_year($uid,$year,'open_water');
+            $land_year=self::land_year_html($uid,$year);
 			/* translators: %d: four-digit year. */
 			$o.=self::open(sprintf(__('Training Log — %d','chriss-swim-training-progress-evaluation'),$year),$a['title']);
-			if(!$pool_rows&&!$open_water_rows)return$o.'<p>'.esc_html__('No swim workouts are available for this year.','chriss-swim-training-progress-evaluation').'</p>'.self::close();
+			if(!$pool_rows&&!$open_water_rows)return$o.'<p>'.esc_html__('No swim workouts are available for this year.','chriss-swim-training-progress-evaluation').'</p>'.$land_year.self::close();
 			$months=array();
 			foreach($pool_rows as$r)$months[(int)$r->month_num]['pool']=$r;
 			foreach($open_water_rows as$r)$months[(int)$r->month_num]['open_water']=$r;
@@ -166,23 +189,24 @@ final class Shortcodes {
 				$o.='<tr><th scope="row">'.esc_html($month.' '.$year).'</th><td>'.esc_html($pc).'</td><td>'.esc_html($pc?self::total_label($pm,$py):'—').'</td><td>'.esc_html($oc).'</td><td>'.esc_html($oc?self::total_label($om,0):'—').'</td><td>'.esc_html(Workout::format_duration($month_elapsed)).'</td></tr>';
 			}
 			/* translators: %d: four-digit year. */
-			$o.='<tr><th scope="row">'.esc_html(sprintf(__('%d Total','chriss-swim-training-progress-evaluation'),$year)).'</th><td>'.esc_html($pool_count).'</td><td>'.esc_html($pool_count?self::total_label($pool_m,$pool_yd):'—').'</td><td>'.esc_html($ows_count).'</td><td>'.esc_html($ows_count?self::total_label($ows_m,0):'—').'</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.self::close();
+			$o.='<tr><th scope="row">'.esc_html(sprintf(__('%d Total','chriss-swim-training-progress-evaluation'),$year)).'</th><td>'.esc_html($pool_count).'</td><td>'.esc_html($pool_count?self::total_label($pool_m,$pool_yd):'—').'</td><td>'.esc_html($ows_count).'</td><td>'.esc_html($ows_count?self::total_label($ows_m,0):'—').'</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.$land_year.self::close();
 		}
-		$month=self::month_number($a['month']??'');if(!$month||$year<1900||$year>2100)return self::unavailable();$rows=Workout::for_month($uid,$year,$month);$label=wp_date('F Y',(new \DateTimeImmutable(sprintf('%04d-%02d-01 12:00:00',$year,$month),wp_timezone()))->getTimestamp(),wp_timezone());
+		$month=self::month_number($a['month']??'');if(!$month||$year<1900||$year>2100)return self::unavailable();$rows=Workout::for_month($uid,$year,$month,Land_Activity::authorized($uid)?'all':null);$label=wp_date('F Y',(new \DateTimeImmutable(sprintf('%04d-%02d-01 12:00:00',$year,$month),wp_timezone()))->getTimestamp(),wp_timezone());
 		/* translators: %s: localized month and year label. */
 		$o.=self::open(sprintf(__('Training Log — %s','chriss-swim-training-progress-evaluation'),$label),$a['title']);
 		if(!$rows)return$o.'<p>'.esc_html__('No swim workouts are available for this month.','chriss-swim-training-progress-evaluation').'</p>'.self::close();
 		$o.='<div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Date','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Type','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Location','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Course','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Elapsed Time','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';$elapsed=0;
-		foreach($rows as$w){$elapsed+=(int)$w->elapsed_time_ms;$type=self::workout_type($w);$course=$type==='open_water'?__('Open Water','chriss-swim-training-progress-evaluation'):($w->pool_length_unit?:'—');$o.='<tr><td>'.esc_html(self::local_date('F j, Y',$w->workout_start)).'</td><td>'.esc_html(self::workout_type_label($w)).'</td><td>'.esc_html($w->location_name?:'—').'</td><td>'.esc_html(self::workout_distance($w)).'</td><td>'.esc_html($course).'</td><td>'.esc_html(Workout::format_duration($w->elapsed_time_ms)).'</td></tr>';}
+		foreach($rows as$w){if(in_array(self::workout_type($w),array('pool','open_water'),true))$elapsed+=(int)$w->elapsed_time_ms;$type=self::workout_type($w);$course=$type==='open_water'?__('Open Water','chriss-swim-training-progress-evaluation'):($w->pool_length_unit?:'—');$o.='<tr><td>'.esc_html(self::local_date('F j, Y',$w->workout_start)).'</td><td>'.esc_html(self::workout_type_label($w)).'</td><td>'.esc_html($w->location_name?:'—').'</td><td>'.esc_html(self::workout_distance($w)).'</td><td>'.esc_html($course).'</td><td>'.esc_html(Workout::format_duration($w->elapsed_time_ms)).'</td></tr>';}
 		$t=self::distance_totals($rows);
+        $swims=array_values(array_filter($rows,static function($w){return in_array($w->workout_type??'pool',array('pool','open_water'),true);}));
 		/* translators: %d: number of swim workouts in the month. */
-		$workout_count=sprintf(_n('%d workout','%d workouts',count($rows),'chriss-swim-training-progress-evaluation'),count($rows));
-		$o.='<tr><th scope="row">'.esc_html__('Month Total','chriss-swim-training-progress-evaluation').'</th><td>—</td><td>'.esc_html($workout_count).'</td><td>'.esc_html(self::total_label($t['m'],$t['yd'])).'</td><td>—</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.self::close();
+		$workout_count=sprintf(_n('%d workout','%d workouts',count($swims),'chriss-swim-training-progress-evaluation'),count($swims));
+		$o.='<tr><th scope="row">'.esc_html(count($swims)!==count($rows)?__('Swimming Total','chriss-swim-training-progress-evaluation'):__('Month Total','chriss-swim-training-progress-evaluation')).'</th><td>—</td><td>'.esc_html($workout_count).'</td><td>'.esc_html(self::total_label($t['m'],$t['yd'])).'</td><td>—</td><td>'.esc_html(Workout::format_duration($elapsed)).'</td></tr></tbody></table></div>';return$o.self::land_month_html($rows).self::close();
 	}
 
 	public static function workout($atts){return self::render_workout($atts);}
 	public static function render_workout($atts){
-		self::load();$a=self::attrs($atts,array('id'=>''));$id=absint($atts['id']??0);if(!$id)return self::unavailable();global$wpdb;$t=Database::table('workouts');$base=Database::read( 'get_row', $wpdb->prepare("SELECT id,user_id FROM %i WHERE id=%d",$t, $id));if(!$base)return self::unavailable();$uid=self::owner($a,$base);if(!self::allowed($uid))return self::unavailable();$w=Workout::get_for_user($id,$uid);if(!$w)return self::unavailable();$perfs=Workout::performances($id,$uid);$o=self::styles().self::open(__('Swim Workout','chriss-swim-training-progress-evaluation'),$a['title']);
+		self::load();$a=self::attrs($atts,array('id'=>''));$id=absint($atts['id']??0);if(!$id)return self::unavailable();global$wpdb;$t=Database::table('workouts');$base=Database::read( 'get_row', $wpdb->prepare("SELECT id,user_id FROM %i WHERE id=%d",$t, $id));if(!$base)return self::unavailable();$uid=self::owner($a,$base);if(!self::allowed($uid))return self::unavailable();$w=Workout::get_for_user($id,$uid);if(!$w||!in_array($w->workout_type??'pool',array('pool','open_water'),true))return self::unavailable();$perfs=Workout::performances($id,$uid);$o=self::styles().self::open(__('Swim Workout','chriss-swim-training-progress-evaluation'),$a['title']);
 		$type=self::workout_type($w);$o.='<dl><dt>'.esc_html__('Date','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(self::local_date('F j, Y',$w->workout_start)).'</dd><dt>'.esc_html__('Type','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(self::workout_type_label($w)).'</dd>';if($w->location_name)$o.='<dt>'.esc_html__('Location','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html($w->location_name).'</dd>';$o.='<dt>'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(self::workout_distance($w)).'</dd>';if($type==='pool'){$o.='<dt>'.esc_html__('Pool','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(null!==$w->original_pool_length?$w->original_pool_length.' '.$w->pool_length_unit:'—').'</dd>';}else{$analytics=Workout::open_water_analytics($id,$uid);if(null!==($w->moving_time_ms??null))$o.='<dt>'.esc_html__('Moving','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($w->moving_time_ms)).'</dd>';if(!empty($analytics['elapsed_pace_100m_ms']))$o.='<dt>'.esc_html__('Average pace / 100 m','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($analytics['elapsed_pace_100m_ms'])).'</dd>';if(!empty($analytics['moving_pace_100m_ms']))$o.='<dt>'.esc_html__('Moving pace / 100 m','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($analytics['moving_pace_100m_ms'])).'</dd>';if(null!==($analytics['non_moving_time_ms']??null))$o.='<dt>'.esc_html__('Non-moving time','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($analytics['non_moving_time_ms'])).'</dd>';if(null!==($analytics['active_percent']??null))$o.='<dt>'.esc_html__('Active time','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(number_format_i18n($analytics['active_percent'],1).'%').'</dd>';if(null!==($w->average_heart_rate??null))$o.='<dt>'.esc_html__('Heart rate','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(sprintf(/* translators: 1: average heart rate, 2: maximum heart rate. */ __('%1$d bpm average / %2$d bpm max','chriss-swim-training-progress-evaluation'),(int)$w->average_heart_rate,(int)$w->max_heart_rate)).'</dd>';if(null!==($w->average_cadence??null))$o.='<dt>'.esc_html__('Cadence','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(sprintf(/* translators: 1: average cadence, 2: maximum cadence. */ __('%1$s average / %2$s max','chriss-swim-training-progress-evaluation'),number_format_i18n((float)$w->average_cadence,1),number_format_i18n((float)$w->max_cadence,1))).'</dd>';} $o.='<dt>'.esc_html__('Elapsed','chriss-swim-training-progress-evaluation').'</dt><dd>'.esc_html(Workout::format_duration($w->elapsed_time_ms)).'</dd></dl>';if($type==='open_water'&&!empty($analytics['splits'])){$o.='<h3>'.esc_html__('1 km Splits','chriss-swim-training-progress-evaluation').'</h3><div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Split','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Cumulative','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Pace / 100 m','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';foreach($analytics['splits'] as$split){$o.='<tr><td>'.esc_html(number_format_i18n($split['distance_m']/1000,0).' km').'</td><td>'.esc_html(Workout::format_duration($split['split_time_ms'])).'</td><td>'.esc_html(Workout::format_duration($split['cumulative_time_ms'])).'</td><td>'.esc_html(Workout::format_duration((int)round($split['split_time_ms']/10)).' / 100 m').'</td></tr>';}$o.='</tbody></table></div>';}
 		$o .= '<dl><dt>' . esc_html__( 'Equivalent Calculated Steps', 'chriss-swim-training-progress-evaluation' ) . '</dt><dd>' . esc_html( null !== ( $w->equivalent_steps ?? null ) ? number_format_i18n( (int) $w->equivalent_steps ) : '—' ) . '</dd>';
 		$o .= '<dt>' . esc_html__( 'Calculated active swimming time', 'chriss-swim-training-progress-evaluation' ) . '</dt><dd>' . esc_html( null !== ( $w->steps_active_ms ?? null ) ? Workout::format_duration( (int) $w->steps_active_ms ) : '—' ) . '</dd>';

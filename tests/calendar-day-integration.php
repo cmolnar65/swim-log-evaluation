@@ -23,6 +23,9 @@ try {
         $ok = Database::write( 'insert', Database::table( 'workouts' ), array( 'user_id' => $owner, 'workout_start' => $key . ( $index ? ' 14:00:00' : ' 08:00:00' ), 'workout_type' => $type, 'total_distance_m' => $index ? 1200 : 600, 'elapsed_time_ms' => 1800000, 'moving_time_ms' => 1700000, 'pool_length_m' => $index ? null : 25, 'pool_length_unit' => 'm', 'primary_stroke' => 'FR', 'notes' => 'PRIVATE_DAY_SOURCE_SENTINEL', 'created_at' => current_time( 'mysql' ), 'updated_at' => current_time( 'mysql' ) ) );
         $verify( false !== $ok, 'Create recorded swim.' );
     }
+    foreach ( array( 'running' => 5000, 'walking' => 300 ) as $type => $meters ) {
+        $verify( false !== Database::write( 'insert', Database::table( 'workouts' ), array( 'user_id' => $owner, 'workout_start' => $key . ( 'running' === $type ? ' 15:00:00' : ' 16:00:00' ), 'workout_type' => $type, 'activity_environment' => 'outdoor', 'total_distance_m' => $meters, 'elapsed_time_ms' => 900000, 'created_at' => current_time( 'mysql' ), 'updated_at' => current_time( 'mysql' ) ) ), 'Create private land activity.' );
+    }
     for ( $i = 1; $i <= 12; ++$i ) {
         $id = Plan::save( $owner, array( 'title' => 'Synthetic plan ' . $i . ' <script>not executable</script>', 'planned_date' => $key, 'workout_type' => 'pool', 'planned_distance_m' => 500, 'pool_course' => 'm', 'pool_length_m' => 25, 'primary_stroke' => 'FR', 'workout_instructions' => str_repeat( 'Synthetic technique instructions. ', 25 ), 'notes' => 'PRIVATE_DAY_PLAN_SENTINEL' ) );
         $verify( ! is_wp_error( $id ), 'Create scrollable day plan fixture.' );
@@ -30,8 +33,8 @@ try {
     $event = Event::save( $owner, array( 'event_name' => 'Synthetic swim meet', 'event_date' => $key, 'event_time' => '16:00', 'distance_value' => 100, 'course_unit' => 'm', 'stroke' => 'FR' ) );
     $verify( ! is_wp_error( $event ), 'Create day event.' );
     $start = $focus->modify( 'first day of this month' ); $end = $focus->modify( 'last day of this month' );
-    $data = Calendar::for_user( $owner, $start->format( 'Y-m-d' ), $end->format( 'Y-m-d' ) );
-    $verify( ! is_wp_error( $data ) && 2 === count( $data['workouts'] ) && 12 === count( $data['planned_workouts'] ) && 1 === count( $data['events'] ), 'All permitted day items in existing calendar payload.' );
+    $data = Calendar::for_user( $owner, $start->format( 'Y-m-d' ), $end->format( 'Y-m-d' ), true );
+    $verify( ! is_wp_error( $data ) && 4 === count( $data['workouts'] ) && 12 === count( $data['planned_workouts'] ) && 1 === count( $data['events'] ), 'All permitted day items in existing calendar payload.' );
     $verify( 25.0 === $data['workouts'][0]['pool_length_m'] && null === $data['workouts'][1]['pool_length_m'], 'Calendar retains measured pool length and unknown open-water length.' );
     set_error_handler( static function ( $severity, $message, $file, $line ) {
         if ( error_reporting() & $severity ) throw new ErrorException( $message, 0, $severity, $file, $line );
@@ -44,7 +47,7 @@ try {
     }
     preg_match_all( '/data-calendar-workout="([^"]*)"/', $html, $cards );
     $details = array_map( static function ( $encoded ) { return json_decode( html_entity_decode( $encoded, ENT_QUOTES, 'UTF-8' ), true ); }, $cards[1] );
-    $verify( 2 === count( $details ) && 25.0 === (float) $details[0]['pool_length_m'] && array_key_exists( 'pool_length_m', $details[1] ) && null === $details[1]['pool_length_m'], 'Rendered recorded cards preserve pool-length detail without warnings.' );
+    $verify( 4 === count( $details ) && 25.0 === (float) $details[0]['pool_length_m'] && array_key_exists( 'pool_length_m', $details[1] ) && null === $details[1]['pool_length_m'], 'Rendered recorded cards preserve pool-length detail without warnings.' );
     $verify( false !== strpos( $html, 'data-calendar-day="' . $key . '"' ) && false !== strpos( $html, 'aria-haspopup="dialog"' ), 'Server dates are keyboard/touch dialog triggers.' );
     $verify( false === strpos( $html . wp_json_encode( $data ), 'PRIVATE_DAY_' ), 'Private notes leaked into calendar/day payload.' );
     wp_set_current_user( $users['other'] );

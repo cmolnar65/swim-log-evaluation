@@ -39,7 +39,7 @@ final class Evaluator {
 		$workout_id = absint( $workout_id ); $user_id = absint( $user_id );
 		$wt = Database::table( 'workouts' ); $pt = Database::table( 'performances' );
 		$w = Database::read( 'get_row',  $wpdb->prepare( "SELECT * FROM %i WHERE id=%d AND user_id=%d",$wt,  $workout_id, $user_id ) );
-		if ( ! $w || 'manual' !== (string) ( $w->source_type ?? '' ) ) return new \WP_Error( 'swimlog_eval_manual_workout', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( ! $w || 'pool' !== ( $w->workout_type ?? 'pool' ) || 'manual' !== (string) ( $w->source_type ?? '' ) ) return new \WP_Error( 'swimlog_eval_manual_workout', __( 'Manual workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$course = (string) ( $w->pool_length_unit ?? '' ); if ( ! in_array( $course, array( 'm', 'yd' ), true ) ) return new \WP_Error( 'swimlog_eval_course', __( 'Workout has no valid native course.', 'chriss-swim-training-progress-evaluation' ) );
 		$candidates = array();
 		foreach ( (array) ( $document['segments'] ?? array() ) as $segment ) {
