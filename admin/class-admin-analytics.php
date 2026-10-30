@@ -65,7 +65,7 @@ final class Admin_Analytics {
 			<p><?php esc_html_e( 'Longitudinal training volume derived from normalized workout history. This dashboard describes recorded training load; it does not estimate physiological stress, recovery, fitness, or injury risk.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<form method="get">
 				<input type="hidden" name="page" value="swimlog-training-trends">
-				<?php if ( current_user_can( 'swimlog_manage_all_users' ) ) : ?><input type="hidden" name="swimmer_id" value="<?php echo esc_attr( $user_id ); ?>"><?php endif; ?>
+				<?php Admin_UI::context_fields( $user_id ); ?>
 				<label for="swimlog-trends-months"><strong><?php esc_html_e( 'Lookback months', 'chriss-swim-training-progress-evaluation' ); ?></strong></label>
 				<input id="swimlog-trends-months" name="months" type="number" min="1" max="<?php echo esc_attr( Training_Trends::MAX_LOOKBACK_MONTHS ); ?>" step="1" value="<?php echo esc_attr( $months ); ?>">
 				<?php submit_button( __( 'Apply', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?>
@@ -156,7 +156,7 @@ final class Admin_Analytics {
 			<p><?php esc_html_e( 'These metrics are derived only from recorded active pool lengths. Missing timing and stroke-count data are never estimated. Meter and yard courses, pool lengths, and strokes are kept separate.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<form method="get">
 				<input type="hidden" name="page" value="swimlog-pool-analytics">
-				<?php if ( current_user_can( 'swimlog_manage_all_users' ) ) : ?><input type="hidden" name="swimmer_id" value="<?php echo esc_attr( $user_id ); ?>"><?php endif; ?>
+				<?php Admin_UI::context_fields( $user_id ); ?>
 				<label for="swimlog-analytics-course"><strong><?php esc_html_e( 'Course', 'chriss-swim-training-progress-evaluation' ); ?></strong></label>
 				<select id="swimlog-analytics-course" name="course">
 					<option value="m" <?php selected( $course, 'm' ); ?>><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></option>

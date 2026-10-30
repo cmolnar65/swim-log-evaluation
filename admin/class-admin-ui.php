@@ -14,8 +14,43 @@ final class Admin_UI {
 		return $uid;
 	}
 
+    public static function context_pages() {
+        return array( 'swimlog-dashboard', 'swimlog-calendar', 'swimlog-workouts', 'swimlog-manual-workout', 'swimlog-personal-bests', 'swimlog-training-volume', 'swimlog-training-trends', 'swimlog-pool-analytics' );
+    }
+
+    public static function context_args( $user_id = null ) {
+        if ( ! current_user_can( 'swimlog_manage_all_users' ) ) return array();
+        $user_id = null === $user_id ? self::selected_user_id() : absint( $user_id );
+        if ( ! $user_id || ! get_userdata( $user_id ) ) return array();
+        return array( 'swimmer_id' => $user_id, '_swimlog_swimmer_nonce' => wp_create_nonce( 'swimlog_swimmer_selector' ) );
+    }
+
+    public static function context_fields( $user_id ) {
+        foreach ( self::context_args( $user_id ) as $name => $value ) {
+            echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';
+        }
+    }
+
+    /** Signed navigation only for screens that already support administrator swimmer selection. */
+    public static function url( $args, $user_id = null ) {
+        $page = $args['page'] ?? '';
+        unset( $args['swimmer_id'], $args['_swimlog_swimmer_nonce'] );
+        if ( in_array( $page, self::context_pages(), true ) ) $args = array_merge( $args, self::context_args( $user_id ) );
+        return add_query_arg( $args, admin_url( 'admin.php' ) );
+    }
+
 	public static function swimmer_selector( $user_id, $page ) {
 		if ( ! current_user_can( 'swimlog_manage_all_users' ) ) return;
+        $viewed = get_userdata( $user_id );
+        $context = self::context_args( $user_id );
+        if ( $viewed && $context ) {
+            ?><div class="swimlog-swimmer-context" data-swimlog-context-owner="<?php echo esc_attr( $user_id ); ?>" data-swimlog-context-nonce="<?php echo esc_attr( $context['_swimlog_swimmer_nonce'] ); ?>" data-swimlog-context-pages="<?php echo esc_attr( wp_json_encode( self::context_pages() ) ); ?>">
+            <p><strong><?php esc_html_e( 'Viewing swimmer:', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php echo esc_html( $viewed->display_name . ' (#' . $user_id . ')' ); ?>
+            <?php if ( (int) $user_id !== (int) get_current_user_id() ) : ?><a href="<?php echo esc_url( self::url( array( 'page' => $page ), get_current_user_id() ) ); ?>"><?php esc_html_e( 'Return to my records', 'chriss-swim-training-progress-evaluation' ); ?></a><?php endif; ?></p>
+            <nav aria-label="<?php esc_attr_e( 'Selected swimmer pages', 'chriss-swim-training-progress-evaluation' ); ?>">
+            <?php foreach ( array( 'swimlog-dashboard' => __( 'Dashboard', 'chriss-swim-training-progress-evaluation' ), 'swimlog-calendar' => __( 'Calendar', 'chriss-swim-training-progress-evaluation' ), 'swimlog-workouts' => __( 'Workouts', 'chriss-swim-training-progress-evaluation' ), 'swimlog-personal-bests' => __( 'Personal Bests', 'chriss-swim-training-progress-evaluation' ), 'swimlog-training-volume' => __( 'Training Volume', 'chriss-swim-training-progress-evaluation' ), 'swimlog-training-trends' => __( 'Training Trends', 'chriss-swim-training-progress-evaluation' ), 'swimlog-pool-analytics' => __( 'Pool Analytics', 'chriss-swim-training-progress-evaluation' ) ) as $slug => $label ) : ?><a href="<?php echo esc_url( self::url( array( 'page' => $slug ), $user_id ) ); ?>" <?php if ( $slug === $page ) echo 'aria-current="page"'; ?>><?php echo esc_html( $label ); ?></a><?php endforeach; ?>
+            </nav></div><?php
+        }
 		$users = get_users( array( 'fields' => array( 'ID', 'display_name' ), 'orderby' => 'display_name' ) );
 		?><form method="get" class="swimlog-swimmer-selector"><?php wp_nonce_field( 'swimlog_swimmer_selector', '_swimlog_swimmer_nonce' ); ?><input type="hidden" name="page" value="<?php echo esc_attr( $page ); ?>"><label for="swimlog-swimmer"><?php esc_html_e( 'Swimmer', 'chriss-swim-training-progress-evaluation' ); ?></label> <select id="swimlog-swimmer" name="swimmer_id"><?php foreach ( $users as $u ) : ?><option value="<?php echo esc_attr( $u->ID ); ?>" <?php selected( $user_id, $u->ID ); ?>><?php echo esc_html( $u->display_name . ' (#' . $u->ID . ')' ); ?></option><?php endforeach; ?></select> <?php submit_button( __( 'View', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?></form><?php
 	}

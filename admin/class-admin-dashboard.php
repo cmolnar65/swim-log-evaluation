@@ -50,8 +50,8 @@ final class Admin_Dashboard {
     }
 
     private static function link( $page, $user_id, $args = array() ) {
-        if ( current_user_can( 'swimlog_manage_all_users' ) ) $args['swimmer_id'] = $user_id;
-        return add_query_arg( array_merge( array( 'page' => $page ), $args ), admin_url( 'admin.php' ) );
+        
+        return Admin_UI::url(  array_merge( array( 'page' => $page ), $args ), $user_id );
     }
 
     private static function tile( $label, $value, $url ) {
@@ -108,7 +108,7 @@ final class Admin_Dashboard {
         echo '<div class="wrap swimlog-admin swimlog-dashboard"><h1>' . esc_html__( 'Swim Training Dashboard', 'chriss-swim-training-progress-evaluation' ) . '</h1>';
         Admin_UI::swimmer_selector( $user_id, 'swimlog-dashboard' );
         echo '<form class="swimlog-dash-filters" method="get"><input type="hidden" name="page" value="swimlog-dashboard">';
-        if ( current_user_can( 'swimlog_manage_all_users' ) ) echo '<input type="hidden" name="swimmer_id" value="' . esc_attr( $user_id ) . '">';
+        Admin_UI::context_fields( $user_id );
         echo '<label for="swimlog-dash-range">' . esc_html__( 'Period', 'chriss-swim-training-progress-evaluation' ) . '</label><select name="range" id="swimlog-dash-range">';
         foreach ( array( '1' => '1 month', '3' => '3 months', '6' => '6 months', '12' => '12 months', 'all' => 'All time' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '"' . selected( $range, (string) $value, false ) . '>' . esc_html( $label ) . '</option>';
         echo '</select><label for="swimlog-dash-course">' . esc_html__( 'SWOLF course', 'chriss-swim-training-progress-evaluation' ) . '</label><select id="swimlog-dash-course" name="course"><option value="m"' . selected( $course, 'm', false ) . '>Meters</option><option value="yd"' . selected( $course, 'yd', false ) . '>Yards</option></select>';

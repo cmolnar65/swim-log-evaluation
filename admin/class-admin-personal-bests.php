@@ -83,7 +83,7 @@ final class Admin_Personal_Bests {
 		}
 
 		$base_args = array( 'page' => 'swimlog-personal-bests', 'course' => $course );
-		if ( current_user_can( 'swimlog_manage_all_users' ) ) $base_args['swimmer_id'] = $user_id;
+		
 		$current_args = array_merge( $base_args, array( 'period' => 'current' ) );
 		$lifetime_args = array_merge( $base_args, array( 'period' => 'lifetime' ) );
 		?>
@@ -92,19 +92,19 @@ final class Admin_Personal_Bests {
 
 			<h2><?php esc_html_e( 'Record Period', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p>
-				<?php if ( $current_group ) : ?><a class="button <?php echo 'current' === $period ? 'button-primary' : ''; ?>" href="<?php echo esc_url( add_query_arg( $current_args, admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( sprintf(
+				<?php if ( $current_group ) : ?><a class="button <?php echo 'current' === $period ? 'button-primary' : ''; ?>" href="<?php echo esc_url( Admin_UI::url(  $current_args, $user_id ) ); ?>"><?php echo esc_html( sprintf(
 					/* translators: %s: current swimming age-group label. */
 					__( 'Current Age Group (%s)', 'chriss-swim-training-progress-evaluation' ),
 					$current_label
 				) ); ?></a><?php endif; ?>
-				<a class="button <?php echo 'lifetime' === $period ? 'button-primary' : ''; ?>" href="<?php echo esc_url( add_query_arg( $lifetime_args, admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Lifetime', 'chriss-swim-training-progress-evaluation' ); ?></a>
+				<a class="button <?php echo 'lifetime' === $period ? 'button-primary' : ''; ?>" href="<?php echo esc_url( Admin_UI::url(  $lifetime_args, $user_id ) ); ?>"><?php esc_html_e( 'Lifetime', 'chriss-swim-training-progress-evaluation' ); ?></a>
 			</p>
 			<?php if ( $historical_groups ) : ?>
 				<form method="get">
 					<input type="hidden" name="page" value="swimlog-personal-bests">
 					<input type="hidden" name="course" value="<?php echo esc_attr( $course ); ?>">
 					<input type="hidden" name="period" value="historical">
-					<?php if ( current_user_can( 'swimlog_manage_all_users' ) ) : ?><input type="hidden" name="swimmer_id" value="<?php echo esc_attr( $user_id ); ?>"><?php endif; ?>
+					<?php Admin_UI::context_fields( $user_id ); ?>
 					<label for="swimlog-pb-age-group"><strong><?php esc_html_e( 'Historical Age Group', 'chriss-swim-training-progress-evaluation' ); ?></strong></label>
 					<select id="swimlog-pb-age-group" name="age_group"><?php foreach ( $historical_groups as $group_label ) : ?><option value="<?php echo esc_attr( $group_label ); ?>" <?php selected( $selected_group, $group_label ); ?>><?php echo esc_html( $group_label ); ?></option><?php endforeach; ?></select>
 					<?php submit_button( __( 'View', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?>
@@ -117,10 +117,10 @@ final class Admin_Personal_Bests {
 				$meter_args = array( 'page' => 'swimlog-personal-bests', 'course' => 'm', 'period' => $period );
 				$yard_args = array( 'page' => 'swimlog-personal-bests', 'course' => 'yd', 'period' => $period );
 				if ( 'historical' === $period && $selected_group ) { $meter_args['age_group'] = $selected_group; $yard_args['age_group'] = $selected_group; }
-				if ( current_user_can( 'swimlog_manage_all_users' ) ) { $meter_args['swimmer_id'] = $user_id; $yard_args['swimmer_id'] = $user_id; }
+				
 				?>
-				<a class="button <?php echo 'm' === $course ? 'button-primary' : ''; ?>" href="<?php echo esc_url( add_query_arg( $meter_args, admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></a>
-				<a class="button <?php echo 'yd' === $course ? 'button-primary' : ''; ?>" href="<?php echo esc_url( add_query_arg( $yard_args, admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Yards', 'chriss-swim-training-progress-evaluation' ); ?></a>
+				<a class="button <?php echo 'm' === $course ? 'button-primary' : ''; ?>" href="<?php echo esc_url( Admin_UI::url(  $meter_args, $user_id ) ); ?>"><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></a>
+				<a class="button <?php echo 'yd' === $course ? 'button-primary' : ''; ?>" href="<?php echo esc_url( Admin_UI::url(  $yard_args, $user_id ) ); ?>"><?php esc_html_e( 'Yards', 'chriss-swim-training-progress-evaluation' ); ?></a>
 			</p>
 
 			<h2><?php echo esc_html( sprintf(
@@ -137,14 +137,14 @@ final class Admin_Personal_Bests {
 				<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><?php foreach ( $cols as $label ) : ?><th><?php echo esc_html( $label ); ?></th><?php endforeach; ?></tr></thead><tbody>
 				<?php foreach ( Evaluator::DISTANCES as $d ) : ?><tr><th><?php echo esc_html( $d . ' ' . $course ); ?></th><?php foreach ( $cols as $code => $label ) : $p = $pbs[ $d ][ $code ] ?? null; ?><td><?php if ( $p ) :
 					$is_lifetime = 'lifetime' !== $period && ! empty( $lifetime_pbs[ $d ][ $code ] ) && (int) $lifetime_pbs[ $d ][ $code ]->id === (int) $p->id;
-					?><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => $p->workout_id, 'swimmer_id' => $user_id ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( Workout::format_duration( $p->duration_ms ) ); ?></a><?php if ( $is_lifetime ) : ?> <span aria-label="<?php esc_attr_e( 'Lifetime Personal Best', 'chriss-swim-training-progress-evaluation' ); ?>" title="<?php esc_attr_e( 'Lifetime Personal Best', 'chriss-swim-training-progress-evaluation' ); ?>">★</span><?php endif; ?><br><small><?php echo esc_html( wp_date( 'M j, Y', ( new \DateTimeImmutable( $p->achieved_at, wp_timezone() ) )->getTimestamp(), wp_timezone() ) ); ?></small><?php else : ?>&mdash;<?php endif; ?></td><?php endforeach; ?></tr><?php endforeach; ?>
+					?><a href="<?php echo esc_url( Admin_UI::url(  array( 'page' => 'swimlog-workouts', 'workout_id' => $p->workout_id, 'swimmer_id' => $user_id ), $user_id ) ); ?>"><?php echo esc_html( Workout::format_duration( $p->duration_ms ) ); ?></a><?php if ( $is_lifetime ) : ?> <span aria-label="<?php esc_attr_e( 'Lifetime Personal Best', 'chriss-swim-training-progress-evaluation' ); ?>" title="<?php esc_attr_e( 'Lifetime Personal Best', 'chriss-swim-training-progress-evaluation' ); ?>">★</span><?php endif; ?><br><small><?php echo esc_html( wp_date( 'M j, Y', ( new \DateTimeImmutable( $p->achieved_at, wp_timezone() ) )->getTimestamp(), wp_timezone() ) ); ?></small><?php else : ?>&mdash;<?php endif; ?></td><?php endforeach; ?></tr><?php endforeach; ?>
 				</tbody></table></div>
 				<?php if ( 'lifetime' !== $period ) : ?><p><span aria-hidden="true">★</span> <?php esc_html_e( 'Lifetime Personal Best', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
 			<?php endif; ?>
 
 			<h2><?php esc_html_e( 'PB Progression', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<form method="get"><input type="hidden" name="page" value="swimlog-personal-bests"><input type="hidden" name="course" value="<?php echo esc_attr( $course ); ?>"><?php if ( current_user_can( 'swimlog_manage_all_users' ) ) : ?><input type="hidden" name="swimmer_id" value="<?php echo esc_attr( $user_id ); ?>"><?php endif; ?><select name="history_distance"><option value="0"><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( Evaluator::DISTANCES as $d ) : ?><option value="<?php echo esc_attr( $d ); ?>" <?php selected( $history_distance, $d ); ?>><?php echo esc_html( $d . ' ' . $course ); ?></option><?php endforeach; ?></select> <select name="history_stroke"><option value=""><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( array( 'FR' => 'Freestyle', 'BR' => 'Breaststroke', 'BACK' => 'Backstroke', 'FLY' => 'Butterfly', 'MIXED' => 'Mixed' ) as $code => $label ) : ?><option value="<?php echo esc_attr( $code ); ?>" <?php selected( $history_stroke, $code ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select> <?php submit_button( __( 'Show progression', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?></form>
-			<?php if ( $history_distance && $history_stroke ) : ?><?php if ( ! $progression ) : ?><p><?php esc_html_e( 'No progression records found for that distance and stroke.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php else : ?><div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workout', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><?php foreach ( $progression as $p ) : ?><tr><td><?php echo esc_html( wp_date( 'F j, Y', ( new \DateTimeImmutable( $p->achieved_at, wp_timezone() ) )->getTimestamp(), wp_timezone() ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $p->duration_ms ) ); ?></td><td><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-workouts', 'workout_id' => $p->workout_id, 'swimmer_id' => $user_id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'View workout', 'chriss-swim-training-progress-evaluation' ); ?></a></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?><?php endif; ?>
+			<form method="get"><input type="hidden" name="page" value="swimlog-personal-bests"><input type="hidden" name="course" value="<?php echo esc_attr( $course ); ?>"><?php Admin_UI::context_fields( $user_id ); ?><select name="history_distance"><option value="0"><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( Evaluator::DISTANCES as $d ) : ?><option value="<?php echo esc_attr( $d ); ?>" <?php selected( $history_distance, $d ); ?>><?php echo esc_html( $d . ' ' . $course ); ?></option><?php endforeach; ?></select> <select name="history_stroke"><option value=""><?php esc_html_e( 'Stroke', 'chriss-swim-training-progress-evaluation' ); ?></option><?php foreach ( array( 'FR' => 'Freestyle', 'BR' => 'Breaststroke', 'BACK' => 'Backstroke', 'FLY' => 'Butterfly', 'MIXED' => 'Mixed' ) as $code => $label ) : ?><option value="<?php echo esc_attr( $code ); ?>" <?php selected( $history_stroke, $code ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select> <?php submit_button( __( 'Show progression', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?></form>
+			<?php if ( $history_distance && $history_stroke ) : ?><?php if ( ! $progression ) : ?><p><?php esc_html_e( 'No progression records found for that distance and stroke.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php else : ?><div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Date', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Time', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Workout', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><?php foreach ( $progression as $p ) : ?><tr><td><?php echo esc_html( wp_date( 'F j, Y', ( new \DateTimeImmutable( $p->achieved_at, wp_timezone() ) )->getTimestamp(), wp_timezone() ) ); ?></td><td><?php echo esc_html( Workout::format_duration( $p->duration_ms ) ); ?></td><td><a href="<?php echo esc_url( Admin_UI::url(  array( 'page' => 'swimlog-workouts', 'workout_id' => $p->workout_id, 'swimmer_id' => $user_id ), $user_id ) ); ?>"><?php esc_html_e( 'View workout', 'chriss-swim-training-progress-evaluation' ); ?></a></td></tr><?php endforeach; ?></tbody></table></div><?php endif; ?><?php endif; ?>
 		</div>
 		<?php
 	}

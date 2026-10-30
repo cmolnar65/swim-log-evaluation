@@ -9,6 +9,18 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
+        var context = document.querySelector('[data-swimlog-context-owner]');
+        if (context) {
+            var pages = JSON.parse(context.dataset.swimlogContextPages);
+            document.querySelectorAll('#toplevel_page_swimlog-dashboard a').forEach(function (link) {
+                var url = new URL(link.href, window.location.href);
+                if (url.origin !== window.location.origin || !pages.includes(url.searchParams.get('page'))) return;
+                url.searchParams.set('swimmer_id', context.dataset.swimlogContextOwner);
+                url.searchParams.set('_swimlog_swimmer_nonce', context.dataset.swimlogContextNonce);
+                link.href = url.href;
+            });
+        }
+
         var formError = document.querySelector('[data-swimlog-form-error]');
         if (formError) formError.focus();
         document.querySelectorAll('.swimlog-admin .swimlog-table-wrap').forEach(function (region) {
