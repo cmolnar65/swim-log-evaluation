@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-admin-ui.php';
 require_once dirname( __DIR__ ) . '/includes/class-land-activity.php';
 
 /** Current-owner historical controls; posts never accept an owner parameter. */
@@ -63,7 +64,7 @@ final class Admin_Garmin_History {
             </form>
             <?php if ( is_array( $job ) ) self::status( $job, $offset, $filter ); ?>
             <h3><?php esc_html_e( 'Recent historical jobs', 'chriss-swim-training-progress-evaluation' ); ?></h3><ul>
-            <?php foreach ( Garmin_History_Jobs::recent() as $recent ) : ?><li><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $recent['id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $recent['start'] . ' — ' . $recent['end'] . ' · ' . self::label( $recent['status'] ) ); ?></a></li><?php endforeach; ?>
+            <?php foreach ( Garmin_History_Jobs::recent() as $recent ) : ?><li><a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-garmin', 'history_job' => $recent['id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( Admin_UI::date_text($recent['start']) . ' — ' . Admin_UI::date_text($recent['end']) . ' · ' . self::label( $recent['status'] ) ); ?></a></li><?php endforeach; ?>
             </ul>
         </section>
         <?php
@@ -116,7 +117,7 @@ final class Admin_Garmin_History {
         $labels = array( 'queued' => __( 'Queued', 'chriss-swim-training-progress-evaluation' ), 'running' => __( 'Running', 'chriss-swim-training-progress-evaluation' ), 'waiting' => __( 'Waiting before retry', 'chriss-swim-training-progress-evaluation' ), 'paused' => __( 'Paused', 'chriss-swim-training-progress-evaluation' ), 'blocked' => __( 'Blocked — check connection or permissions, then resume', 'chriss-swim-training-progress-evaluation' ), 'completed' => __( 'Completed', 'chriss-swim-training-progress-evaluation' ), 'completed_with_errors' => __( 'Completed with errors — scan/import is incomplete', 'chriss-swim-training-progress-evaluation' ), 'cancelled' => __( 'Cancelled — imported records retained', 'chriss-swim-training-progress-evaluation' ) );
         ?>
         <div id="swimlog-history-status" data-job="<?php echo esc_attr( $job['id'] ); ?>" data-offset="<?php echo esc_attr( $offset ); ?>" data-filter="<?php echo esc_attr( $filter ); ?>" data-active="<?php echo $active ? '1' : '0'; ?>">
-            <h3><?php echo esc_html( $job['start'] . ' — ' . $job['end'] ); ?></h3>
+            <h3><?php echo esc_html( Admin_UI::date_text($job['start']) . ' — ' . Admin_UI::date_text($job['end']) ); ?></h3>
             <p role="status"><strong><?php echo esc_html( $labels[$job['status']] ?? $job['status'] ); ?></strong></p>
             <?php if ( $job['error'] ) : ?><p role="alert"><?php echo esc_html( self::failure_message( $job['error'] ) ); ?></p><?php endif; ?>
             <p><?php echo esc_html( sprintf( /* translators: 1: queued units, 2: failed units, 3: discovered activities, 4: fully scanned activity days, 5: attempted measurement days. */ __( 'Unfinished checks/imports: %1$d; failed checks/imports: %2$d; discovered activities: %3$d; fully scanned activity days: %4$d; attempted measurement days: %5$d.', 'chriss-swim-training-progress-evaluation' ), count( $job['ready'] ), count( $job['failed'] ), $job['counts']['discovered'], $job['counts']['activity_days'], $job['counts']['measurement_days'] ) ); ?></p>
@@ -124,7 +125,7 @@ final class Admin_Garmin_History {
             <?php foreach ( array( 'activity_imported' => __( 'Activities imported', 'chriss-swim-training-progress-evaluation' ), 'activity_already' => __( 'Activities already present', 'chriss-swim-training-progress-evaluation' ), 'activity_review' => __( 'Activities needing review', 'chriss-swim-training-progress-evaluation' ), 'added' => __( 'Readings added', 'chriss-swim-training-progress-evaluation' ), 'updated' => __( 'Readings updated', 'chriss-swim-training-progress-evaluation' ), 'skipped' => __( 'Duplicate readings skipped', 'chriss-swim-training-progress-evaluation' ), 'reports_added' => __( 'Daily category records added', 'chriss-swim-training-progress-evaluation' ), 'reports_updated' => __( 'Daily category records updated', 'chriss-swim-training-progress-evaluation' ), 'reports_skipped' => __( 'Unchanged daily category records', 'chriss-swim-training-progress-evaluation' ), 'measurement_no_data' => __( 'Empty date/category responses', 'chriss-swim-training-progress-evaluation' ), 'excluded' => __( 'Unsupported fields/rows excluded', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?><div><dt><?php echo esc_html( $label ); ?></dt><dd><?php echo esc_html( (string) ( $job['counts'][$key] ?? 0 ) ); ?></dd></div><?php endforeach; ?>
             </dl>
             <p><?php esc_html_e( 'Daily category records include import bookkeeping for weight/BMI as well as SpO2 summaries. Activity totals are discovered progressively. Counts describe distinct work items; network retries are not additional imports. After an interrupted commit, recovered records may appear as already present. Empty means Garmin returned no data, not proof that no historical record ever existed.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-            <?php if ( $next ) : ?><p><?php echo esc_html( sprintf( /* translators: %s: UTC date/time. */ __( 'Next background task (UTC): %s. WordPress cron depends on site traffic.', 'chriss-swim-training-progress-evaluation' ), gmdate( 'Y-m-d H:i:s', $next ) ) ); ?></p><?php elseif ( $active ) : ?><p role="alert"><?php esc_html_e( 'No background task is scheduled. Use Resume / repair schedule.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
+            <?php if ( $next ) : ?><p><?php echo esc_html( sprintf( /* translators: %s: date/time in site timezone. */ __( 'Next background task: %s. WordPress cron depends on site traffic.', 'chriss-swim-training-progress-evaluation' ), Admin_UI::timestamp_text($next) ) ); ?></p><details class="swimlog-technical-details"><summary><?php esc_html_e('Technical timing details','chriss-swim-training-progress-evaluation'); ?></summary><p><?php echo esc_html('Next background task (UTC): ' . gmdate('Y-m-d H:i:s',$next)); ?></p></details><?php elseif ( $active ) : ?><p role="alert"><?php esc_html_e( 'No background task is scheduled. Use Resume / repair schedule.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
             <div class="swimlog-history-controls">
             <?php
             if ( $active ) self::button( $job, 'pause', __( 'Pause', 'chriss-swim-training-progress-evaluation' ) );
@@ -143,7 +144,7 @@ final class Admin_Garmin_History {
             <?php foreach ( $units['items'] ?? array() as $unit ) :
                 $date = $unit['data']['date'] ?? ( $unit['data']['cursor']['day'] ?? '' );
                 ?>
-                <tr><td><?php echo esc_html( $date . ' · ' . self::label( $unit['kind'] ) . ( isset( $unit['data']['activity_id'] ) ? ' #' . $unit['data']['activity_id'] : '' ) ); ?></td><td><?php echo esc_html( self::label( $unit['status'] ) ); ?></td><td>
+                <tr><td><?php echo esc_html( Admin_UI::date_text($date) . ' · ' . self::label( $unit['kind'] ) . ( isset( $unit['data']['activity_id'] ) ? ' #' . $unit['data']['activity_id'] : '' ) ); ?></td><td><?php echo esc_html( self::label( $unit['status'] ) ); ?></td><td>
                 <?php if ( $unit['error'] ) : ?><p><?php echo esc_html( self::failure_message( $unit['error'] ) ); ?></p><details><summary><?php esc_html_e( 'Technical details', 'chriss-swim-training-progress-evaluation' ); ?></summary><?php echo esc_html( $unit['error'] ); ?></details><?php endif; ?>
                 <?php foreach ( $unit['outcomes'] as $category => $row ) : ?><p><?php echo esc_html( self::label( $category ) . ': ' . self::label( $row['status'] ) ); ?></p><?php endforeach; ?>
                 <?php if ( 'review' === $unit['status'] && 'activity' === $unit['kind'] ) : ?>
@@ -161,6 +162,7 @@ final class Admin_Garmin_History {
         <?php
     }
 }
+
 
 
 

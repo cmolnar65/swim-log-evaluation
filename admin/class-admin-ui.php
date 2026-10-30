@@ -108,5 +108,37 @@ final class Admin_UI {
 			: rtrim( rtrim( number_format_i18n( $number, 3 ), '0' ), '.' );
 		return $display . ( $unit ? ' ' . $unit : '' );
 	}
+    /** Read-only UI intent; never authorizes an operation or a record lookup. */
+    public static function requested( $key ) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only presentation intent; all action handlers retain their own authorization and nonce checks.
+        return isset( $_GET[$key] ) && is_scalar( $_GET[$key] ) && '' !== sanitize_text_field( wp_unslash( $_GET[$key] ) );
+    }
+
+    public static function page_header( $title, $purpose, $action, $url ) {
+        ?><header class="swimlog-page-header"><h1><?php echo esc_html($title); ?></h1><p><?php echo esc_html($purpose); ?></p><a class="button button-primary" href="<?php echo esc_url($url); ?>"><?php echo esc_html($action); ?></a></header><?php
+    }
+
+    /** Dates are calendar dates; local recorded times are never reinterpreted as UTC. */
+    public static function date_text( $value ) {
+        return self::format_date_value( $value, false, false );
+    }
+    public static function datetime_text( $value, $utc = false ) {
+        return self::format_date_value( $value, $utc, true );
+    }
+    private static function format_date_value( $value, $utc, $time ) {
+        if ( ! is_string($value) ) return '—';
+        $pattern = $time ? 'Y-m-d H:i:s' : 'Y-m-d';
+        $zone = $utc ? new \DateTimeZone('UTC') : wp_timezone();
+        $date = \DateTimeImmutable::createFromFormat('!' . $pattern, $value, $zone);
+        if ( ! $date || $date->format($pattern) !== $value ) return '—';
+        $format = get_option('date_format','F j, Y') . ( $time ? ' ' . get_option('time_format','g:i a') : '' );
+        return wp_date($format, $date->getTimestamp(), wp_timezone()) . ( $time ? ' (' . wp_timezone()->getName() . ( $utc ? ', UTC' . wp_date('P',$date->getTimestamp(),wp_timezone()) : '' ) . ')' : '' );
+    }
+    public static function timestamp_text( $value ) {
+        if ( ! is_numeric($value) || (int)$value <= 0 ) return '—';
+        return self::datetime_text(gmdate('Y-m-d H:i:s',(int)$value),true);
+    }
+
 }
+
 

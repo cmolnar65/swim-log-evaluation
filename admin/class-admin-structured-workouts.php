@@ -116,14 +116,16 @@ final class Admin_Structured_Workouts {
             $attempted = json_decode( self::$submitted_form['document'], true );
             if ( is_array( $attempted ) && isset( $attempted['sections'] ) && is_array( $attempted['sections'] ) ) $document = $attempted;
         }
+        $show_editor = $id || $error || Admin_UI::requested('new');
+        $active_task = $show_editor || Admin_UI::requested('pdf_preview') || Admin_UI::requested('schedule_plan') || Admin_UI::requested('from_workout');
         $locked = $current ? Structured_Workout_Store::is_locked( $current['id'], $owner ) : false;
         wp_enqueue_style( 'swimlog-structured-editor-layout', SWIMLOG_EVALUATION_URL . 'assets/css/structured-workout-editor.css', array(), SWIMLOG_EVALUATION_VERSION );
         wp_enqueue_script( 'swimlog-structured-editor', SWIMLOG_EVALUATION_URL . 'assets/js/structured-workout-editor.js', array(), SWIMLOG_EVALUATION_VERSION, true );
         ?>
         <div class="wrap swimlog-admin">
-          <h1><?php esc_html_e( 'Structured Workouts', 'chriss-swim-training-progress-evaluation' ); ?></h1>
-          <p><?php esc_html_e( 'Create reusable structured prescriptions. These are private and do not alter existing planned or recorded workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+          <?php Admin_UI::page_header(__('Structured Workouts','chriss-swim-training-progress-evaluation'),__('Structured = reusable sets. Planned = when you intend to swim. Recorded = what you did. Your private library does not rewrite recorded history.','chriss-swim-training-progress-evaluation'),__('Create Structured Workout','chriss-swim-training-progress-evaluation'),admin_url('admin.php?page=swimlog-structured-workouts&new=1#swimlog-page-editor')); ?>
           <?php if ( $error ) : ?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+          <?php if ( ! $active_task ) self::library($owner); ?>
           <?php Admin_Structured_Transfers::preview_panel(); ?>
           <details><summary><strong><?php esc_html_e( 'Import a training plan PDF', 'chriss-swim-training-progress-evaluation' ); ?></strong></summary>
             <p><?php esc_html_e( 'Extract selectable PDF text for private review. No workouts are created in this phase.', 'chriss-swim-training-progress-evaluation' ); ?></p>
@@ -225,7 +227,8 @@ final class Admin_Structured_Workouts {
           <?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
           <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only import result notice. ?>
           <?php if ( isset( $_GET['pdf_imported'] ) ) : ?><div class="notice notice-success"><p><?php echo esc_html( absint( wp_unslash( $_GET['pdf_imported'] ) ) . ' reviewed workouts imported into a private training plan.' ); ?></p></div><?php endif; ?>
-          <?php if ( $locked ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'This prescription is locked because it is associated with a recorded swim. Duplicate it to create an editable copy.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+          <?php if ( $show_editor ) : ?><section id="swimlog-page-editor" class="swimlog-page-editor"><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-structured-workouts')); ?>"><?php esc_html_e('Back to list','chriss-swim-training-progress-evaluation'); ?></a></p>
+          <h2><?php echo esc_html($current ? __('Workout prescription','chriss-swim-training-progress-evaluation') : __('Create Structured Workout','chriss-swim-training-progress-evaluation')); ?></h2><?php if ( $locked ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'This prescription is locked because it is associated with a recorded swim. Duplicate it to create an editable copy.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
           <?php if ( ! $locked ) : ?><form method="post" id="swimlog-structure-form">
             <?php wp_nonce_field( 'swimlog_structure_save' ); ?>
             <input type="hidden" name="swimlog_structure_action" value="save">
@@ -237,6 +240,13 @@ final class Admin_Structured_Workouts {
             <p><button type="submit" class="button button-primary"><?php esc_html_e( 'Save structured workout', 'chriss-swim-training-progress-evaluation' ); ?></button></p>
           </form><?php else : ?><pre class="swimlog-prescription-preview"><?php echo esc_html( Admin_UI::prescription_text( $form_title, $document ) ); ?></pre><?php endif; ?>
           <?php if ( $current ) Admin_Structured_Transfers::controls( $current['id'], true ); ?>
+          </section><?php endif; ?>
+          <?php if ( $active_task ) self::library($owner); ?>
+        </div>
+        <?php
+    }
+    private static function library($owner) { ?>
+    <section id="swimlog-page-library" class="swimlog-library">
           <h2><?php esc_html_e( 'Saved workouts', 'chriss-swim-training-progress-evaluation' ); ?></h2>
           <?php
           // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter.
@@ -248,7 +258,7 @@ final class Admin_Structured_Workouts {
             <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'visibility' => $key ), admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a> &nbsp;
           <?php endforeach; ?></p>
           <?php if ( empty( $saved_workouts ) ) : ?>
-            <p><?php esc_html_e( 'No structured workouts have been saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+            <p><?php echo esc_html(Structured_Workout_Store::all($owner,'all') ? __('No structured workouts match this view. Choose All to include hidden workouts.','chriss-swim-training-progress-evaluation') : __('No structured workouts have been saved yet. Choose Create Structured Workout or import a training plan PDF.','chriss-swim-training-progress-evaluation')); ?> <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-structured-workouts&visibility=all')); ?>"><?php esc_html_e('Clear filters','chriss-swim-training-progress-evaluation'); ?></a></p>
           <?php else : ?>
             <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped">
               <thead><tr>
@@ -286,23 +296,24 @@ final class Admin_Structured_Workouts {
                     <td><?php echo $valid ? esc_html( (string) count( $summary['document']['sections'] ) ) : '&mdash;'; ?></td>
                     <td><?php echo $valid ? esc_html( (string) $summary['totals']['expanded_steps'] ) : '&mdash;'; ?></td>
                     <td><?php echo $valid ? esc_html( implode( ', ', $stroke_parts ) ) : '&mdash;'; ?></td>
-                    <td><?php echo esc_html( get_date_from_gmt( $item->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
+                    <td><?php echo esc_html( Admin_UI::datetime_text($item->post_modified_gmt,true) ); ?></td>
                     <td><a class="button button-small" href="<?php echo esc_url( $edit_url ); ?>"><?php echo $item_locked ? esc_html__( 'View locked', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a>
-                    <?php Admin_Structured_Transfers::controls( $item->ID ); ?>
+                    <details class="swimlog-more-actions"><summary><?php esc_html_e('More actions','chriss-swim-training-progress-evaluation'); ?></summary><?php Admin_Structured_Transfers::controls( $item->ID ); ?>
                     <form method="post" style="display:inline">
                       <?php wp_nonce_field( 'swimlog_structure_lifecycle' ); ?>
                       <input type="hidden" name="structure_id" value="<?php echo esc_attr( $item->ID ); ?>">
                       <button type="submit" class="button button-small" name="swimlog_structure_lifecycle" value="<?php echo esc_attr( $item_hidden ? 'unhide' : 'hide' ); ?>"><?php echo esc_html( $item_hidden ? 'Unhide' : 'Hide' ); ?></button>
                       <?php if ( ! $item_history ) : ?><button type="submit" class="button button-small" name="swimlog_structure_lifecycle" value="delete" onclick="return confirm('Permanently delete this unused workout?');">Delete</button><?php endif; ?>
-                    </form></td>
+                    </form></details></td>
                   </tr>
                 <?php endforeach; ?>
               </tbody>
             </table></div>
           <?php endif; ?>
-        </div>
-        <?php
-    }
+    </section>
+    <?php }
+
 }
+
 
 

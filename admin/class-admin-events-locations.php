@@ -2,6 +2,7 @@
 namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-admin-ui.php';
 
 /**
  * Event and location administration UI and actions.
@@ -77,7 +78,9 @@ final class Admin_Events_Locations {
 				self::$event_action_error = $result->get_error_message();
 				return;
 			}
-			wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>'upcoming','saved'=>1 ), admin_url( 'admin.php' ) ) );
+			$saved_event = Event::get_for_user( $result, $user_id );
+            $saved_view = $saved_event && $saved_event->event_date < current_time('Y-m-d') ? 'past' : 'upcoming';
+            wp_safe_redirect( add_query_arg( array( 'page'=>'swimlog-events','view'=>$saved_view,'saved'=>1 ), admin_url( 'admin.php' ) ) . '#swimlog-event-' . absint($result) );
 			exit;
 		}
 
@@ -112,18 +115,20 @@ final class Admin_Events_Locations {
 		$editing=$edit_id?Event::get_for_user($edit_id,$user_id):null;
 		$event_form = Admin_UI::form_record( $editing, self::$event_form, array( 'event_name' => '', 'event_date' => '', 'event_time' => '', 'location_id' => 0, 'distance_value' => 0, 'course_unit' => get_option( 'swimlog_default_course_unit', 'm' ), 'stroke' => 'FR', 'notes' => '' ) );
 		$events=Event::all_for_user($user_id,$view);
+        $show_editor = $editing || self::$event_form || $error || Admin_UI::requested('new');
 		$locations=Location::all_for_user($user_id);
 		$strokes=array('FR'=>__('Freestyle','chriss-swim-training-progress-evaluation'),'BR'=>__('Breaststroke','chriss-swim-training-progress-evaluation'),'BACK'=>__('Backstroke','chriss-swim-training-progress-evaluation'),'FLY'=>__('Butterfly','chriss-swim-training-progress-evaluation'),'MIXED'=>__('Mixed','chriss-swim-training-progress-evaluation'));
 		?>
 		<div class="wrap swimlog-admin">
-			<h1><?php esc_html_e('Events','chriss-swim-training-progress-evaluation'); ?></h1>
-			<p><?php esc_html_e('Manage upcoming and historical swim events. Past events remain in your history.','chriss-swim-training-progress-evaluation'); ?></p>
+			<?php Admin_UI::page_header(__('Events','chriss-swim-training-progress-evaluation'),__('Manage upcoming and historical swim events. Past events remain in your history.','chriss-swim-training-progress-evaluation'),__('Add Event','chriss-swim-training-progress-evaluation'),admin_url('admin.php?page=swimlog-events&new=1#swimlog-page-editor')); ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Event saved.','chriss-swim-training-progress-evaluation'); ?></p></div><?php endif; ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['deleted'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Event deleted.','chriss-swim-training-progress-evaluation'); ?></p></div><?php endif; ?>
 			<?php if($error):?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html($error); ?></p></div><?php endif; ?>
 
+<?php if ( ! $show_editor ) self::event_list($events, $view, $locations, $user_id, $strokes); ?>
+            <?php if ( $show_editor ) : ?><section id="swimlog-page-editor" class="swimlog-page-editor"><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events')); ?>"><?php esc_html_e('Back to list','chriss-swim-training-progress-evaluation'); ?></a></p>
 			<h2><?php echo $editing?esc_html__('Edit Event','chriss-swim-training-progress-evaluation'):esc_html__('Add Event','chriss-swim-training-progress-evaluation'); ?></h2>
 			<form method="post"><?php wp_nonce_field('swimlog_save_event'); ?><input type="hidden" name="swimlog_event_action" value="save"><input type="hidden" name="event_id" value="<?php echo esc_attr($editing?$editing->id:0); ?>">
 			<table class="form-table" role="presentation">
@@ -136,13 +141,8 @@ final class Admin_Events_Locations {
 			<tr><th><label for="swimlog-event-notes"><?php esc_html_e('Notes','chriss-swim-training-progress-evaluation'); ?></label></th><td><textarea class="large-text" rows="4" id="swimlog-event-notes" name="notes"><?php echo esc_textarea($event_form->notes); ?></textarea></td></tr>
 			</table><?php submit_button($editing?__('Update Event','chriss-swim-training-progress-evaluation'):__('Add Event','chriss-swim-training-progress-evaluation')); ?><?php if($editing):?> <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events')); ?>"><?php esc_html_e('Cancel','chriss-swim-training-progress-evaluation'); ?></a><?php endif; ?></form>
 
-			<h2><?php esc_html_e('Your Events','chriss-swim-training-progress-evaluation'); ?></h2>
-			<p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=upcoming')); ?>"><?php esc_html_e('Upcoming','chriss-swim-training-progress-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=past')); ?>"><?php esc_html_e('Past','chriss-swim-training-progress-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=all')); ?>"><?php esc_html_e('All','chriss-swim-training-progress-evaluation'); ?></a></p>
-			<?php if(empty($events)):?><p><?php esc_html_e('No events found for this view.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?>
-			<?php if('past'!==$view):?><p class="description"><?php esc_html_e('Upcoming events include Race Readiness 2.0 evidence from recorded workouts and performances. It is descriptive only and does not predict race results or physiological readiness.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?>
-			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Event','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></th><?php if('past'!==$view):?><th><?php esc_html_e('Preparation Evidence','chriss-swim-training-progress-evaluation'); ?></th><?php endif;?><th><?php esc_html_e('Actions','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody>
-			<?php foreach($events as $event): $locname='—'; foreach($locations as $loc){if((int)$loc->id===(int)$event->location_id){$locname=$loc->name;break;}} $is_upcoming=(string)$event->event_date>=current_time('Y-m-d'); ?><tr><td><?php echo esc_html(wp_date('F j, Y',(new \DateTimeImmutable($event->event_date.' 12:00:00',wp_timezone()))->getTimestamp(),wp_timezone())); ?><?php if($event->event_time) echo '<br>'.esc_html(wp_date(get_option('time_format','g:i a'),(new \DateTimeImmutable($event->event_date.' '.$event->event_time,wp_timezone()))->getTimestamp(),wp_timezone())); ?></td><td><?php echo esc_html($event->event_name); ?></td><td><?php echo esc_html($event->distance_value.' '.$event->course_unit); ?></td><td><?php echo esc_html($strokes[$event->stroke]??$event->stroke); ?></td><td><?php echo esc_html($locname); ?></td><?php if('past'!==$view):?><td><?php if($is_upcoming){$ready=Workout::event_readiness($user_id,$event,Workout::EVENT_READINESS_LOOKBACK_DAYS);Admin_Race_Readiness::render($ready,$event,$strokes);}else{echo '—';} ?></td><?php endif;?><td><a class="button button-small" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-events','view'=>$view,'edit'=>$event->id),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit','chriss-swim-training-progress-evaluation'); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field('swimlog_delete_event'); ?><input type="hidden" name="swimlog_event_action" value="delete"><input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>"><button class="button button-small" onclick="return confirm('<?php echo esc_js(__('Delete this event?','chriss-swim-training-progress-evaluation')); ?>');"><?php esc_html_e('Delete','chriss-swim-training-progress-evaluation'); ?></button></form></td></tr><?php endforeach; ?>
-			</tbody></table></div><?php endif; ?>
+</section><?php endif; ?>
+            <?php if ( $show_editor ) self::event_list($events, $view, $locations, $user_id, $strokes); ?>
 		</div><?php
 	}
 
@@ -162,16 +162,18 @@ final class Admin_Events_Locations {
 		$editing = $edit_id ? Location::get_for_user( $edit_id, $user_id ) : null;
 		$location_form = Admin_UI::form_record( $editing, self::$location_form, array( 'name' => '', 'pool_length' => '', 'pool_unit' => '', 'latitude' => '', 'longitude' => '', 'notes' => '' ) );
 		$locations = Location::all_for_user( $user_id );
+        $show_editor = $editing || self::$location_form || $error || Admin_UI::requested('new');
 		?>
 		<div class="wrap swimlog-admin">
-			<h1><?php esc_html_e( 'Locations', 'chriss-swim-training-progress-evaluation' ); ?></h1>
-			<p><?php esc_html_e( 'Manage your pool and swim locations. Editing a location does not change the pool information stored with historical workouts.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<?php Admin_UI::page_header(__('Locations','chriss-swim-training-progress-evaluation'),__('Manage your pool and swim locations. Editing a location does not change the pool information stored with historical workouts.','chriss-swim-training-progress-evaluation'),__('Add Location','chriss-swim-training-progress-evaluation'),admin_url('admin.php?page=swimlog-locations&new=1#swimlog-page-editor')); ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if ( isset( $_GET['saved'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Location saved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if ( isset( $_GET['deleted'] ) ) : ?><div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Location deleted. Historical workout snapshots were preserved.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
+<?php if ( ! $show_editor ) self::location_list($locations); ?>
+            <?php if ( $show_editor ) : ?><section id="swimlog-page-editor" class="swimlog-page-editor"><p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-locations')); ?>"><?php esc_html_e('Back to list','chriss-swim-training-progress-evaluation'); ?></a></p>
 			<h2><?php echo $editing ? esc_html__( 'Edit Location', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Add Location', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<form method="post">
 				<?php wp_nonce_field( 'swimlog_save_location' ); ?>
@@ -187,18 +189,42 @@ final class Admin_Events_Locations {
 				<?php if ( $editing ) : ?><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-locations' ) ); ?>"><?php esc_html_e( 'Cancel', 'chriss-swim-training-progress-evaluation' ); ?></a><?php endif; ?>
 			</form>
 
-			<h2><?php esc_html_e( 'Your Locations', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<?php if ( empty( $locations ) ) : ?>
-				<p><?php esc_html_e( 'No locations have been added yet.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-			<?php else : ?>
-				<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'OWS GPS', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Notes', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Actions', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
-				<?php foreach ( $locations as $location ) : ?>
-					<tr><td><?php echo esc_html( $location->name ); ?></td><td><?php echo null !== $location->pool_length ? esc_html( number_format_i18n( (float) $location->pool_length, 0 ) . ' ' . $location->pool_unit ) : '&mdash;'; ?></td><td><?php echo null !== $location->latitude && null !== $location->longitude ? esc_html( $location->latitude . ', ' . $location->longitude ) : '&mdash;'; ?></td><td><?php echo esc_html( $location->notes ); ?></td><td><a class="button button-small" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-locations', 'edit' => $location->id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a> <form method="post" style="display:inline"><?php wp_nonce_field( 'swimlog_delete_location' ); ?><input type="hidden" name="swimlog_location_action" value="delete"><input type="hidden" name="location_id" value="<?php echo esc_attr( $location->id ); ?>"><button type="submit" class="button button-small" onclick="return confirm('<?php echo esc_js( __( 'Delete this location? Historical workout snapshots will remain unchanged.', 'chriss-swim-training-progress-evaluation' ) ); ?>');"><?php esc_html_e( 'Delete', 'chriss-swim-training-progress-evaluation' ); ?></button></form></td></tr>
-				<?php endforeach; ?>
-				</tbody></table></div>
-			<?php endif; ?>
+</section><?php endif; ?>
+            <?php if ( $show_editor ) self::location_list($locations); ?>
 		</div>
 		<?php
 	}
+    private static function event_list($events, $view, $locations, $user_id, $strokes) {
+        ?>
+    <section id="swimlog-page-library" class="swimlog-library">
+			<h2><?php esc_html_e('Your Events','chriss-swim-training-progress-evaluation'); ?></h2>
+			<p><a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=upcoming')); ?>"><?php esc_html_e('Upcoming','chriss-swim-training-progress-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=past')); ?>"><?php esc_html_e('Past','chriss-swim-training-progress-evaluation'); ?></a> | <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=all')); ?>"><?php esc_html_e('All','chriss-swim-training-progress-evaluation'); ?></a></p>
+			<?php if(empty($events)):?><p><?php echo esc_html(Event::all_for_user($user_id,'all') ? __('No events match this view. Select All to check your full event history.','chriss-swim-training-progress-evaluation') : __('No events have been added yet. Choose Add Event to record an upcoming or past swim event.','chriss-swim-training-progress-evaluation')); ?> <a href="<?php echo esc_url(admin_url('admin.php?page=swimlog-events&view=all')); ?>"><?php esc_html_e('Clear filters','chriss-swim-training-progress-evaluation'); ?></a></p><?php else:?>
+			<?php if('past'!==$view):?><p class="description"><?php esc_html_e('Upcoming events include Race Readiness 2.0 evidence from recorded workouts and performances. It is descriptive only and does not predict race results or physiological readiness.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e('Date','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Event','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></th><?php if('past'!==$view):?><th><?php esc_html_e('Preparation Evidence','chriss-swim-training-progress-evaluation'); ?></th><?php endif;?><th><?php esc_html_e('Actions','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody>
+			<?php foreach($events as $event): $locname='—'; foreach($locations as $loc){if((int)$loc->id===(int)$event->location_id){$locname=$loc->name;break;}} $is_upcoming=(string)$event->event_date>=current_time('Y-m-d'); ?><tr id="swimlog-event-<?php echo esc_attr($event->id); ?>"><td><?php echo esc_html($event->event_time ? Admin_UI::datetime_text($event->event_date.' '.$event->event_time) : Admin_UI::date_text($event->event_date)); ?></td><td><?php echo esc_html($event->event_name); ?></td><td><?php echo esc_html($event->distance_value.' '.$event->course_unit); ?></td><td><?php echo esc_html($strokes[$event->stroke]??$event->stroke); ?></td><td><?php echo esc_html($locname); ?></td><?php if('past'!==$view):?><td><?php if($is_upcoming){$ready=Workout::event_readiness($user_id,$event,Workout::EVENT_READINESS_LOOKBACK_DAYS);Admin_Race_Readiness::render($ready,$event,$strokes);}else{echo '—';} ?></td><?php endif;?><td><a class="button button-small" href="<?php echo esc_url(add_query_arg(array('page'=>'swimlog-events','view'=>$view,'edit'=>$event->id),admin_url('admin.php'))); ?>"><?php esc_html_e('Edit','chriss-swim-training-progress-evaluation'); ?></a> <details class="swimlog-more-actions"><summary><?php esc_html_e('More actions','chriss-swim-training-progress-evaluation'); ?></summary><form method="post" style="display:inline"><?php wp_nonce_field('swimlog_delete_event'); ?><input type="hidden" name="swimlog_event_action" value="delete"><input type="hidden" name="event_id" value="<?php echo esc_attr($event->id); ?>"><button class="button button-small" onclick="return confirm('<?php echo esc_js(__('Delete this event?','chriss-swim-training-progress-evaluation')); ?>');"><?php esc_html_e('Delete','chriss-swim-training-progress-evaluation'); ?></button></form></details></td></tr><?php endforeach; ?>
+			</tbody></table></div><?php endif; ?>
+        </section>
+        <?php
+    }
+
+    private static function location_list($locations) {
+        ?>
+    <section id="swimlog-page-library" class="swimlog-library">
+			<h2><?php esc_html_e( 'Your Locations', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+			<?php if ( empty( $locations ) ) : ?>
+				<p><?php esc_html_e( 'No locations have been added yet. Choose Add Location to save a pool or open-water reference.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<?php else : ?>
+				<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Name', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Pool', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'OWS GPS', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Notes', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Actions', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+				<?php foreach ( $locations as $location ) : ?>
+					<tr><td><?php echo esc_html( $location->name ); ?></td><td><?php echo null !== $location->pool_length ? esc_html( number_format_i18n( (float) $location->pool_length, 0 ) . ' ' . $location->pool_unit ) : '&mdash;'; ?></td><td><?php echo null !== $location->latitude && null !== $location->longitude ? esc_html( $location->latitude . ', ' . $location->longitude ) : '&mdash;'; ?></td><td><?php echo esc_html( $location->notes ); ?></td><td><a class="button button-small" href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-locations', 'edit' => $location->id ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'Edit', 'chriss-swim-training-progress-evaluation' ); ?></a> <details class="swimlog-more-actions"><summary><?php esc_html_e('More actions','chriss-swim-training-progress-evaluation'); ?></summary><form method="post" style="display:inline"><?php wp_nonce_field( 'swimlog_delete_location' ); ?><input type="hidden" name="swimlog_location_action" value="delete"><input type="hidden" name="location_id" value="<?php echo esc_attr( $location->id ); ?>"><button type="submit" class="button button-small" onclick="return confirm('<?php echo esc_js( __( 'Delete this location? Historical workout snapshots will remain unchanged.', 'chriss-swim-training-progress-evaluation' ) ); ?>');"><?php esc_html_e( 'Delete', 'chriss-swim-training-progress-evaluation' ); ?></button></form></details></td></tr>
+				<?php endforeach; ?>
+				</tbody></table></div>
+			<?php endif; ?>
+        </section>
+        <?php
+    }
+
 }
+
 

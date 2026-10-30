@@ -2,6 +2,7 @@
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once dirname( __DIR__ ) . '/includes/class-land-activity.php';
+require_once __DIR__ . '/class-admin-ui.php';
 
 /** Private read-only recorded activity detail; no swim evaluation or post creation. */
 final class Admin_Land_Activities {
@@ -14,7 +15,7 @@ final class Admin_Land_Activities {
         $fields = array(
             __( 'Activity', 'chriss-swim-training-progress-evaluation' ) => $labels[$workout->workout_type],
             __( 'Environment', 'chriss-swim-training-progress-evaluation' ) => $environment[$workout->activity_environment ?? ''] ?? __( 'Unknown', 'chriss-swim-training-progress-evaluation' ),
-            __( 'Recorded start', 'chriss-swim-training-progress-evaluation' ) => $workout->workout_start,
+            __( 'Recorded start', 'chriss-swim-training-progress-evaluation' ) => Admin_UI::datetime_text($workout->workout_start),
             __( 'Distance', 'chriss-swim-training-progress-evaluation' ) => null !== $workout->total_distance_m ? Admin_UI::display_measurement( $workout->total_distance_m, 'm' ) : '—',
             __( 'Elapsed', 'chriss-swim-training-progress-evaluation' ) => Workout::format_duration( $workout->elapsed_time_ms ),
             __( 'Recorded moving time', 'chriss-swim-training-progress-evaluation' ) => Workout::format_duration( $workout->moving_time_ms ),
@@ -36,4 +37,5 @@ final class Admin_Land_Activities {
         </div><?php
     }
 }
+
 

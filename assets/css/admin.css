@@ -181,3 +181,21 @@
 .swimlog-admin .swimlog-metric-help { margin: 16px 0; max-width: 850px; }
 .swimlog-admin .swimlog-metric-help dt { font-weight: 600; }
 .swimlog-admin .swimlog-metric-help dd { margin: 4px 0 12px; }
+
+
+.swimlog-admin .swimlog-page-header { margin: 8px 0 20px; }
+.swimlog-admin .swimlog-page-header p { max-width: 850px; }
+.swimlog-admin .swimlog-library,
+.swimlog-admin .swimlog-page-editor { padding: 16px; margin: 18px 0; background: #fff; border: 1px solid #dcdcde; min-width: 0; }
+.swimlog-admin .swimlog-page-editor > h2,
+.swimlog-admin .swimlog-library > h2 { margin-top: 0; }
+.swimlog-admin .swimlog-more-actions { margin-top: 8px; max-width: 340px; }
+.swimlog-admin .swimlog-more-actions summary,
+.swimlog-admin .swimlog-technical-details summary { cursor: pointer; padding: 8px 0; }
+.swimlog-admin .swimlog-more-actions form { display: block !important; margin: 8px 0; }
+.swimlog-admin .swimlog-more-actions .button { margin: 3px 2px; }
+.swimlog-admin .swimlog-empty-state { padding: 12px 0; }
+.swimlog-admin tr:target { outline: 2px solid #2271b1; outline-offset: -2px; }
+@media (max-width: 782px) {
+ .swimlog-admin .swimlog-library, .swimlog-admin .swimlog-page-editor { padding: 10px; }
+}

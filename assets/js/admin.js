@@ -21,6 +21,11 @@
             });
         }
 
+        var editor = document.querySelector('.swimlog-page-editor');
+        if (editor && !document.querySelector('[data-swimlog-form-error]')) {
+            var editorHeading = editor.querySelector('h2');
+            if (editorHeading) { editorHeading.tabIndex = -1; editorHeading.focus(); }
+        }
         var formError = document.querySelector('[data-swimlog-form-error]');
         if (formError) formError.focus();
         document.querySelectorAll('.swimlog-admin .swimlog-table-wrap').forEach(function (region) {
@@ -137,5 +142,6 @@
 		updateGarminBatchButtons(form);
 	});
 }());
+
 
 
