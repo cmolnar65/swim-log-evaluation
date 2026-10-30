@@ -36,6 +36,6 @@ final class PlannedWorkoutCompletionMatchingTest extends TestCase {
   $start=strpos($service,'public static function associate_completed_workout');$end=strpos($service,'public static function clear_completed_workout',$start);$body=substr($service,$start,$end-$start);
   $this->assertStringNotContainsString("Database::table( 'workouts' )",$body);
   $this->assertStringNotContainsString('$wpdb->update( $workouts',$body);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.3'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.4'",$main);
  }
 }

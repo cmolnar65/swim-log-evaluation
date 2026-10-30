@@ -25,6 +25,6 @@ final class PlannedWorkoutRecurrenceTest extends TestCase {
   $this->assertStringNotContainsString('plan.notes',strtolower($view));$this->assertStringNotContainsString('workout.notes',strtolower($view));$this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);
  }
  public function test_phase_eight_does_not_change_database_schema_version(){
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.3'",$main);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.4'",$main);
  }
 }
