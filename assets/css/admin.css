@@ -166,3 +166,18 @@
 .swimlog-swimmer-context nav a[aria-current=page] { font-weight: 700; }
 
 .swimlog-admin .swimlog-prescription-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; border: 1px solid #c3c4c7; background: #fff; }
+
+
+.swimlog-admin .swimlog-manual-sets { margin: 16px 0; }
+.swimlog-admin .swimlog-manual-sets summary,
+.swimlog-admin .swimlog-metric-help summary { padding: 10px 0; cursor: pointer; }
+.swimlog-admin .swimlog-manual-sets input:not([hidden]),
+.swimlog-admin .swimlog-manual-sets select { min-width: 110px; }
+.swimlog-admin .swimlog-manual-sets [hidden],
+.swimlog-admin th[hidden], .swimlog-admin td[hidden] { display: none; }
+.swimlog-admin .swimlog-analytics-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.swimlog-admin .swimlog-analytics-filters input[type="number"] { width: 80px; }
+.swimlog-admin .swimlog-report-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.swimlog-admin .swimlog-metric-help { margin: 16px 0; max-width: 850px; }
+.swimlog-admin .swimlog-metric-help dt { font-weight: 600; }
+.swimlog-admin .swimlog-metric-help dd { margin: 4px 0 12px; }
