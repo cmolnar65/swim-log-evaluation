@@ -113,7 +113,7 @@ final class Garmin_Measurement_Import {
                 $utc = self::weight_utc( $entry['timestampGMT'] ?? '', $day );
                 if ( is_wp_error( $utc ) ) { ++$excluded; continue; }
                 $values = array();
-                if ( 'weight' === $category && isset( $entry['weight'] ) && self::number( $entry['weight'] ) ) $values['weight'] = array( 'value' => self::decimal_value( $entry['weight'] ), 'unit' => 'kg' );
+                if ( 'weight' === $category && isset( $entry['weight'] ) && self::number( $entry['weight'] ) ) $values['weight'] = array( 'value' => self::decimal_value( is_int( $entry['timestampGMT'] ) ? (float) $entry['weight'] / 1000 : $entry['weight'] ), 'unit' => 'kg' );
                 if ( 'body_composition' === $category ) {
                     if ( isset( $entry['bmi'] ) && self::number( $entry['bmi'] ) ) $values['bmi'] = array( 'value' => self::decimal_value( $entry['bmi'] ), 'unit' => 'kg/m2' );
                     // BMI is dimensionally defined; the other entry units remain unverified.
@@ -121,6 +121,11 @@ final class Garmin_Measurement_Import {
                 }
                 if ( ! $values ) { ++$excluded; continue; }
                 $row = array( 'role' => 'sample', 'observed_at_utc' => $utc, 'calendar_date' => $day, 'date_basis' => 'provider_calendar', 'values' => $values, 'provenance' => array( 'normalization_version' => 'garmin-measurements-v1' ) );
+                if ( 'weight' === $category && is_int( $entry['timestampGMT'] ) ) {
+                    // Live Unix-ms variant uses grams, unlike the documented string/kg variant.
+                    $row['provenance']['source_format'] = 'garmin-weight-ms-grams-v2';
+                    $row['provenance']['source_weight_grams'] = (string) self::decimal_value( $entry['weight'] );
+                }
                 if ( isset( $entry['date'] ) ) {
                     $local = Health_Measurement_Store::timestamp( $entry['date'], false );
                     if ( ! is_wp_error( $local ) ) $row['source_local_time'] = $local;

@@ -29,6 +29,7 @@ $http = static function ( $preempt, $args, $url ) use ( &$calls, &$scenario ) {
     if ( 'milliseconds' === $scenario && false !== strpos( $url, 'weight/all' ) ) {
         $entries = json_decode( $body, true );
         foreach ( $entries as $index => &$entry ) {
+            $entry['weight'] *= 1000;
             $entry['timestampGMT'] = 0 === $index ? 1790834400000 : 1790838000000;
             $entry['date'] = 0 === $index ? 1790812800000 : 1790816400000;
         }
@@ -68,6 +69,39 @@ try {
     $verify( 'complete' === $millisecond_repeat[1]['status'] && 2 === $millisecond_repeat[1]['skipped'] && 0 === $millisecond_repeat[1]['added'], 'Live integer GMT timestamps identify existing BMI readings.' );
     $verify( 2 === $millisecond_repeat[0]['excluded'], 'Numeric local date is excluded without blocking valid UTC readings.' );
     $scenario = 'normal';
+    // Reproduce the prior development build: source grams accidentally labeled kg.
+    $raw = array( array( 'calendarDate' => '2026-10-02', 'timestampGMT' => 1790920800000, 'weight' => 83500.0 ) );
+    $fixed = Importer::normalize( 'weight', '2026-10-02', $raw, '2026-10-03T12:00:00Z' );
+    $legacy = $fixed['observations'][0];
+    $legacy['values']['weight']['value'] = '83500';
+    $legacy['provenance'] = array( 'normalization_version' => 'garmin-measurements-v1' );
+    $seed = \SwimLogEvaluation\Health_Measurement_Store::save_report( $owner, $fixed['report'], array( $legacy ) );
+    $verify( ! is_wp_error( $seed ) && 1 === $seed['counts']['added'], 'Seed exact gram-as-kg development defect.' );
+    $measurements = Database::table( 'health_measurements' );
+    $members = Database::table( 'health_report_members' );
+    $before_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d AND calendar_date = %s', $measurements, $owner, '2026-10-02' ) );
+    $fixed['report']['fetched_at_utc'] = '2026-10-03T12:00:01Z';
+    $fault = static function ( $query ) use ( $measurements ) {
+        return 0 === strpos( $query, 'UPDATE ' . chr( 96 ) . $measurements . chr( 96 ) ) ? 'SELECT 1 WHERE 1 = 0' : $query;
+    };
+    add_filter( 'query', $fault );
+    try {
+        $failed_repair = \SwimLogEvaluation\Health_Measurement_Store::save_report( $owner, $fixed['report'], $fixed['observations'] );
+    } finally {
+        remove_filter( 'query', $fault );
+    }
+    $verify( is_wp_error( $failed_repair ), 'Refuse unsuccessful repair CAS and roll back.' );
+    $still_legacy = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d AND id = %d', $measurements, $owner, (int) $before_row->id ) );
+    $verify( $before_row->content_hash === $still_legacy->content_hash && $before_row->values_json === $still_legacy->values_json, 'Failed repair preserves exact original row.' );
+    $repaired = \SwimLogEvaluation\Health_Measurement_Store::save_report( $owner, $fixed['report'], $fixed['observations'] );
+    $verify( ! is_wp_error( $repaired ) && 1 === $repaired['counts']['updated'] && 0 === $repaired['counts']['added'], 'Repair exact legacy row without adding a reading.' );
+    $after_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d AND calendar_date = %s', $measurements, $owner, '2026-10-02' ) );
+    $verify( $before_row->id === $after_row->id && '83.5' === json_decode( $after_row->values_json, true )['values']['weight']['value'], 'Retain row ID and correct stored kilograms.' );
+    $verify( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d AND measurement_id = %d', $members, $owner, (int) $after_row->id ) ), 'Preserve existing report membership.' );
+    $again = \SwimLogEvaluation\Health_Measurement_Store::save_report( $owner, $fixed['report'], $fixed['observations'] );
+    $verify( ! is_wp_error( $again ) && 1 === $again['counts']['skipped'], 'Corrected row reimport remains idempotent.' );
+    $verify( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d AND calendar_date = %s', $measurements, $owner, '2026-10-02' ) ), 'No old incorrect duplicate remains.' );
+
     $snapshot = array();
     foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
         $snapshot[$name] = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d', Database::table( $name ), $owner ) );

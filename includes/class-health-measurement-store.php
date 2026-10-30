@@ -83,7 +83,7 @@ final class Health_Measurement_Store {
 
     private static function context( $input ) {
         if ( ! is_array( $input ) ) return self::error( 'context' );
-        $allowed = array( 'normalization_version', 'device', 'source_format', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local' );
+        $allowed = array( 'normalization_version', 'device', 'source_format', 'source_weight_grams', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local' );
         $out = array();
         foreach ( $input as $key => $value ) {
             if ( ! in_array( $key, $allowed, true ) || ! is_string( $value ) || strlen( $value ) > 191 || preg_match( '/[\\x00-\\x1f]/', $value ) ) return self::error( 'context' );
@@ -149,6 +149,34 @@ final class Health_Measurement_Store {
         return Database::read( 'get_row', $wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d AND identity_hash = %s FOR UPDATE', $table, $owner, $identity ) );
     }
 
+    /**
+     * Resolve only the exact v1.3-dev gram-as-kg defect while holding the owner/category lock.
+     * Preserve the row ID and report memberships. Other same-instant changes remain ambiguous.
+     */
+    private static function legacy_weight( $table, $owner, $provider, $category, $row ) {
+        if ( 'garmin' !== $provider || 'weight' !== $category || 'sample' !== $row['record_role'] || null !== $row['external_id'] || 'provider_calendar' !== $row['date_basis']
+            || 'garmin-weight-ms-grams-v2' !== ( $row['provenance']['source_format'] ?? '' ) ) return null;
+        $grams = self::decimal( $row['provenance']['source_weight_grams'] ?? null );
+        if ( is_wp_error( $grams ) || (float) $grams <= 0 ) return null;
+        $kg = rtrim( rtrim( number_format( (float) $grams / 1000, 9, '.', '' ), '0' ), '.' );
+        if ( $kg !== $row['values']['weight']['value'] ) return null;
+        $values = array( 'weight' => array( 'value' => $grams, 'unit' => 'kg' ) );
+        $identity = self::hash( array( $provider, $category, 'sample', array( 'fingerprint', $row['observed_at_utc'], $values ) ) );
+        $old = self::read_identity( $table, $owner, $identity );
+        if ( ! $old ) return null;
+        $provenance = json_decode( $old->provenance_json, true );
+        if ( array( 'version' => 1, 'source' => array( 'normalization_version' => 'garmin-measurements-v1' ) ) !== $provenance
+            || (int) $old->user_id !== $owner || $provider !== $old->provider || $category !== $old->category
+            || 'sample' !== $old->record_role || null !== $old->external_id || null !== $old->source_offset_seconds
+            || $row['observed_at_utc'] !== $old->observed_at_utc || $row['calendar_date'] !== $old->calendar_date
+            || 'provider_calendar' !== $old->date_basis || self::json( array( 'version' => 1, 'values' => $values ) ) !== $old->values_json ) return null;
+        // Verify the full old content, not merely a matching number.
+        $content = array( 'provider' => $provider, 'category' => $category, 'record_role' => 'sample', 'external_id' => null,
+            'identity_hash' => $identity, 'observed_at_utc' => $old->observed_at_utc, 'source_local_time' => $old->source_local_time,
+            'source_offset_seconds' => null, 'calendar_date' => $old->calendar_date, 'date_basis' => 'provider_calendar', 'values_json' => $old->values_json );
+        return hash_equals( $old->content_hash, self::hash( $content ) ) ? $old : null;
+    }
+
     /** Save one bounded, prevalidated report and its observations atomically. */
     public static function save_report( $owner, $report, $observations ) {
         global $wpdb;
@@ -211,19 +239,26 @@ final class Health_Measurement_Store {
                 $provenance_json = self::json( array( 'version' => 1, 'source' => $row['provenance'] ) );
                 $identity = self::hash( array( $provider, $category, $row['record_role'], null !== $row['external_id'] ? array( 'external_id', $row['external_id'] ) : array( 'fingerprint', $row['observed_at_utc'], $row['values'] ) ) );
                 $old = self::read_identity( $measurements, $owner, $identity );
+                $legacy = self::legacy_weight( $measurements, $owner, $provider, $category, $row );
+                if ( $old && $legacy && (int) $old->id !== (int) $legacy->id ) throw new \RuntimeException( 'weight_repair_conflict' );
+                $repair = ! $old && $legacy;
+                if ( $repair ) $old = $legacy;
                 $data = array( 'provider' => $provider, 'category' => $category, 'record_role' => $row['record_role'], 'external_id' => $row['external_id'], 'identity_hash' => $identity, 'observed_at_utc' => $row['observed_at_utc'], 'source_local_time' => $row['source_local_time'], 'source_offset_seconds' => $row['source_offset_seconds'], 'calendar_date' => $row['calendar_date'], 'date_basis' => $row['date_basis'], 'values_json' => $values_json );
                 // A provider encoding change can omit optional local time on an identical reading.
                 // Preserve previously verified metadata; absence is not a correction or deletion.
                 if ( $old && null === $data['source_local_time'] ) $data['source_local_time'] = $old->source_local_time;
                 // Provenance and containing report do not create a second source measurement.
                 $data['content_hash'] = self::hash( $data );
-                if ( $old && $old->content_hash !== $data['content_hash'] && ( ! $row['confirmed_correction'] || null === $row['external_id'] || $row['expected_content_hash'] !== $old->content_hash ) ) throw new \RuntimeException( 'ambiguous_correction' );
+                if ( $old && ! $repair && $old->content_hash !== $data['content_hash'] && ( ! $row['confirmed_correction'] || null === $row['external_id'] || $row['expected_content_hash'] !== $old->content_hash ) ) throw new \RuntimeException( 'ambiguous_correction' );
                 $data['provenance_json'] = $provenance_json;
                 $data['updated_at_utc'] = $now;
                 if ( $old ) {
                     $id = (int) $old->id;
                     $state = $old->content_hash === $data['content_hash'] ? 'skipped' : 'updated';
-                    if ( 'updated' === $state && false === Database::write( 'update', $measurements, $data, array( 'id' => $id, 'user_id' => $owner ) ) ) throw new \RuntimeException( 'write' );
+                    if ( 'updated' === $state ) {
+                        $changed = Database::write( 'update', $measurements, $data, array( 'id' => $id, 'user_id' => $owner, 'content_hash' => $old->content_hash, 'identity_hash' => $old->identity_hash ) );
+                        if ( false === $changed || ( $repair && 1 !== $changed ) ) throw new \RuntimeException( 'write' );
+                    }
                 } else {
                     $data['user_id'] = $owner;
                     $data['created_at_utc'] = $now;
