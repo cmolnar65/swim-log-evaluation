@@ -140,3 +140,8 @@
     .swimlog-garmin .button, .swimlog-garmin fieldset label { min-height: 44px; }
     .swimlog-garmin .form-table, .swimlog-garmin .form-table th, .swimlog-garmin .form-table td { box-sizing: border-box; width: 100%; display: block; }
 }
+@media (max-width: 782px) {
+    .swimlog-garmin input, .swimlog-garmin select, .swimlog-garmin textarea { box-sizing: border-box; min-width: 0; font-size: 16px; }
+    .swimlog-garmin .form-table { table-layout: fixed; }
+    .swimlog-garmin .form-table tbody, .swimlog-garmin .form-table tr { display: block; width: 100%; }
+}

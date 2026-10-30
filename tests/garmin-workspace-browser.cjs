@@ -25,7 +25,7 @@ async function scenario(engine, name, options) {
    assert.equal(await page.locator('#swimlog-garmin-api-key-submit').isDisabled(),true);
    await page.locator('#swimlog-garmin-api-key').fill('synthetic-only-input');
    assert.equal(await page.locator('#swimlog-garmin-api-key-submit').isEnabled(),true);
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,JSON.stringify(await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('*')].filter(e=>e.getBoundingClientRect().right>innerWidth).map(e=>({tag:e.tagName,id:e.id,right:e.getBoundingClientRect().right}))}))));
   }
   await mount('READY');
   const ids=await page.locator('.swimlog-garmin > .swimlog-garmin-section').evaluateAll(nodes=>nodes.map(n=>n.id));
@@ -36,7 +36,7 @@ async function scenario(engine, name, options) {
   await page.locator('.swimlog-garmin-nav a[href="#swimlog-garmin-settings"]').click();
   assert.equal(await page.locator('#swimlog-garmin-settings').getAttribute('open'),'');
   assert.equal(await page.locator('#swimlog-garmin-api-key').inputValue(),'');
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,JSON.stringify(await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('*')].filter(e=>e.getBoundingClientRect().right>innerWidth).map(e=>({tag:e.tagName,id:e.id,right:e.getBoundingClientRect().right}))}))));
   assert.deepEqual(errors,[]);
   console.log(name+': Garmin setup/saved/ready layout, section order, independent selections, settings navigation and no page overflow passed.');
  } finally {await browser.close();}
