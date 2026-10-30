@@ -44,4 +44,15 @@ final class LandActivityTest extends TestCase {
         $this->assertSame(1,$totals['walking_known']);
     }
 
+    public function test_fractional_elapsed_seconds_preserve_duration_without_php_deprecations() {
+        set_error_handler(static function($severity,$message,$file,$line){throw new \ErrorException($message,0,$severity,$file,$line);});
+        try { $p=$this->parse(1,0,true,0,1,123456,65789,4294967295); }
+        finally { restore_error_handler(); }
+        $this->assertFalse(is_wp_error($p));$w=$p['workout'];
+        $this->assertSame(65789,$w['elapsed_time_ms']);$this->assertSame(65789,$p['laps'][0]['elapsed_time_ms']);
+        $this->assertSame(65,strtotime($w['workout_end'].' UTC')-strtotime($w['workout_start'].' UTC'));
+        $this->assertNull($w['moving_time_ms']);$this->assertNull($p['laps'][0]['moving_time_ms']);
+        $this->assertNull($w['activity_environment']);$this->assertTrue(Land_Activity::validate($p));
+    }
+
 }

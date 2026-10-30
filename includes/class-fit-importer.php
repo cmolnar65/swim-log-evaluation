@@ -98,7 +98,8 @@ final class FIT_Importer {
 	private function add_milliseconds($local,$milliseconds){
 		if(!$local||!is_numeric($milliseconds))return null;
 		$base=strtotime($local.' UTC');if(false===$base)return null;
-		return gmdate('Y-m-d H:i:s',$base+((int)$milliseconds/1000));
+		// Datetime storage has whole-second precision; retain milliseconds in duration fields.
+		return gmdate('Y-m-d H:i:s',$base+intdiv((int)$milliseconds,1000));
 	}
 	private function stroke($v){return array(0=>'FR',1=>'BACK',2=>'BR',3=>'FLY',4=>'MIXED')[intval($v)]??'UNKNOWN';}
 	private function device_info($devices){
