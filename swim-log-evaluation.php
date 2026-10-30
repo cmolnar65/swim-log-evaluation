@@ -14,7 +14,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 define( 'SWIMLOG_EVALUATION_VERSION', '1.3-dev' );
-define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.3' );
+define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.4' );
 define( 'SWIMLOG_EVALUATION_FILE', __FILE__ );
 define( 'SWIMLOG_EVALUATION_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SWIMLOG_EVALUATION_URL', plugin_dir_url( __FILE__ ) );
@@ -33,3 +33,4 @@ function swimlog_evaluation_run() {
 	$plugin->run();
 }
 swimlog_evaluation_run();
+

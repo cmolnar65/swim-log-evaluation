@@ -67,6 +67,11 @@ jobs:
           set -euo pipefail
           wp-env run cli wp eval "$(tail -n +2 tests/health-schema-integration.php)"
 
+      - name: Verify gated running and walking import and maps
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "eval('?>' . base64_decode('$(base64 -w0 tests/land-activity-fixtures.php)')); $(tail -n +2 tests/land-activity-integration.php)" | tee "$RUNNER_TEMP/land-activity.log"
+
       - name: Verify private measurement persistence
         run: |
           set -euo pipefail
@@ -128,3 +133,9 @@ jobs:
         run: |
           set -euo pipefail
           NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/garmin-history-browser.cjs "$RUNNER_TEMP/garmin-history-jobs.log"
+
+
+      - name: Verify private land activity maps on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/land-activity-browser.cjs "$RUNNER_TEMP/land-activity.log"

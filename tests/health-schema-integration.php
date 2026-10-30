@@ -30,6 +30,20 @@ try {
     $wpdb->insert( $workouts, array( 'user_id' => 777, 'workout_start' => '2026-10-01 12:00:00', 'notes' => 'legacy sentinel', 'created_at' => '2026-10-01 12:00:00', 'updated_at' => '2026-10-01 12:00:00' ) );
     $verify( 1 === $wpdb->rows_affected, 'Legacy sentinel insert failed.' );
     $legacy_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i LIMIT 1', $workouts ), ARRAY_A );
+    // Actual 1.3 -> 1.4 upgrade: remove only the new environment column, preserving the old row.
+    $wpdb->query( $wpdb->prepare( 'ALTER TABLE %i DROP COLUMN activity_environment', $workouts ) );
+    update_option( 'swimlog_db_version', '1.3' );
+    wp_set_current_user( (int) $admin[0] );
+    $failure_filter = static function ( $sql ) use ( $workouts ) {
+        return false !== strpos( $sql, 'ALTER TABLE ' . $workouts ) && false !== strpos( $sql, 'activity_environment' ) ? 'SELECT 1 WHERE 1 = 0' : $sql;
+    };
+    add_filter( 'query', $failure_filter, 1 );
+    ( new Plugin() )->maybe_upgrade_schema();
+    remove_filter( 'query', $failure_filter, 1 ); $failure_filter = null;
+    $verify( '1.3' === get_option( 'swimlog_db_version' ), 'Failed environment migration advanced version.' );
+    ( new Plugin() )->maybe_upgrade_schema();
+    $verify( SWIMLOG_EVALUATION_DB_VERSION === get_option( 'swimlog_db_version' ), 'Environment migration did not advance on success.' );
+    $verify( $legacy_row === $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i LIMIT 1', $workouts ), ARRAY_A ), 'Environment migration rewrote old data or guessed environment.' );
     foreach ( $health as $name ) $wpdb->query( $wpdb->prepare( 'DROP TABLE %i', Database::table( $name ) ) );
     update_option( 'swimlog_db_version', '1.2' );
     wp_set_current_user( (int) $admin[0] );
@@ -48,7 +62,7 @@ try {
     $failure_filter = null;
     $verify( '1.2' === get_option( 'swimlog_db_version' ), 'Failed migration advanced version.' );
     ( new Plugin() )->maybe_upgrade_schema();
-    $verify( '1.3' === get_option( 'swimlog_db_version' ), 'Retry did not advance schema.' );
+    $verify( SWIMLOG_EVALUATION_DB_VERSION === get_option( 'swimlog_db_version' ), 'Retry did not advance schema.' );
     $verify( Database::schema_is_complete(), 'Upgraded schema incomplete.' );
     foreach ( $legacy_schema as $name => $sql ) {
         $row = $wpdb->get_row( $wpdb->prepare( 'SHOW CREATE TABLE %i', Database::table( $name ) ), ARRAY_N );
@@ -100,3 +114,4 @@ try {
     else update_option( 'swimlog_db_version', $original_version );
     wp_set_current_user( $original_user );
 }
+

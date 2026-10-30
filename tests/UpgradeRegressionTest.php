@@ -53,7 +53,7 @@ final class UpgradeRegressionTest extends TestCase {
   $this->assertStringContainsString('UNIQUE KEY completed_workout_id (completed_workout_id)',$db);
   $this->assertStringContainsString('KEY user_planned_date (user_id,planned_date)',$db);
   $this->assertStringContainsString('KEY user_status_date (user_id,status,planned_date)',$db);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.3'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.4'",$main);
   $this->assertStringContainsString('dbDelta( $statement )',$db);
   $this->assertStringContainsString("'planned_workouts'",$db);
   $this->assertStringNotContainsString('DROP TABLE',$db);
@@ -90,3 +90,4 @@ final class UpgradeRegressionTest extends TestCase {
  }
 
 }
+

@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-land-activity.php';
 
 /** Private non-autoloaded job ledger in existing WP options; never registered with REST. */
 final class Garmin_History_Jobs {
@@ -87,8 +88,8 @@ final class Garmin_History_Jobs {
         if ( 'activity' === $kind ) ++$job['counts']['discovered'];
     }
     private static function categories( $selected ) {
-        if ( ! is_array( $selected ) || ! $selected || count( $selected ) > 5 ) return false;
-        foreach ( $selected as $category ) if ( ! is_string( $category ) || ! in_array( $category, array( 'lap_swimming', 'open_water_swimming', 'weight', 'body_composition', 'spo2' ), true ) ) return false;
+        if ( ! is_array( $selected ) || ! $selected || count( $selected ) > 7 ) return false;
+        foreach ( $selected as $category ) if ( ! is_string( $category ) || ! in_array( $category, array_merge( Land_Activity::garmin_types(), array( 'weight', 'body_composition', 'spo2' ) ), true ) ) return false;
         return array_values( array_unique( $selected ) );
     }
     public static function start( $start, $end, $selected ) {
@@ -98,7 +99,7 @@ final class Garmin_History_Jobs {
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
         $cursor = Garmin_History::cursor( $start, $end ); $selected = self::categories( $selected );
         if ( is_wp_error( $cursor ) || ! $selected ) return self::error( 'input' );
-        $types = array_values( array_intersect( $selected, array( 'lap_swimming', 'open_water_swimming' ) ) );
+        $types = array_values( array_intersect( $selected, Land_Activity::garmin_types() ) );
         if ( $types && ! current_user_can( 'swimlog_upload_workouts' ) ) return self::error( 'forbidden' );
         if ( ! Garmin_Personal_API::is_configured( $owner ) ) return self::error( 'connection' );
         $result = self::mutate( $owner, static function () use ( $owner, $start, $end, $selected, $cursor, $types ) {
@@ -372,3 +373,4 @@ final class Garmin_History_Jobs {
         Database::write( 'query', $wpdb->prepare( 'DELETE FROM %i WHERE option_name LIKE %s OR option_name LIKE %s OR option_name = %s', $wpdb->options, $wpdb->esc_like( 'swimlog_hj_' . $owner . '_' ) . '%', $wpdb->esc_like( 'swimlog_hu_' . $owner . '_' ) . '%', self::pointer( $owner ) ) );
     }
 }
+

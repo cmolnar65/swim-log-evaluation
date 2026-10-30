@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once dirname( __DIR__ ) . '/includes/class-land-activity.php';
 
 /** Current-owner historical controls; posts never accept an owner parameter. */
 final class Admin_Garmin_History {
@@ -53,7 +54,8 @@ final class Admin_Garmin_History {
                 <p><label for="swimlog-history-start"><?php esc_html_e( 'Start date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-start" type="date" name="history_start" value="<?php echo esc_attr( $form_start ); ?>" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
                 <p><label for="swimlog-history-end"><?php esc_html_e( 'End date', 'chriss-swim-training-progress-evaluation' ); ?></label><br><input id="swimlog-history-end" type="date" name="history_end" value="<?php echo esc_attr( $form_end ); ?>" required max="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></p>
                 <fieldset><legend><?php esc_html_e( 'Categories to import', 'chriss-swim-training-progress-evaluation' ); ?></legend>
-                <?php foreach ( array( 'lap_swimming' => __( 'Pool swims', 'chriss-swim-training-progress-evaluation' ), 'open_water_swimming' => __( 'Open-water swims', 'chriss-swim-training-progress-evaluation' ), 'weight' => __( 'Weight', 'chriss-swim-training-progress-evaluation' ), 'body_composition' => __( 'Body composition (BMI only)', 'chriss-swim-training-progress-evaluation' ), 'spo2' => __( 'SpO2 provider summaries', 'chriss-swim-training-progress-evaluation' ) ) as $key => $label ) : ?>
+                <?php $land_labels = Land_Activity::enabled() ? Land_Activity::labels() : array(); ?>
+                <?php foreach ( array_merge( $land_labels, array( 'lap_swimming' => __( 'Pool swims', 'chriss-swim-training-progress-evaluation' ), 'open_water_swimming' => __( 'Open-water swims', 'chriss-swim-training-progress-evaluation' ), 'weight' => __( 'Weight', 'chriss-swim-training-progress-evaluation' ), 'body_composition' => __( 'Body composition (BMI only)', 'chriss-swim-training-progress-evaluation' ), 'spo2' => __( 'SpO2 provider summaries', 'chriss-swim-training-progress-evaluation' ) ) ) as $key => $label ) : ?>
                 <label class="swimlog-history-choice"><input type="checkbox" name="history_categories[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( in_array( $key, $form_selected, true ) ); ?>> <?php echo esc_html( $label ); ?></label>
                 <?php endforeach; ?></fieldset>
                 <p><?php esc_html_e( 'One unfinished job per swimmer. Pause or resume it, or cancel before starting another range. This does not enable regular automatic synchronization. Blood pressure, unverified composition fields and individual/hourly SpO2 readings are not imported.', 'chriss-swim-training-progress-evaluation' ); ?></p>
@@ -159,3 +161,4 @@ final class Admin_Garmin_History {
         <?php
     }
 }
+

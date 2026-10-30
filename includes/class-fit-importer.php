@@ -4,7 +4,7 @@ if(!defined('ABSPATH')){exit;}
 
 /** Minimal defensive FIT decoder for swimming Session/Lap/Length messages. */
 final class FIT_Importer {
-	const VERSION='0.2';
+	const VERSION='0.3';
 	private $defs=array();
 	private $last_timestamp=null;
 
@@ -18,7 +18,7 @@ final class FIT_Importer {
 		if($end>strlen($bin))return new \WP_Error('swimlog_fit_truncated',__('The FIT file is truncated.','chriss-swim-training-progress-evaluation'));
 		if(strlen($bin)>=$end+2){$stored=$this->u16(substr($bin,$end,2),0);$calc=$this->crc16(substr($bin,0,$end));if($stored!==$calc)return new \WP_Error('swimlog_fit_crc',__('FIT file checksum is invalid.','chriss-swim-training-progress-evaluation'));}
 		$this->defs=array();$this->last_timestamp=null;
-		$out=array('session'=>null,'laps'=>array(),'lengths'=>array(),'records'=>array(),'device'=>array(),'activity'=>array());
+		$out=array('session'=>null,'laps'=>array(),'lengths'=>array(),'records'=>array(),'device'=>array(),'activity'=>array(),'session_count'=>0);
 		$p=$hs;
 		while($p<$end){
 			$hdr=ord($bin[$p++]);
@@ -36,7 +36,9 @@ final class FIT_Importer {
 			$msg=$this->read_data($bin,$p,$end,$local); if(is_wp_error($msg))return $msg; $this->collect($out,$msg);
 		}
 		if(!$out['session'])return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain a usable swimming session.','chriss-swim-training-progress-evaluation'));
+		if ( $out['session_count'] > 1 ) return new \WP_Error( 'swimlog_fit_multisession', __( 'Multisession FIT files require explicit review and cannot be imported as one workout.', 'chriss-swim-training-progress-evaluation' ) );
 		$workout_type=$this->workout_type($out['session'],$out['lengths']);
+		if(in_array($workout_type,array('running','walking'),true))return $this->normalize_land($out,$workout_type);
 		if('open_water'===$workout_type)return $this->normalize_open_water($out);
 		if('pool'!==$workout_type)return new \WP_Error('swimlog_fit_swim_type',__('FIT swimming session could not be classified safely as pool or open-water swimming.','chriss-swim-training-progress-evaluation'));
 		if(empty($out['lengths']))return new \WP_Error('swimlog_fit_swim',__('FIT file does not contain usable pool-swim lengths.','chriss-swim-training-progress-evaluation'));
@@ -64,11 +66,13 @@ final class FIT_Importer {
 	private function crc16($data){$crc=0;$n=strlen($data);for($i=0;$i<$n;$i++){$byte=ord($data[$i]);for($b=0;$b<8;$b++){$bit=$crc&1;$crc>>=1;if(($byte>>$b)&1)$bit^=1;if($bit)$crc^=0xA001;}}return $crc&0xffff;}
 	private function u16($s,$a){return unpack($a?'n':'v',substr($s,0,2))[1];}
 	private function u32($s,$a){return unpack($a?'N':'V',substr($s,0,4))[1];}
-	private function collect(&$out,$m){if($m['global']===18)$out['session']=$m['fields'];elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===20)$out['records'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];elseif($m['global']===34)$out['activity'][]=$m['fields'];}
+	private function collect(&$out,$m){if($m['global']===18){$out['session']=$m['fields'];$out['session_count']=($out['session_count']??0)+1;}elseif($m['global']===19)$out['laps'][]=$m['fields'];elseif($m['global']===20)$out['records'][]=$m['fields'];elseif($m['global']===101)$out['lengths'][]=$m['fields'];elseif($m['global']===23)$out['device'][]=$m['fields'];elseif($m['global']===34)$out['activity'][]=$m['fields'];}
 	private function workout_type($session,$lengths){
 		// FIT Profile: sport 5 = swimming; sub_sport 17 = lap_swimming; 18 = open_water.
 		$sport=isset($session[5])&&is_numeric($session[5])?(int)$session[5]:null;
 		$sub_sport=isset($session[6])&&is_numeric($session[6])?(int)$session[6]:null;
+		if(1===$sport && in_array($sub_sport,array(null,0,1,2,3,4,45,67),true))return 'running';
+		if(11===$sport && in_array($sub_sport,array(null,0,27,30,31),true))return 'walking';
 		if(5!==$sport)return null;
 		if(17===$sub_sport)return 'pool';
 		if(18===$sub_sport)return 'open_water';
@@ -128,6 +132,38 @@ final class FIT_Importer {
 		return $id>0?('FIT manufacturer '.$id):null;
 	}
 	private function semicircles_to_degrees($value){return ((float)$value)*180.0/2147483648.0;}
+    /** FIT SDK profile 21.218: running=1, walking=11; moving time is session 59, not timer field 8. */
+    private function normalize_land( $o, $type ) {
+        $s = $o['session'];
+        if ( ! isset( $s[2] ) || ! is_numeric( $s[2] ) || $s[2] < 0 || $s[2] >= 4294967295 ) return new \WP_Error( 'swimlog_fit_land_start', __( 'Recorded activity start time is missing.', 'chriss-swim-training-progress-evaluation' ) );
+        // Reuse the existing lap/record decoder, then remove all swim interpretation.
+        $p = $this->normalize_open_water( $o );
+        $w = &$p['workout'];
+        $w['workout_type'] = $type;
+        $sub = $s[6] ?? null;
+        $w['activity_environment'] = in_array( $sub, array( 1, 27, 45 ), true ) ? 'indoor' : ( in_array( $sub, array( 2, 3, 4 ), true ) ? 'outdoor' : null );
+        $w['moving_time_ms'] = isset( $s[59] ) && is_numeric( $s[59] ) && $s[59] >= 0 && $s[59] < 4294967295 ? (int) $s[59] : null;
+        foreach ( array( 7 => 'elapsed_time_ms', 9 => 'total_distance_m' ) as $field => $key ) if ( isset( $s[$field] ) && $s[$field] >= 4294967295 ) $w[$key] = null;
+        $w['original_distance'] = $w['total_distance_m'];
+        $w['workout_end'] = $this->add_milliseconds( $w['workout_start'], $w['elapsed_time_ms'] );
+        $w['average_cadence'] = null; $w['max_cadence'] = null;
+        foreach ( array( 16 => 'average_heart_rate', 17 => 'max_heart_rate' ) as $field => $key ) if ( ! isset( $s[$field] ) || $s[$field] >= 255 ) $w[$key] = null;
+        foreach ( $p['laps'] as $i => &$lap ) {
+            $lap['stroke'] = null;
+            $raw = $o['laps'][$i];
+            $lap['moving_time_ms'] = isset( $raw[52] ) && $raw[52] < 4294967295 ? (int) $raw[52] : null;
+            foreach ( array( 7 => 'elapsed_time_ms', 9 => 'distance_m' ) as $field => $key ) if ( isset( $raw[$field] ) && $raw[$field] >= 4294967295 ) $lap[$key] = null;
+        }
+        unset( $lap );
+        foreach ( $p['trackpoints'] as &$point ) {
+            if ( null === $point['latitude'] || null === $point['longitude'] || abs( $point['latitude'] ) > 90 || abs( $point['longitude'] ) > 180 || $point['latitude'] >= 179.9999999 || $point['longitude'] >= 179.9999999 ) { $point['latitude'] = null; $point['longitude'] = null; }
+            if ( null !== $point['distance_m'] && $point['distance_m'] >= 42949672.95 ) $point['distance_m'] = null;
+            if ( null !== $point['heart_rate'] && $point['heart_rate'] >= 255 ) $point['heart_rate'] = null;
+            $point['cadence'] = null; // Sport-specific cadence units deferred, never presented as swim cadence.
+        }
+        unset( $point, $w );
+        return $p;
+    }
 	private function normalize_open_water($o){
 		$s=$o['session'];list($device_manufacturer,$device_model)=$this->device_info($o['device']);$local_offset=$this->local_offset_seconds($o['activity']??array());
 		$start=isset($s[2])?$this->fit_time($s[2],$local_offset):null;
@@ -163,3 +199,4 @@ final class FIT_Importer {
 		return array('source'=>'fit','parser_version'=>self::VERSION,'workout'=>array('workout_start'=>$start,'workout_end'=>$this->add_milliseconds($start,$elapsed),'total_distance_m'=>$distance_m,'original_distance'=>$distance,'original_distance_unit'=>$unit,'elapsed_time_ms'=>$elapsed,'average_heart_rate'=>$avg_hr,'max_heart_rate'=>$max_hr,'average_cadence'=>$avg_cadence,'max_cadence'=>$max_cadence,'pool_length_m'=>$pool_m,'original_pool_length'=>$pool,'pool_length_unit'=>$unit,'device_manufacturer'=>$device_manufacturer,'device_model'=>$device_model),'laps'=>$laps,'lengths'=>$lengths,'metadata'=>array('fit_local_offset_seconds'=>$local_offset));
 	}
 }
+

@@ -127,6 +127,8 @@ final class Database {
 				return false;
 			}
 		}
+		$activity_columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( 'workouts' ) ) );
+		if ( ! in_array( 'activity_environment', (array) $activity_columns, true ) ) return false;
 		foreach ( self::health_schema_columns() as $name => $required ) {
 			$columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( $name ) ) );
 			if ( array_diff( $required, (array) $columns ) ) {
@@ -232,6 +234,7 @@ final class Database {
 			authoritative_import_id bigint(20) unsigned NULL,
 			source_type varchar(20) NOT NULL DEFAULT 'import',
 			workout_type varchar(20) NOT NULL DEFAULT 'pool',
+			activity_environment varchar(10) NULL,
 			workout_start datetime NOT NULL,
 			workout_end datetime NULL,
 			total_distance_m decimal(10,3) NULL,
@@ -473,5 +476,6 @@ final class Database {
 		return self::schema_is_complete();
 	}
 }
+
 
 

@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-land-activity.php';
 
 /** Bounded traversal primitives; job storage, scheduling and UI are added separately. */
 final class Garmin_History {
@@ -36,8 +37,8 @@ final class Garmin_History {
     /** One raw page of one inclusive source-calendar day. Empty pages prove exhaustion. */
     public static function activity_step( $owner, $cursor, $types ) {
         if ( ! self::authorized( $owner ) ) return self::error( 'forbidden' );
-        if ( ! self::valid( $cursor ) || ! is_array( $types ) || ! $types || count( $types ) > 2 ) return self::error();
-        foreach ( $types as $type ) if ( ! is_string( $type ) || ! in_array( $type, array( 'lap_swimming', 'open_water_swimming' ), true ) ) return self::error();
+        if ( ! self::valid( $cursor ) || ! is_array( $types ) || ! $types || count( $types ) > 4 ) return self::error();
+        foreach ( $types as $type ) if ( ! is_string( $type ) || ! in_array( $type, Land_Activity::garmin_types(), true ) ) return self::error();
         if ( $cursor['done'] ) return array( 'cursor' => $cursor, 'activities' => array(), 'raw_count' => 0 );
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
         $rows = Garmin_Personal_API::historical_activity_page( $owner, $cursor['day'], $cursor['offset'] );
@@ -82,8 +83,9 @@ final class Garmin_History {
     /** Current-owner historical execution; the generic importer's rules remain authoritative. */
     public static function import_activity( $owner, $id, $type ) {
         if ( ! self::authorized( $owner ) || ! current_user_can( 'swimlog_upload_workouts' ) ) return self::error( 'forbidden' );
-        if ( ! is_int( $id ) || $id < 1 || ! in_array( $type, array( 'lap_swimming', 'open_water_swimming' ), true ) ) return self::error();
+        if ( ! is_int( $id ) || $id < 1 || ! in_array( $type, Land_Activity::garmin_types(), true ) ) return self::error();
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-personal-api.php';
         return Garmin_Personal_API::import_activity( $owner, $id, 0, 'open_water_swimming' === $type );
     }
 }
+

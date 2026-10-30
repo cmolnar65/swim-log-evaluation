@@ -43,12 +43,24 @@ final class Admin_Workouts {
 	}
 
 
-	private static function open_water_route_svg( $trackpoints ) {
-		$points=array();foreach((array)$trackpoints as$point){if(null===$point->latitude||null===$point->longitude)continue;$points[]=array((float)$point->latitude,(float)$point->longitude);}if(count($points)<2)return '';
-		$lats=array_column($points,0);$lons=array_column($points,1);$min_lat=min($lats);$max_lat=max($lats);$min_lon=min($lons);$max_lon=max($lons);$lat_span=max(0.000001,$max_lat-$min_lat);$lon_span=max(0.000001,$max_lon-$min_lon);$width=800;$height=400;$padding=35;$scale=min(($width-2*$padding)/$lon_span,($height-2*$padding)/$lat_span);$route_width=$lon_span*$scale;$route_height=$lat_span*$scale;$x_offset=($width-$route_width)/2;$y_offset=($height-$route_height)/2;$svg_points=array();
-		foreach($points as$p){$x=$x_offset+($p[1]-$min_lon)*$scale;$y=$height-($y_offset+($p[0]-$min_lat)*$scale);$svg_points[]=number_format($x,2,'.','').','.number_format($y,2,'.','');}$start=explode(',',$svg_points[0]);$finish=explode(',',$svg_points[count($svg_points)-1]);$grid='';foreach(array(.25,.5,.75)as$ratio){$gx=round($padding+($width-2*$padding)*$ratio,1);$gy=round($padding+($height-2*$padding)*$ratio,1);$grid.='<line x1="'.$gx.'" y1="'.$padding.'" x2="'.$gx.'" y2="'.($height-$padding).'" stroke="currentColor" stroke-width="1" opacity=".14"/><line x1="'.$padding.'" y1="'.$gy.'" x2="'.($width-$padding).'" y2="'.$gy.'" stroke="currentColor" stroke-width="1" opacity=".14"/>';}
-		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="'.esc_attr__('Open-water GPS route map','chriss-swim-training-progress-evaluation').'" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff">'.$grid.'<text x="20" y="28" font-size="15" font-weight="600">N</text><polyline points="'.esc_attr(implode(' ',$svg_points)).'" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/><circle cx="'.esc_attr($start[0]).'" cy="'.esc_attr($start[1]).'" r="6" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="'.esc_attr($finish[0]).'" cy="'.esc_attr($finish[1]).'" r="6" fill="currentColor" stroke="currentColor" stroke-width="3"/><text x="'.esc_attr((float)$start[0]+9).'" y="'.esc_attr((float)$start[1]-9).'" font-size="15">'.esc_html__('Start','chriss-swim-training-progress-evaluation').'</text><text x="'.esc_attr((float)$finish[0]+9).'" y="'.esc_attr((float)$finish[1]+16).'" font-size="15">'.esc_html__('Finish','chriss-swim-training-progress-evaluation').'</text></svg>';
+	private static function open_water_route_svg( $trackpoints, $land = false ) {
+        $points=array();$segment=0;$previous=null;
+        foreach((array)$trackpoints as $point){
+            if(null===$point->latitude||null===$point->longitude||abs((float)$point->latitude)>90||abs((float)$point->longitude)>180){if($land){$segment++;$previous=null;}continue;}
+            if($land && $previous && ((int)$point->sequence_no !== (int)$previous->sequence_no+1 || empty($point->recorded_at) || empty($previous->recorded_at) || strtotime($point->recorded_at.' UTC')-strtotime($previous->recorded_at.' UTC')>300 || strtotime($point->recorded_at.' UTC')<strtotime($previous->recorded_at.' UTC')))$segment++;
+            $points[]=array((float)$point->latitude,(float)$point->longitude,$segment);$previous=$point;
+        }
+        if(count($points)<2)return '';
+
+		$lats=array_column($points,0);$lons=array_column($points,1);$min_lat=min($lats);$max_lat=max($lats);$min_lon=min($lons);$max_lon=max($lons);$lat_span=max(0.000001,$max_lat-$min_lat);$lon_span=max(0.000001,$max_lon-$min_lon);$width=800;$height=400;$padding=35;$scale=min(($width-2*$padding)/$lon_span,($height-2*$padding)/$lat_span);$route_width=$lon_span*$scale;$route_height=$lat_span*$scale;$x_offset=($width-$route_width)/2;$y_offset=($height-$route_height)/2;$svg_points=array();$svg_segments=array();
+		foreach($points as$p){$x=$x_offset+($p[1]-$min_lon)*$scale;$y=$height-($y_offset+($p[0]-$min_lat)*$scale);$coordinate=number_format($x,2,'.','').','.number_format($y,2,'.','');$svg_points[]=$coordinate;$svg_segments[$p[2]][]=$coordinate;}$start=explode(',',$svg_points[0]);$finish=explode(',',$svg_points[count($svg_points)-1]);$grid='';foreach(array(.25,.5,.75)as$ratio){$gx=round($padding+($width-2*$padding)*$ratio,1);$gy=round($padding+($height-2*$padding)*$ratio,1);$grid.='<line x1="'.$gx.'" y1="'.$padding.'" x2="'.$gx.'" y2="'.($height-$padding).'" stroke="currentColor" stroke-width="1" opacity=".14"/><line x1="'.$padding.'" y1="'.$gy.'" x2="'.($width-$padding).'" y2="'.$gy.'" stroke="currentColor" stroke-width="1" opacity=".14"/>';}
+        $paths='';foreach($svg_segments as $path){if(count($path)<2)continue;$paths.='<polyline points="'.esc_attr(implode(' ',$path)).'" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/>';}
+        if(''===$paths)return '';
+
+		return '<svg class="swimlog-ows-route" viewBox="0 0 800 400" role="img" aria-label="'.($land?esc_attr__('Recorded activity GPS route map','chriss-swim-training-progress-evaluation'):esc_attr__('Open-water GPS route map','chriss-swim-training-progress-evaluation')).'" style="width:100%;max-width:900px;height:auto;border:1px solid #c3c4c7;background:#fff">'.$grid.'<text x="20" y="28" font-size="15" font-weight="600">N</text>'.$paths.'<circle cx="'.esc_attr($start[0]).'" cy="'.esc_attr($start[1]).'" r="6" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="'.esc_attr($finish[0]).'" cy="'.esc_attr($finish[1]).'" r="6" fill="currentColor" stroke="currentColor" stroke-width="3"/><text x="'.esc_attr((float)$start[0]+9).'" y="'.esc_attr((float)$start[1]-9).'" font-size="15">'.esc_html__('Start','chriss-swim-training-progress-evaluation').'</text><text x="'.esc_attr((float)$finish[0]+9).'" y="'.esc_attr((float)$finish[1]+16).'" font-size="15">'.esc_html__('Finish','chriss-swim-training-progress-evaluation').'</text></svg>';
 	}
+
+    public static function activity_route_svg( $trackpoints ) { return self::open_water_route_svg( $trackpoints, true ); }
 
 	private static function open_water_metric_svg( $trackpoints, $field, $label, $unit ) {
 		$samples = array();
@@ -97,6 +109,8 @@ final class Admin_Workouts {
 		if($detail){
 			$w=Workout::get_for_user($detail,$user_id);
 			if(!$w) wp_die(esc_html__('Workout not found.','chriss-swim-training-progress-evaluation'));
+            require_once __DIR__ . '/class-admin-land-activities.php';
+            if ( Land_Activity::is_land( $w->workout_type ?? '' ) ) { Admin_Land_Activities::render( $w, $user_id ); return; }
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout edit-mode selector.
 			$edit=isset($_GET['edit'])&&'1'===sanitize_text_field(wp_unslash($_GET['edit'])); $metadata_error=self::$workout_action_error;
 			if($metadata_error)$edit=true;
@@ -388,4 +402,5 @@ final class Admin_Workouts {
 	}
 
 }
+
 

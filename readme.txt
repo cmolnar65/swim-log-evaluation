@@ -149,6 +149,7 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 == Changelog ==
 
 = 1.3-dev (unreleased) =
+* Add gated running/walking FIT, storage and Garmin import foundations with private recorded-route details; land imports remain disabled pending calendar/privacy completion. Schema 1.4 adds an optional environment field without rewriting existing workouts.
 * Show derived sleep periods, Garmin-local bedtime and wake time in private calendar-day details, using UTC elapsed time, local wake dates and duplicate-window handling; clarify summary-only SpO2 headings.
 * Add private weight/BMI and Garmin-reported SpO2 measurement imports with additive schema 1.3, owner-only storage, duplicate handling and source-date preservation.
 * Add separate opt-in scheduled measurement checks and bounded manual imports, retaining existing records on failure.
@@ -271,3 +272,4 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 Historical data is preserved by default. Deactivation and ordinary updates do
 not delete workout history or original source imports. Derived performances are
 designed to be rebuildable from preserved authoritative workout data.
+
