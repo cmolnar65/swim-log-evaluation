@@ -289,7 +289,7 @@ final class Admin_Planned_Workouts {
                 <section aria-labelledby="swimlog-plan-recorded-association">
                     <h3 id="swimlog-plan-recorded-association"><?php esc_html_e( 'Recorded workout match', 'chriss-swim-training-progress-evaluation' ); ?></h3>
                     <?php if ( $recorded_workout ) : ?>
-                    <p><?php echo esc_html( sprintf( __( 'Matched to recorded workout #%d.', 'chriss-swim-training-progress-evaluation' ), (int) $recorded_workout->id ) ); ?>
+                    <p><?php echo esc_html( sprintf( /* translators: %d: recorded workout ID. */ __( 'Matched to recorded workout #%d.', 'chriss-swim-training-progress-evaluation' ), (int) $recorded_workout->id ) ); ?>
                         <a href="<?php echo esc_url( Admin_UI::url( array( 'page' => 'swimlog-workouts', 'workout_id' => (int) $recorded_workout->id ), $user_id ) ); ?>"><?php esc_html_e( 'View recorded workout', 'chriss-swim-training-progress-evaluation' ); ?></a>
                     </p>
                     <?php else : ?>
