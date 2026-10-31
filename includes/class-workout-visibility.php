@@ -128,6 +128,7 @@ final class Workout_Visibility {
     }
     /** Eligible swimming performance inputs only; stored private-history PB flags are deliberately excluded. */
     public static function public_performances( $owner, $course ) {
+        self::no_cache();
         global $wpdb;
         if(!self::ready()||!self::global_public($owner)||!in_array($course,array('m','yd'),true))return array();
         return Database::read('get_results',$wpdb->prepare("SELECT p.workout_id,p.distance_value,p.course_unit,p.stroke,p.duration_ms,DATE(p.achieved_at) AS achieved_at FROM %i p INNER JOIN %i w ON w.id=p.workout_id AND w.user_id=p.user_id INNER JOIN %i v ON v.workout_id=w.id AND v.owner_id=w.user_id WHERE p.user_id=%d AND p.course_unit=%s AND w.workout_type='pool' AND v.visibility IN ('public','legacy_public') ORDER BY p.achieved_at,p.id",Database::table('performances'),Database::table('workouts'),Database::table('workout_visibility'),absint($owner),$course));

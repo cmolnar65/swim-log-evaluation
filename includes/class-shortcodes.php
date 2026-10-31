@@ -123,6 +123,7 @@ final class Shortcodes {
         $annual=array_key_exists('year',$raw)&&!array_key_exists('month',$raw);$month=$annual?1:self::month_number($a['month']??'');if(!$month)return self::unavailable();
         $start=sprintf('%04d-%02d-01',$year,$month);$end=$annual?sprintf('%04d-12-31',$year):gmdate('Y-m-t',strtotime($start.' UTC'));
         $rows=array();$page=1;do{$r=Workout_Visibility::query_public($uid,array('date_from'=>$start,'date_to'=>$end),$page,100);if(is_wp_error($r))return self::unavailable();$rows=array_merge($rows,$r['workouts']);++$page;}while($page<=$r['pages']);
+        if($annual)return self::public_annual($rows,$year,$a['title']);
         return self::public_listing($rows,__('Training Log','chriss-swim-training-progress-evaluation').' — '.($annual?$year:self::local_date('F Y',$start.' 12:00:00')),$a['title']);
 	}
 
@@ -138,6 +139,19 @@ final class Shortcodes {
         if(null!==$w['avg_swolf'])$o.='<p>'.esc_html__('Average SWOLF','chriss-swim-training-progress-evaluation').': '.esc_html(number_format_i18n($w['avg_swolf'],2)).'</p>';
         if($w['route'])$o.=self::public_route_svg($w['route']);return$o.self::close();
 	}
+    /** Preserve annual monthly summaries, calculated only from already eligible projections. */
+    private static function public_annual($rows,$year,$show){
+        $o=self::styles().self::open(__('Training Log','chriss-swim-training-progress-evaluation').' — '.$year,$show);
+        $labels=array('pool'=>__('Pool','chriss-swim-training-progress-evaluation'),'open_water'=>__('Open Water','chriss-swim-training-progress-evaluation'),'running'=>__('Running','chriss-swim-training-progress-evaluation'),'walking'=>__('Walking','chriss-swim-training-progress-evaluation'));
+        foreach($labels as$type=>$label){$months=array();$total=array('count'=>0,'m'=>0,'yd'=>0,'elapsed'=>0);
+            foreach($rows as$w){if($w['workout_type']!==$type)continue;$m=(int)substr($w['date'],5,2);if(!isset($months[$m]))$months[$m]=array('count'=>0,'m'=>0,'yd'=>0,'elapsed'=>0);
+                $unit=in_array($w['original_distance_unit'],array('m','yd'),true)?$w['original_distance_unit']:'m';$distance=null!==$w['original_distance']&&in_array($w['original_distance_unit'],array('m','yd'),true)?(float)$w['original_distance']:(float)$w['total_distance_m'];
+                $months[$m]['count']++;$months[$m][$unit]+=$distance;$months[$m]['elapsed']+=(int)$w['elapsed_time_ms'];$total['count']++;$total[$unit]+=$distance;$total['elapsed']+=(int)$w['elapsed_time_ms'];
+            }if(!$months)continue;ksort($months);$o.='<h3>'.esc_html($label.' — '.$total['count']).'</h3><div class="swimlog-table-wrap"><table><thead><tr><th scope="col">'.esc_html__('Month','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Workouts','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th><th scope="col">'.esc_html__('Elapsed Time','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';
+            foreach($months as$m=>$t)$o.='<tr><th scope="row">'.esc_html(self::local_date('F Y',sprintf('%04d-%02d-01 12:00:00',$year,$m))).'</th><td>'.esc_html($t['count']).'</td><td>'.esc_html(number_format_i18n($t['m'],2).' m · '.number_format_i18n($t['yd'],2).' yd').'</td><td>'.esc_html(Workout::format_duration($t['elapsed'])).'</td></tr>';
+            $o.='<tr><th scope="row">'.esc_html($year.' '.__('Total','chriss-swim-training-progress-evaluation')).'</th><td>'.esc_html($total['count']).'</td><td>'.esc_html(number_format_i18n($total['m'],2).' m · '.number_format_i18n($total['yd'],2).' yd').'</td><td>'.esc_html(Workout::format_duration($total['elapsed'])).'</td></tr></tbody></table></div>';
+        }if(!$rows)$o.='<p>'.esc_html__('No public workouts are available for this selection.','chriss-swim-training-progress-evaluation').'</p>';return$o.self::close();
+    }
     private static function public_listing($rows,$title,$show,$close=true){
         $o=self::styles().self::open($title,$show);if(!$rows)return$o.'<p>'.esc_html__('No public workouts are available for this selection.','chriss-swim-training-progress-evaluation').'</p>'.($close?self::close():'');
         $o.='<div class="swimlog-table-wrap"><table><thead><tr><th>'.esc_html__('Date','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Type','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Distance','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Course / Stroke','chriss-swim-training-progress-evaluation').'</th><th>'.esc_html__('Elapsed Time','chriss-swim-training-progress-evaluation').'</th></tr></thead><tbody>';
