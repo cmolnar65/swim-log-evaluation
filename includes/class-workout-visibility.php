@@ -103,12 +103,8 @@ final class Workout_Visibility {
         $start=$filters['date_from']??'1000-01-01';$end=$filters['date_to']??'9999-12-31';
         foreach(array($start,$end)as$date)if(!is_string($date)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date))return new \WP_Error('swimlog_public_filter',__('Use calendar dates for public history filters.','chriss-swim-training-progress-evaluation'),array('status'=>400));
         // Identical eligibility precedes count, ordering and pagination; no private-row count leaks.
-        $base=" FROM %i w INNER JOIN %i v ON v.workout_id=w.id AND v.owner_id=w.user_id WHERE w.user_id=%d AND v.visibility IN ('public','legacy_public') AND w.workout_type IN ('pool','open_water','running','walking') AND (%s='' OR w.workout_type=%s) AND w.workout_start >= %s AND w.workout_start <= %s";
-        $args=array(Database::table('workouts'),Database::table('workout_visibility'),$owner,$type,$type,$start.' 00:00:00',$end.' 23:59:59');
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Fixed internal query shape above; all table identifiers and values are separately prepared here.
-        $total=(int)Database::read('get_var',$wpdb->prepare('SELECT COUNT(*)'.$base,...$args));
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Same fixed eligibility shape; bounded integer limit and offset are prepared values.
-        $rows=Database::read('get_results',$wpdb->prepare('SELECT w.*,v.route_public,v.visibility'.$base.' ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d',...array_merge($args,array($per_page,($page-1)*$per_page))));
+        $total=(int)Database::read('get_var',$wpdb->prepare("SELECT COUNT(*) FROM %i w INNER JOIN %i v ON v.workout_id=w.id AND v.owner_id=w.user_id WHERE w.user_id=%d AND v.visibility IN ('public','legacy_public') AND w.workout_type IN ('pool','open_water','running','walking') AND (%s='' OR w.workout_type=%s) AND w.workout_start >= %s AND w.workout_start <= %s",Database::table('workouts'),Database::table('workout_visibility'),$owner,$type,$type,$start.' 00:00:00',$end.' 23:59:59'));
+        $rows=Database::read('get_results',$wpdb->prepare("SELECT w.*,v.route_public,v.visibility FROM %i w INNER JOIN %i v ON v.workout_id=w.id AND v.owner_id=w.user_id WHERE w.user_id=%d AND v.visibility IN ('public','legacy_public') AND w.workout_type IN ('pool','open_water','running','walking') AND (%s='' OR w.workout_type=%s) AND w.workout_start >= %s AND w.workout_start <= %s ORDER BY w.workout_start DESC,w.id DESC LIMIT %d OFFSET %d",Database::table('workouts'),Database::table('workout_visibility'),$owner,$type,$type,$start.' 00:00:00',$end.' 23:59:59',$per_page,($page-1)*$per_page));
         return array('workouts'=>array_map(array(__CLASS__,'project'),$rows),'total'=>$total,'pages'=>(int)ceil($total/$per_page),'page'=>$page,'per_page'=>$per_page);
     }
     private static function project( $w ) {
