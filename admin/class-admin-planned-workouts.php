@@ -191,6 +191,7 @@ final class Admin_Planned_Workouts {
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only review flag. ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only unlink confirmation flag. ?>
             <?php if ( isset( $_GET['association_unlinked'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'The planned workout was unlinked from the recorded workout. Both workout records were kept.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+            <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only review flag. ?>
             <?php if ( isset( $_GET['structure_review'] ) && '1' === $_GET['structure_review'] ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'Written instructions changed. The linked structured workout was NOT modified. Review and explicitly approve regeneration below if you want to update it.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
