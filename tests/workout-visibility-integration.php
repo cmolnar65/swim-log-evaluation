@@ -2,7 +2,7 @@
 // Synthetic fixtures only. Runs in the disposable WordPress staging environment.
 use SwimLogEvaluation\{Database,Plugin,Workout,Workout_Visibility as V,Shortcodes,Blocks,REST_API,Importer,Manual_Workout,Planned_Workout,Recorded_Workout_Structure,Planned_Structure_Link};
 foreach(array('workout-visibility','shortcodes','blocks','rest-api','manual-workout','recorded-workout-structure','planned-structure-link')as$file)require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
-global $wpdb;$original_prefix=$wpdb->prefix;$original_user=get_current_user_id();$original_version=get_option('swimlog_db_version');$default=get_option('swimlog_public_results_default',false);$users=array();$checks=0;$failure=null;$post=0;
+global $wpdb;$original_prefix=$wpdb->prefix;$original_user=get_current_user_id();$original_version=get_option('swimlog_db_version');$default=get_option('swimlog_public_results_default',false);$users=array();$checks=0;$failure=null;$post=0;$die=null;$old_post=$_POST;$old_get=$_GET;$old_request=$_REQUEST;$old_screen=$GLOBALS['current_screen']??null;
 $verify=static function($condition,$message)use(&$checks){++$checks;if(!$condition)throw new RuntimeException($message);};
 $denied=static function($value)use($verify){$verify(is_wp_error($value),'Management must return an error');};
 try{
@@ -39,10 +39,24 @@ try{
  // Private faster PB must never determine public best/progression.
  foreach(array(array($pool,60000,0),array($new,30000,1))as$p)$verify(false!==Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$p[0],'distance_value'=>100,'course_unit'=>'m','stroke'=>'FR','duration_ms'=>$p[1],'achieved_at'=>'2026-01-01 08:12:34','is_personal_best'=>$p[2],'evaluation_version'=>'synthetic','created_at'=>'2026-01-01 00:00:00')),'Synthetic performance');
  $verify(60000===(int)V::personal_bests($owner,'m')[100]['FR']->duration_ms,'Public PB ignores private faster flag');$verify(1===count(V::progression($owner,100,'m','FR')),'Public progression uses only eligible inputs');
- foreach(array(0,$other,$manager)as$actor){wp_set_current_user($actor);$verify(V::is_public($run),'Public read permitted for actor '.$actor);$verify(null===Workout::get_for_user($run,$owner),'Private land lookup stays owner only');$denied(V::get_for_owner($run));$denied(V::set_for_owner($run,array('visibility'=>'private','route_public'=>false),$nonce,$state['revision']));$denied(Workout::update_metadata($pool,$owner,0,'attack'));$denied(Workout::set_photos($pool,$owner,array()));$denied(Workout::delete($pool,$owner));$denied(Importer::rebuild_workout($pool,$owner));$denied(Manual_Workout::save($owner,array()));$denied(Manual_Workout::rebuild($pool,$owner));$denied(Recorded_Workout_Structure::confirm($pool,$owner,'hash','attack'));$denied(Planned_Workout::associate_completed_workout(1,$owner,$pool));$denied(Planned_Workout::clear_completed_workout(1,$owner));$denied(Planned_Structure_Link::attach(1,1,$owner));$denied(Planned_Structure_Link::detach(1,$owner));
+ foreach(array(0,$other,$manager)as$actor){wp_set_current_user($actor);$verify(V::is_public($run),'Public read permitted for actor '.$actor);$verify(null===Workout::get_for_user($run,$owner),'Private land lookup stays owner only');$denied(V::get_for_owner($run));$denied(V::set_for_owner($run,array('visibility'=>'private','route_public'=>false),$nonce,$state['revision']));$denied(Workout::update_metadata($pool,$owner,0,'attack'));$denied(Workout::set_photos($pool,$owner,array()));$denied(Workout::delete($pool,$owner));$denied(Importer::rebuild_workout($pool,$owner));$denied(Manual_Workout::save($owner,array()));$denied(Manual_Workout::rebuild($pool,$owner));$denied(Recorded_Workout_Structure::confirm($pool,$owner,'hash','attack'));$denied(Planned_Workout::associate_completed_workout(1,$owner,$pool));$denied(Planned_Workout::clear_completed_workout(1,$owner));$denied(Planned_Structure_Link::attach(1,1,$owner));$denied(Planned_Structure_Link::detach(1,$owner));$denied(Planned_Structure_Link::preserve_recorded_lock(1,$owner));$denied(Importer::import_upload($owner,array()));
   $query=V::query_public($owner,array(),1,1);$verify(3===$query['total']&&3===$query['pages']&&1===count($query['workouts']),'Eligibility precedes pagination');
   $html=Shortcodes::workout(array('id'=>$pool,'title'=>'no'));$verify(false===strpos($html,'SECRET_'),'Shortcode excludes notes/device');$verify(false!==strpos(Shortcodes::workout(array('id'=>$new)),'unavailable'),'Owner/admin public embeds cannot bypass privacy');$verify(false!==strpos(Blocks::render_workout(array('workoutId'=>$new)),'unavailable'),'Dynamic block obeys same policy');
  }
+ // Exercise the actual admin POST adapter, including valid attacker CSRF tokens and signed manager context.
+ require_once ABSPATH.'wp-admin/includes/screen.php';require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-workouts.php';set_current_screen('dashboard');
+ $die=static function(){return static function(){throw new RuntimeException('expected-http-denial');};};add_filter('wp_die_handler',$die);
+ foreach(array($other,$manager)as$actor){wp_set_current_user($actor);
+  foreach(array('save_metadata','rebuild','delete','create_post','visibility')as$operation){
+   $_GET=array('page'=>'swimlog-workouts','workout_id'=>$pool,'swimmer_id'=>$owner,'_swimlog_swimmer_nonce'=>wp_create_nonce('swimlog_swimmer_selector'));
+   $_POST=array('swimlog_workout_action'=>$operation,'notes'=>'ATTACK','_wpnonce'=>wp_create_nonce('swimlog_workout_visibility_'.$pool),'workout_public'=>'1','visibility_revision'=>1);$_REQUEST=array_merge($_GET,$_POST);$blocked=false;
+   try{SwimLogEvaluation\Admin_Workouts::handle_workout_actions();}catch(RuntimeException $e){$blocked='expected-http-denial'===$e->getMessage();}
+   $verify($blocked,'Admin adapter denies foreign '.$operation.' actor '.$actor);
+  }
+ }
+ wp_set_current_user($owner);$_GET=array('page'=>'swimlog-workouts','workout_id'=>$pool);$_POST=array('swimlog_workout_action'=>'visibility','_wpnonce'=>'invalid','workout_public'=>'1','visibility_revision'=>1);$_REQUEST=array_merge($_GET,$_POST);$blocked=false;
+ try{SwimLogEvaluation\Admin_Workouts::handle_workout_actions();}catch(RuntimeException $e){$blocked='expected-http-denial'===$e->getMessage();}$verify($blocked,'Owner admin POST rejects invalid nonce');
+ remove_filter('wp_die_handler',$die);$die=null;$_POST=$old_post;$_GET=$old_get;$_REQUEST=$old_request;$GLOBALS['current_screen']=$old_screen;
  wp_set_current_user(0);$server=rest_get_server();REST_API::register();
  foreach(array('GET','POST','PUT','PATCH','DELETE')as$method){$request=new WP_REST_Request($method,'/swimlog/v1/public/workouts/'.$run);$response=rest_do_request($request);$verify(('GET'===$method?200:404)===$response->get_status(),'Public REST '.$method.' read-only contract');}
  $request=new WP_REST_Request('GET','/swimlog/v1/public/workouts/'.$new);$verify(404===rest_do_request($request)->get_status(),'Private public REST lookup indistinguishable from missing');$verify(false===REST_API::permission(),'Existing private REST authentication retained');
@@ -50,9 +64,15 @@ try{
  $post=wp_insert_post(array('post_type'=>'post','post_status'=>'publish','post_author'=>$owner,'post_title'=>'Synthetic visibility dynamic embed','post_content'=>'<!-- wp:swimlog/workout {"workoutId":'.$pool.'} /-->'));
  $verify(!is_wp_error($post)&&$post>0,'Explicit separate post publication');$s=V::get_for_owner($pool);$s=V::set_for_owner($pool,array('visibility'=>'private','route_public'=>false),wp_create_nonce('swimlog_workout_visibility_'.$pool),$s['revision']);$verify(false!==strpos(do_blocks(get_post($post)->post_content),'unavailable'),'Published dynamic block follows revocation');$verify('publish'===get_post_status($post),'Visibility does not change post status');
  update_user_meta($owner,'_standalone_workout_public_'.$run,'1');$verify(true===Workout::delete($run,$owner),'Owner delete succeeds');$verify(!V::is_public($run)&&''===get_user_meta($owner,'_standalone_workout_public_'.$run,true),'Deletion removes visibility and provisional preference');$verify(0===(int)$wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE workout_id=%d',$vtable,$run)),'Canonical deletion cleanup');
+ // A stale orphan grant must not follow an explicitly reused ID into a newly created record.
+ Database::write('insert',$vtable,array('workout_id'=>$run,'owner_id'=>$owner,'visibility'=>'public','route_public'=>1,'revision'=>10,'updated_at_gmt'=>'2026-01-01 00:00:00'));
+ $row=(array)$wpdb->get_row($wpdb->prepare('SELECT * FROM %i WHERE id=%d',$wtable,$walk));$row['id']=$run;Database::write('insert',$wtable,$row);$verify(V::created($run,$owner)&&!V::is_public($run),'Newly created reused ID clears orphan grant');
+ $verify(true===Workout::delete($run,$owner),'Remove reused fixture');
+ V::deleted_user($owner);$verify(0===(int)$wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE owner_id=%d',$vtable,$owner)),'User lifecycle removes canonical grants');
  $verify(V::migrate()&&!V::is_public($pool),'Migration retry preserves explicit revocation');
  WP_CLI::success('Canonical workout visibility passed '.$checks.' assertions.');
 }finally{
+ if($die)remove_filter('wp_die_handler',$die);$_POST=$old_post;$_GET=$old_get;$_REQUEST=$old_request;$GLOBALS['current_screen']=$old_screen;
  if($failure)remove_filter('query',$failure,1);if($post)wp_delete_post($post,true);
  foreach(Database::required_tables()as$table)Database::write('query',$wpdb->prepare('DROP TABLE IF EXISTS %i',Database::table($table)));
  $wpdb->prefix=$original_prefix;update_option('swimlog_db_version',$original_version);if(false===$default)delete_option('swimlog_public_results_default');else update_option('swimlog_public_results_default',$default);

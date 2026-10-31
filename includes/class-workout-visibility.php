@@ -85,7 +85,7 @@ final class Workout_Visibility {
         if(!$state['pending_standalone_preference'])return new \WP_Error('swimlog_visibility_no_preference',__('There is no pending standalone sharing request.','chriss-swim-training-progress-evaluation'),array('status'=>409));
         return self::set_for_owner($workout_id,array('visibility'=>'public','route_public'=>false),$nonce,$expected_revision);
     }
-    public static function no_cache() { require_once __DIR__.'/class-land-activity.php'; Land_Activity::no_cache(); }
+    public static function no_cache() { require_once __DIR__.'/class-land-activity.php'; Land_Activity::no_cache(); if(!headers_sent())header('Cache-Control: private, no-store'); }
     public static function is_public( $workout_id ) { return !is_wp_error(self::get_public($workout_id)); }
     public static function get_public( $workout_id ) {
         global $wpdb;
@@ -169,7 +169,7 @@ final class Workout_Visibility {
         global $wpdb;
         $t=Database::table('workout_visibility');
         if($t!==Database::read('get_var',$wpdb->prepare('SHOW TABLES LIKE %s',$wpdb->esc_like($t))))return true;
-        return false!==Database::write('query',$wpdb->prepare("INSERT IGNORE INTO %i (workout_id,owner_id,visibility,route_public,revision,updated_at_gmt) VALUES (%d,%d,'private',0,1,%s)",$t,$id,$owner,gmdate('Y-m-d H:i:s')));
+        return false!==Database::write('query',$wpdb->prepare("INSERT IGNORE INTO %i (workout_id,owner_id,visibility,route_public,revision,updated_at_gmt) VALUES (%d,%d,'private',0,1,%s) ON DUPLICATE KEY UPDATE owner_id=VALUES(owner_id),visibility='private',route_public=0,revision=revision+1,updated_at_gmt=VALUES(updated_at_gmt)",$t,$id,$owner,gmdate('Y-m-d H:i:s')));
     }
 
 }

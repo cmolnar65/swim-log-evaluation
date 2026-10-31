@@ -8,6 +8,7 @@ require_once __DIR__ . '/class-land-activity.php';
 final class Importer {
 	const MAX_BYTES=10485760;
 	public static function import_upload($user_id,$file,$location_id=0){
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		if(empty($file['tmp_name'])||!is_uploaded_file($file['tmp_name']))return new \WP_Error('swimlog_upload',__('No valid uploaded file was received.','chriss-swim-training-progress-evaluation'));
 		if(!empty($file['error']))return new \WP_Error('swimlog_upload',__('The upload failed before import.','chriss-swim-training-progress-evaluation'));
 		if((int)$file['size']>self::MAX_BYTES)return new \WP_Error('swimlog_upload_size',__('Workout files may not exceed 10 MB.','chriss-swim-training-progress-evaluation'));

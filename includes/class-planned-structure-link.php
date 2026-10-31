@@ -64,6 +64,7 @@ final class Planned_Structure_Link {
 
     /** Preserve legacy/current recorded history before a plan clears or loses its match. */
     public static function preserve_recorded_lock( $plan_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $plan = Planned_Workout::get_for_user( $plan_id, $owner_id );
         if ( ! $plan ) return new \WP_Error( 'swimlog_plan_not_found', 'Planned workout not found.' );
         if ( empty( $plan->completed_workout_id ) ) return true;
