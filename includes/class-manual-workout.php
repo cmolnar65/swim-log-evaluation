@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -186,6 +187,7 @@ final class Manual_Workout {
 	}
 
 	public static function save( $user_id, $document, $workout_id = 0 ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$user_id = absint( $user_id ); $workout_id = absint( $workout_id );
 		if ( ! $user_id ) return new \WP_Error( 'swimlog_manual_user', __( 'A valid swimmer is required.', 'chriss-swim-training-progress-evaluation' ) );
@@ -216,6 +218,7 @@ final class Manual_Workout {
 				$values['created_at'] = $now;
 				if ( ! Database::write( 'insert',  $wt, $values ) ) throw new \Exception( 'workout' );
 				$workout_id = (int) $wpdb->insert_id;
+                if(!Workout_Visibility::created($workout_id,$user_id))throw new \Exception('visibility');
 			}
 			$source = wp_json_encode( $normalized['document'] );
 			$source_row = Database::read( 'get_var',  $wpdb->prepare( "SELECT id FROM %i WHERE workout_id=%d",$mt,  $workout_id ) );
@@ -250,6 +253,7 @@ final class Manual_Workout {
 	}
 
 	public static function rebuild( $workout_id, $user_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$mt = Database::table( 'manual_workouts' );
 		$row = Database::read( 'get_row',  $wpdb->prepare( "SELECT source_document FROM %i WHERE workout_id=%d AND user_id=%d",$mt,  absint( $workout_id ), absint( $user_id ) ) );

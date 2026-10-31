@@ -7,6 +7,9 @@ final class REST_API {
  const NS='swimlog/v1';
 
  public static function register(){
+  register_rest_route(self::NS,'/public/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workouts'),'permission_callback'=>'__return_true','args'=>array('user'=>array('sanitize_callback'=>'absint','required'=>true))));
+  register_rest_route(self::NS,'/public/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workout'),'permission_callback'=>'__return_true'));
+
   register_rest_route(self::NS,'/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workouts'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('page'=>array('sanitize_callback'=>'absint'),'per_page'=>array('sanitize_callback'=>'absint'),'workout_type'=>array('sanitize_callback'=>'sanitize_key'),'date_from'=>array('sanitize_callback'=>'sanitize_text_field'),'date_to'=>array('sanitize_callback'=>'sanitize_text_field'))));
   register_rest_route(self::NS,'/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workout'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('id'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/personal-bests',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'personal_bests'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'))));
@@ -128,4 +131,16 @@ final class REST_API {
  private static function performance($x){return array('workout_id'=>(int)($x->workout_id??0),'course_unit'=>$x->course_unit,'distance_value'=>(int)$x->distance_value,'stroke'=>$x->stroke,'duration_ms'=>(int)$x->duration_ms,'achieved_at'=>$x->achieved_at,'is_personal_best'=>isset($x->is_personal_best)?(bool)$x->is_personal_best:null);}
  private static function safe_analytics($a){return array('elapsed_pace_100m_ms'=>$a['elapsed_pace_100m_ms']??null,'moving_pace_100m_ms'=>$a['moving_pace_100m_ms']??null,'non_moving_time_ms'=>$a['non_moving_time_ms']??null,'active_percent'=>$a['active_percent']??null,'cadence_point_count'=>(int)($a['cadence_point_count']??0),'splits'=>$a['splits']??array());}
  private static function safe_readiness($r){$keys=array('lookback_days','course_unit','stroke','event_distance','days_until_event','workout_count','length_count','distance_native','active_time_ms','last_workout_start','longest_recent_distance','longest_recent_duration_ms','longest_recent_workout_id','event_distance_or_longer','lifetime_pb_duration_ms','lifetime_pb_achieved_at','lifetime_pb_workout_id','recent_performance_count','recent_best_duration_ms','recent_best_achieved_at','recent_best_workout_id','recent_best_pace_100_ms','recent_average_pace_100_ms','latest_duration_ms','latest_achieved_at','latest_pace_100_ms','recent_change_ms','recent_change_percent','recent_best_vs_pb_ms','recent_best_vs_pb_percent','descriptive_only');$out=array();foreach($keys as$key)$out[$key]=$r[$key]??null;return$out;}
+ public static function public_workout($request){
+  require_once __DIR__.'/class-workout-visibility.php';
+  $data=Workout_Visibility::get_public($request->get_param('id'));if(is_wp_error($data))return$data;
+  $response=rest_ensure_response($data);$response->header('Cache-Control','no-store, private');return$response;
+ }
+ public static function public_workouts($request){
+  require_once __DIR__.'/class-workout-visibility.php';$filters=array();
+  foreach(array('workout_type','date_from','date_to')as$key){$v=$request->get_param($key);if(null!==$v&&''!==$v)$filters[$key]=$v;}
+  $data=Workout_Visibility::query_public($request->get_param('user'),$filters,$request->get_param('page')?:1,$request->get_param('per_page')?:20);if(is_wp_error($data))return$data;
+  $response=rest_ensure_response($data);$response->header('Cache-Control','no-store, private');return$response;
+ }
+
 }

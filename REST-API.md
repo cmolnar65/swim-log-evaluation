@@ -296,3 +296,16 @@ Response: range (start/end/date_policy), days (date, reports, readings, aggregat
 Observation IDs identify only owner-authorized internal records. External measurement/account IDs, owner IDs, hashes, arbitrary provenance/context, devices and raw payloads are excluded. Unknown/malformed numeric envelopes are counted and omitted. Responses use Cache-Control: private, no-store.
 
 This separate route does not change GET /calendar or existing portability responses. No visible measurement indicators are added until the calendar presentation phase.
+
+## Canonical public workout reads (development)
+
+These separate **GET-only** routes allow anonymous reads of the canonical whitelist:
+
+- `/swimlog/v1/public/workouts?user={owner_id}&page=1&per_page=20` (`/public/workouts`): eligible workouts, `total`, `pages`, `page`, `per_page`. Optional `workout_type`, `date_from`, `date_to` filters. Counts and pagination exclude private history.
+- `/swimlog/v1/public/workouts/{id}` (`/public/workouts/{id}`): a single projected workout, or 404 for private/missing/unsupported records.
+
+Both require explicit owner Public Results and the per-workout public grant. Responses are `private, no-store`; public embeds also disable caching. Supported types are pool, open_water, running and walking. This does not open the authenticated portability or calendar/measurement routes above. No public route accepts writes.
+
+Public fields: ID, date without start clock, type, distance/native units, elapsed/moving durations, pool course, stroke, SWOLF/equivalent swimming steps, recorded active lengths, safe splits and performance durations. Notes, photos, location labels, device/source details, files, raw metadata, health/sensor fields and stored personal-best flags are excluded. `route` is null unless the additional workout route flag and applicable explicit owner route consent permit geometry. When allowed, it contains `segments` of latitude/longitude pairs, without timestamps or sensor values. A public workout grants no management permission.
+
+See [canonical contract](docs/public-workout-visibility.md) and [standalone implementation prompt](docs/standalone-public-visibility-handoff.md). The legacy authenticated API remains separate and excludes GPS trackpoints even when route sharing is enabled.

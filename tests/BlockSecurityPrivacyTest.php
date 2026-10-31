@@ -2,14 +2,11 @@
 use PHPUnit\Framework\TestCase;
 
 final class BlockSecurityPrivacyTest extends TestCase {
-	public function test_shared_public_results_gate_preserves_owner_admin_and_opt_in_paths() {
-		$s = file_get_contents( dirname( __DIR__ ) . '/includes/class-shortcodes.php' );
-		$this->assertStringContainsString( "if(is_user_logged_in()&&get_current_user_id()===\$uid)return true;", $s );
-		$this->assertStringContainsString( "if(current_user_can('swimlog_manage_all_users'))return true;", $s );
-		$this->assertStringContainsString( "get_user_meta(\$uid,'swimlog_public_results',true)", $s );
-		$this->assertStringContainsString( "get_option('swimlog_public_results_default','0')", $s );
-		$this->assertStringContainsString( "return(string)\$v==='1';", $s );
-	}
+	public function test_public_gate_requires_explicit_consent_without_owner_admin_or_site_default_bypass() {
+        $s=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');$a=strpos($s,'private static function allowed');$b=strpos($s,'private static function attrs',$a);$gate=substr($s,$a,$b-$a);
+        $this->assertStringContainsString("get_user_meta(\$uid,'swimlog_public_results',true)",$gate);
+        foreach(array('get_current_user_id','swimlog_manage_all_users','get_option')as$term)$this->assertStringNotContainsString($term,$gate);
+    }
 
 	public function test_owner_resolution_has_no_logged_in_viewer_fallback() {
 		$s = file_get_contents( dirname( __DIR__ ) . '/includes/class-shortcodes.php' );
@@ -29,22 +26,17 @@ final class BlockSecurityPrivacyTest extends TestCase {
 			$this->assertNotFalse( $start, $method );
 			$next = strpos( $s, 'public static function ', $start + 25 );
 			$body = false === $next ? substr( $s, $start ) : substr( $s, $start, $next - $start );
-			$this->assertStringContainsString( 'self::allowed($uid)', $body, $method );
+			$this->assertStringContainsString( 'render_workout'===$method?'Workout_Visibility::get_public(':'self::allowed($uid)', $body, $method );
 			$this->assertStringContainsString( 'return self::unavailable()', $body, $method );
 		}
 	}
 
-	public function test_workout_route_requires_separate_explicit_opt_in_before_trackpoints_are_loaded() {
-		$s = file_get_contents( dirname( __DIR__ ) . '/includes/class-shortcodes.php' );
-		$this->assertStringContainsString( "get_user_meta(\$uid,'swimlog_public_ows_routes',true)==='1'", $s );
-		$start = strpos( $s, 'public static function render_workout' );
-		$body = substr( $s, $start );
-		$gate = strpos( $body, 'self::public_routes_allowed($uid)' );
-		$trackpoints = strpos( $body, 'Workout::trackpoints($id,$uid)' );
-		$this->assertNotFalse( $gate );
-		$this->assertNotFalse( $trackpoints );
-		$this->assertLessThan( $trackpoints, $gate );
-	}
+	public function test_workout_route_requires_canonical_explicit_opt_in_before_trackpoints_are_loaded() {
+        $s=file_get_contents(dirname(__DIR__).'/includes/class-workout-visibility.php');
+        $this->assertStringContainsString("if(self::route_allowed(\$w,\$w))",$s);
+        $this->assertLessThan(strpos($s,"Database::table('trackpoints')"),strpos($s,'if(self::route_allowed($w,$w))'));
+        $this->assertStringContainsString("if ( ! \$state || ! (int)\$state->route_public ) return false;",$s);
+    }
 
 	public function test_no_block_attribute_or_editor_script_contains_gps_data() {
 		foreach ( array( 'latest-workouts', 'personal-bests', 'upcoming-events', 'workout', 'training-log', 'progress', 'calendar' ) as $dir ) {

@@ -26,7 +26,7 @@ final class PlannedWorkoutCompletionMatchingTest extends TestCase {
  public function test_ajax_matching_uses_existing_nonce_capability_boundary_and_service(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$start=strpos($code,'public static function calendar_plan_action');$end=strpos($code,'public static function render_calendar',$start);$body=substr($code,$start,$end-$start);
   $this->assertStringContainsString("check_ajax_referer( 'swimlog_calendar_plan', 'nonce' )",$body);
-  $this->assertStringContainsString("'swimlog_manage_own_workouts'",$body);$this->assertStringContainsString("'swimlog_manage_all_users'",$body);
+  $this->assertStringContainsString("'swimlog_manage_own_workouts'",$body);$this->assertStringNotContainsString("'swimlog_manage_all_users'",$body);
   $this->assertStringContainsString('Planned_Workout::completion_candidates( $id, $user_id )',$body);
   $this->assertStringContainsString('Planned_Workout::associate_completed_workout( $id, $user_id, $workout_id )',$body);
   $this->assertStringContainsString('Planned_Workout::clear_completed_workout( $id, $user_id )',$body);
@@ -36,6 +36,6 @@ final class PlannedWorkoutCompletionMatchingTest extends TestCase {
   $start=strpos($service,'public static function associate_completed_workout');$end=strpos($service,'public static function clear_completed_workout',$start);$body=substr($service,$start,$end-$start);
   $this->assertStringNotContainsString("Database::table( 'workouts' )",$body);
   $this->assertStringNotContainsString('$wpdb->update( $workouts',$body);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.4'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.5'",$main);
  }
 }

@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'workout_visibility' );
 	}
 
 	public static function schema_is_complete() {
@@ -127,7 +127,11 @@ final class Database {
 				return false;
 			}
 		}
-		$activity_columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( 'workouts' ) ) );
+		$visibility_columns = self::read('get_col',$wpdb->prepare('SHOW COLUMNS FROM %i',self::table('workout_visibility')));
+        if(array_diff(array('workout_id','owner_id','visibility','route_public','revision','updated_at_gmt'),(array)$visibility_columns))return false;
+        $visibility_primary=self::read('get_results',$wpdb->prepare("SHOW INDEX FROM %i WHERE Key_name='PRIMARY'",self::table('workout_visibility')));
+        if(count($visibility_primary)!==1||$visibility_primary[0]->Column_name!=='workout_id')return false;
+        $activity_columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( 'workouts' ) ) );
 		if ( ! in_array( 'activity_environment', (array) $activity_columns, true ) ) return false;
 		foreach ( self::health_schema_columns() as $name => $required ) {
 			$columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( $name ) ) );
@@ -183,7 +187,18 @@ final class Database {
 		$health_measurements = self::table( 'health_measurements' );
 		$health_report_members = self::table( 'health_report_members' );
 
-		$sql = array();
+		$visibility = self::table('workout_visibility');
+        $sql = array();
+        $sql[] = "CREATE TABLE $visibility (
+            workout_id bigint(20) unsigned NOT NULL,
+            owner_id bigint(20) unsigned NOT NULL,
+            visibility varchar(20) NOT NULL DEFAULT 'private',
+            route_public tinyint(1) NOT NULL DEFAULT 0,
+            revision bigint(20) unsigned NOT NULL DEFAULT 1,
+            updated_at_gmt datetime NOT NULL,
+            PRIMARY KEY  (workout_id),
+            KEY owner_visibility (owner_id,visibility)
+        ) ENGINE=InnoDB $charset_collate;";
 
 		$sql[] = "CREATE TABLE $imports (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -473,7 +488,9 @@ final class Database {
 			dbDelta( $statement );
 		}
 
-		return self::schema_is_complete();
+		if(!self::schema_is_complete())return false;
+        require_once __DIR__.'/class-workout-visibility.php';
+        return Workout_Visibility::migrate();
 	}
 }
 

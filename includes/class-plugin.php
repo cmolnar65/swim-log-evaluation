@@ -16,6 +16,8 @@ final class Plugin {
 		// calendar, shortcode, block, and administration services. Load it before
 		// any of those services can be invoked through WordPress hooks or admin pages.
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout-visibility.php';
+        add_action('deleted_user',array('SwimLogEvaluation\\Workout_Visibility','deleted_user'));
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';

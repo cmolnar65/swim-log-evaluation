@@ -14,7 +14,7 @@ final class TrainingLogBlockTest extends TestCase {
  public function test_annual_mode_preserves_year_without_month_presence_semantics(){
   $b=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$s=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');
   $this->assertStringContainsString("if ( 'annual' === \$mode )",$b);$this->assertStringContainsString("\$atts['year']",$b);
-  $this->assertStringContainsString("\$annual=\$has_year&&!\$has_month",$s);
+  $this->assertStringContainsString("\$annual=array_key_exists('year',\$raw)&&!array_key_exists('month',\$raw)",$s);
   $annual=substr($b,strpos($b,"if ( 'annual' === \$mode )"),strpos($b,'} else {',strpos($b,"if ( 'annual' === \$mode )"))-strpos($b,"if ( 'annual' === \$mode )"));
   $this->assertStringNotContainsString("\$atts['month']",$annual);
  }

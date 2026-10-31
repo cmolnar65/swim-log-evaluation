@@ -146,6 +146,8 @@ Public-results authorization is unchanged. Applicable blocks use the page/post a
 5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
 6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
 
+Canonical per-workout sharing is development-only: public viewing requires explicit swimmer Public Results plus individual workout approval. Route sharing requires a separate workout flag and explicit route consent. Notes, photos, sources, raw metadata and measurements are excluded. Schema 1.5 adds visibility state without rewriting workout history. Plugin remains 1.3-dev and unreleased.
+
 == Changelog ==
 
 = 1.3-dev (unreleased) =

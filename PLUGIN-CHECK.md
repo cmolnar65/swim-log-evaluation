@@ -139,3 +139,7 @@ The preferred approach is to keep Plugin Check output visible, compare it with t
 ## v1.3 private land calendar/log cache exception
 
 `includes/class-land-activity.php`, `Land_Activity::no_cache()`: one statement-level `WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound` exception permits defining `DONOTCACHEPAGE` for authorized current-owner private calendar/training-log views. This is the established cache-plugin interoperability name; a plugin-prefixed replacement would not be recognized. It is defined only if absent, alongside WordPress no-cache headers. The exception covers this constant only; all other findings remain subject to strict production-staging Plugin Check. No broad code or file exclusion is added.
+
+## Canonical visibility query exceptions
+
+`Workout_Visibility::query_public` has two individual `WordPress.DB.PreparedSQL.NotPrepared` exceptions, one each for eligible count and page selection. Both share a fixed internal SQL fragment; every table identifier, filter, bound and pagination integer is passed through wpdb preparation. No caller-supplied SQL fragment is accepted. This keeps eligibility identical before pagination without broad suppression. The new table uses the existing audited custom-table Database adapter; public cache protection reuses the existing narrowly documented `Land_Activity::no_cache` helper.

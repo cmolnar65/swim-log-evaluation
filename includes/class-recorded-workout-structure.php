@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Conservative, read-only preview followed by explicit creation of a new prescription. */
@@ -66,6 +67,7 @@ final class Recorded_Workout_Structure {
     }
 
     public static function confirm( $workout_id, $owner_id, $expected_hash, $title, $date = '' ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $preview = self::preview( $workout_id, $owner_id );
         if ( is_wp_error( $preview ) ) return $preview;
         if ( ! is_string( $expected_hash ) || ! hash_equals( $preview['hash'], $expected_hash ) ) return new \WP_Error( 'swimlog_conversion_stale', 'Recorded workout changed. Preview again before confirming.' );

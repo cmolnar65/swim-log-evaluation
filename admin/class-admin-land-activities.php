@@ -34,6 +34,7 @@ final class Admin_Land_Activities {
         <?php else : ?><p><?php esc_html_e( 'No usable GPS route is stored for this activity.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
         <h2><?php esc_html_e( 'Recorded laps / splits', 'chriss-swim-training-progress-evaluation' ); ?></h2>
         <div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th>#</th><th><?php esc_html_e( 'Distance', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Elapsed', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><?php foreach ( $laps as $lap ) : ?><tr><td><?php echo esc_html( $lap->sequence_no ); ?></td><td><?php echo esc_html( null !== $lap->distance_m ? Admin_UI::display_measurement( $lap->distance_m, 'm' ) : '—' ); ?></td><td><?php echo esc_html( Workout::format_duration( $lap->elapsed_time_ms ) ); ?></td></tr><?php endforeach; ?></tbody></table></div>
+        <?php Workout_Visibility::controls((int)$workout->id); ?>
         </div><?php
     }
 }

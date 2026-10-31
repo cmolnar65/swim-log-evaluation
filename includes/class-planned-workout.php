@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -55,6 +56,7 @@ final class Planned_Workout {
 
 	/** Create or update a planned workout while preserving the swimmer's free-form prescription. */
 	public static function save( $user_id, $data, $id = 0 ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$user_id = absint( $user_id );
 		$id = absint( $id );
@@ -108,6 +110,7 @@ final class Planned_Workout {
 
 	/** Reschedule an unassociated, owned plan without altering its prescription. */
 	public static function move( $id, $user_id, $date ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
 		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
@@ -121,6 +124,7 @@ final class Planned_Workout {
 
 	/** Duplicate an owned plan as a new planned workout, optionally on another date. */
 	public static function duplicate( $id, $user_id, $planned_date = null ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
 		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$data = array(
@@ -162,6 +166,7 @@ final class Planned_Workout {
 
 	/** Duplicate every owned plan in one seven-day period into another week as independent planned rows. */
 	public static function duplicate_week( $user_id, $source_start, $target_start ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		$user_id = absint( $user_id );
 		$source = self::valid_date( $source_start );
 		$target = self::valid_date( $target_start );
@@ -187,6 +192,7 @@ final class Planned_Workout {
 
 	/** Materialize independent recurring copies of one owned plan on selected weekdays through an end date. */
 	public static function recur( $id, $user_id, $weekdays, $end_date ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		$plan = self::get_for_user( absint( $id ), absint( $user_id ) );
 		if ( ! $plan ) return new \WP_Error( 'swimlog_planned_workout_not_found', __( 'Planned workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$start = self::valid_date( $plan->planned_date );
@@ -219,6 +225,7 @@ final class Planned_Workout {
 
 	/** Mark a plan planned, skipped, or cancelled. Completed requires an actual-workout association. */
 	public static function set_status( $id, $user_id, $status ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$id = absint( $id );
 		$user_id = absint( $user_id );
@@ -264,6 +271,7 @@ final class Planned_Workout {
 
 	/** Associate exactly one recorded workout owned by the same swimmer and mark the plan completed. */
 	public static function associate_completed_workout( $id, $user_id, $workout_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		global $wpdb;
 		$id = absint( $id );
@@ -295,6 +303,7 @@ final class Planned_Workout {
 	}
 
 	public static function clear_completed_workout( $id, $user_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$id = absint( $id );
 		$user_id = absint( $user_id );
@@ -314,6 +323,7 @@ final class Planned_Workout {
 	}
 
 	public static function delete( $id, $user_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$id = absint( $id );
 		$user_id = absint( $user_id );

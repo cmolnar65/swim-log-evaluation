@@ -16,7 +16,7 @@ final class ProgressBlockTest extends TestCase {
  }
  public function test_php_renderer_remains_authoritative_for_progression_and_chart(){
   $s=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');$j=file_get_contents(dirname(__DIR__).'/blocks/progress/index.js');
-  $this->assertStringContainsString('Records::progression(',$s);$this->assertStringContainsString("wp_enqueue_script('swimlog-progress'",$s);$this->assertStringContainsString('count($points)>1',$s);
+  $this->assertStringContainsString('Workout_Visibility::progression(',$s);$this->assertStringContainsString("wp_enqueue_script('swimlog-progress'",$s);$this->assertStringContainsString('count($points)>1',$s);
   $this->assertStringNotContainsString('Records::progression',$j);$this->assertStringNotContainsString('duration_ms',$j);$this->assertStringNotContainsString('data-swimlog-progress',$j);
  }
  public function test_single_pb_still_renders_without_requiring_chart(){

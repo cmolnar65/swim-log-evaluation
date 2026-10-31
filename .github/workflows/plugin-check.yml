@@ -41,6 +41,11 @@ jobs:
           strict: true
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
 
+      - name: Verify canonical workout visibility migration and read-only public access
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/workout-visibility-integration.php)"
+
       - name: Verify historical Garmin traversal and activity retries
         run: |
           set -euo pipefail

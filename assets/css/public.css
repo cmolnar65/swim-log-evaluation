@@ -58,3 +58,5 @@
 .swimlog-ows-map-start{fill:Canvas;stroke:currentColor;stroke-width:3;vector-effect:non-scaling-stroke}
 .swimlog-ows-map-finish{fill:currentColor;stroke:currentColor;stroke-width:3;vector-effect:non-scaling-stroke}
 .swimlog-ows-map-label,.swimlog-ows-map-north{fill:currentColor;font-size:15px;font-weight:600}
+
+.swimlog-public .swimlog-public-route { display:block; width:100%; max-width:900px; height:auto; }

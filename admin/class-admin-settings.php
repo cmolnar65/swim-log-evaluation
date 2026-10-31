@@ -14,7 +14,8 @@ final class Admin_Settings {
 			check_admin_referer( 'swimlog_save_privacy' );
 			$public = isset( $_POST['public_results'] ) ? '1' : '0';
 			$public_routes = isset( $_POST['public_ows_routes'] ) ? '1' : '0';
-			$rest_api = isset( $_POST['rest_api_access'] ) ? '1' : '0';
+			$all_routes = isset($_POST['public_routes']) ? '1' : '0';
+            $rest_api = isset( $_POST['rest_api_access'] ) ? '1' : '0';
 			$birthdate = isset( $_POST['birthdate'] ) ? sanitize_text_field( wp_unslash( $_POST['birthdate'] ) ) : '';
 			$training_volume_months = isset( $_POST['training_volume_months'] ) ? absint( wp_unslash( $_POST['training_volume_months'] ) ) : 3;
 			$training_volume_months = max( 1, min( 24, $training_volume_months ) );
@@ -39,6 +40,7 @@ final class Admin_Settings {
 				}
 				update_user_meta( $uid, 'swimlog_public_results', $public );
 				update_user_meta( $uid, 'swimlog_public_ows_routes', $public_routes );
+                update_user_meta($uid,'swimlog_public_routes',$all_routes);
 				update_user_meta( $uid, 'swimlog_rest_api_access', $rest_api );
 				update_user_meta( $uid, 'swimlog_training_volume_months', $training_volume_months );
 				update_user_meta( $uid, 'swimlog_calendar_first_day', $calendar_first_day );
@@ -47,11 +49,12 @@ final class Admin_Settings {
 		}
 		$value = get_user_meta( $uid, 'swimlog_public_results', true );
 		if ( '' === $value ) {
-			$value = get_option( 'swimlog_public_results_default', '0' );
+			$value = '0';
 		}
 		$birthdate = (string) get_user_meta( $uid, 'swimlog_birthdate', true );
 		$public_routes = (string) get_user_meta( $uid, 'swimlog_public_ows_routes', true );
-		$rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
+		$all_routes = (string)get_user_meta($uid,'swimlog_public_routes',true);
+        $rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
 		$training_volume_months = (int) get_user_meta( $uid, 'swimlog_training_volume_months', true );
 		$calendar_first_day = sanitize_key( (string) get_user_meta( $uid, 'swimlog_calendar_first_day', true ) );
 		if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
@@ -87,11 +90,12 @@ final class Admin_Settings {
 				</table>
 				<hr>
 				<h2><?php esc_html_e( 'Privacy', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-				<p><?php esc_html_e( 'Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<p><?php esc_html_e( 'Public Results is a master permission. Only workouts you also mark public may appear in public blocks, shortcodes or the public API. Sharing never permits anyone else to manage a workout.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<table class="form-table" role="presentation">
-					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my swim results to be displayed by public swim shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'Public Open-Water Routes', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_ows_routes" value="1" <?php checked( $public_routes, '1' ); ?>> <?php esc_html_e( 'Allow GPS route shapes from my open-water workouts to appear in public workout shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'GPS routes can reveal where you swim, including start and finish locations. This setting is separate from Public Results and must be enabled explicitly.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'REST API Access', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="rest_api_access" value="1" <?php checked( $rest_api, '1' ); ?>> <?php esc_html_e( 'Allow authenticated read-only access to my swim workout data through the swimlog/v1 REST API.', 'chriss-swim-training-progress-evaluation' ); ?></label> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-api-help' ) ); ?>"><?php esc_html_e( 'API Help / Documentation', 'chriss-swim-training-progress-evaluation' ); ?></a><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'This permission is separate from Public Results and Public Open-Water Routes. API requests are limited to the authenticated swimmer and never expose preserved source files or open-water GPS coordinates/trackpoints.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my individually approved workouts to be publicly viewed.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. Turning this on does not publish private history. Public embeds never show private previews, even to their owner or an administrator; use your private workout pages instead.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Public Swimming Routes', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_ows_routes" value="1" <?php checked( $public_routes, '1' ); ?>> <?php esc_html_e( 'Keep my existing swimming-only route permission. Each workout must also have route sharing approved.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'GPS routes can reveal where you swim, including start and finish locations. This setting is separate from Public Results and must be enabled explicitly.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+                    <tr><th scope="row"><?php esc_html_e('Public Routes — All Supported Sports','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="public_routes" value="1" <?php checked($all_routes,'1'); ?>> <?php esc_html_e('Allow routes from individually approved public swimming, running and walking workouts.','chriss-swim-training-progress-evaluation'); ?></label><p class="description"><?php esc_html_e('Off by default. Existing swimming consent never enables land routes. GPS can reveal start and finish locations. A route also needs Public Results, a public workout and its separate Share route publicly flag.','chriss-swim-training-progress-evaluation'); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'REST API Access', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="rest_api_access" value="1" <?php checked( $rest_api, '1' ); ?>> <?php esc_html_e( 'Allow authenticated read-only access to my swim workout data through the swimlog/v1 REST API.', 'chriss-swim-training-progress-evaluation' ); ?></label> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-api-help' ) ); ?>"><?php esc_html_e( 'API Help / Documentation', 'chriss-swim-training-progress-evaluation' ); ?></a><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'This permission is separate from Public Results and Public Swimming Routes. API requests are limited to the authenticated swimmer and never expose preserved source files or open-water GPS coordinates/trackpoints.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 				</table>
 				<?php submit_button( __( 'Save Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ) ); ?>
 			</form>
@@ -125,7 +129,7 @@ final class Admin_Settings {
 			<h2><?php esc_html_e( 'Returned data', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><?php esc_html_e( 'Workout summaries include workout/source type, timestamps, saved location name, distance and timing values, pool information when applicable, primary stroke, heart-rate/cadence summaries, and recording-device manufacturer/model. Pool workout details include normalized lap/length offsets, source indexes when recorded, per-length stroke counts, and derived performances. Additional read-only routes expose current personal bests, progression history, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends. Open-water workout detail continues to expose only non-geographic analytics/splits.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<h2><?php esc_html_e( 'Privacy exclusions', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<p><?php esc_html_e( 'The API does not expose preserved source files or paths, import records, workout notes, open-water latitude/longitude, or GPS trackpoints. Enabling Public Open-Water Routes does not change the REST API: geographic route data remains excluded.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'The API does not expose preserved source files or paths, import records, workout notes, open-water latitude/longitude, or GPS trackpoints. Enabling Public Swimming Routes does not change the REST API: geographic route data remains excluded.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<h2><?php esc_html_e( 'Examples', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><code>GET <?php echo esc_html( $base . '/workouts?per_page=10&workout_type=pool' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/workouts/123' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/personal-bests?course=m' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/progression?distance=100&course=m&stroke=BR' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/events?limit=5' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/analytics/pool?course=m&stroke=BR&months=6' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/analytics/training-trends?months=6' ); ?></code></p>
 			<h2><?php esc_html_e( 'Errors', 'chriss-swim-training-progress-evaluation' ); ?></h2>

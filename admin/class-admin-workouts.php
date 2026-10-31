@@ -196,6 +196,7 @@ final class Admin_Workouts {
 			<?php if(!$is_open_water):?>
 			<h2><?php esc_html_e('Normalized Lengths and Rest','chriss-swim-training-progress-evaluation'); ?></h2><?php if(!$lengths):?><p><?php esc_html_e('No normalized length records are stored.','chriss-swim-training-progress-evaluation'); ?></p><?php else:?><details><summary><?php /* translators: %d: number of normalized swim length and rest records. */ echo esc_html(sprintf(__('Show %d length/rest records','chriss-swim-training-progress-evaluation'),count($lengths))); ?></summary><div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th>#</th><th><?php esc_html_e('Type','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Distance','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Stroke','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Strokes','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('Time','chriss-swim-training-progress-evaluation'); ?></th><th><?php esc_html_e('SWOLF','chriss-swim-training-progress-evaluation'); ?></th></tr></thead><tbody><?php foreach($lengths as $l):?><tr><td><?php echo esc_html($l->sequence_no); ?></td><td><?php echo esc_html($l->length_type); ?></td><td><?php echo esc_html($l->distance_m.' m'); ?></td><td><?php echo esc_html($strokes[$l->stroke]??($l->stroke?:'—')); ?></td><td><?php echo esc_html(isset($l->stroke_count)&&null!==$l->stroke_count?(int)$l->stroke_count:'—'); ?></td><td><?php echo esc_html(Workout::format_duration($l->elapsed_time_ms)); ?></td><td><?php echo esc_html(null!==($l->swolf_score??null)?(int)$l->swolf_score:'-'); ?></td></tr><?php endforeach;?></tbody></table></div></details><?php endif;?>
 			<?php endif;?>
+            <?php Workout_Visibility::controls($detail); ?>
             <hr><section class="swimlog-workout-maintenance" aria-labelledby="swimlog-maintenance-title">
             <h2 id="swimlog-maintenance-title"><?php esc_html_e('Workout Maintenance','chriss-swim-training-progress-evaluation'); ?></h2>
             <p><?php esc_html_e('Rebuild an imported workout from its preserved source files to refresh its normalized data and calculated results. This is a repair action; the original files and import records are retained.','chriss-swim-training-progress-evaluation'); ?></p>
@@ -284,17 +285,31 @@ final class Admin_Workouts {
 		if ( empty( $_GET['page'] ) || 'swimlog-workouts' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
 		if ( empty( $_POST['swimlog_workout_action'] ) ) return;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_workout_action'] ) );
-		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete', 'create_post' ), true ) ) return;
+		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete', 'create_post', 'visibility' ), true ) ) return;
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 
 		$user_id = Admin_UI::selected_user_id();
+        if (Workout_Visibility::owner_error($user_id)) wp_die(esc_html__('Only the owner may manage this workout.','chriss-swim-training-progress-evaluation'));
 		$detail = isset( $_GET['workout_id'] ) ? absint( wp_unslash( $_GET['workout_id'] ) ) : 0;
 		if ( ! $detail || ! Workout::get_for_user( $detail, $user_id ) ) {
 			wp_die( esc_html__( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 
+        if ('visibility' === $action) {
+            check_admin_referer('swimlog_workout_visibility_'.$detail);
+            $nonce=sanitize_text_field(wp_unslash($_POST['_wpnonce']??''));
+            $revision=absint(wp_unslash($_POST['visibility_revision']??0));
+            if(isset($_POST['adopt_standalone']))$result=Workout_Visibility::adopt_standalone_preference($detail,$nonce,$revision);
+            else {
+                $public=isset($_POST['workout_public']) && '1'===sanitize_text_field(wp_unslash($_POST['workout_public']));
+                $route=$public && isset($_POST['route_public']) && '1'===sanitize_text_field(wp_unslash($_POST['route_public']));
+                $result=Workout_Visibility::set_for_owner($detail,array('visibility'=>$public?'public':'private','route_public'=>$route),$nonce,$revision);
+            }
+            if(is_wp_error($result)){self::$workout_action_error=$result->get_error_message();return;}
+            wp_safe_redirect(Admin_UI::url(array('page'=>'swimlog-workouts','workout_id'=>$detail,'saved'=>1),$user_id));exit;
+        }
 		if ( 'create_post' === $action ) {
 			check_admin_referer( 'swimlog_create_workout_post_' . $detail );
 			if ( ! current_user_can( 'edit_posts' ) ) {

@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -9,6 +10,7 @@ require_once __DIR__ . '/class-land-activity.php';
 final class Workout {
 	const EVENT_READINESS_LOOKBACK_DAYS = 42;
 	public static function get_for_user( $id, $user_id ) {
+        if(!is_user_logged_in() || ((int)$user_id !== (int)get_current_user_id() && !current_user_can('swimlog_manage_all_users')))return null;
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
 		$row = Database::read( 'get_row', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
@@ -271,11 +273,12 @@ final class Workout {
 
 	/** Replace the complete ordered photo set for a workout. */
 	public static function set_photos( $workout_id, $user_id, $attachment_ids ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $attachment_ids ) ) ) );
 		if ( count( $ids ) > 3 ) return new \WP_Error( 'swimlog_workout_photo_limit', __( 'A workout may have no more than three photos.', 'chriss-swim-training-progress-evaluation' ) );
 		foreach ( $ids as $id ) {
-			if ( 'attachment' !== get_post_type( $id ) || 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be image attachments.', 'chriss-swim-training-progress-evaluation' ) );
+			if ( (int)get_post_field('post_author',$id) !== $user_id || 'attachment' !== get_post_type( $id ) || 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be image attachments.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$key = '_swimlog_workout_photos_' . absint( $workout_id );
 		if ( $ids ) update_user_meta( $user_id, $key, $ids ); else delete_user_meta( $user_id, $key );
@@ -284,6 +287,7 @@ final class Workout {
 
 
 	public static function update_metadata( $workout_id, $user_id, $location_id, $notes ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$workout_id = absint( $workout_id );
 		$user_id = absint( $user_id );
@@ -326,6 +330,7 @@ final class Workout {
 
 
 	public static function delete( $workout_id, $user_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$workout_id = absint( $workout_id );
 		$user_id = absint( $user_id );
@@ -351,7 +356,8 @@ final class Workout {
 			if ( false === Database::write( 'delete',  $trackpoints, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'trackpoints' );
 			if ( false === Database::write( 'delete',  $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
 			if ( false === Database::write( 'delete',  $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
-			if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
+			if ( Workout_Visibility::ready() && false === Database::write('delete',Database::table('workout_visibility'),array('workout_id'=>$workout_id,'owner_id'=>$user_id)) ) throw new \Exception('visibility');
+            if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
 			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
 			Evaluator::recalculate_personal_bests( $user_id );
 			if ( false === Database::write( 'query',  'COMMIT' ) ) throw new \Exception( 'commit' );
@@ -361,6 +367,7 @@ final class Workout {
 		}
 
 		delete_user_meta( $user_id, '_swimlog_workout_photos_' . $workout_id );
+        delete_user_meta($user_id,'_standalone_workout_public_'.$workout_id);
 		foreach ( $photo_ids as $photo_id ) wp_delete_attachment( $photo_id, true );
 
 		$source_delete_failures = array();

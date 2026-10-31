@@ -31,6 +31,7 @@ final class Admin_Manual_Workout {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-manual-workout.php';
 		$user_id = Admin_UI::selected_user_id();
+        if (Workout_Visibility::owner_error($user_id)) wp_die(esc_html__('Only the owner may manage this workout.','chriss-swim-training-progress-evaluation'));
 		$date = sanitize_text_field( wp_unslash( $_POST['workout_date'] ?? '' ) );
 		$time = sanitize_text_field( wp_unslash( $_POST['workout_time'] ?? '' ) );
 		$duration_minutes = isset( $_POST['duration_minutes'] ) && '' !== trim( sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ) ) ) ? (float) sanitize_text_field( wp_unslash( $_POST['duration_minutes'] ) ) : null;

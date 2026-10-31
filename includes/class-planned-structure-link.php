@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
@@ -29,6 +30,7 @@ final class Planned_Structure_Link {
     }
 
     public static function attach( $plan_id, $structure_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $plan_id = absint( $plan_id );
         $structure_id = absint( $structure_id );
         $owner_id = absint( $owner_id );
@@ -78,6 +80,7 @@ final class Planned_Structure_Link {
     }
 
     public static function detach( $plan_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;
         if ( ! $existing ) return true;

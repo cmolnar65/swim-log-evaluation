@@ -48,3 +48,5 @@ require_once dirname(__DIR__).'/includes/class-blocks.php';
 require_once dirname(__DIR__).'/admin/class-admin.php';
 
 require_once dirname(__DIR__).'/includes/class-rest-api.php';
+
+if(!function_exists('esc_attr')){function esc_attr($v){return esc_html($v);}}

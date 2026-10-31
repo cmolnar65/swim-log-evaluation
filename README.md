@@ -255,3 +255,7 @@ See **[REST-API.md](REST-API.md)** for the complete developer reference, includi
 
 The API deliberately excludes preserved source files/paths, import records, workout notes, original uploaded filenames, and open-water GPS coordinates/trackpoints.
 
+
+## Canonical workout sharing (approved development)
+
+Plugin remains 1.3-dev on release hold. Schema 1.5 adds canonical per-workout visibility, explicit route consent and owner-only management. See [policy and service contract](docs/public-workout-visibility.md) and [standalone integration prompt](docs/standalone-public-visibility-handoff.md). No release/deployment acceptance is changed.
