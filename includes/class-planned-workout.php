@@ -25,6 +25,31 @@ final class Planned_Workout {
 	}
 
 	/** Return all plans owned by one swimmer, newest planned date first. */
+	/** Find the single owned planned workout matched to one recorded swim. */
+	public static function for_completed_workout( $workout_id, $user_id ) {
+        $workout_id = absint( $workout_id );
+        $user_id = absint( $user_id );
+        if ( ! $user_id ) return new \WP_Error( 'swimlog_planned_workout_user', __( 'A swimmer is required.', 'chriss-swim-training-progress-evaluation' ) );
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
+        if ( ! $workout_id || ! Workout::get_for_user( $workout_id, $user_id ) ) {
+            return new \WP_Error( 'swimlog_planned_workout_recorded_workout', __( 'Recorded workout not found.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        global $wpdb;
+        $table = Database::table( 'planned_workouts' );
+        $matches = Database::read( 'get_results',
+            $wpdb->prepare(
+                "SELECT * FROM %i WHERE user_id = %d AND completed_workout_id = %d ORDER BY id ASC LIMIT 2",
+                $table,
+                $user_id,
+                $workout_id
+            )
+        );
+        if ( count( (array) $matches ) > 1 ) {
+            return new \WP_Error( 'swimlog_planned_workout_match_multiple', __( 'Multiple planned workouts are matched to this recorded workout.', 'chriss-swim-training-progress-evaluation' ) );
+        }
+        return $matches ? $matches[0] : null;
+    }
+
 	public static function all_for_user( $user_id ) {
 		global $wpdb;
 		$table = Database::table( 'planned_workouts' );

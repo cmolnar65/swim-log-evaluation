@@ -100,6 +100,9 @@ final class Admin_Workouts {
 		if(!current_user_can('swimlog_manage_own_workouts')) wp_die(esc_html__('You do not have permission to access this swim training page.','chriss-swim-training-progress-evaluation'));
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
 		require_once SWIMLOG_EVALUATION_DIR.'includes/class-location.php';
 		$user_id=Admin_UI::selected_user_id();Admin_UI::swimmer_selector($user_id,'swimlog-workouts');
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout detail selector.
@@ -114,18 +117,51 @@ final class Admin_Workouts {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only workout edit-mode selector.
 			$edit=isset($_GET['edit'])&&'1'===sanitize_text_field(wp_unslash($_GET['edit'])); $metadata_error=self::$workout_action_error;
 			if($metadata_error)$edit=true;
-			$w=Workout::get_for_user($detail,$user_id); $locations=Location::all_for_user($user_id);
+			$w=Workout::get_for_user($detail,$user_id);
+            $completed_plan = Planned_Workout::for_completed_workout( $detail, $user_id );
+            $completed_structure = $completed_plan && ! is_wp_error( $completed_plan ) ? Planned_Structure_Link::for_plan( $completed_plan->id, $user_id ) : null;
+            $locations=Location::all_for_user($user_id);
 			$photos=Workout::photos($detail,$user_id); $is_open_water=('open_water'===($w->workout_type??'pool')); $laps=$is_open_water?Workout::laps($detail,$user_id):array(); $lengths=$is_open_water?array():Workout::lengths($detail,$user_id); $stroke_count_values=array_values(array_filter(array_map(static function($length){return isset($length->stroke_count)&&null!==$length->stroke_count?(int)$length->stroke_count:null;},$lengths),static function($count){return null!==$count;})); $total_strokes=$stroke_count_values?array_sum($stroke_count_values):null; $perfs=$is_open_water?array():Workout::performances($detail,$user_id); $trackpoints=$is_open_water?Workout::trackpoints($detail,$user_id):array(); $analytics=$is_open_water?Workout::open_water_analytics($detail,$user_id):array(); $imports=Workout::imports($detail,$user_id);
 			?><div class="wrap swimlog-admin"><h1><?php echo esc_html(sprintf(/* translators: %d: workout ID. */ __('Workout Details — Workout #%d','chriss-swim-training-progress-evaluation'),(int)$detail)); ?></h1><p><a href="<?php echo esc_url(Admin_UI::url( array( 'page' => 'swimlog-workouts' ), $user_id )); ?>">&larr; <?php esc_html_e('Back to Workouts','chriss-swim-training-progress-evaluation'); ?></a></p>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only success notice flag. ?>
 			<?php if(isset($_GET['saved'])):?><div class="notice notice-success is-dismissible"><p><?php esc_html_e('Workout metadata saved. Imported swim data and historical pool snapshot were unchanged.','chriss-swim-training-progress-evaluation'); ?></p></div><?php endif;?>
 			<?php if($metadata_error):?><div class="notice notice-error"><p><?php echo esc_html($metadata_error); ?></p></div><?php endif;?>
+            <?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only unlink confirmation flag. ?>
+            <?php if ( isset( $_GET['association_unlinked'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Workout association removed. Both workout records were kept.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif;?>
 			<?php if($edit):?>
 			<form method="post" enctype="multipart/form-data"><?php wp_nonce_field('swimlog_save_workout_metadata_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="save_metadata">
 			<table class="form-table" role="presentation"><tr><th scope="row"><label for="swimlog-workout-location"><?php esc_html_e('Location','chriss-swim-training-progress-evaluation'); ?></label></th><td><select id="swimlog-workout-location" name="location_id"><option value="0"><?php esc_html_e('No location selected','chriss-swim-training-progress-evaluation'); ?></option><?php foreach($locations as $loc):?><option value="<?php echo esc_attr($loc->id); ?>" <?php selected((int)$w->location_id,(int)$loc->id); ?>><?php echo esc_html($loc->name); ?></option><?php endforeach;?></select><p class="description"><?php echo esc_html($is_open_water?__('Changing the location does not change imported open-water distance or GPS track data.','chriss-swim-training-progress-evaluation'):__('Changing the location does not change the pool length or course stored with this workout.','chriss-swim-training-progress-evaluation')); ?></p></td></tr>
 			<tr><th scope="row"><label for="swimlog-workout-notes"><?php esc_html_e('Notes','chriss-swim-training-progress-evaluation'); ?></label></th><td><textarea class="large-text" rows="5" id="swimlog-workout-notes" name="notes"><?php echo esc_textarea($w->notes??''); ?></textarea></td></tr><tr><th scope="row"><?php esc_html_e('Workout Photos','chriss-swim-training-progress-evaluation'); ?></th><td><p class="description"><?php esc_html_e('Attach up to three JPEG, PNG, GIF, or WebP photos. Check Delete to remove a photo, or choose a replacement image for that slot.','chriss-swim-training-progress-evaluation'); ?></p><?php for($photo_slot=0;$photo_slot<3;$photo_slot++):$photo_id=$photos[$photo_slot]??0;?><div style="margin:0 0 16px"><?php if($photo_id):?><?php echo wp_get_attachment_image($photo_id,'thumbnail',false,array('style'=>'display:block;margin-bottom:6px;max-width:150px;height:auto')); ?><label><input type="checkbox" name="delete_photo[]" value="<?php echo esc_attr($photo_slot); ?>"> <?php esc_html_e('Delete','chriss-swim-training-progress-evaluation'); ?></label><br><label><?php esc_html_e('Replace','chriss-swim-training-progress-evaluation'); ?> <input type="file" name="workout_photo_<?php echo esc_attr($photo_slot); ?>" accept="image/jpeg,image/png,image/gif,image/webp"></label><?php else:?><label><?php echo esc_html(sprintf(/* translators: %d: photo slot number. */ __('Photo %d','chriss-swim-training-progress-evaluation'),$photo_slot+1)); ?> <input type="file" name="workout_photo_<?php echo esc_attr($photo_slot); ?>" accept="image/jpeg,image/png,image/gif,image/webp"></label><?php endif;?></div><?php endfor;?></td></tr></table>
 			<?php submit_button(__('Save Changes','chriss-swim-training-progress-evaluation'),'primary','',false); ?> <a class="button" href="<?php echo esc_url(Admin_UI::url( array('page'=>'swimlog-workouts','workout_id'=>$detail), $user_id )); ?>"><?php esc_html_e('Cancel','chriss-swim-training-progress-evaluation'); ?></a></form>
 			<?php else:?><?php $linked_posts=self::linked_post_ids($detail); ?><p><a class="button" href="<?php echo esc_url('manual'===($w->source_type??'')?Admin_UI::url( array('page'=>'swimlog-manual-workout','workout_id'=>$detail,'swimmer_id'=>$user_id), $user_id ):Admin_UI::url( array('page'=>'swimlog-workouts','workout_id'=>$detail,'edit'=>1), $user_id )); ?>"><?php esc_html_e('Edit Workout','chriss-swim-training-progress-evaluation'); ?></a> <?php if($linked_posts):?><a class="button button-primary" href="<?php echo esc_url(get_edit_post_link((int)$linked_posts[0],'raw')); ?>"><?php esc_html_e('Edit Post','chriss-swim-training-progress-evaluation'); ?></a><?php elseif(current_user_can('edit_posts')):?><form method="post" style="display:inline-block;margin-left:4px"><?php wp_nonce_field('swimlog_create_workout_post_'.$detail); ?><input type="hidden" name="swimlog_workout_action" value="create_post"><?php submit_button(__('Create Post','chriss-swim-training-progress-evaluation'),'primary','',false); ?></form><?php endif;?></p>
+            <?php if ( is_wp_error( $completed_plan ) ) : ?>
+            <div class="notice notice-error"><p><?php echo esc_html( $completed_plan->get_error_message() ); ?></p></div>
+            <?php elseif ( $completed_plan ) : ?>
+            <section aria-labelledby="swimlog-workout-associations">
+                <h2 id="swimlog-workout-associations"><?php esc_html_e( 'Workout associations', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+                <p><?php echo esc_html( sprintf( /* translators: %s: title of the matched planned workout. */ __( 'Matched planned workout: %s', 'chriss-swim-training-progress-evaluation' ), $completed_plan->title ) ); ?>
+                    <a href="<?php echo esc_url( Admin_UI::url( array( 'page' => 'swimlog-planned-workouts', 'edit' => (int) $completed_plan->id ), $user_id ) ); ?>"><?php esc_html_e( 'View planned workout', 'chriss-swim-training-progress-evaluation' ); ?></a>
+                </p>
+                <form method="post" style="display:inline-block">
+                    <?php wp_nonce_field( 'swimlog_unlink_planned_from_workout_' . $detail ); ?>
+                    <input type="hidden" name="swimlog_workout_action" value="unlink_planned_workout">
+                    <?php submit_button( __( 'Unlink planned workout', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?>
+                </form>
+                <?php if ( is_wp_error( $completed_structure ) ) : ?>
+                <div class="notice notice-error inline"><p><?php echo esc_html( $completed_structure->get_error_message() ); ?></p></div>
+                <?php elseif ( $completed_structure ) : ?>
+                <p><?php echo esc_html( sprintf( /* translators: %s: title of the linked structured workout. */ __( 'Linked structured workout: %s', 'chriss-swim-training-progress-evaluation' ), $completed_structure['title'] ) ); ?>
+                    <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'swimlog-structured-workouts', 'edit' => $completed_structure['id'] ), admin_url( 'admin.php' ) ) ); ?>"><?php esc_html_e( 'View structured workout', 'chriss-swim-training-progress-evaluation' ); ?></a>
+                </p>
+                <form method="post" style="display:inline-block">
+                    <?php wp_nonce_field( 'swimlog_unlink_structure_from_workout_' . $detail ); ?>
+                    <input type="hidden" name="swimlog_workout_action" value="unlink_structured_workout">
+                    <?php submit_button( __( 'Unlink structured workout', 'chriss-swim-training-progress-evaluation' ), 'secondary', '', false ); ?>
+                </form>
+                <p class="description"><?php esc_html_e( 'Unlinking removes this association only. The planned and recorded workout history and structured prescription remain saved.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                <?php endif; ?>
+            </section>
+            <?php endif; ?>
             <?php if ( ! $is_open_water && (int) $w->user_id === get_current_user_id() ) : ?>
             <p><a class="button" href="<?php echo esc_url( wp_nonce_url( Admin_UI::url(  array( 'page' => 'swimlog-structured-workouts', 'from_workout' => $detail ), $user_id ), 'swimlog_structure_preview_' . $detail ) ); ?>"><?php esc_html_e( 'Create structured prescription from this swim', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
             <?php endif; ?>
@@ -285,7 +321,7 @@ final class Admin_Workouts {
 		if ( empty( $_GET['page'] ) || 'swimlog-workouts' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) return;
 		if ( empty( $_POST['swimlog_workout_action'] ) ) return;
 		$action = sanitize_key( wp_unslash( $_POST['swimlog_workout_action'] ) );
-		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete', 'create_post', 'visibility' ), true ) ) return;
+		if ( ! in_array( $action, array( 'save_metadata', 'rebuild', 'delete', 'create_post', 'visibility', 'unlink_planned_workout', 'unlink_structured_workout' ), true ) ) return;
 
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
@@ -296,6 +332,26 @@ final class Admin_Workouts {
 		if ( ! $detail || ! Workout::get_for_user( $detail, $user_id ) ) {
 			wp_die( esc_html__( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		}
+
+        if ( in_array( $action, array( 'unlink_planned_workout', 'unlink_structured_workout' ), true ) ) {
+            $nonce_action = 'unlink_planned_workout' === $action ? 'swimlog_unlink_planned_from_workout_' : 'swimlog_unlink_structure_from_workout_';
+            check_admin_referer( $nonce_action . $detail );
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+            require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-structure-link.php';
+            $plan = Planned_Workout::for_completed_workout( $detail, $user_id );
+            if ( is_wp_error( $plan ) || ! $plan ) {
+                self::$workout_action_error = is_wp_error( $plan ) ? $plan->get_error_message() : __( 'No planned workout is matched to this recorded workout.', 'chriss-swim-training-progress-evaluation' );
+                return;
+            }
+            if ( 'unlink_planned_workout' === $action ) {
+                $result = Planned_Workout::clear_completed_workout( $plan->id, $user_id );
+            } else {
+                $result = Planned_Structure_Link::detach( $plan->id, $user_id );
+            }
+            if ( is_wp_error( $result ) ) { self::$workout_action_error = $result->get_error_message(); return; }
+            wp_safe_redirect( Admin_UI::url( array( 'page' => 'swimlog-workouts', 'workout_id' => $detail, 'association_unlinked' => '1' ), $user_id ) );
+            exit;
+        }
 
         if ('visibility' === $action) {
             check_admin_referer('swimlog_workout_visibility_'.$detail);

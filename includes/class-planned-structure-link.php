@@ -85,9 +85,10 @@ final class Planned_Structure_Link {
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;
         if ( ! $existing ) return true;
-        $locked = Structured_Workout_Store::is_locked( $existing['id'], $owner_id );
-        if ( is_wp_error( $locked ) ) return $locked;
-        if ( $locked ) return new \WP_Error( 'swimlog_structure_locked', 'A recorded-swim prescription cannot be unlinked.' );
+        // Preserve the historical workout reference before removing the plan link.
+        // The structure remains locked by META_RECORDED when it has recorded history.
+        $history = self::preserve_recorded_lock( $plan_id, $owner_id );
+        if ( is_wp_error( $history ) ) return $history;
         delete_post_meta( $existing['id'], self::META_KEY, absint( $plan_id ) );
         return true;
     }

@@ -33,6 +33,15 @@ final class Admin_Planned_Workouts {
 			exit;
 		}
 
+
+        if ( 'unlink_recorded_workout' === $action ) {
+            check_admin_referer( 'swimlog_unlink_recorded_workout_' . $id );
+            $result = Planned_Workout::clear_completed_workout( $id, $user_id );
+            if ( is_wp_error( $result ) ) { self::$action_error = $result->get_error_message(); return; }
+            wp_safe_redirect( add_query_arg( array( 'page' => 'swimlog-planned-workouts', 'edit' => $id, 'association_unlinked' => 1 ), admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
 		if ( 'apply_regeneration' === $action ) {
 			check_admin_referer( 'swimlog_regenerate_structure_' . $id );
 			$plan = Planned_Workout::get_for_user( $id, $user_id );
@@ -180,7 +189,9 @@ final class Admin_Planned_Workouts {
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only confirmation notice. ?>
 			<?php if ( isset( $_GET['regenerated'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Structured workout regenerated with your explicit approval.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only review flag. ?>
-			<?php if ( isset( $_GET['structure_review'] ) && '1' === $_GET['structure_review'] ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'Written instructions changed. The linked structured workout was NOT modified. Review and explicitly approve regeneration below if you want to update it.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+			<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only unlink confirmation flag. ?>
+            <?php if ( isset( $_GET['association_unlinked'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'The planned workout was unlinked from the recorded workout. Both workout records were kept.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
+            <?php if ( isset( $_GET['structure_review'] ) && '1' === $_GET['structure_review'] ) : ?><div class="notice notice-warning"><p><?php esc_html_e( 'Written instructions changed. The linked structured workout was NOT modified. Review and explicitly approve regeneration below if you want to update it.', 'chriss-swim-training-progress-evaluation' ); ?></p></div><?php endif; ?>
 			<?php if ( $error ) : ?><div class="notice notice-error" role="alert" tabindex="-1" data-swimlog-form-error><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
 
 <?php if ( ! $show_editor ) self::plan_list($plans); ?>
@@ -222,6 +233,7 @@ final class Admin_Planned_Workouts {
 				<?php if ( $editing ) :
 					$linked_structure = Planned_Structure_Link::for_plan( $editing->id, $user_id );
 					$available_structures = Structured_Workout_Store::all( $user_id );
+                    $recorded_workout = ! empty( $editing->completed_workout_id ) ? Workout::get_for_user( $editing->completed_workout_id, $user_id ) : null;
 				?>
 				<tr><th scope="row"><?php esc_html_e( 'Structured workout', 'chriss-swim-training-progress-evaluation' ); ?></th><td>
 				<?php if ( is_wp_error( $linked_structure ) ) : ?>
@@ -271,6 +283,26 @@ final class Admin_Planned_Workouts {
 			<?php endif; ?>
 
 </section><?php endif; ?>
+
+                <?php if ( $editing && ! empty( $editing->completed_workout_id ) ) : ?>
+                <section aria-labelledby="swimlog-plan-recorded-association">
+                    <h3 id="swimlog-plan-recorded-association"><?php esc_html_e( 'Recorded workout match', 'chriss-swim-training-progress-evaluation' ); ?></h3>
+                    <?php if ( $recorded_workout ) : ?>
+                    <p><?php echo esc_html( sprintf( __( 'Matched to recorded workout #%d.', 'chriss-swim-training-progress-evaluation' ), (int) $recorded_workout->id ) ); ?>
+                        <a href="<?php echo esc_url( Admin_UI::url( array( 'page' => 'swimlog-workouts', 'workout_id' => (int) $recorded_workout->id ), $user_id ) ); ?>"><?php esc_html_e( 'View recorded workout', 'chriss-swim-training-progress-evaluation' ); ?></a>
+                    </p>
+                    <?php else : ?>
+                    <p><?php esc_html_e( 'This planned workout has a recorded workout match.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                    <?php endif; ?>
+                    <form method="post">
+                        <?php wp_nonce_field( 'swimlog_unlink_recorded_workout_' . $editing->id ); ?>
+                        <input type="hidden" name="swimlog_planned_workout_action" value="unlink_recorded_workout">
+                        <input type="hidden" name="planned_workout_id" value="<?php echo esc_attr( $editing->id ); ?>">
+                        <?php submit_button( __( 'Unlink recorded workout', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+                    </form>
+                    <p class="description"><?php esc_html_e( 'This removes the match and returns the planned workout to Planned. Both workout records are kept.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                </section>
+                <?php endif; ?>
             <?php if ( $show_editor ) self::plan_list($plans); ?>
 		</div><?php
 	}
