@@ -6,13 +6,13 @@ The plugin supports FIT and supported CSV workout sources plus first-class manua
 
 ## v1.3 development
 
-Development on `develop` starts from released v1.2 commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. Runtime/header version: **1.3-dev**; current public release and WordPress.org stable tag: **1.2**; development database schema: **1.3** (additive private-measurement storage).
+Development on `develop` starts from released v1.2 commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. Current checkpoint: `702f2e51cb9ffbc67e54d12e25de9316dd0ee534`. Runtime/header version: **1.3-dev**; current public release and WordPress.org stable tag: **1.2**; current development database schema: **1.5**. The additive v1.3 measurement, v1.4 activity-environment and v1.5 workout-visibility migrations preserve existing records.
 
-Private Garmin weight readings, BMI and provider SpO2 summaries can be imported manually or through separate opt-in automatic measurement synchronization. Blood pressure, other composition fields and raw/hourly SpO2 imports remain unavailable pending verified support. Owner-only calendar indicators follow workouts/events, with overflow opening the complete day list.
+Private Garmin weight/BMI readings, provider SpO2 summaries and captured sleep-window details remain owner-scoped; unsupported blood pressure, composition fields and raw/hourly SpO2 values remain excluded. Running and walking FIT activities have private owner log/calendar details, optional recorded GPS maps and separate sport totals; they do not contribute to swimming analytics. Public workout views are read-only and require explicit owner-wide Public Results plus per-workout approval. Route visibility requires separate approval and applicable route consent. Measurements and land history are never published automatically.
 
 The Garmin page also provides historical date/category imports with persistent background jobs, complete activity pagination, duplicate-safe observations, conservative activity review, pause/resume/cancel, failed-item retries and private result counts. Jobs preserve progress across browser closure/process interruptions and require explicit resume after plugin deactivation. Garmin's available history is account-dependent.
 
-See the [Garmin user guide and test-site acceptance checklist](docs/v1.3-garmin-user-guide.md), [historical import contract](docs/v1.3-historical-garmin-import.md), and [development checklist](docs/v1.3-development-checklist.md). A [pinned development test ZIP build wrapper](docs/build-v1.3-test.sh) uses the existing production packager, includes runtime dependencies and audits exclusions; it does not publish a release. Test-site/live-account acceptance is pending, and v1.3 release remains explicitly on hold.
+See the [Garmin user guide and acceptance checklist](docs/v1.3-garmin-user-guide.md), [historical import contract](docs/v1.3-historical-garmin-import.md), [development checklist](docs/v1.3-development-checklist.md), and [canonical visibility contract](docs/public-workout-visibility.md). The pinned [development test-build script](docs/build-v1.3-test.sh) does not publish a release. The latest test ZIP is reported built, installed and operational on the test server; real-life acceptance remains pending. v1.3 is unreleased and explicitly on hold.
 
 ## v1.2
 
@@ -258,4 +258,4 @@ The API deliberately excludes preserved source files/paths, import records, work
 
 ## Canonical workout sharing (approved development)
 
-Plugin remains 1.3-dev on release hold. Schema 1.5 adds canonical per-workout visibility, explicit route consent and owner-only management. See [policy and service contract](docs/public-workout-visibility.md) and [standalone integration prompt](docs/standalone-public-visibility-handoff.md). No release/deployment acceptance is changed.
+Plugin remains 1.3-dev on release hold. Schema 1.5 adds canonical per-workout visibility, explicit route consent and owner-only management. See [policy and service contract](docs/public-workout-visibility.md) and [standalone integration prompt](docs/standalone-public-visibility-handoff.md). This does not change the v1.3 release hold or pending user acceptance.

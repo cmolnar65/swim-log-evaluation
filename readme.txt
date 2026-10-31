@@ -16,7 +16,7 @@ For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred 
 
 == Development status ==
 
-The develop branch starts v1.3 development (plugin version 1.3-dev). Public stable remains 1.2. Private weight/BMI/provider-SpO2 imports, separate opt-in automatic measurement synchronization, owner-only calendar indicators and historical Garmin background jobs are implemented. Workouts appear first; overflow opens full day details. Test-site/live-account acceptance is pending and release remains on hold. Development database schema is 1.3 for additive private-measurement storage; released v1.2 used schema 1.2.
+The develop branch is at the v1.3-dev checkpoint `702f2e51cb9ffbc67e54d12e25de9316dd0ee534`; public stable remains 1.2. Development schema is 1.5: additive measurement storage (1.3), activity environment (1.4) and canonical workout visibility (1.5). Private Garmin measurements and historical imports, running/walking logs with separate swim-excluded totals, and canonical read-only workout sharing are implemented. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
 
 == Garmin measurements and historical imports (v1.3 development) ==
 
@@ -151,7 +151,7 @@ Canonical per-workout sharing is development-only: public viewing requires expli
 == Changelog ==
 
 = 1.3-dev (unreleased) =
-* Add gated running/walking FIT, storage and Garmin import foundations with private recorded-route details; land imports remain disabled pending calendar/privacy completion. Schema 1.4 adds an optional environment field without rewriting existing workouts.
+* Add running/walking FIT import, private recorded GPS details, owner log/calendar entries and separate sport totals; swimming analytics remain swim-only. Schema 1.4 adds an optional environment field without rewriting existing workouts.
 * Show derived sleep periods, Garmin-local bedtime and wake time in private calendar-day details, using UTC elapsed time, local wake dates and duplicate-window handling; clarify summary-only SpO2 headings.
 * Add private weight/BMI and Garmin-reported SpO2 measurement imports with additive schema 1.3, owner-only storage, duplicate handling and source-date preservation.
 * Add separate opt-in scheduled measurement checks and bounded manual imports, retaining existing records on failure.
@@ -159,7 +159,7 @@ Canonical per-workout sharing is development-only: public viewing requires expli
 * Add historical Garmin activity/measurement background jobs with inclusive date ranges, full pagination, status-aware activity retries, persistent progress, pause/resume/cancel, failed-item retries and private review results.
 * Serialize incoming activity imports and preserve conservative matching/location review and recorded history.
 * Repair calendar pool-length normalization; expand migration, persistence, full-year/restart/privacy and desktop/mobile regressions.
-* Keep unverified composition fields, blood pressure and individual/hourly SpO2 transport disabled. Live-account/test-site acceptance is pending; release remains on hold.
+* Add canonical read-only per-workout visibility for pool, open-water, running and walking activities, with separate route approval and consent. Schema 1.5 adds visibility state; only explicitly public legacy swimming history is preserved as public, while land history and measurements stay private.
 
 = 1.2 =
 * Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.
@@ -277,4 +277,4 @@ designed to be rebuildable from preserved authoritative workout data.
 
 
 
-Development note (1.3-dev): Owner-only running/walking log and calendar display is enabled, with separate distance totals; swimming totals and evaluations remain swim-only. Cycling and real-device acceptance remain pending. No v1.3 release is published.
+Development note (1.3-dev): Schema 1.5 includes canonical per-workout visibility. Running/walking log and calendar details are owner-scoped, with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling is deferred. The latest test ZIP is reported operational on the test server, but real-life acceptance remains pending. No v1.3 release is published.
