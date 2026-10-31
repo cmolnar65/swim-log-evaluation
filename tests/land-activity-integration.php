@@ -99,9 +99,9 @@ try{
  $verify(3===count($calendar['workouts'])&&1000.0===$week['distance_m']&&5000.0===$week['running_distance_m']&&5000.0===$week['walking_distance_m'],'Calendar keeps swimming, running and walking distance totals separate');
  $verify(1===count(\SwimLogEvaluation\Calendar::for_user($owner,$date,$date)['workouts']),'Calendar defaults exclude private land activities');
  $log=\SwimLogEvaluation\Shortcodes::render_log(array('user'=>$owner,'year'=>$year,'month'=>$month));
- $verify(false!==strpos($log,'Running')&&false!==strpos($log,'Walking')&&false!==strpos($log,'Swimming Total')&&false!==strpos($log,'1,000 m'),'Owner training log lists all sports with swimming total');
+ $verify(false!==strpos($log,'unavailable')&&false===strpos($log,'Running')&&false===strpos($log,'Walking'),'Public embed never previews private owner land history; private calendar/log still include all sports');
  $annual=\SwimLogEvaluation\Shortcodes::render_log(array('user'=>$owner,'year'=>$year));
- $verify(false!==strpos($annual,'<h3>Running</h3>')&&false!==strpos($annual,'<h3>Walking</h3>'),'Annual land distance totals are separate tables');
+ $verify(false!==strpos($annual,'unavailable')&&false===strpos($annual,'Running')&&false===strpos($annual,'Walking'),'Annual public embed cannot bypass privacy for owner');
  $verify(false!==strpos(\SwimLogEvaluation\Shortcodes::render_workout(array('id'=>$w->id)),'unavailable'),'Public workout shortcode cannot publish a land route');
 
  require_once SWIMLOG_EVALUATION_DIR.'includes/class-recorded-workout-structure.php';
@@ -117,8 +117,9 @@ try{
  $old_cookie=$_COOKIE[LOGGED_IN_COOKIE]??null;$_COOKIE[LOGGED_IN_COOKIE]=wp_generate_auth_cookie($owner,time()+3600,'logged_in');$request->set_header('X-WP-Nonce',wp_create_nonce('wp_rest'));
  try{$private=\SwimLogEvaluation\REST_API::calendar($request);$verify(3===count($private->get_data()['workouts'])&&'private, no-store'===$private->get_headers()['Cache-Control'],'Owner cookie and nonce permit private no-store land calendar');}finally{if(null===$old_cookie)unset($_COOKIE[LOGGED_IN_COOKIE]);else $_COOKIE[LOGGED_IN_COOKIE]=$old_cookie;}
  update_user_meta($owner,'swimlog_public_results','1');update_user_meta($owner,'swimlog_public_ows_routes','1');
+ $state=\SwimLogEvaluation\Workout_Visibility::get_for_owner($pool_id);$grant=\SwimLogEvaluation\Workout_Visibility::set_for_owner($pool_id,array('visibility'=>'public','route_public'=>false),wp_create_nonce('swimlog_workout_visibility_'.$pool_id),$state['revision']);$verify(!is_wp_error($grant),'Explicitly share synthetic swim without sharing land history');
  wp_set_current_user(0);$public=\SwimLogEvaluation\Shortcodes::render_log(array('user'=>$owner,'year'=>$year,'month'=>$month));
- $verify(false===strpos($public,'Running')&&false===strpos($public,'Walking')&&false!==strpos($public,'1,000 m'),'Public swimming opt-ins never include land distances or routes');
+ $verify(false===strpos($public,'Running')&&false===strpos($public,'Walking')&&false!==strpos($public,'1,000.00 m'),'Public swimming opt-ins never include land distances or routes');
  wp_set_current_user($users['other']);$foreign=new WP_User($users['other']);$foreign->add_cap('swimlog_manage_all_users');
  $verify(null===Workout::get_for_user($w->id,$owner)&&array()===Workout::trackpoints($w->id,$owner)&&1===Workout::query_for_user($owner)['total'],'Manage-all does not grant another owner land activity access');
  $verify(1===count(\SwimLogEvaluation\Calendar::for_user($owner,$date,$date,true)['workouts']),'Foreign calendar request cannot opt into private land data');

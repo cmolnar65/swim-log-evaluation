@@ -1,7 +1,7 @@
 <?php
 // Synthetic fixtures only. Runs in the disposable WordPress staging environment.
 use SwimLogEvaluation\{Database,Plugin,Workout,Workout_Visibility as V,Shortcodes,Blocks,REST_API,Importer,Manual_Workout,Planned_Workout,Recorded_Workout_Structure,Planned_Structure_Link};
-foreach(array('workout-visibility','shortcodes','blocks','rest-api','manual-workout','recorded-workout-structure','planned-structure-link')as$file)require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
+foreach(array('workout','importer','workout-visibility','shortcodes','blocks','rest-api','manual-workout','recorded-workout-structure','planned-structure-link')as$file)require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
 global $wpdb;$original_prefix=$wpdb->prefix;$original_user=get_current_user_id();$original_version=get_option('swimlog_db_version');$default=get_option('swimlog_public_results_default',false);$users=array();$checks=0;$failure=null;$post=0;$die=null;$old_post=$_POST;$old_get=$_GET;$old_request=$_REQUEST;$old_screen=$GLOBALS['current_screen']??null;
 $verify=static function($condition,$message)use(&$checks){++$checks;if(!$condition)throw new RuntimeException($message);};
 $denied=static function($value)use($verify){$verify(is_wp_error($value),'Management must return an error');};
