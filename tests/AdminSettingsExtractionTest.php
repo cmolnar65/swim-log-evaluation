@@ -21,6 +21,7 @@ final class AdminSettingsExtractionTest extends TestCase {
   $this->assertStringContainsString("rest_url( 'swimlog/v1' )",$source);
   $this->assertStringContainsString("update_user_meta( \$uid, 'swimlog_calendar_first_day', \$calendar_first_day );",$source);
   $this->assertStringContainsString('Unit_Preferences::save( $uid, $unit_preferences );',$source);
+  $this->assertStringContainsString("map_deep( wp_unslash( \$_POST['unit_preferences'] ), 'sanitize_text_field' )",$source);
   $this->assertStringContainsString('name="unit_preferences[swim_course]"',$source);
   $this->assertStringContainsString('name="unit_preferences[<?php echo esc_attr( $unit_key ); ?>]"',$source);
   $this->assertStringContainsString('name="unit_preferences[weight]"',$source);

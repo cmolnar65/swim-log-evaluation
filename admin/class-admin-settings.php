@@ -24,7 +24,8 @@ final class Admin_Settings {
 			if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
 				$calendar_first_day = 'sunday';
 			}
-			$unit_preferences = isset( $_POST['unit_preferences'] ) && is_array( $_POST['unit_preferences'] ) ? Unit_Preferences::sanitize( wp_unslash( $_POST['unit_preferences'] ) ) : Unit_Preferences::get( $uid );
+			$unit_preferences_input = isset( $_POST['unit_preferences'] ) ? map_deep( wp_unslash( $_POST['unit_preferences'] ), 'sanitize_text_field' ) : null;
+			$unit_preferences = is_array( $unit_preferences_input ) ? Unit_Preferences::sanitize( $unit_preferences_input ) : Unit_Preferences::get( $uid );
 			if ( is_wp_error( $unit_preferences ) ) $error = __( 'Choose valid unit preferences.', 'chriss-swim-training-progress-evaluation' );
 			if ( '' !== $birthdate ) {
 				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
