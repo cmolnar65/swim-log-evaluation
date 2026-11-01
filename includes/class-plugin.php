@@ -17,6 +17,7 @@ final class Plugin {
 		// any of those services can be invoked through WordPress hooks or admin pages.
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-unit-preferences.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swim-goals.php';
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout-visibility.php';
         add_action('deleted_user',array('SwimLogEvaluation\\Workout_Visibility','deleted_user'));
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
@@ -46,6 +47,7 @@ final class Plugin {
 			add_action( 'admin_init', array( $admin, 'handle_planned_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_structured_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
+			add_action( 'admin_init', array( $admin, 'handle_goal_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_location_actions' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';

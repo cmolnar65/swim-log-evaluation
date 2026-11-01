@@ -101,7 +101,7 @@ final class REST_API {
   $range_error=self::calendar_range_error($start,$end);if($range_error)return $range_error;
   $include_land=function_exists('wp_validate_auth_cookie')&&method_exists($request,'get_header')&&Land_Activity::authorized($uid)&&$uid===(int)wp_validate_auth_cookie('','logged_in')&&(bool)wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),'wp_rest');
   $response=rest_ensure_response(Calendar::for_user($uid,$start,$end,$include_land));
-  if($include_land&&!is_wp_error($response))$response->header('Cache-Control','private, no-store');
+  if(!is_wp_error($response))$response->header('Cache-Control','private, no-store');
   return $response;
  }
 

@@ -16,7 +16,7 @@ final class Admin_UI {
 	}
 
     public static function context_pages() {
-        return array( 'swimlog-dashboard', 'swimlog-calendar', 'swimlog-workouts', 'swimlog-manual-workout', 'swimlog-personal-bests', 'swimlog-training-volume', 'swimlog-training-trends', 'swimlog-pool-analytics' );
+        return array( 'swimlog-dashboard', 'swimlog-calendar', 'swimlog-workouts', 'swimlog-manual-workout', 'swimlog-personal-bests', 'swimlog-training-volume', 'swimlog-training-trends', 'swimlog-pool-analytics', 'swimlog-goals' );
     }
 
     public static function context_args( $user_id = null ) {

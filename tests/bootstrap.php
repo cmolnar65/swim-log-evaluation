@@ -37,6 +37,7 @@ require_once dirname(__DIR__).'/includes/class-calendar.php';
 require_once dirname(__DIR__).'/includes/class-pool-analytics.php';
 require_once dirname(__DIR__).'/includes/class-training-trends.php';
 require_once dirname(__DIR__).'/includes/class-unit-preferences.php';
+require_once dirname(__DIR__).'/includes/class-swim-goals.php';
 
 require_once dirname(__DIR__).'/includes/class-location.php';
 

@@ -5,6 +5,7 @@ use SwimLogEvaluation\Calendar;
 use SwimLogEvaluation\Blocks;
 use SwimLogEvaluation\Planned_Workout as Plan;
 use SwimLogEvaluation\Event;
+use SwimLogEvaluation\Swim_Goals;
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-calendar.php';
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
 $old_user = get_current_user_id(); $users = array(); $checks = 0;
@@ -17,6 +18,7 @@ try {
         $user = new WP_User( $id ); $user->add_cap( 'swimlog_manage_own_workouts' ); $user->add_cap( 'swimlog_view_own_results' ); $user->add_cap( 'swimlog_manage_own_events' );
     }
     $owner = $users['owner']; wp_set_current_user( $owner );
+    require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swim-goals.php';
     update_user_meta( $owner, 'swimlog_calendar_first_day', 'monday' );
     update_user_meta( $owner, 'swimlog_unit_preferences', array( 'swim_course' => 'yd', 'running' => 'mi', 'walking' => 'mi', 'cycling' => 'mi', 'weight' => 'lb', 'show_secondary' => true ) );
     $focus = ( new DateTimeImmutable( 'first day of next month', wp_timezone() ) )->modify( '+10 days' ); $key = $focus->format( 'Y-m-d' );
@@ -33,6 +35,8 @@ try {
     }
     $event = Event::save( $owner, array( 'event_name' => 'Synthetic swim meet', 'event_date' => $key, 'event_time' => '16:00', 'distance_value' => 100, 'course_unit' => 'm', 'stroke' => 'FR' ) );
     $verify( ! is_wp_error( $event ), 'Create day event.' );
+    $goal = Swim_Goals::create( $owner, array( 'goal_type' => Swim_Goals::PERIOD, 'course_unit' => 'm', 'target_distance' => '1500', 'start_date' => $key, 'end_date' => $focus->modify( '+1 day' )->format( 'Y-m-d' ), 'title' => 'Synthetic calendar swim goal' ) );
+    $verify( ! is_wp_error( $goal ), 'Create calendar goal fixture.' );
     $start = $focus->modify( 'first day of this month' ); $end = $focus->modify( 'last day of this month' );
     $data = Calendar::for_user( $owner, $start->format( 'Y-m-d' ), $end->format( 'Y-m-d' ), true );
     $verify( ! is_wp_error( $data ) && 4 === count( $data['workouts'] ) && 12 === count( $data['planned_workouts'] ) && 1 === count( $data['events'] ), 'All permitted day items in existing calendar payload.' );
@@ -60,6 +64,7 @@ try {
     WP_CLI::success( 'Calendar day rendering and privacy passed ' . $checks . ' assertions.' );
 } finally {
     foreach ( $users as $id ) {
+        Database::write( 'delete', Database::table( 'goals' ), array( 'user_id' => $id ) );
         foreach ( array( 'planned_workouts', 'workouts', 'events' ) as $table ) Database::write( 'delete', Database::table( $table ), array( 'user_id' => $id ) );
         require_once ABSPATH . 'wp-admin/includes/user.php'; wp_delete_user( $id );
     }

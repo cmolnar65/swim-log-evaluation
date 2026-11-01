@@ -16,7 +16,7 @@ For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred 
 
 == Development status ==
 
-The develop branch is at the v1.3-dev checkpoint `702f2e51cb9ffbc67e54d12e25de9316dd0ee534`; public stable remains 1.2. Development schema is 1.5: additive measurement storage (1.3), activity environment (1.4) and canonical workout visibility (1.5). Private Garmin measurements and historical imports, running/walking logs with separate swim-excluded totals, and canonical read-only workout sharing are implemented. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
+The develop branch continues v1.3-dev; public stable remains 1.2. Development schema is 1.6: additive measurement storage (1.3), activity environment (1.4), canonical workout visibility (1.5) and private swim goals (1.6). Private Garmin measurements and historical imports, running/walking logs with separate swim-excluded totals, canonical read-only workout sharing, and swimming goals are implemented on develop. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
 
 == Garmin measurements and historical imports (v1.3 development) ==
 
@@ -278,4 +278,4 @@ designed to be rebuildable from preserved authoritative workout data.
 
 
 
-Development note (1.3-dev): Schema 1.5 includes canonical per-workout visibility. Running/walking log and calendar details are owner-scoped, with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling is deferred. The latest test ZIP is reported operational on the test server, but real-life acceptance remains pending. No v1.3 release is published.
+Development note (1.3-dev): Schema 1.5 added canonical per-workout visibility and schema 1.6 adds private swim goals. Running/walking log and calendar details are owner-scoped, with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling is deferred. The latest test ZIP is reported operational on the test server, but real-life v1.3 acceptance remains pending. No v1.3 release is published.

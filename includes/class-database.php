@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'workout_visibility' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'workout_visibility', 'goals' );
 	}
 
 	public static function schema_is_complete() {
@@ -127,6 +127,15 @@ final class Database {
 				return false;
 			}
 		}
+		$goal_columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( 'goals' ) ) );
+		if ( array_diff( array( 'id', 'user_id', 'goal_type', 'title', 'course_unit', 'target_distance_m', 'target_distance_value', 'target_pace_ms', 'stroke', 'start_date', 'end_date', 'created_at', 'updated_at' ), (array) $goal_columns ) ) return false;
+		$goal_indexes = self::read( 'get_results', $wpdb->prepare( 'SHOW INDEX FROM %i', self::table( 'goals' ) ) );
+		$goal_index_columns = array();
+		foreach ( (array) $goal_indexes as $index ) {
+			if ( 'user_goal_range' === $index->Key_name ) $goal_index_columns[ (int) $index->Seq_in_index ] = $index->Column_name;
+		}
+		ksort( $goal_index_columns );
+		if ( array( 'user_id', 'start_date', 'end_date' ) !== array_values( $goal_index_columns ) ) return false;
 		$visibility_columns = self::read('get_col',$wpdb->prepare('SHOW COLUMNS FROM %i',self::table('workout_visibility')));
         if(array_diff(array('workout_id','owner_id','visibility','route_public','revision','updated_at_gmt'),(array)$visibility_columns))return false;
         $visibility_primary=self::read('get_results',$wpdb->prepare("SHOW INDEX FROM %i WHERE Key_name='PRIMARY'",self::table('workout_visibility')));
@@ -182,6 +191,7 @@ final class Database {
 		$performances = self::table( 'performances' );
 		$events       = self::table( 'events' );
 		$planned_workouts = self::table( 'planned_workouts' );
+		$goals = self::table( 'goals' );
 
 		$health_reports = self::table( 'health_reports' );
 		$health_measurements = self::table( 'health_measurements' );
@@ -429,6 +439,25 @@ final class Database {
 			KEY user_planned_date (user_id,planned_date),
 			KEY user_status_date (user_id,status,planned_date),
 			UNIQUE KEY completed_workout_id (completed_workout_id)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $goals (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			goal_type varchar(24) NOT NULL,
+			title varchar(191) NOT NULL,
+			course_unit varchar(10) NOT NULL,
+			target_distance_m decimal(12,3) NULL,
+			target_distance_value int(10) unsigned NULL,
+			target_pace_ms bigint(20) unsigned NULL,
+			stroke varchar(20) NOT NULL DEFAULT '',
+			start_date date NOT NULL,
+			end_date date NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY user_goal_range (user_id,start_date,end_date),
+			KEY user_goal_type (user_id,goal_type)
 		) $charset_collate;";
 		$sql[] = "CREATE TABLE $health_reports (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

@@ -44,6 +44,7 @@ final class Calendar {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-event.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swim-goals.php';
 
 		$workouts = Workout::range_for_user(
 			$user_id,
@@ -61,6 +62,7 @@ final class Calendar {
 			$range['start'],
 			$range['end_exclusive']
 		);
+		$goal_markers = Swim_Goals::calendar_markers( $user_id, $range['start'], $range['end'] );
 
 		// One owner-scoped query for all personal-best workouts in this range.
 		global $wpdb;
@@ -81,7 +83,7 @@ final class Calendar {
 		foreach ( (array) $workouts as $workout ) {
 			$workout->has_personal_best = in_array( absint( $workout->id ), $pb_ids, true );
 		}
-		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ), $planned_workouts );
+		return self::assemble_rows( $range, $workouts, $events, self::first_day_for_user( $user_id ), $planned_workouts, $goal_markers );
 	}
 
 	/**
@@ -90,7 +92,7 @@ final class Calendar {
 	 * Kept public so other plugin layers and focused regression tests can reuse
 	 * the exact same normalization without performing additional database reads.
 	 */
-	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday', $planned_workouts = array() ) {
+	public static function assemble_rows( $range, $workouts, $events, $first_day = 'sunday', $planned_workouts = array(), $goal_markers = array() ) {
 		$workout_rows = array();
 		foreach ( (array) $workouts as $workout ) {
 			$workout_rows[] = self::workout_row( $workout );
@@ -135,6 +137,7 @@ final class Calendar {
 			'workouts' => $workout_rows,
 			'planned_workouts' => $planned_rows,
 			'events' => $event_rows,
+			'goals' => array_values( (array) $goal_markers ),
 			'weeks' => self::weekly_summaries( $range, $workouts, $first_day, $planned_workouts ),
 			'metric_metadata' => self::workout_metric_metadata(),
 		);

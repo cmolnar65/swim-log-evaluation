@@ -36,6 +36,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Training Volume', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-training-volume', 'training_volume' );
 		$this->submenu( 'swimlog-dashboard', __( 'Training Trends', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-training-trends', 'training_trends' );
 		$this->submenu( 'swimlog-dashboard', __( 'Pool Analytics', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-pool-analytics', 'pool_analytics' );
+		$this->submenu( 'swimlog-dashboard', __( 'Goals', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', 'swimlog-goals', 'goals' );
 
 		// Events and venues.
 		$this->submenu( 'swimlog-dashboard', __( 'Events', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_events', 'swimlog-events', 'events' );
@@ -142,6 +143,14 @@ final class Admin {
 	public function pool_analytics() {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-analytics.php';
 		Admin_Analytics::pool_analytics();
+	}
+	public function goals() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-goals.php';
+		Admin_Goals::page();
+	}
+	public function handle_goal_actions() {
+		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-goals.php';
+		Admin_Goals::handle_actions();
 	}
 	public function upload() {
 		require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-workouts.php';

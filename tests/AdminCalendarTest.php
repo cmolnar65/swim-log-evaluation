@@ -25,7 +25,10 @@ final class AdminCalendarTest extends TestCase {
   $this->assertStringContainsString("add_action( 'wp_enqueue_scripts', array( \$this, 'register_calendar_style' ) )",$plugin);
   $this->assertStringContainsString("add_action( 'admin_enqueue_scripts', array( \$this, 'register_calendar_style' ) )",$plugin);
  }
- public function test_phase_nine_a_does_not_change_database_version(){
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.5'",$main);
+ public function test_goals_page_is_registered_and_uses_the_current_schema(){
+  $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');$goal=file_get_contents(dirname(__DIR__).'/admin/class-admin-goals.php');
+  $this->assertStringContainsString("'Goals'",$admin);$this->assertStringContainsString("'swimlog-goals', 'goals'",$admin);
+  $this->assertStringContainsString('function page()',$goal);$this->assertStringContainsString('List Goals',$goal);$this->assertStringContainsString('Set Goal',$goal);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.6'",$main);
  }
 }

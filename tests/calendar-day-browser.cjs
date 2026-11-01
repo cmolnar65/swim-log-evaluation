@@ -35,6 +35,7 @@ async function scenario(engine, name, options) {
     calendar.workouts=calendar.workouts.filter(w=>w.workout_start.slice(0,10)>=start && w.workout_start.slice(0,10)<=end);
     calendar.planned_workouts=calendar.planned_workouts.filter(w=>w.planned_date>=start&&w.planned_date<=end);
     calendar.events=calendar.events.filter(w=>w.event_date>=start&&w.event_date<=end);
+    calendar.goals=(calendar.goals||[]).filter(w=>w.date>=start&&w.date<=end);
     return route.fulfill({json:calendar});
    }
    return route.fulfill({body:'<!doctype html><title>Synthetic calendar test</title>',contentType:'text/html'});
@@ -55,6 +56,15 @@ async function scenario(engine, name, options) {
   const state=await root.evaluate(el=>({view:el.dataset.view,date:el.dataset.focusDate,user:el.dataset.user}));
   await page.waitForFunction(()=>document.querySelectorAll('[data-calendar-measurement]').length>=6);
   const preview=dayArea().locator('[data-date="'+data.date+'"]');
+  const goalMarker=preview.locator('[data-calendar-goal]');
+  assert.equal(await goalMarker.count(),1,'Calendar displays a private swimming goal boundary.');
+  assert.match(await goalMarker.innerText(),/Goal · Starts/);
+  await goalMarker.click();
+  const goalDetail=root.locator('[data-calendar-detail]');
+  assert.match(await goalDetail.innerText(),/Synthetic calendar swim goal/);
+  assert.match(await goalDetail.innerText(),/Swimming recorded in period/);
+  assert.match(await goalDetail.innerText(),/Achieved/);
+  await goalDetail.locator('[data-calendar-detail-close]').click();
   assert.equal(await preview.locator('[data-calendar-measurement]').count(),3,'One badge per category/day');
   assert(await preview.evaluate(el=>{const nodes=[...el.querySelectorAll('.swimlog-calendar-item')];return nodes.findIndex(n=>n.hasAttribute('data-calendar-measurement'))>nodes.map(n=>n.hasAttribute('data-calendar-workout')||n.hasAttribute('data-calendar-planned-workout')).lastIndexOf(true);}),'Measurements must follow workouts/plans');
   await preview.locator('[data-calendar-overflow]').click();

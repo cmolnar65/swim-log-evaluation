@@ -92,6 +92,17 @@ final class CalendarTest extends TestCase {
 		$this->assertSame( 'BR', $data['events'][0]['stroke'] );
 	}
 
+	public function test_calendar_model_carries_owner_scoped_goal_boundary_markers() {
+		$markers = array(
+			array( 'id' => 8, 'goal_type' => 'single_performance', 'title' => 'Pace goal', 'date' => '2026-10-20', 'marker' => 'goal_due', 'status' => 'in_progress' ),
+			array( 'id' => 9, 'goal_type' => 'period_distance', 'title' => 'Monthly distance', 'date' => '2026-10-01', 'marker' => 'goal_start', 'status' => 'in_progress' ),
+			array( 'id' => 9, 'goal_type' => 'period_distance', 'title' => 'Monthly distance', 'date' => '2026-10-31', 'marker' => 'goal_end', 'status' => 'in_progress' ),
+		);
+		$data = Calendar::assemble_rows( $this->range(), array(), array(), 'sunday', array(), $markers );
+		$this->assertSame( $markers, $data['goals'] );
+		$this->assertSame( array( 'goal_due', 'goal_start', 'goal_end' ), array_column( $data['goals'], 'marker' ) );
+	}
+
 	public function test_manual_and_imported_workouts_receive_the_same_calendar_fields() {
 		$imported = $this->workout( array( 'id' => 1, 'source_type' => 'garmin' ) );
 		$manual = $this->workout( array( 'id' => 2, 'source_type' => 'manual' ) );

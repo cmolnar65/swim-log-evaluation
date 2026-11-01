@@ -61,7 +61,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     readme = archive.read(root + "readme.txt").decode()
     assert re.search(r"Version:\s*1\.3-dev\s*$", entry, re.M), "Unexpected plugin version"
     assert re.search(r"Stable tag:\s*1\.3-dev\s*$", readme, re.M), "Unexpected test stable tag"
-    assert "define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.5' );" in entry, "Unexpected schema version"
+    assert "define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.6' );" in entry, "Unexpected schema version"
 print("Test package audit passed: runtime dependencies, history assets, metadata and exclusions.")
 PY
 cp -- "$SWIMLOG_STAGED_ZIP" "$SWIMLOG_OUTPUT"

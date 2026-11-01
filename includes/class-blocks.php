@@ -341,16 +341,21 @@ final class Blocks {
 		foreach ( $data['events'] as $event ) {
 			$items[ $event['event_date'] ][] = self::calendar_event_html( $event );
 		}
+		foreach ( $data['goals'] ?? array() as $goal ) {
+			$items[ $goal['date'] ][] = self::calendar_goal_html( $goal );
+		}
 		wp_enqueue_style( 'swimlog-calendar' );
 		wp_enqueue_script( 'swimlog-calendar-view' );
 		$rest_url = rest_url( 'swimlog/v1/calendar' );
         $workout_detail_url = admin_url( 'admin.php?page=swimlog-workouts&workout_id=' );
+        $goals_url = admin_url( 'admin.php?page=swimlog-goals' );
         if ( function_exists( 'is_admin' ) && is_admin() && class_exists( __NAMESPACE__ . '\\Admin_UI' ) ) {
             $workout_detail_url = Admin_UI::url( array( 'page' => 'swimlog-workouts' ), $user_id ) . '&workout_id=';
+            $goals_url = Admin_UI::url( array( 'page' => 'swimlog-goals' ), $user_id );
         }
 		$health_enabled = (int) get_current_user_id() === (int) $user_id && current_user_can( 'swimlog_manage_own_workouts' );
 		$unit_preferences = Unit_Preferences::get( $user_id );
-		$html = '<section class="swimlog-calendar" data-health-enabled="' . ( $health_enabled ? '1' : '0' ) . '" data-unit-preferences="' . esc_attr( wp_json_encode( $unit_preferences ) ) . '" data-swimlog-calendar="1" data-rest-url="' . esc_url( $rest_url ) . '" data-user="' . esc_attr( $user_id ) . '" data-year="' . esc_attr( $month->format( 'Y' ) ) . '" data-month="' . esc_attr( $month->format( 'n' ) ) . '" data-first-day="' . esc_attr( $first_day ) . '" data-site-today="' . esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ) . '" data-workout-detail-url="' . esc_url( $workout_detail_url ) . '" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
+		$html = '<section class="swimlog-calendar" data-health-enabled="' . ( $health_enabled ? '1' : '0' ) . '" data-unit-preferences="' . esc_attr( wp_json_encode( $unit_preferences ) ) . '" data-swimlog-calendar="1" data-rest-url="' . esc_url( $rest_url ) . '" data-user="' . esc_attr( $user_id ) . '" data-year="' . esc_attr( $month->format( 'Y' ) ) . '" data-month="' . esc_attr( $month->format( 'n' ) ) . '" data-first-day="' . esc_attr( $first_day ) . '" data-site-today="' . esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ) . '" data-workout-detail-url="' . esc_url( $workout_detail_url ) . '" data-goals-url="' . esc_url( $goals_url ) . '" aria-label="' . esc_attr__( 'Swim Training Calendar', 'chriss-swim-training-progress-evaluation' ) . '">';
 		$html .= '<div class="swimlog-calendar-toolbar">';
 		$html .= '<div class="swimlog-calendar-nav" aria-label="' . esc_attr__( 'Calendar navigation', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button" data-calendar-action="previous">' . esc_html__( 'Previous', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="today">' . esc_html__( 'Today', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-action="next">' . esc_html__( 'Next', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
 		$html .= '<div class="swimlog-calendar-view-switch" aria-label="' . esc_attr__( 'Calendar view', 'chriss-swim-training-progress-evaluation' ) . '"><button type="button" class="swimlog-calendar-button is-active" data-calendar-view="month" aria-pressed="true">' . esc_html__( 'Month', 'chriss-swim-training-progress-evaluation' ) . '</button><button type="button" class="swimlog-calendar-button" data-calendar-view="week" aria-pressed="false">' . esc_html__( 'Week', 'chriss-swim-training-progress-evaluation' ) . '</button></div>';
@@ -417,6 +422,12 @@ final class Blocks {
 	private static function calendar_event_html( $event ) {
 		$name = '' !== trim( $event['event_name'] ) ? $event['event_name'] : __( 'Swim Event', 'chriss-swim-training-progress-evaluation' );
 		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-event" data-calendar-event="' . esc_attr( wp_json_encode( $event ) ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-event-' . esc_attr( $event['id'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Event', 'chriss-swim-training-progress-evaluation' ) . '</span><strong>' . esc_html( $name ) . '</strong></button>';
+	}
+
+	private static function calendar_goal_html( $goal ) {
+		$marker = 'goal_due' === $goal['marker'] ? __( 'Due', 'chriss-swim-training-progress-evaluation' ) : ( 'goal_start' === $goal['marker'] ? __( 'Starts', 'chriss-swim-training-progress-evaluation' ) : ( 'goal_start_end' === $goal['marker'] ? __( 'Starts and ends', 'chriss-swim-training-progress-evaluation' ) : __( 'Ends', 'chriss-swim-training-progress-evaluation' ) ) );
+		$detail = wp_json_encode( $goal );
+		return '<button type="button" class="swimlog-calendar-item swimlog-calendar-goal status-' . esc_attr( $goal['status'] ) . '" data-calendar-goal="' . esc_attr( $detail ) . '" aria-expanded="false" aria-controls="swimlog-calendar-detail-goal-' . esc_attr( $goal['id'] . '-' . $goal['marker'] ) . '"><span class="swimlog-calendar-kind">' . esc_html__( 'Goal', 'chriss-swim-training-progress-evaluation' ) . ' · ' . esc_html( $marker ) . '</span><strong>' . esc_html( $goal['title'] ) . '</strong></button>';
 	}
 
 	private static function calendar_duration( $milliseconds ) {
