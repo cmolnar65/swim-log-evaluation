@@ -21,4 +21,10 @@ final class PublicWorkoutTypeTest extends TestCase {
   global $wpdb;$wpdb=new PublicVisibilityFixture(array(PublicVisibilityFixture::row('pool')));$html=Shortcodes::workout(array('id'=>501,'title'=>'no'));
   $this->assertStringContainsString('Pool',$html);$this->assertStringContainsString('25 m / Freestyle',$html);$this->assertStringNotContainsString('Moving time',$html);
  }
+ public function test_public_land_distance_uses_owner_presentation_preferences(){
+  global $wpdb,$swimlog_test_user_meta;$swimlog_test_user_meta[42]['swimlog_unit_preferences']=array('swim_course'=>'m','running'=>'mi','walking'=>'mi','cycling'=>'mi','weight'=>'lb','show_secondary'=>true);
+  $wpdb=new PublicVisibilityFixture(array(PublicVisibilityFixture::row('running',5000,'m')));$html=Shortcodes::latest(array('user'=>42,'title'=>'no'));
+  $this->assertStringContainsString('3.11 mi (5.00 km)',$html);
+  $this->assertStringNotContainsString('5000 m',$html);
+ }
 }

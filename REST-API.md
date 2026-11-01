@@ -122,7 +122,7 @@ Returns current PBs for a course.
 
 | Parameter | Required | Values/default |
 | --- | --- | --- |
-| `course` | No | `m` or `yd`; site default if omitted; unsupported values fall back to `m`. |
+| `course` | No | `m` or `yd`; the swimmer's saved default course if omitted (the site default is the initial fallback); unsupported values fall back to `m`. |
 
 ```bash
 curl --user "wordpress_username:APPLICATION_PASSWORD" \

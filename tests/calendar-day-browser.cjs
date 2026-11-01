@@ -69,6 +69,7 @@ async function scenario(engine, name, options) {
   assert.match(await dialog.locator('[data-calendar-sleep-period]').innerText(),/Bedtime \(Garmin local\)/);
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/may include time awake/);
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Weight · 2 imported readings/);
+  assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/181\.9 lb \(82\.5 kg\)/,'Weight preferences and optional secondary value must be applied.');
   assert.match(await dialog.locator('[data-calendar-health-details]').innerText(),/Garmin seven-day baseline/);
   assert(await dialog.evaluate(el=>el.querySelector('[data-calendar-day-sections]').compareDocumentPosition(el.querySelector('[data-calendar-health-details]'))&Node.DOCUMENT_POSITION_FOLLOWING),'Workout list before measurements');
   assert.equal(await dialog.locator('[data-calendar-workout]').count(),4);
@@ -77,8 +78,8 @@ async function scenario(engine, name, options) {
   assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/1,800 m recorded/);
   assert.equal(await dialog.getByRole('heading',{name:'Recorded activities',exact:true}).count(),1);
   assert.doesNotMatch(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/\b1 events\b|\b1 planned workouts\b|\b1 recorded activities\b/);
-  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Running: 5,000 m/);
-  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Walking: 300 m/);
+  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Running: 3\.11 mi \(5 km\)/);
+  assert.match(await dialog.locator('.swimlog-calendar-day-summary').innerText(),/Walking: 0\.19 mi \(0\.3 km\)/);
   const bounds=await dialog.boundingBox(); assert(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=options.viewport.width+1&&bounds.y+bounds.height<=options.viewport.height+1,'Dialog exceeds viewport');
   assert(await dialog.locator('.swimlog-calendar-day-body').evaluate(el=>el.scrollHeight>el.clientHeight),'Busy day must scroll internally');
   assert(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Horizontal dialog overflow');

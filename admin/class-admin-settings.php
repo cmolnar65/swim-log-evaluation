@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-unit-preferences.php';
 /** Swimmer configuration, REST API help, and plugin settings administration. */
 final class Admin_Settings {
 	public static function privacy() {
@@ -23,6 +24,8 @@ final class Admin_Settings {
 			if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
 				$calendar_first_day = 'sunday';
 			}
+			$unit_preferences = isset( $_POST['unit_preferences'] ) && is_array( $_POST['unit_preferences'] ) ? Unit_Preferences::sanitize( wp_unslash( $_POST['unit_preferences'] ) ) : Unit_Preferences::get( $uid );
+			if ( is_wp_error( $unit_preferences ) ) $error = __( 'Choose valid unit preferences.', 'chriss-swim-training-progress-evaluation' );
 			if ( '' !== $birthdate ) {
 				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
 				$birthdate_errors = \DateTimeImmutable::getLastErrors();
@@ -33,6 +36,7 @@ final class Admin_Settings {
 				}
 			}
 			if ( '' === $error ) {
+				Unit_Preferences::save( $uid, $unit_preferences );
 				if ( '' === $birthdate ) {
 					delete_user_meta( $uid, 'swimlog_birthdate' );
 				} else {
@@ -57,6 +61,7 @@ final class Admin_Settings {
         $rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
 		$training_volume_months = (int) get_user_meta( $uid, 'swimlog_training_volume_months', true );
 		$calendar_first_day = sanitize_key( (string) get_user_meta( $uid, 'swimlog_calendar_first_day', true ) );
+		$unit_preferences = Unit_Preferences::get( $uid );
 		if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
 			$calendar_first_day = 'sunday';
 		}
@@ -87,6 +92,16 @@ final class Admin_Settings {
 						<th scope="row"><label for="swimlog-training-volume-months"><?php esc_html_e( 'Training Volume Period', 'chriss-swim-training-progress-evaluation' ); ?></label></th>
 						<td><input id="swimlog-training-volume-months" type="number" name="training_volume_months" min="1" max="24" step="1" value="<?php echo esc_attr( $training_volume_months ); ?>"> <?php esc_html_e( 'months', 'chriss-swim-training-progress-evaluation' ); ?><p class="description"><?php esc_html_e( 'Pool Training Volume by Stroke uses this rolling period. Choose from 1 to 24 months; the default is 3 months.', 'chriss-swim-training-progress-evaluation' ); ?></p></td>
 					</tr>
+				</table>
+				<h2><?php esc_html_e( 'Units and Display', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'These per-swimmer preferences affect display only. Stored land distances remain in meters and stored body weight remains in kilograms. Swimming records stay in their recorded meter or yard course; the selection below sets the default course only.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<table class="form-table" role="presentation">
+					<tr><th scope="row"><label for="swimlog-unit-swim-course"><?php esc_html_e( 'Default swimming course', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><select id="swimlog-unit-swim-course" name="unit_preferences[swim_course]"><option value="m" <?php selected( $unit_preferences['swim_course'], 'm' ); ?>><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="yd" <?php selected( $unit_preferences['swim_course'], 'yd' ); ?>><?php esc_html_e( 'Yards', 'chriss-swim-training-progress-evaluation' ); ?></option></select><p class="description"><?php esc_html_e( 'Meter events remain separate from yard events. This preference does not convert personal-best distances.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<?php foreach ( array( 'running' => __( 'Running distance', 'chriss-swim-training-progress-evaluation' ), 'walking' => __( 'Walking distance', 'chriss-swim-training-progress-evaluation' ), 'cycling' => __( 'Cycling distance', 'chriss-swim-training-progress-evaluation' ) ) as $unit_key => $unit_label ) : ?>
+					<tr><th scope="row"><label for="swimlog-unit-<?php echo esc_attr( $unit_key ); ?>"><?php echo esc_html( $unit_label ); ?></label></th><td><select id="swimlog-unit-<?php echo esc_attr( $unit_key ); ?>" name="unit_preferences[<?php echo esc_attr( $unit_key ); ?>]"><option value="km" <?php selected( $unit_preferences[ $unit_key ], 'km' ); ?>><?php esc_html_e( 'Kilometers', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="mi" <?php selected( $unit_preferences[ $unit_key ], 'mi' ); ?>><?php esc_html_e( 'Miles', 'chriss-swim-training-progress-evaluation' ); ?></option></select></td></tr>
+					<?php endforeach; ?>
+					<tr><th scope="row"><label for="swimlog-unit-weight"><?php esc_html_e( 'Body weight', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><select id="swimlog-unit-weight" name="unit_preferences[weight]"><option value="kg" <?php selected( $unit_preferences['weight'], 'kg' ); ?>><?php esc_html_e( 'Kilograms', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="lb" <?php selected( $unit_preferences['weight'], 'lb' ); ?>><?php esc_html_e( 'Pounds', 'chriss-swim-training-progress-evaluation' ); ?></option></select></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Secondary units', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="unit_preferences[show_secondary]" value="1" <?php checked( $unit_preferences['show_secondary'] ); ?>> <?php esc_html_e( 'Show the other unit in parentheses where applicable.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Swimming course distances always remain in their recorded meter or yard course.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 				</table>
 				<hr>
 				<h2><?php esc_html_e( 'Privacy', 'chriss-swim-training-progress-evaluation' ); ?></h2>

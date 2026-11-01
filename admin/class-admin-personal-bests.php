@@ -17,7 +17,7 @@ final class Admin_Personal_Bests {
 		$user_id = Admin_UI::selected_user_id();
 		Admin_UI::swimmer_selector( $user_id, 'swimlog-personal-bests' );
 
-		$course = get_option( 'swimlog_default_course_unit', 'm' );
+		$course = Unit_Preferences::get( $user_id )['swim_course'];
 		if ( isset( $_GET['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only PB course filter.
 			$course = sanitize_key( wp_unslash( $_GET['course'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}

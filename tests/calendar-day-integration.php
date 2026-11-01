@@ -18,6 +18,7 @@ try {
     }
     $owner = $users['owner']; wp_set_current_user( $owner );
     update_user_meta( $owner, 'swimlog_calendar_first_day', 'monday' );
+    update_user_meta( $owner, 'swimlog_unit_preferences', array( 'swim_course' => 'yd', 'running' => 'mi', 'walking' => 'mi', 'cycling' => 'mi', 'weight' => 'lb', 'show_secondary' => true ) );
     $focus = ( new DateTimeImmutable( 'first day of next month', wp_timezone() ) )->modify( '+10 days' ); $key = $focus->format( 'Y-m-d' );
     foreach ( array( 'pool', 'open_water' ) as $index => $type ) {
         $ok = Database::write( 'insert', Database::table( 'workouts' ), array( 'user_id' => $owner, 'workout_start' => $key . ( $index ? ' 14:00:00' : ' 08:00:00' ), 'workout_type' => $type, 'total_distance_m' => $index ? 1200 : 600, 'elapsed_time_ms' => 1800000, 'moving_time_ms' => 1700000, 'pool_length_m' => $index ? null : 25, 'pool_length_unit' => 'm', 'primary_stroke' => 'FR', 'notes' => 'PRIVATE_DAY_SOURCE_SENTINEL', 'created_at' => current_time( 'mysql' ), 'updated_at' => current_time( 'mysql' ) ) );

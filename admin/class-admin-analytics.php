@@ -141,7 +141,7 @@ final class Admin_Analytics {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-pool-analytics.php';
 
 		$user_id = Admin_UI::selected_user_id();
-		$course = get_option( 'swimlog_default_course_unit', 'm' );
+		$course = Unit_Preferences::get( $user_id )['swim_course'];
 		$stroke = '';
 		$months = Pool_Analytics::DEFAULT_LOOKBACK_MONTHS;
 		if ( isset( $_GET['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only analytics filter.

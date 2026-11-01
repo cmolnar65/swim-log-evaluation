@@ -12,6 +12,8 @@ Private Garmin weight/BMI readings, provider SpO2 summaries and captured sleep-w
 
 The Garmin page also provides historical date/category imports with persistent background jobs, complete activity pagination, duplicate-safe observations, conservative activity review, pause/resume/cancel, failed-item retries and private result counts. Jobs preserve progress across browser closure/process interruptions and require explicit resume after plugin deactivation. Garmin's available history is account-dependent. Optional **opt-in automatic measurement synchronization** runs on its configured schedule. The server's five-minute cron invocation processes due events; it does not make hourly synchronization run every five minutes.
 
+Swimmer Configuration includes per-swimmer display units for running, walking, cycling and body weight, with an optional parenthesized secondary unit. Land distances and weight remain stored in canonical meters and kilograms. Swimming retains its meter/yard course separation; the swimmer's course preference sets defaults without combining individual course records. See the [v1.3 test guide](docs/v1.3-garmin-user-guide.md#per-swimmer-unit-preferences).
+
 See the [Garmin user guide and acceptance checklist](docs/v1.3-garmin-user-guide.md), [historical import contract](docs/v1.3-historical-garmin-import.md), [development checklist](docs/v1.3-development-checklist.md), and [canonical visibility contract](docs/public-workout-visibility.md). The pinned [development test-build script](docs/build-v1.3-test.sh) does not publish a release. The latest test ZIP is reported built, installed and operational on the test server; real-life acceptance remains pending. v1.3 is unreleased and explicitly on hold.
 
 ## v1.2

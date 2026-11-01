@@ -87,11 +87,13 @@ final class Workout_Visibility {
     }
     public static function no_cache() { require_once __DIR__.'/class-land-activity.php'; Land_Activity::no_cache(); if(!headers_sent())header('Cache-Control: private, no-store'); }
     public static function is_public( $workout_id ) { return !is_wp_error(self::get_public($workout_id)); }
-    public static function get_public( $workout_id ) {
+    public static function get_public( $workout_id, &$owner_id = null ) {
         global $wpdb;
+        $owner_id = 0;
         self::no_cache();if(!self::ready())return self::unavailable();
         $w=Database::read('get_row',$wpdb->prepare("SELECT w.*,v.route_public,v.visibility FROM %i w INNER JOIN %i v ON v.workout_id=w.id AND v.owner_id=w.user_id WHERE w.id=%d AND v.visibility IN ('public','legacy_public') AND w.workout_type IN ('pool','open_water','running','walking')",Database::table('workouts'),Database::table('workout_visibility'),absint($workout_id)));
         if(!$w||!self::global_public($w->user_id))return self::unavailable();
+        $owner_id = (int) $w->user_id;
         return self::project($w);
     }
     public static function query_public( $owner_id, array $filters=array(), $page=1, $per_page=20 ) {

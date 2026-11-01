@@ -70,7 +70,7 @@ final class REST_API {
  public static function personal_bests($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';
-  $uid=get_current_user_id();$course=strtolower((string)($request->get_param('course')?:get_option('swimlog_default_course_unit','m')));if(!in_array($course,array('m','yd'),true))$course='m';
+  $uid=get_current_user_id();$course=strtolower((string)($request->get_param('course')?:Unit_Preferences::get($uid)['swim_course']));if(!in_array($course,array('m','yd'),true))$course='m';
   $map=Records::personal_bests($uid,$course);$rows=array();
   foreach($map as$distance=>$strokes)foreach($strokes as$stroke=>$row)$rows[]=array('distance_value'=>(int)$distance,'course_unit'=>$course,'stroke'=>(string)$stroke,'duration_ms'=>(int)$row->duration_ms,'achieved_at'=>$row->achieved_at,'workout_id'=>(int)($row->workout_id??0));
   return rest_ensure_response(array('course_unit'=>$course,'personal_bests'=>$rows));

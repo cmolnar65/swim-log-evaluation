@@ -160,6 +160,7 @@ Canonical per-workout sharing is development-only: public viewing requires expli
 * Serialize incoming activity imports and preserve conservative matching/location review and recorded history.
 * Repair calendar pool-length normalization; expand migration, persistence, full-year/restart/privacy and desktop/mobile regressions.
 * Add canonical read-only per-workout visibility for pool, open-water, running and walking activities, with separate route approval and consent. Schema 1.5 adds visibility state; only explicitly public legacy swimming history is preserved as public, while land history and measurements stay private.
+* Add per-swimmer display preferences for running, walking and cycling units, body-weight units, optional secondary units, and the default swim course. Canonical land distance and weight storage and meter/yard swim-course separation remain unchanged.
 
 = 1.2 =
 * Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.

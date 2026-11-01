@@ -2,6 +2,7 @@
 namespace SwimLogEvaluation;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once dirname( __DIR__ ) . '/includes/class-unit-preferences.php';
 
 /** Shared presentation helpers for swim training administration. */
 final class Admin_UI {
@@ -107,6 +108,18 @@ final class Admin_UI {
 			? number_format_i18n( $number, 0 )
 			: rtrim( rtrim( number_format_i18n( $number, 3 ), '0' ), '.' );
 		return $display . ( $unit ? ' ' . $unit : '' );
+	}
+
+	/** Format a canonical meter distance using the selected swimmer's land-activity preference. */
+	public static function activity_distance( $meters, $activity, $owner = null ) {
+		$owner = null === $owner ? get_current_user_id() : absint( $owner );
+		return Unit_Preferences::distance( $meters, $activity, $owner );
+	}
+
+	/** Format canonical kilograms using the selected swimmer's private measurement preference. */
+	public static function body_weight( $kilograms, $owner = null ) {
+		$owner = null === $owner ? get_current_user_id() : absint( $owner );
+		return Unit_Preferences::weight( $kilograms, $owner );
 	}
     /** Read-only UI intent; never authorizes an operation or a record lookup. */
     public static function requested( $key ) {

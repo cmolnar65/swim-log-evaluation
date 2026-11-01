@@ -113,7 +113,7 @@ final class Admin_Events_Locations {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only event edit selector.
 		$edit_id=absint(wp_unslash($_GET['edit'] ?? 0));
 		$editing=$edit_id?Event::get_for_user($edit_id,$user_id):null;
-		$event_form = Admin_UI::form_record( $editing, self::$event_form, array( 'event_name' => '', 'event_date' => '', 'event_time' => '', 'location_id' => 0, 'distance_value' => 0, 'course_unit' => get_option( 'swimlog_default_course_unit', 'm' ), 'stroke' => 'FR', 'notes' => '' ) );
+		$event_form = Admin_UI::form_record( $editing, self::$event_form, array( 'event_name' => '', 'event_date' => '', 'event_time' => '', 'location_id' => 0, 'distance_value' => 0, 'course_unit' => Unit_Preferences::get( $user_id )['swim_course'], 'stroke' => 'FR', 'notes' => '' ) );
 		$events=Event::all_for_user($user_id,$view);
         $show_editor = $editing || self::$event_form || $error || Admin_UI::requested('new');
 		$locations=Location::all_for_user($user_id);
