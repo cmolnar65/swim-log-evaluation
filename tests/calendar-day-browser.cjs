@@ -126,7 +126,7 @@ async function scenario(engine, name, options) {
   await dialog.getByRole('button',{name:'Update Planned Workout',exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('dialog')&&!document.querySelector('[data-swimlog-calendar]').classList.contains('is-loading'));
   assert.equal(saveCount,1,'Existing plan action did not submit');
-  await open(data.empty_date); assert.match(await page.getByRole('dialog').innerText(),/No workouts or events for this day/); await close();
+  await open(data.empty_date); assert.match(await page.getByRole('dialog').innerText(),/No workouts, events, or goal markers for this day/); await close();
   // Blank day space opens the same view without changing navigation.
   const cell=dayArea().locator(`[data-date="${data.empty_date}"]`);
   await cell.evaluate(el=>el.click()); await page.getByRole('dialog').waitFor(); await close();
@@ -156,7 +156,7 @@ async function scenario(engine, name, options) {
   const request=requests.filter(r=>r.url.includes('start='+outside)).pop();
   assert(request.url.includes('user='+state.user));assert.equal(request.headers['x-wp-nonce'],'synthetic-rest-nonce');
   failDay=false; await page.getByRole('button',{name:'Retry',exact:true}).click();
-  await page.getByRole('dialog').getByText('No workouts or events for this day.',{exact:true}).waitFor(); await close();
+  await page.getByRole('dialog').getByText('No workouts, events, or goal markers for this day.',{exact:true}).waitFor(); await close();
   delayDay=true; await root.locator(`.swimlog-calendar-grid [data-calendar-day="${outside}"]`).evaluate(el=>el.click()); await close();
   await page.waitForTimeout(200); assert.equal(await page.getByRole('dialog').count(),0);assert(!await page.locator('body').evaluate(el=>el.classList.contains('swimlog-calendar-modal-open')));
   failHealth=true;

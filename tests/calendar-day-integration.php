@@ -60,7 +60,7 @@ try {
     wp_set_current_user( 0 );
     $verify( false === strpos( Blocks::render_calendar_for_user( $owner ), 'data-calendar-day=' ), 'Anonymous calendar exposed day triggers.' );
     WP_CLI::log( 'SWIMLOG_DAY_CALENDAR_HTML_BASE64=' . base64_encode( $html ) );
-    WP_CLI::log( 'SWIMLOG_DAY_CALENDAR_DATA_BASE64=' . base64_encode( wp_json_encode( array( 'calendar' => $data, 'date' => $key, 'empty_date' => $focus->modify( '+1 day' )->format( 'Y-m-d' ) ) ) ) );
+    WP_CLI::log( 'SWIMLOG_DAY_CALENDAR_DATA_BASE64=' . base64_encode( wp_json_encode( array( 'calendar' => $data, 'date' => $key, 'empty_date' => $focus->modify( '+2 days' )->format( 'Y-m-d' ) ) ) ) );
     WP_CLI::success( 'Calendar day rendering and privacy passed ' . $checks . ' assertions.' );
 } finally {
     foreach ( $users as $id ) {
