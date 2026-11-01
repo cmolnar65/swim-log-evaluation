@@ -78,7 +78,7 @@ final class CalendarUxRefinementTest extends TestCase {
 		$this->assertStringContainsString( "( data.goals || [] ).forEach", $view );
 		$this->assertStringContainsString( 'function showGoalDetail', $view );
 		$this->assertStringContainsString( 'data-calendar-goal', $blocks );
-		$this->assertStringContainsString( "'goals' => array_values( (array) $goal_markers )", $calendar );
+		$this->assertStringContainsString( "'goals' => array_values( (array) \$goal_markers )", $calendar );
 		$this->assertStringNotContainsString( "'/goals'", file_get_contents( dirname( __DIR__ ) . '/includes/class-rest-api.php' ) );
 	}
 }
