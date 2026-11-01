@@ -124,11 +124,10 @@ final class Swim_Goals {
 
 	private static function performance_progress( $goal ) {
 		global $wpdb;
-		$performances = Database::table( 'performances' );
-		$sql = 'SELECT p.duration_ms,p.achieved_at FROM %i p INNER JOIN %i w ON w.id = p.workout_id AND w.user_id = p.user_id WHERE p.user_id = %d AND p.distance_value = %d AND p.course_unit = %s AND p.achieved_at >= %s AND p.achieved_at < %s';
-		$args = array( $performances, Database::table( 'workouts' ), $goal['user_id'], $goal['target_distance_value'], $goal['course_unit'], $goal['start_date'] . ' 00:00:00', self::next_day( $goal['end_date'] ) . ' 00:00:00' );
-		$sql .= ' ORDER BY p.duration_ms ASC,p.achieved_at ASC';
-		$rows = Database::read( 'get_results', $wpdb->prepare( $sql, ...$args ) );
+		$rows = Database::read( 'get_results', $wpdb->prepare(
+			'SELECT p.duration_ms,p.achieved_at FROM %i p INNER JOIN %i w ON w.id = p.workout_id AND w.user_id = p.user_id WHERE p.user_id = %d AND p.distance_value = %d AND p.course_unit = %s AND p.achieved_at >= %s AND p.achieved_at < %s ORDER BY p.duration_ms ASC,p.achieved_at ASC',
+			Database::table( 'performances' ), Database::table( 'workouts' ), $goal['user_id'], $goal['target_distance_value'], $goal['course_unit'], $goal['start_date'] . ' 00:00:00', self::next_day( $goal['end_date'] ) . ' 00:00:00'
+		) );
 		$best = null;
 		foreach ( (array) $rows as $row ) {
 			$duration = (int) $row->duration_ms;
