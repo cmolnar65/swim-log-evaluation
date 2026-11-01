@@ -15,7 +15,7 @@ final class ManualWorkoutIntegrationTest extends TestCase {
  }
  public function test_manual_workout_public_display_and_blocks_share_canonical_renderer(){
   $shortcodes=file_get_contents(dirname(__DIR__).'/includes/class-shortcodes.php');$blocks=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');
-  $this->assertStringContainsString("Workout_Visibility::get_public(absint(\$atts['id']??0))",$shortcodes);$this->assertStringContainsString('Shortcodes::render_workout(', $blocks);
+  $this->assertStringContainsString("Workout_Visibility::get_public(absint(\$atts['id']??0),\$presentation_owner)",$shortcodes);$this->assertStringContainsString('Shortcodes::render_workout(', $blocks);
   $this->assertStringContainsString('Shortcodes::render_latest(', $blocks);$this->assertStringContainsString('Shortcodes::render_progress(', $blocks);
  }
  public function test_manual_workout_rest_api_remains_read_only_and_source_agnostic(){

@@ -135,7 +135,7 @@ final class CalendarBlockTest extends TestCase {
   $this->assertSame(2,substr_count($view,'renderAgenda( root, data, start, end )'));
   $this->assertStringContainsString('renderAgenda( root, data, first, last )',$view);
   $this->assertStringContainsString('renderAgenda( root, data, start, end )',$view);
-  $this->assertStringContainsString('agendaItemsByDate( data )',$view);
+  $this->assertStringContainsString('agendaItemsByDate( data, root )',$view);
   $this->assertStringNotContainsString('agendaUrl',$view);
   $this->assertStringNotContainsString('/agenda',$view);
  }
