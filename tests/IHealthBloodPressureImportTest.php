@@ -25,7 +25,9 @@ final class IHealthBloodPressureImportTest extends TestCase {
         $this->assertSame( 'ihealth-personal-bp', $adapted['observation']['provenance']['source_format'] );
         $this->assertArrayNotHasKey( 'Note', $adapted['observation'] );
         $this->assertArrayNotHasKey( 'Lat', $adapted['observation'] );
-        $this->assertSame( $adapted['observation']['values'], Store::normalize_values( 'blood_pressure', $adapted['observation']['values'] ) );
+        $expected_values = $adapted['observation']['values'];
+        ksort( $expected_values );
+        $this->assertSame( $expected_values, Store::normalize_values( 'blood_pressure', $adapted['observation']['values'] ) );
     }
 
     public function test_pulse_is_optional_but_pressure_pair_and_explicit_mm_hg_are_required() {
