@@ -37,6 +37,12 @@ final class Plugin {
 		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
 		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
 		if ( is_admin() ) {
+			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ihealth.php';
+			$ihealth_admin = new Admin_IHealth();
+			add_action( 'admin_menu', array( $ihealth_admin, 'register_menu' ), 20 );
+			add_action( 'admin_post_swimlog_ihealth_save', array( $ihealth_admin, 'save' ) );
+			add_action( 'admin_post_swimlog_ihealth_connect', array( $ihealth_admin, 'connect' ) );
+			add_action( 'admin_post_swimlog_ihealth_oauth_callback', array( $ihealth_admin, 'callback' ) );
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();
 			add_action( 'admin_menu', array( $admin, 'register_menu' ) );
