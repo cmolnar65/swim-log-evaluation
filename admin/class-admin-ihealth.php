@@ -35,13 +35,9 @@ final class Admin_IHealth {
         check_admin_referer( 'swimlog_ihealth_save_application' );
         $owner = (int) get_current_user_id();
         $client_id = isset( $_POST['client_id'] ) && is_string( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
-        $client_secret = isset( $_POST['client_secret'] ) && is_string( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : '';
-        $api_names = array();
-        if ( isset( $_POST['api_names'] ) && is_array( $_POST['api_names'] ) ) {
-            foreach ( wp_unslash( $_POST['api_names'] ) as $api_name ) {
-                if ( is_string( $api_name ) ) $api_names[] = sanitize_text_field( $api_name );
-            }
-        }
+        $client_secret = isset( $_POST['client_secret'] ) && is_string( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque credential is validated by IHealth_OAuth before encrypted storage and must not be transformed.
+        $submitted_api_names = isset( $_POST['api_names'] ) ? map_deep( wp_unslash( $_POST['api_names'] ), 'sanitize_text_field' ) : array();
+        $api_names = is_array( $submitted_api_names ) ? array_values( array_filter( $submitted_api_names, 'is_string' ) ) : array();
         $revision = isset( $_POST['revision'] ) && is_string( $_POST['revision'] ) ? sanitize_text_field( wp_unslash( $_POST['revision'] ) ) : '';
         $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision );
         self::return_to_page( is_wp_error( $saved ) ? 'save_failed' : 'saved' );
@@ -52,18 +48,19 @@ final class Admin_IHealth {
         check_admin_referer( 'swimlog_ihealth_connect' );
         $url = IHealth_OAuth::begin_authorization( (int) get_current_user_id() );
         if ( is_wp_error( $url ) ) self::return_to_page( 'authorization_failed' );
-        wp_redirect( esc_url_raw( $url ), 303 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect -- OAuth requires the fixed external iHealth authorization endpoint.
+        wp_redirect( esc_url_raw( $url ), 303 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OAuth requires the fixed external iHealth authorization endpoint.
         exit;
     }
 
     public function callback() {
         self::require_admin();
-        if ( 'GET' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) {
+        $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+        if ( 'GET' !== strtoupper( $request_method ) ) {
             wp_die( esc_html__( 'The iHealth authorization callback requires GET.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 405 ) );
         }
         nocache_headers();
         header( 'Referrer-Policy: no-referrer' );
-        $result = IHealth_OAuth::complete_authorization( (int) get_current_user_id(), wp_unslash( $_GET ) );
+        $result = IHealth_OAuth::complete_authorization( (int) get_current_user_id(), wp_unslash( $_GET ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth state is random, short-lived, owner-bound and consumed once as callback CSRF protection.
         self::return_to_page( is_wp_error( $result ) ? 'authorization_failed' : 'verified' );
     }
 
@@ -77,7 +74,7 @@ final class Admin_IHealth {
             'save_failed' => __( 'The iHealth app settings could not be saved. Check the fields and reload before trying again.', 'chriss-swim-training-progress-evaluation' ),
             'authorization_failed' => __( 'iHealth authorization did not complete. Check the credentials, selected categories and registered redirect, then try again.', 'chriss-swim-training-progress-evaluation' ),
         );
-        $status = isset( $_GET['ihealth_status'] ) && is_string( $_GET['ihealth_status'] ) ? sanitize_key( wp_unslash( $_GET['ihealth_status'] ) ) : '';
+        $status = isset( $_GET['ihealth_status'] ) && is_string( $_GET['ihealth_status'] ) ? sanitize_key( wp_unslash( $_GET['ihealth_status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only notice selector; it does not change settings or data.
         $host = wp_parse_url( IHealth_OAuth::callback_url(), PHP_URL_HOST );
         $redirect_domain = is_string( $host ) && '' !== $host ? 'https://' . strtolower( $host ) : '';
         ?>
