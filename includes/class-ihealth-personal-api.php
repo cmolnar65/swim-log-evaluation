@@ -29,7 +29,7 @@ final class IHealth_Personal_API {
         if ( ! is_array( $params ) || count( $params ) > 20 ) return self::error( 'parameters', __( 'The iHealth API request parameters are invalid.', 'chriss-swim-training-progress-evaluation' ) );
         foreach ( $params as $name => $value ) {
             if ( ! is_string( $name ) || ! preg_match( '/^[A-Za-z][A-Za-z0-9_]{0,63}$/D', $name )
-                || in_array( strtolower( $name ), array( 'access_token', 'callback', 'client_id', 'client_secret', 'redirect_uri', 'response_type' ), true )
+                || in_array( strtolower( $name ), array( 'access_token', 'callback', 'client_id', 'client_secret', 'redirect_uri', 'response_type', 'sc', 'sv' ), true )
                 || ! is_scalar( $value ) || strlen( (string) $value ) > 256 ) {
                 return self::error( 'parameters', __( 'The iHealth API request parameters are invalid.', 'chriss-swim-training-progress-evaluation' ) );
             }
@@ -37,7 +37,11 @@ final class IHealth_Personal_API {
 
         $url = self::BASE_URL . rawurlencode( $context['ihealth_user_id'] ) . '/' . $resource . '/';
         $query = $params;
+        $query['client_id'] = $context['client_id'];
+        $query['client_secret'] = $context['client_secret'];
         $query['access_token'] = $context['access_token'];
+        $query['sc'] = $context['sc'];
+        $query['sv'] = $context['sv'];
         $url .= '?' . http_build_query( $query, '', '&', PHP_QUERY_RFC3986 );
         $response = wp_remote_get( $url, array(
             'timeout' => 20,

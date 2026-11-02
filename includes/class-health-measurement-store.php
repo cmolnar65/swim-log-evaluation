@@ -83,10 +83,22 @@ final class Health_Measurement_Store {
 
     private static function context( $input ) {
         if ( ! is_array( $input ) ) return self::error( 'context' );
-        $allowed = array( 'normalization_version', 'device', 'source_format', 'source_weight_grams', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local' );
+        $allowed = array( 'normalization_version', 'device', 'source_format', 'source_weight_grams', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local', 'source_fields', 'deduplicated_values' );
         $out = array();
         foreach ( $input as $key => $value ) {
-            if ( ! in_array( $key, $allowed, true ) || ! is_string( $value ) || strlen( $value ) > 191 || preg_match( '/[\\x00-\\x1f]/', $value ) ) return self::error( 'context' );
+            if ( ! in_array( $key, $allowed, true ) ) return self::error( 'context' );
+            if ( 'source_fields' === $key ) {
+                $value = self::source_fields( $value );
+                if ( is_wp_error( $value ) ) return $value;
+                $out[ $key ] = $value;
+                continue;
+            }
+            if ( 'deduplicated_values' === $key ) {
+                if ( ! is_array( $value ) || array_diff( $value, array( 'weight' ) ) || count( $value ) > 1 ) return self::error( 'context' );
+                $out[ $key ] = array_values( array_unique( $value ) );
+                continue;
+            }
+            if ( ! is_string( $value ) || strlen( $value ) > 191 || preg_match( '/[\\x00-\\x1f]/', $value ) ) return self::error( 'context' );
             if ( preg_match( '/_(utc|local)$/D', $key ) ) {
                 $value = self::timestamp( $value, false !== strpos( $key, '_utc' ) );
                 if ( is_wp_error( $value ) ) return $value;
@@ -102,6 +114,22 @@ final class Health_Measurement_Store {
         return $out;
     }
 
+    /** Keep only explicitly named numeric source fields; unknown units remain labeled unknown. */
+    private static function source_fields( $fields ) {
+        $allowed = array( 'WeightValue', 'BMI', 'BoneValue', 'FatValue', 'WaterValue', 'MuscaleValue', 'VFR', 'DCI' );
+        if ( ! is_array( $fields ) || count( $fields ) > count( $allowed ) || array_diff( array_keys( $fields ), $allowed ) ) return self::error( 'source_fields' );
+        $out = array();
+        foreach ( $fields as $name => $entry ) {
+            if ( ! is_array( $entry ) || array_diff( array_keys( $entry ), array( 'value', 'unit' ) ) || ! array_key_exists( 'value', $entry ) || ! is_string( $entry['unit'] ?? null )
+                || ! in_array( $entry['unit'], array( 'unknown', 'kg', 'lbs', 'stone' ), true ) ) return self::error( 'source_fields' );
+            $value = $entry['value'];
+            if ( ( ! is_string( $value ) && ! is_int( $value ) && ! is_float( $value ) ) || ( is_float( $value ) && ! is_finite( $value ) ) || ! is_numeric( (string) $value ) || strlen( (string) $value ) > 64 ) return self::error( 'source_fields' );
+            $out[ $name ] = array( 'value' => $value, 'unit' => $entry['unit'] );
+        }
+        ksort( $out );
+        return $out;
+    }
+
     /** Pure validation/canonicalization, also exercised on every supported PHP. */
     public static function normalize_observation( $category, $input ) {
         if ( ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! is_array( $input ) ) return self::error( 'category' );
@@ -109,10 +137,11 @@ final class Health_Measurement_Store {
         if ( array_diff( array_keys( $input ), $allowed ) ) return self::error( 'fields' );
         $role = $input['role'] ?? '';
         if ( ! in_array( $role, array( 'sample', 'hourly_average', 'sleep_average', 'calculated_mean' ), true ) || ( 'spo2' !== $category && 'sample' !== $role ) ) return self::error( 'role' );
-        $values = self::normalize_values( $category, $input['values'] ?? null );
         $provenance = self::context( $input['provenance'] ?? array() );
-        if ( is_wp_error( $values ) ) return $values;
         if ( is_wp_error( $provenance ) ) return $provenance;
+        $raw_only = 'body_composition' === $category && ! empty( $provenance['source_fields'] ) && array() === ( $input['values'] ?? null );
+        $values = $raw_only ? array() : self::normalize_values( $category, $input['values'] ?? null );
+        if ( is_wp_error( $values ) ) return $values;
         $external = $input['external_id'] ?? null;
         if ( null !== $external && ( ! is_string( $external ) || '' === $external || strlen( $external ) > 191 || preg_match( '/[\\x00-\\x1f]/', $external ) ) ) return self::error( 'identity' );
         $utc = $input['observed_at_utc'] ?? null;
@@ -185,7 +214,8 @@ final class Health_Measurement_Store {
         $provider = $report['provider'] ?? '';
         $category = $report['category'] ?? '';
         $day = $report['calendar_date'] ?? '';
-        if ( 'garmin' !== $provider || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
+        if ( ! in_array( $provider, array( 'garmin', 'ihealth' ), true ) || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
+        if ( 'ihealth' === $provider && ! in_array( $category, array( 'weight', 'body_composition' ), true ) ) return self::error( 'report' );
         $fetched = self::timestamp( $report['fetched_at_utc'] ?? '' );
         $summary = self::normalize_values( $category, $report['summary'] ?? array(), true );
         $context = self::context( $report['context'] ?? array() );
@@ -195,6 +225,8 @@ final class Health_Measurement_Store {
         foreach ( $observations as $observation ) {
             $row = self::normalize_observation( $category, $observation );
             if ( is_wp_error( $row ) ) return $row;
+            if ( 'ihealth' !== $provider && ( ! empty( $row['provenance']['source_fields'] ) || ! empty( $row['provenance']['deduplicated_values'] ) ) ) return self::error( 'source_fields' );
+            if ( ! empty( $row['provenance']['source_fields'] ) && ! in_array( $category, array( 'weight', 'body_composition' ), true ) ) return self::error( 'source_fields' );
             $rows[] = $row;
         }
         $summary_json = self::json( array( 'version' => 1, 'values' => $summary ) );
@@ -209,7 +241,9 @@ final class Health_Measurement_Store {
             $status = Database::read( 'get_row', $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $wpdb->esc_like( $table ) ) );
             if ( ! $status || 'InnoDB' !== $status->Engine ) return self::error( 'engine' );
         }
-        $lock = 'swimlog_health_' . substr( hash( 'sha256', $wpdb->prefix . ':' . $owner . ':' . $provider . ':' . $category ), 0, 48 );
+        // Serialize all provider/category writes for this owner so cross-provider
+        // duplicate classification cannot race another private import.
+        $lock = 'swimlog_health_' . substr( hash( 'sha256', $wpdb->prefix . ':' . $owner . ':measurements' ), 0, 48 );
         if ( 1 !== (int) Database::read( 'get_var', $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock ) ) ) return self::error( 'busy' );
         $transaction = false;
         try {
@@ -223,7 +257,7 @@ final class Health_Measurement_Store {
             if ( $existing && $fetched_sql < $existing->fetched_at_utc ) throw new \RuntimeException( 'stale_report' );
             $now = gmdate( 'Y-m-d H:i:s' );
             $report_data = array( 'provider' => $provider, 'category' => $category, 'provider_date' => $day, 'identity_hash' => $identity, 'content_hash' => $content, 'summary_json' => $summary_json, 'context_json' => $context_json, 'fetched_at_utc' => $fetched_sql, 'updated_at_utc' => $now );
-            $counts = array( 'added' => 0, 'updated' => 0, 'skipped' => 0, 'conflicts' => 0, 'failed' => 0 );
+            $counts = array( 'added' => 0, 'updated' => 0, 'skipped' => 0, 'duplicates' => 0, 'possible_duplicates' => 0, 'conflicts' => 0, 'failed' => 0 );
             $report_status = $existing ? ( $content === $existing->content_hash ? 'skipped' : 'updated' ) : 'added';
             if ( $existing ) {
                 $report_id = (int) $existing->id;
@@ -235,6 +269,15 @@ final class Health_Measurement_Store {
                 $report_id = (int) $wpdb->insert_id;
             }
             foreach ( $rows as $row ) {
+                $cross = self::cross_provider_matches( $measurements, $owner, $provider, $category, $row );
+                if ( is_wp_error( $cross ) ) throw new \RuntimeException( 'read' );
+                if ( $cross['matches'] ) {
+                    $row['provenance']['deduplicated_values'] = array( 'weight' );
+                    ++$counts['duplicates'];
+                } elseif ( $cross['possible'] ) {
+                    ++$counts['possible_duplicates'];
+                }
+                $counts['conflicts'] += $cross['conflicts'];
                 $values_json = self::json( array( 'version' => 1, 'values' => $row['values'] ) );
                 $provenance_json = self::json( array( 'version' => 1, 'source' => $row['provenance'] ) );
                 $identity = self::hash( array( $provider, $category, $row['record_role'], null !== $row['external_id'] ? array( 'external_id', $row['external_id'] ) : array( 'fingerprint', $row['observed_at_utc'], $row['values'] ) ) );
@@ -248,7 +291,11 @@ final class Health_Measurement_Store {
                 // Preserve previously verified metadata; absence is not a correction or deletion.
                 if ( $old && null === $data['source_local_time'] ) $data['source_local_time'] = $old->source_local_time;
                 // Provenance and containing report do not create a second source measurement.
-                $data['content_hash'] = self::hash( $data );
+                // Raw iHealth source values participate in correction protection, while
+                // duplicate classification remains derived and does not alter source identity.
+                $content_data = $data;
+                if ( isset( $row['provenance']['source_fields'] ) ) $content_data['source_fields'] = $row['provenance']['source_fields'];
+                $data['content_hash'] = self::hash( $content_data );
                 if ( $old && ! $repair && $old->content_hash !== $data['content_hash'] && ( ! $row['confirmed_correction'] || null === $row['external_id'] || $row['expected_content_hash'] !== $old->content_hash ) ) throw new \RuntimeException( 'ambiguous_correction' );
                 $data['provenance_json'] = $provenance_json;
                 $data['updated_at_utc'] = $now;
@@ -258,6 +305,11 @@ final class Health_Measurement_Store {
                     if ( 'updated' === $state ) {
                         $changed = Database::write( 'update', $measurements, $data, array( 'id' => $id, 'user_id' => $owner, 'content_hash' => $old->content_hash, 'identity_hash' => $old->identity_hash ) );
                         if ( false === $changed || ( $repair && 1 !== $changed ) ) throw new \RuntimeException( 'write' );
+                    } elseif ( $old->provenance_json !== $provenance_json ) {
+                        // Cross-provider duplicate classification is derived metadata;
+                        // update it without changing the source measurement/hash.
+                        $changed = Database::write( 'update', $measurements, array( 'provenance_json' => $provenance_json, 'updated_at_utc' => $now ), array( 'id' => $id, 'user_id' => $owner, 'content_hash' => $old->content_hash, 'identity_hash' => $old->identity_hash ) );
+                        if ( false === $changed || 1 !== $changed ) throw new \RuntimeException( 'write' );
                     }
                 } else {
                     $data['user_id'] = $owner;
@@ -286,6 +338,34 @@ final class Health_Measurement_Store {
             if ( $transaction ) Database::write( 'query', 'ROLLBACK' );
             Database::read( 'get_var', $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
         }
+    }
+
+    /** Find only same-owner, cross-provider weight matches; never merge identities. */
+    private static function cross_provider_matches( $table, $owner, $provider, $category, $row ) {
+        global $wpdb;
+        if ( ! in_array( $category, array( 'weight', 'body_composition' ), true ) || ! isset( $row['values']['weight'] ) || null === $row['observed_at_utc'] ) {
+            return array( 'matches' => false, 'possible' => false, 'conflicts' => 0 );
+        }
+        $candidates = Database::read( 'get_results', $wpdb->prepare(
+            'SELECT provider,category,observed_at_utc,calendar_date,values_json FROM %i WHERE user_id = %d AND provider != %s AND category IN (%s,%s) AND record_role = %s AND observed_at_utc IS NOT NULL AND (observed_at_utc = %s OR calendar_date = %s) ORDER BY id LIMIT 201',
+            $table, $owner, $provider, 'weight', 'body_composition', 'sample', $row['observed_at_utc'], $row['calendar_date']
+        ) );
+        if ( ! empty( $wpdb->last_error ) || count( (array) $candidates ) > 200 ) return self::error( 'read' );
+        $exact = false;
+        $possible = false;
+        $conflicts = 0;
+        foreach ( (array) $candidates as $candidate ) {
+            $envelope = json_decode( $candidate->values_json, true );
+            $value = is_array( $envelope ) ? ( $envelope['values']['weight'] ?? null ) : null;
+            if ( ! is_array( $value ) || 'kg' !== ( $value['unit'] ?? null ) || ! is_string( $value['value'] ?? null ) ) continue;
+            if ( $candidate->observed_at_utc === $row['observed_at_utc'] ) {
+                if ( round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) $exact = true;
+                else ++$conflicts;
+            } elseif ( $candidate->calendar_date === $row['calendar_date'] && round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) {
+                $possible = true;
+            }
+        }
+        return array( 'matches' => $exact, 'possible' => ! $exact && $possible, 'conflicts' => $conflicts );
     }
 
     /** Owner-only lookup; same-instant ambiguity is derived, never arrival-order resolution. */

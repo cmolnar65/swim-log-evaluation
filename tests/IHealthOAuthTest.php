@@ -100,6 +100,8 @@ final class IHealthOAuthTest extends TestCase {
         $this->assertTrue( $view['configured'] );
         $this->assertSame( 'synthetic-ihealth-client', $view['client_id'] );
         $this->assertTrue( $view['has_secret'] );
+        $this->assertFalse( $view['has_sc'] );
+        $this->assertFalse( $view['has_weight_sv'] );
         $this->assertSame( array( 'OpenApiWeight', 'OpenApiBP' ), $view['api_names'] );
         $this->assertArrayNotHasKey( 'client_secret', $view );
         $this->assertStringNotContainsString( 'synthetic-ihealth-secret', $swimlog_test_options[ IHealth::APP_OPTION ] );
@@ -203,7 +205,7 @@ final class IHealthOAuthTest extends TestCase {
         global $swimlog_test_ihealth_http;
         $owner = 42;
         $view = IHealth::application_view();
-        $this->assertTrue( IHealth::save_application( $owner, 'synthetic-client', 'synthetic-secret', array( 'OpenApiWeight' ), $view['revision'] ) );
+        $this->assertTrue( IHealth::save_application( $owner, 'synthetic-client', 'synthetic-secret', array( 'OpenApiWeight' ), $view['revision'], array( 'sc' => 'synthetic-sc', 'weight_sv' => 'synthetic-weight-sv' ) ) );
         list( , $state ) = $this->start_authorization( $owner );
         $swimlog_test_ihealth_http = array(
             'response' => array( 'code' => 200 ),
@@ -225,6 +227,10 @@ final class IHealthOAuthTest extends TestCase {
         $this->assertSame( '/openapiv2/user/synthetic-user%2Fsegment/weight.json/', parse_url( $swimlog_test_ihealth_url, PHP_URL_PATH ) );
         parse_str( (string) parse_url( $swimlog_test_ihealth_url, PHP_URL_QUERY ), $query );
         $this->assertSame( 'synthetic-api-token', $query['access_token'] ?? '' );
+        $this->assertSame( 'synthetic-client', $query['client_id'] ?? '' );
+        $this->assertSame( 'synthetic-secret', $query['client_secret'] ?? '' );
+        $this->assertSame( 'synthetic-sc', $query['sc'] ?? '' );
+        $this->assertSame( 'synthetic-weight-sv', $query['sv'] ?? '' );
         $this->assertSame( '2', $query['page'] ?? '' );
         $this->assertSame( 0, $swimlog_test_ihealth_args['redirection'] );
         $this->assertTrue( $swimlog_test_ihealth_args['sslverify'] );

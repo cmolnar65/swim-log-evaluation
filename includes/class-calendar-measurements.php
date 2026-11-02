@@ -94,7 +94,7 @@ final class Calendar_Measurements {
         foreach ( (array) $reports as $report ) {
             $source = self::envelope( $report->summary_json, 'values' );
             $values = null !== $source ? Health_Measurement_Store::normalize_values( $report->category, $source, true ) : null;
-            if ( 'garmin' !== $report->provider || null === $values || is_wp_error( $values ) ) { ++$invalid; continue; }
+            if ( ! in_array( $report->provider, array( 'garmin', 'ihealth' ), true ) || null === $values || is_wp_error( $values ) ) { ++$invalid; continue; }
 
             $window = array();
             $context = self::envelope( $report->context_json, 'context' );
@@ -103,7 +103,7 @@ final class Calendar_Measurements {
                 $time = Health_Measurement_Store::timestamp( $context[ $key ], false !== strpos( $key, '_utc' ) );
                 if ( ! is_wp_error( $time ) ) $window[ $key ] = $time;
             }
-            if ( 'spo2' === $report->category ) {
+            if ( 'garmin' === $report->provider && 'spo2' === $report->category ) {
                 foreach ( self::sleep_periods( $window ) as $period ) {
                     if ( $period['date'] < $start || $period['date'] > $end ) continue;
                     $key = $period['start_utc'] . '|' . $period['end_utc'];
@@ -115,12 +115,19 @@ final class Calendar_Measurements {
             }
             if ( ! $values || $report->provider_date < $start || $report->provider_date > $end ) continue;
             self::day( $days, $report->provider_date );
-            $days[ $report->provider_date ]['reports'][] = array( 'category' => $report->category, 'source' => 'Garmin', 'role' => 'provider_report', 'values' => $values, 'window' => $window );
+            $days[ $report->provider_date ]['reports'][] = array( 'category' => $report->category, 'source' => 'garmin' === $report->provider ? 'Garmin' : 'iHealth', 'role' => 'provider_report', 'values' => $values, 'window' => $window );
         }
         foreach ( (array) $rows as $row ) {
             $source = self::envelope( $row->values_json, 'values' );
             $values = null !== $source ? Health_Measurement_Store::normalize_values( $row->category, $source ) : null;
-            if ( 'garmin' !== $row->provider || ! in_array( $row->record_role, array( 'sample', 'hourly_average', 'sleep_average', 'calculated_mean' ), true ) || ( 'spo2' !== $row->category && 'sample' !== $row->record_role ) || null === $values || is_wp_error( $values ) || ! $values ) { ++$invalid; continue; }
+            if ( ! in_array( $row->provider, array( 'garmin', 'ihealth' ), true ) || ! in_array( $row->record_role, array( 'sample', 'hourly_average', 'sleep_average', 'calculated_mean' ), true ) || ( 'spo2' !== $row->category && 'sample' !== $row->record_role ) ) { ++$invalid; continue; }
+            if ( null === $values || is_wp_error( $values ) ) {
+                // Raw-only body composition is kept private and is not a normalized calendar reading.
+                if ( 'ihealth' === $row->provider && 'body_composition' === $row->category && is_array( $source ) && ! $source ) continue;
+                ++$invalid;
+                continue;
+            }
+            if ( ! $values || ( 'ihealth' === $row->provider && 'body_composition' === $row->category && ! $source ) ) continue;
             $utc = null === $row->observed_at_utc ? null : Health_Measurement_Store::timestamp( $row->observed_at_utc );
             $local = null === $row->source_local_time ? null : Health_Measurement_Store::timestamp( $row->source_local_time, false );
             if ( is_wp_error( $utc ) || is_wp_error( $local ) || ! in_array( $row->date_basis, array( 'provider_calendar', 'source_local', 'site_timezone' ), true ) ) { ++$invalid; continue; }
@@ -128,7 +135,10 @@ final class Calendar_Measurements {
                 $offset = (int) $row->source_offset_seconds;
                 if ( abs( $offset ) > 50400 || null === $utc || null === $local || ( new \DateTimeImmutable( $utc ) )->modify( ( $offset >= 0 ? '+' : '' ) . $offset . ' seconds' )->format( 'Y-m-d H:i:s.u' ) !== ( new \DateTimeImmutable( $local, new \DateTimeZone( 'UTC' ) ) )->format( 'Y-m-d H:i:s.u' ) ) { ++$invalid; continue; }
             }
-            $item = array( 'id' => (int) $row->id, 'category' => $row->category, 'source' => 'Garmin', 'role' => $row->record_role,
+            $provenance = self::envelope( $row->provenance_json, 'source' );
+            if ( in_array( 'weight', $provenance['deduplicated_values'] ?? array(), true ) ) unset( $values['weight'] );
+            if ( ! $values ) continue;
+            $item = array( 'id' => (int) $row->id, 'category' => $row->category, 'source' => 'garmin' === $row->provider ? 'Garmin' : 'iHealth', 'role' => $row->record_role,
                 'values' => $values, 'time_utc' => $utc, 'source_local_time' => $local,
                 'source_offset_seconds' => null !== $row->source_offset_seconds ? (int) $row->source_offset_seconds : null,
                 'date_basis' => $row->date_basis, 'has_conflict' => (bool) $row->has_conflict );

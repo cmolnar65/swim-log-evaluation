@@ -43,6 +43,7 @@ final class Plugin {
 			add_action( 'admin_menu', array( $ihealth_admin, 'register_menu' ), 20 );
 			add_action( 'admin_post_swimlog_ihealth_save', array( $ihealth_admin, 'save' ) );
 			add_action( 'admin_post_swimlog_ihealth_connect', array( $ihealth_admin, 'connect' ) );
+			add_action( 'admin_post_swimlog_ihealth_import_weight', array( $ihealth_admin, 'import_weight' ) );
 			add_action( 'admin_post_swimlog_ihealth_oauth_callback', array( $ihealth_admin, 'callback' ) );
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();

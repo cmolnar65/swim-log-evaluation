@@ -3,6 +3,7 @@
 use SwimLogEvaluation\Database;
 use SwimLogEvaluation\Health_Measurement_Store as Store;
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-calendar-measurements.php';
 global $wpdb;
 $original_user = get_current_user_id();
 $users = array();
@@ -22,6 +23,7 @@ try {
         $verify( ! is_wp_error( $id ), 'Create health test user.' );
         $users[$name] = (int) $id;
         ( new WP_User( $id ) )->add_cap( 'swimlog_manage_own_workouts' );
+        ( new WP_User( $id ) )->add_cap( 'swimlog_view_own_results' );
     }
     $owner = $users['owner'];
     wp_set_current_user( $owner );
@@ -49,6 +51,39 @@ try {
     $result = Store::save_report( $owner, $report, array( $conflict ) );
     $verify( ! is_wp_error( $result ) && 1 === $result['counts']['added'] && 1 === $result['counts']['conflicts'], 'Same-time differing samples retained as ambiguity.' );
     $verify( Store::get_for_user( $id, $owner )->has_conflict, 'Existing peer also reports ambiguity.' );
+
+    // iHealth exact cross-provider matches remain source-private but appear only once in the calendar.
+    $weight_time = gmdate( 'Y-m-d\\TH:i:s\\Z', strtotime( '2026-11-01 12:00:00 UTC' ) );
+    $weight_day = ( new DateTimeImmutable( $weight_time ) )->setTimezone( wp_timezone() )->format( 'Y-m-d' );
+    $garmin_weight_report = array( 'provider' => 'garmin', 'category' => 'weight', 'calendar_date' => $weight_day, 'fetched_at_utc' => '2026-11-02T12:00:00Z', 'summary' => array(), 'context' => array() );
+    $garmin_weight = array( 'role' => 'sample', 'observed_at_utc' => $weight_time, 'calendar_date' => $weight_day, 'date_basis' => 'site_timezone', 'values' => array( 'weight' => array( 'value' => '80', 'unit' => 'kg' ) ) );
+    $verify( ! is_wp_error( Store::save_report( $owner, $garmin_weight_report, array( $garmin_weight ) ) ), 'Synthetic Garmin weight observation insert.' );
+    $ihealth_report = array( 'provider' => 'ihealth', 'category' => 'body_composition', 'calendar_date' => $weight_day, 'fetched_at_utc' => '2026-11-02T12:01:00Z', 'summary' => array(), 'context' => array() );
+    $ihealth_weight = array( 'role' => 'sample', 'external_id' => 'synthetic-ihealth-duplicate', 'observed_at_utc' => $weight_time, 'calendar_date' => $weight_day, 'date_basis' => 'site_timezone',
+        'values' => array( 'weight' => array( 'value' => '80.000087', 'unit' => 'kg' ) ),
+        'provenance' => array( 'normalization_version' => 'ihealth-weight-v1', 'source_fields' => array( 'WeightValue' => array( 'value' => '176.37', 'unit' => 'lbs' ), 'FatValue' => array( 'value' => '18.2', 'unit' => 'unknown' ) ) ) );
+    $result = Store::save_report( $owner, $ihealth_report, array( $ihealth_weight ) );
+    $verify( ! is_wp_error( $result ) && 1 === $result['counts']['duplicates'], 'Exact cross-provider duplicate detected at gram precision.' );
+    $ihealth_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE user_id = %d AND provider = %s AND external_id = %s', $measurements, $owner, 'ihealth', 'synthetic-ihealth-duplicate' ) );
+    $verify( $ihealth_row && false !== strpos( $ihealth_row->provenance_json, '"unit":"unknown"' ), 'Raw composition is retained with unknown units in private provenance.' );
+    $calendar = Calendar_Measurements::for_user( $owner, $weight_day, $weight_day );
+    $weight_readings = array();
+    foreach ( $calendar['days'][0]['readings'] as $reading ) if ( 'weight' === $reading['category'] ) $weight_readings[] = $reading;
+    $verify( 1 === count( $weight_readings ) && 'Garmin' === $weight_readings[0]['source'], 'Exact duplicate is omitted from calendar display.' );
+    $verify( false === strpos( wp_json_encode( $calendar ), 'FatValue' ), 'Raw composition fields are not returned by the calendar projection.' );
+
+    $later = $ihealth_weight;
+    $later['external_id'] = 'synthetic-ihealth-later-reading';
+    $later['observed_at_utc'] = gmdate( 'Y-m-d\\TH:i:s\\Z', strtotime( '2026-11-01 12:30:00 UTC' ) );
+    $ihealth_report['fetched_at_utc'] = '2026-11-02T12:02:00Z';
+    $result = Store::save_report( $owner, $ihealth_report, array( $later ) );
+    $verify( ! is_wp_error( $result ) && 1 === $result['counts']['possible_duplicates'] && 1 === $result['counts']['added'], 'Same-day equal weight at a different time is retained and reported as a possible duplicate.' );
+    $different = $ihealth_weight;
+    $different['external_id'] = 'synthetic-ihealth-conflict';
+    $different['values']['weight']['value'] = '81';
+    $ihealth_report['fetched_at_utc'] = '2026-11-02T12:03:00Z';
+    $result = Store::save_report( $owner, $ihealth_report, array( $different ) );
+    $verify( ! is_wp_error( $result ) && 1 === $result['counts']['conflicts'] && 0 === $result['counts']['duplicates'], 'Different values at the same instant are retained as a conflict.' );
 
     $stable = $sample;
     $stable['external_id'] = 'synthetic-stable-id';
@@ -89,7 +124,7 @@ try {
 
     // A second DB connection holding the identical category lock blocks all overlapping writes.
     $peer = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );
-    $lock = 'swimlog_health_' . substr( hash( 'sha256', $wpdb->prefix . ':' . $owner . ':garmin:spo2' ), 0, 48 );
+    $lock = 'swimlog_health_' . substr( hash( 'sha256', $wpdb->prefix . ':' . $owner . ':measurements' ), 0, 48 );
     $verify( 1 === (int) $peer->get_var( $peer->prepare( 'SELECT GET_LOCK(%s, 0)', $lock ) ), 'Acquire competing connection lock.' );
     $verify( is_wp_error( Store::save_report( $owner, $updated, array( $sample ) ) ), 'Concurrent category writer rejected for retry.' );
     $peer->get_var( $peer->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );

@@ -36,10 +36,12 @@ final class Admin_IHealth {
         $owner = (int) get_current_user_id();
         $client_id = isset( $_POST['client_id'] ) && is_string( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
         $client_secret = isset( $_POST['client_secret'] ) && is_string( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque credential is validated by IHealth_OAuth before encrypted storage and must not be transformed.
+        $sc = isset( $_POST['sc'] ) && is_string( $_POST['sc'] ) ? wp_unslash( $_POST['sc'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque API signing code is validated by IHealth_OAuth before encrypted storage.
+        $weight_sv = isset( $_POST['weight_sv'] ) && is_string( $_POST['weight_sv'] ) ? wp_unslash( $_POST['weight_sv'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque API signing code is validated by IHealth_OAuth before encrypted storage.
         $submitted_api_names = isset( $_POST['api_names'] ) ? map_deep( wp_unslash( $_POST['api_names'] ), 'sanitize_text_field' ) : array();
         $api_names = is_array( $submitted_api_names ) ? array_values( array_filter( $submitted_api_names, 'is_string' ) ) : array();
         $revision = isset( $_POST['revision'] ) && is_string( $_POST['revision'] ) ? sanitize_text_field( wp_unslash( $_POST['revision'] ) ) : '';
-        $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision );
+        $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision, array( 'sc' => $sc, 'weight_sv' => $weight_sv ) );
         self::return_to_page( is_wp_error( $saved ) ? 'save_failed' : 'saved' );
     }
 
@@ -49,6 +51,21 @@ final class Admin_IHealth {
         $url = IHealth_OAuth::begin_authorization( (int) get_current_user_id() );
         if ( is_wp_error( $url ) ) self::return_to_page( 'authorization_failed' );
         wp_redirect( esc_url_raw( $url ), 303 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OAuth requires the fixed external iHealth authorization endpoint.
+        exit;
+    }
+
+    /** Run one bounded, nonce-protected private iHealth weight page. */
+    public function import_weight() {
+        self::require_admin();
+        check_admin_referer( 'swimlog_ihealth_import_weight' );
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-ihealth-weight-import.php';
+        $start = isset( $_POST['start_date'] ) && is_string( $_POST['start_date'] ) ? sanitize_text_field( wp_unslash( $_POST['start_date'] ) ) : '';
+        $end = isset( $_POST['end_date'] ) && is_string( $_POST['end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['end_date'] ) ) : '';
+        $page = isset( $_POST['page_index'] ) ? absint( wp_unslash( $_POST['page_index'] ) ) : 1;
+        $result = IHealth_Weight_Import::import_page( (int) get_current_user_id(), $start, $end, $page );
+        $args = array( 'page' => self::PAGE, 'ihealth_status' => is_wp_error( $result ) ? 'import_failed' : 'imported' );
+        if ( ! is_wp_error( $result ) ) foreach ( array( 'added', 'updated', 'skipped', 'duplicates', 'possible_duplicates', 'conflicts', 'invalid', 'page', 'has_more' ) as $key ) $args[ 'ihealth_' . $key ] = $result[ $key ];
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
         exit;
     }
 
@@ -73,6 +90,7 @@ final class Admin_IHealth {
             'verified' => __( 'iHealth confirmed the selected categories and the app credentials were verified.', 'chriss-swim-training-progress-evaluation' ),
             'save_failed' => __( 'The iHealth app settings could not be saved. Check the fields and reload before trying again.', 'chriss-swim-training-progress-evaluation' ),
             'authorization_failed' => __( 'iHealth authorization did not complete. Check the credentials, selected categories and registered redirect, then try again.', 'chriss-swim-training-progress-evaluation' ),
+            'import_failed' => __( 'The private iHealth import could not be completed. No provider payload was displayed or logged.', 'chriss-swim-training-progress-evaluation' ),
         );
         $status = isset( $_GET['ihealth_status'] ) && is_string( $_GET['ihealth_status'] ) ? sanitize_key( wp_unslash( $_GET['ihealth_status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only notice selector; it does not change settings or data.
         $host = wp_parse_url( IHealth_OAuth::callback_url(), PHP_URL_HOST );
@@ -83,7 +101,19 @@ final class Admin_IHealth {
             <?php if ( isset( $statuses[ $status ] ) ) : ?>
                 <div class="notice <?php echo in_array( $status, array( 'saved', 'verified' ), true ) ? 'notice-success' : 'notice-error'; ?> is-dismissible"><p><?php echo esc_html( $statuses[ $status ] ); ?></p></div>
             <?php endif; ?>
-            <p><?php esc_html_e( 'Enter the iHealth Client ID and Client Secret from the developer portal. These app-level credentials are encrypted in WordPress and shared by the integration. Only a WordPress administrator can view or change this screen. A saved secret is never displayed; leave the secret field blank to retain it.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+            <?php if ( 'imported' === $status ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php
+                    printf(
+                        /* translators: 1: added count, 2: updated count, 3: skipped count, 4: exact duplicate count, 5: possible duplicate count, 6: conflict count, 7: invalid count, 8: provider page number. */
+                        esc_html__( 'iHealth page %8$d import complete: %1$d added, %2$d updated, %3$d unchanged, %4$d exact cross-provider duplicates, %5$d possible same-day duplicates, %6$d same-time conflicts, %7$d unusable records.', 'chriss-swim-training-progress-evaluation' ),
+                        absint( wp_unslash( $_GET['ihealth_added'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_updated'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_skipped'] ?? 0 ) ),
+                        absint( wp_unslash( $_GET['ihealth_duplicates'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_possible_duplicates'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_conflicts'] ?? 0 ) ),
+                        absint( wp_unslash( $_GET['ihealth_invalid'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_page'] ?? 1 ) )
+                    );
+                    if ( isset( $_GET['ihealth_has_more'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['ihealth_has_more'] ) ) ) esc_html_e( ' More provider records may be available on a later page.', 'chriss-swim-training-progress-evaluation' );
+                ?></p></div>
+            <?php endif; ?>
+            <p><?php esc_html_e( 'Enter the iHealth Client ID and Client Secret from the developer portal. These app-level credentials are encrypted in WordPress and shared by the integration. Only a WordPress administrator can view or change this screen. Saved secrets are never displayed; leave a secret field blank to retain its existing value.', 'chriss-swim-training-progress-evaluation' ); ?></p>
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                 <input type="hidden" name="action" value="swimlog_ihealth_save">
                 <?php wp_nonce_field( 'swimlog_ihealth_save_application' ); ?>
@@ -91,16 +121,30 @@ final class Admin_IHealth {
                 <table class="form-table" role="presentation">
                     <tr><th scope="row"><label for="swimlog-ihealth-client-id"><?php esc_html_e( 'iHealth Client ID', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-client-id" name="client_id" type="text" class="regular-text" maxlength="128" autocomplete="off" required value="<?php echo esc_attr( $app['client_id'] ); ?>"></td></tr>
                     <tr><th scope="row"><label for="swimlog-ihealth-client-secret"><?php esc_html_e( 'iHealth Client Secret', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-client-secret" name="client_secret" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_secret'] ? esc_html__( 'A secret is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'No secret is saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+                    <tr><th scope="row"><label for="swimlog-ihealth-sc"><?php esc_html_e( 'iHealth SC', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-sc" name="sc" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_sc'] ? esc_html__( 'An SC code is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Required by iHealth for Personal API data requests. This is separate from Client ID and Client Secret.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+                    <tr><th scope="row"><label for="swimlog-ihealth-weight-sv"><?php esc_html_e( 'iHealth Weight API SV', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-weight-sv" name="weight_sv" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_weight_sv'] ? esc_html__( 'A Weight API SV code is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Required by iHealth for weight data requests. Obtain the app-specific code from iHealth; this is separate from Client ID and Client Secret.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
                 </table>
                 <fieldset>
                     <legend><?php esc_html_e( 'Categories to request from iHealth', 'chriss-swim-training-progress-evaluation' ); ?></legend>
                     <?php foreach ( IHealth_OAuth::api_names() as $api_name => $label ) : ?>
                         <label class="ihealth-api-category"><input type="checkbox" name="api_names[]" value="<?php echo esc_attr( $api_name ); ?>" <?php checked( in_array( $api_name, $app['api_names'], true ) ); ?>> <?php echo esc_html( $label ); ?></label>
                     <?php endforeach; ?>
-                    <p class="description"><?php esc_html_e( 'Select only the categories needed. This setup verifies authorization; it does not yet import data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                    <p class="description"><?php esc_html_e( 'Select only the categories needed. Weight import is a separate manual action below and requires the confirmed Weight API authorization.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 </fieldset>
                 <?php submit_button( __( 'Save iHealth app settings', 'chriss-swim-training-progress-evaluation' ) ); ?>
             </form>
+
+            <?php if ( is_array( $connection ) && in_array( 'OpenApiWeight', $connection['api_names'], true ) && $app['has_sc'] && $app['has_weight_sv'] ) : ?>
+                <hr>
+                <h2><?php esc_html_e( 'Import private iHealth weight data', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+                <p><?php esc_html_e( 'This manual import requests one bounded Personal API page. Normalized weight is stored in kilograms when iHealth supplies a recognized weight unit. Other returned composition numbers are retained privately with their original field names and unit marked unknown; they are not displayed, converted, interpreted or used in calculations. Same-instant weights matching another provider at gram precision are marked as duplicates and omitted from the calendar; same-day readings at different times are retained and flagged as possible duplicates. No automatic sync is enabled.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <input type="hidden" name="action" value="swimlog_ihealth_import_weight">
+                    <?php wp_nonce_field( 'swimlog_ihealth_import_weight' ); ?>
+                    <p><label for="swimlog-ihealth-start"><?php esc_html_e( 'From', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-start" name="start_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', time() - 6 * DAY_IN_SECONDS, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-end"><?php esc_html_e( 'Through', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-end" name="end_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-page"><?php esc_html_e( 'Page', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="number" min="1" max="20" id="swimlog-ihealth-page" name="page_index" value="1" required></p>
+                    <?php submit_button( __( 'Import iHealth weight page', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+                </form>
+            <?php endif; ?>
 
             <hr>
             <h2><?php esc_html_e( 'OAuth redirect', 'chriss-swim-training-progress-evaluation' ); ?></h2>

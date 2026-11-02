@@ -16,7 +16,7 @@ For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred 
 
 == Development status ==
 
-The develop branch continues v1.3-dev; public stable remains 1.2. Development schema is 1.6: additive measurement storage (1.3), activity environment (1.4), canonical workout visibility (1.5) and private swim goals (1.6). Private Garmin measurements and historical imports, running/walking logs with separate swim-excluded totals, canonical read-only workout sharing, and swimming goals are implemented on develop. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
+The develop branch continues v1.3-dev; public stable remains 1.2. Development schema is 1.6: additive measurement storage (1.3), activity environment (1.4), canonical workout visibility (1.5) and private swim goals (1.6). Private Garmin measurements and historical imports, the administrator-only manual iHealth weight/body-composition importer, running/walking logs with separate swim-excluded totals, canonical read-only workout sharing, and swimming goals are implemented on develop. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
 
 == Garmin measurements and historical imports (v1.3 development) ==
 
@@ -30,7 +30,9 @@ Exact duplicates are skipped; distinct same-day readings stay. Activity identiti
 
 Result filters show all, failed or needs-review items, twenty per page. Counts distinguish swims, individual readings and daily category records (including weight/BMI bookkeeping and SpO2 reports). Empty responses are not proof that no historical data ever existed. An interrupted committed import can replay as already present/skipped without a second record. Review counts reflect the scan outcome, not subsequent decisions on another screen.
 
-Jobs and health data are private to the signed-in owner and excluded from public sharing/existing external portability responses. Calendar measurements follow workouts/events and retain source dates, units and multiple readings. SpO2 daily/window averages, sleep summaries and seven-day baselines remain distinct; no unverified raw-sample average is invented. Blood pressure, other composition fields and individual/hourly SpO2 are not imported.
+Jobs and health data are private to the signed-in owner and excluded from public sharing/existing external portability responses. Calendar measurements follow workouts/events and retain source dates, units and multiple readings. SpO2 daily/window averages, sleep summaries and seven-day baselines remain distinct; no unverified raw-sample average is invented. The separate iHealth setup screen offers a manual, bounded weight page import; weight is normalized only for recognized API units, and other supported Personal API composition fields remain private raw values labeled with unknown units and are not interpreted or displayed. Exact same-time cross-provider weights are omitted from calendar readings; equal weights at different times are retained and reported as possible duplicates, while different same-time weights remain conflicts. Blood pressure and individual/hourly SpO2 are not imported.
+
+The iHealth Personal API import requires the administrator's verified OAuth grant plus app-specific SC and Weight API SV codes. It requests one page per administrator action, accepts at most 90 days, and does not enable automatic sync. It uses synthetic tests only; no account-specific payload or physical device has been verified.
 
 The repository contains docs/v1.3-garmin-user-guide.md with installation, recovery, limitations and the pending test-site acceptance checklist. Documentation/development scripts and confidential source PDFs are excluded from installable packages.
 
