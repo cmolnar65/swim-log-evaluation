@@ -1,15 +1,22 @@
 <?php
 use PHPUnit\Framework\TestCase;
+use SwimLogEvaluation\Admin_IHealth;
 use SwimLogEvaluation\IHealth_OAuth as IHealth;
 
 require_once dirname( __DIR__ ) . '/includes/class-ihealth-oauth.php';
 require_once dirname( __DIR__ ) . '/includes/class-ihealth-personal-api.php';
+require_once dirname( __DIR__ ) . '/admin/class-admin-ihealth.php';
 
 $GLOBALS['swimlog_test_ihealth_meta'] = array();
 $GLOBALS['swimlog_test_ihealth_http'] = array();
 $GLOBALS['swimlog_test_ihealth_url'] = '';
 $GLOBALS['swimlog_test_ihealth_args'] = array();
 
+if ( ! function_exists( 'wp_unslash' ) ) {
+    function wp_unslash( $value ) {
+        return is_array( $value ) ? array_map( 'wp_unslash', $value ) : $value;
+    }
+}
 if ( ! function_exists( 'wp_salt' ) ) {
     function wp_salt( $scheme = 'auth' ) { return 'synthetic-ihealth-test-salt-' . $scheme; }
 }
@@ -79,6 +86,26 @@ final class IHealthOAuthTest extends TestCase {
         $swimlog_test_current_user_id = 42;
         $swimlog_test_capabilities = array( 'manage_options' => true );
         $swimlog_test_logged_in = true;
+    }
+
+    public function test_ihealth_notice_parameters_are_allowlisted_and_scalar() {
+        $original_get = $_GET;
+        $_GET = array(
+            'ihealth_status' => ' imported ',
+            'ihealth_added' => '12',
+            'ihealth_updated' => array( 'unexpected' ),
+            'unrecognized' => 'not accepted',
+        );
+        $reader = new ReflectionMethod( Admin_IHealth::class, 'notice_parameter' );
+        $reader->setAccessible( true );
+        try {
+            $this->assertSame( 'imported', $reader->invoke( null, 'ihealth_status' ) );
+            $this->assertSame( '12', $reader->invoke( null, 'ihealth_added' ) );
+            $this->assertSame( '', $reader->invoke( null, 'ihealth_updated' ) );
+            $this->assertSame( '', $reader->invoke( null, 'unrecognized' ) );
+        } finally {
+            $_GET = $original_get;
+        }
     }
 
     private function start_authorization( $owner ) {
