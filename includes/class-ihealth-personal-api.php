@@ -16,14 +16,16 @@ final class IHealth_Personal_API {
 
     /**
      * Fetch one JSON resource for the currently signed-in grant owner.
-     * Resource names must come from the official iHealth Personal API contract. This method
-     * does not follow provider pagination URLs, log URLs, or expose data through WordPress routes.
+     * Resource names are restricted to implemented Personal API importers (weight.json and
+     * account-verified bp.json). This method never follows provider pagination URLs or exposes
+     * data through WordPress routes.
      */
     public static function get_resource( $owner, $api_name, $resource, $params = array() ) {
         $context = IHealth_OAuth::personal_api_context( $owner, $api_name );
         if ( is_wp_error( $context ) ) return $context;
 
-        if ( ! is_string( $resource ) || ! preg_match( '/^[A-Za-z][A-Za-z0-9_]{0,63}\.json$/D', $resource ) ) {
+        $resources = array( 'OpenApiWeight' => 'weight.json', 'OpenApiBP' => 'bp.json' );
+        if ( ! is_string( $resource ) || ! isset( $resources[ $api_name ] ) || $resources[ $api_name ] !== $resource ) {
             return self::error( 'resource', __( 'The iHealth API resource name is invalid.', 'chriss-swim-training-progress-evaluation' ) );
         }
         if ( ! is_array( $params ) || count( $params ) > 20 ) return self::error( 'parameters', __( 'The iHealth API request parameters are invalid.', 'chriss-swim-training-progress-evaluation' ) );

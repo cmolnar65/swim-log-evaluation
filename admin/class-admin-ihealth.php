@@ -37,7 +37,7 @@ final class Admin_IHealth {
      * @return string
      */
     private static function notice_parameter( $key ) {
-        $allowed = array( 'ihealth_status', 'ihealth_added', 'ihealth_updated', 'ihealth_skipped', 'ihealth_duplicates', 'ihealth_possible_duplicates', 'ihealth_conflicts', 'ihealth_invalid', 'ihealth_page', 'ihealth_has_more' );
+        $allowed = array( 'ihealth_status', 'ihealth_added', 'ihealth_updated', 'ihealth_skipped', 'ihealth_duplicates', 'ihealth_possible_duplicates', 'ihealth_conflicts', 'ihealth_invalid', 'ihealth_page', 'ihealth_has_more', 'ihealth_bp_added', 'ihealth_bp_updated', 'ihealth_bp_skipped', 'ihealth_bp_invalid', 'ihealth_bp_page', 'ihealth_bp_has_more' );
         if ( ! in_array( $key, $allowed, true ) ) {
             return '';
         }
@@ -56,10 +56,11 @@ final class Admin_IHealth {
         $client_secret = isset( $_POST['client_secret'] ) && is_string( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque credential is validated by IHealth_OAuth before encrypted storage and must not be transformed.
         $sc = isset( $_POST['sc'] ) && is_string( $_POST['sc'] ) ? wp_unslash( $_POST['sc'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque API signing code is validated by IHealth_OAuth before encrypted storage.
         $weight_sv = isset( $_POST['weight_sv'] ) && is_string( $_POST['weight_sv'] ) ? wp_unslash( $_POST['weight_sv'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque API signing code is validated by IHealth_OAuth before encrypted storage.
+        $blood_pressure_sv = isset( $_POST['blood_pressure_sv'] ) && is_string( $_POST['blood_pressure_sv'] ) ? wp_unslash( $_POST['blood_pressure_sv'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Opaque API signing code is validated by IHealth_OAuth before encrypted storage.
         $submitted_api_names = isset( $_POST['api_names'] ) ? map_deep( wp_unslash( $_POST['api_names'] ), 'sanitize_text_field' ) : array();
         $api_names = is_array( $submitted_api_names ) ? array_values( array_filter( $submitted_api_names, 'is_string' ) ) : array();
         $revision = isset( $_POST['revision'] ) && is_string( $_POST['revision'] ) ? sanitize_text_field( wp_unslash( $_POST['revision'] ) ) : '';
-        $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision, array( 'sc' => $sc, 'weight_sv' => $weight_sv ) );
+        $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision, array( 'sc' => $sc, 'weight_sv' => $weight_sv, 'blood_pressure_sv' => $blood_pressure_sv ) );
         self::return_to_page( is_wp_error( $saved ) ? 'save_failed' : 'saved' );
     }
 
@@ -87,6 +88,21 @@ final class Admin_IHealth {
         exit;
     }
 
+    /** Run one bounded, nonce-protected private iHealth blood-pressure page. */
+    public function import_blood_pressure() {
+        self::require_admin();
+        check_admin_referer( 'swimlog_ihealth_import_blood_pressure' );
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-ihealth-blood-pressure-import.php';
+        $start = isset( $_POST['start_date'] ) && is_string( $_POST['start_date'] ) ? sanitize_text_field( wp_unslash( $_POST['start_date'] ) ) : '';
+        $end = isset( $_POST['end_date'] ) && is_string( $_POST['end_date'] ) ? sanitize_text_field( wp_unslash( $_POST['end_date'] ) ) : '';
+        $page = isset( $_POST['page_index'] ) ? absint( wp_unslash( $_POST['page_index'] ) ) : 1;
+        $result = IHealth_Blood_Pressure_Import::import_page( (int) get_current_user_id(), $start, $end, $page );
+        $args = array( 'page' => self::PAGE, 'ihealth_status' => is_wp_error( $result ) ? 'bp_import_failed' : 'bp_imported' );
+        if ( ! is_wp_error( $result ) ) foreach ( array( 'added', 'updated', 'skipped', 'invalid', 'page', 'has_more' ) as $key ) $args[ 'ihealth_bp_' . $key ] = $result[ $key ];
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+        exit;
+    }
+
     public function callback() {
         self::require_admin();
         $request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
@@ -109,6 +125,7 @@ final class Admin_IHealth {
             'save_failed' => __( 'The iHealth app settings could not be saved. Check the fields and reload before trying again.', 'chriss-swim-training-progress-evaluation' ),
             'authorization_failed' => __( 'iHealth authorization did not complete. Check the credentials, selected categories and registered redirect, then try again.', 'chriss-swim-training-progress-evaluation' ),
             'import_failed' => __( 'The private iHealth import could not be completed. No provider payload was displayed or logged.', 'chriss-swim-training-progress-evaluation' ),
+            'bp_import_failed' => __( 'The private iHealth blood-pressure import could not be completed. No provider payload was displayed or logged.', 'chriss-swim-training-progress-evaluation' ),
         );
         $status = sanitize_key( self::notice_parameter( 'ihealth_status' ) );
         $host = wp_parse_url( IHealth_OAuth::callback_url(), PHP_URL_HOST );
@@ -131,6 +148,16 @@ final class Admin_IHealth {
                     if ( '1' === self::notice_parameter( 'ihealth_has_more' ) ) esc_html_e( ' More provider records may be available on a later page.', 'chriss-swim-training-progress-evaluation' );
                 ?></p></div>
             <?php endif; ?>
+            <?php if ( 'bp_imported' === $status ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php
+                    printf(
+                        /* translators: 1: added count, 2: updated count, 3: unchanged count, 4: invalid count, 5: page number. */
+                        esc_html__( 'iHealth blood-pressure page %5$d import complete: %1$d added, %2$d updated, %3$d unchanged, %4$d unusable records.', 'chriss-swim-training-progress-evaluation' ),
+                        absint( self::notice_parameter( 'ihealth_bp_added' ) ), absint( self::notice_parameter( 'ihealth_bp_updated' ) ), absint( self::notice_parameter( 'ihealth_bp_skipped' ) ), absint( self::notice_parameter( 'ihealth_bp_invalid' ) ), absint( self::notice_parameter( 'ihealth_bp_page' ) )
+                    );
+                    if ( '1' === self::notice_parameter( 'ihealth_bp_has_more' ) ) esc_html_e( ' More provider records may be available on a later page.', 'chriss-swim-training-progress-evaluation' );
+                ?></p></div>
+            <?php endif; ?>
             <p><?php esc_html_e( 'Enter the iHealth Client ID and Client Secret from the developer portal. These app-level credentials are encrypted in WordPress and shared by the integration. Only a WordPress administrator can view or change this screen. Saved secrets are never displayed; leave a secret field blank to retain its existing value.', 'chriss-swim-training-progress-evaluation' ); ?></p>
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                 <input type="hidden" name="action" value="swimlog_ihealth_save">
@@ -141,6 +168,7 @@ final class Admin_IHealth {
                     <tr><th scope="row"><label for="swimlog-ihealth-client-secret"><?php esc_html_e( 'iHealth Client Secret', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-client-secret" name="client_secret" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_secret'] ? esc_html__( 'A secret is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'No secret is saved yet.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
                     <tr><th scope="row"><label for="swimlog-ihealth-sc"><?php esc_html_e( 'iHealth SC', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-sc" name="sc" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_sc'] ? esc_html__( 'An SC code is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Required by iHealth for Personal API data requests. This is separate from Client ID and Client Secret.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
                     <tr><th scope="row"><label for="swimlog-ihealth-weight-sv"><?php esc_html_e( 'iHealth Weight API SV', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-weight-sv" name="weight_sv" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_weight_sv'] ? esc_html__( 'A Weight API SV code is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Required by iHealth for weight data requests. Obtain the app-specific code from iHealth; this is separate from Client ID and Client Secret.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+                    <tr><th scope="row"><label for="swimlog-ihealth-blood-pressure-sv"><?php esc_html_e( 'iHealth Blood Pressure API SV', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input id="swimlog-ihealth-blood-pressure-sv" name="blood_pressure_sv" type="password" class="regular-text" maxlength="1024" autocomplete="new-password" value=""><p class="description"><?php echo $app['has_blood_pressure_sv'] ? esc_html__( 'A Blood Pressure API SV code is saved. Enter a new value only to replace it.', 'chriss-swim-training-progress-evaluation' ) : esc_html__( 'Required for blood-pressure requests. Obtain the app-specific Blood Pressure SV code from iHealth; it may differ from the Weight API SV.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
                 </table>
                 <fieldset>
                     <legend><?php esc_html_e( 'Categories to request from iHealth', 'chriss-swim-training-progress-evaluation' ); ?></legend>
@@ -161,6 +189,18 @@ final class Admin_IHealth {
                     <?php wp_nonce_field( 'swimlog_ihealth_import_weight' ); ?>
                     <p><label for="swimlog-ihealth-start"><?php esc_html_e( 'From', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-start" name="start_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', time() - 6 * DAY_IN_SECONDS, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-end"><?php esc_html_e( 'Through', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-end" name="end_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-page"><?php esc_html_e( 'Page', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="number" min="1" max="20" id="swimlog-ihealth-page" name="page_index" value="1" required></p>
                     <?php submit_button( __( 'Import iHealth weight page', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
+                </form>
+            <?php endif; ?>
+
+            <?php if ( is_array( $connection ) && in_array( 'OpenApiBP', $connection['api_names'], true ) && $app['has_sc'] && $app['has_blood_pressure_sv'] ) : ?>
+                <hr>
+                <h2><?php esc_html_e( 'Import private iHealth blood pressure and pulse', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+                <p><?php esc_html_e( 'This manual import requests one bounded Personal API page. Pressure is imported only when iHealth reports mmHg. Readings remain private to this connected WordPress administrator and are shown only in the private calendar. Device flags, notes, location fields and source metadata are not imported. Repeating a page is safe and reports counts only; no automatic sync is enabled.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <input type="hidden" name="action" value="swimlog_ihealth_import_blood_pressure">
+                    <?php wp_nonce_field( 'swimlog_ihealth_import_blood_pressure' ); ?>
+                    <p><label for="swimlog-ihealth-bp-start"><?php esc_html_e( 'From', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-bp-start" name="start_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', time() - 6 * DAY_IN_SECONDS, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-bp-end"><?php esc_html_e( 'Through', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="date" id="swimlog-ihealth-bp-end" name="end_date" required value="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"> <label for="swimlog-ihealth-bp-page"><?php esc_html_e( 'Page', 'chriss-swim-training-progress-evaluation' ); ?></label> <input type="number" min="1" max="20" id="swimlog-ihealth-bp-page" name="page_index" value="1" required></p>
+                    <?php submit_button( __( 'Import iHealth blood-pressure page', 'chriss-swim-training-progress-evaluation' ), 'secondary', 'submit', false ); ?>
                 </form>
             <?php endif; ?>
 

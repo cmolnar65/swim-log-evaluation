@@ -86,6 +86,7 @@ final class IHealth_OAuth {
             'has_secret' => is_array( $app ) && '' !== $app['client_secret'],
             'has_sc' => is_array( $app ) && is_string( $app['sc'] ?? null ) && '' !== $app['sc'],
             'has_weight_sv' => is_array( $app ) && is_string( $app['weight_sv'] ?? null ) && '' !== $app['weight_sv'],
+            'has_blood_pressure_sv' => is_array( $app ) && is_string( $app['blood_pressure_sv'] ?? null ) && '' !== $app['blood_pressure_sv'],
             'api_names' => is_array( $app ) ? array_values( array_intersect( array_keys( self::api_names() ), $app['api_names'] ) ) : array(),
             'revision' => self::revision(),
         );
@@ -109,20 +110,22 @@ final class IHealth_OAuth {
         if ( ! is_array( $security_codes ) ) return self::error( 'security_codes', __( 'The iHealth API security codes are invalid.', 'chriss-swim-training-progress-evaluation' ) );
         $sc = is_string( $security_codes['sc'] ?? null ) ? $security_codes['sc'] : '';
         $weight_sv = is_string( $security_codes['weight_sv'] ?? null ) ? $security_codes['weight_sv'] : '';
+        $blood_pressure_sv = is_string( $security_codes['blood_pressure_sv'] ?? null ) ? $security_codes['blood_pressure_sv'] : '';
         $same_client = is_array( $old ) && hash_equals( $old['client_id'], $client_id );
         if ( '' === $sc && $same_client ) $sc = is_string( $old['sc'] ?? null ) ? $old['sc'] : '';
         if ( '' === $weight_sv && $same_client ) $weight_sv = is_string( $old['weight_sv'] ?? null ) ? $old['weight_sv'] : '';
-        foreach ( array( $sc, $weight_sv ) as $code ) {
+        if ( '' === $blood_pressure_sv && $same_client ) $blood_pressure_sv = is_string( $old['blood_pressure_sv'] ?? null ) ? $old['blood_pressure_sv'] : '';
+        foreach ( array( $sc, $weight_sv, $blood_pressure_sv ) as $code ) {
             if ( strlen( $code ) > 1024 || ( '' !== $code && preg_match( '/[\x00-\x20\x7f]/', $code ) ) ) return self::error( 'security_codes', __( 'Enter valid iHealth API security codes.', 'chriss-swim-training-progress-evaluation' ) );
         }
         try {
-            $sealed = self::seal( array( 'client_id' => $client_id, 'client_secret' => $client_secret, 'api_names' => $api_names, 'sc' => $sc, 'weight_sv' => $weight_sv ), 'application' );
+            $sealed = self::seal( array( 'client_id' => $client_id, 'client_secret' => $client_secret, 'api_names' => $api_names, 'sc' => $sc, 'weight_sv' => $weight_sv, 'blood_pressure_sv' => $blood_pressure_sv ), 'application' );
         } catch ( \Throwable $exception ) {
             return self::error( 'storage', __( 'The iHealth app credentials could not be protected for storage.', 'chriss-swim-training-progress-evaluation' ), 503 );
         }
         update_option( self::APP_OPTION, $sealed, false );
         $saved = self::application();
-        if ( ! is_array( $saved ) || ! hash_equals( $client_id, $saved['client_id'] ) || ! hash_equals( $client_secret, $saved['client_secret'] ) || $api_names !== $saved['api_names'] || $sc !== ( $saved['sc'] ?? '' ) || $weight_sv !== ( $saved['weight_sv'] ?? '' ) ) {
+        if ( ! is_array( $saved ) || ! hash_equals( $client_id, $saved['client_id'] ) || ! hash_equals( $client_secret, $saved['client_secret'] ) || $api_names !== $saved['api_names'] || $sc !== ( $saved['sc'] ?? '' ) || $weight_sv !== ( $saved['weight_sv'] ?? '' ) || $blood_pressure_sv !== ( $saved['blood_pressure_sv'] ?? '' ) ) {
             return self::error( 'storage', __( 'The saved iHealth app settings could not be confirmed.', 'chriss-swim-training-progress-evaluation' ), 503 );
         }
         return true;
@@ -272,8 +275,11 @@ final class IHealth_OAuth {
             || ! in_array( $api_name, $app['api_names'], true ) || ! in_array( $api_name, $connection['api_names'], true ) ) {
             return self::error( 'scope', __( 'The iHealth account is not authorized for this category. Review app settings and authorize it again.', 'chriss-swim-training-progress-evaluation' ), 403 );
         }
-        $api_sv = 'OpenApiWeight' === $api_name ? ( $app['weight_sv'] ?? '' ) : '';
-        if ( ! is_string( $app['sc'] ?? null ) || '' === $app['sc'] || ! is_string( $api_sv ) || '' === $api_sv ) return self::error( 'api_codes', __( 'Enter the iHealth SC and Weight API SV codes in iHealth App Setup before importing weight data.', 'chriss-swim-training-progress-evaluation' ), 409 );
+        $api_sv = 'OpenApiWeight' === $api_name ? ( $app['weight_sv'] ?? '' ) : ( 'OpenApiBP' === $api_name ? ( $app['blood_pressure_sv'] ?? '' ) : '' );
+        $api_label = 'OpenApiWeight' === $api_name ? __( 'Weight', 'chriss-swim-training-progress-evaluation' ) : ( 'OpenApiBP' === $api_name ? __( 'Blood pressure', 'chriss-swim-training-progress-evaluation' ) : __( 'requested', 'chriss-swim-training-progress-evaluation' ) );
+        if ( ! is_string( $app['sc'] ?? null ) || '' === $app['sc'] || ! is_string( $api_sv ) || '' === $api_sv ) {
+            return self::error( 'api_codes', sprintf( __( 'Enter the iHealth SC and %s API SV codes in iHealth App Setup before importing data.', 'chriss-swim-training-progress-evaluation' ), $api_label ), 409 );
+        }
         // Leave a small safety margin so requests do not begin with a nearly expired token.
         if ( (int) ( $connection['expires_at'] ?? 0 ) <= time() + 60 ) return self::error( 'reauthorize', __( 'The iHealth access grant has expired or is about to expire. Authorize the account again.', 'chriss-swim-training-progress-evaluation' ), 409 );
 

@@ -215,12 +215,12 @@ final class Health_Measurement_Store {
         $category = $report['category'] ?? '';
         $day = $report['calendar_date'] ?? '';
         if ( ! in_array( $provider, array( 'garmin', 'ihealth' ), true ) || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
-        if ( 'ihealth' === $provider && ! in_array( $category, array( 'weight', 'body_composition' ), true ) ) return self::error( 'report' );
+        if ( 'ihealth' === $provider && ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure' ), true ) ) return self::error( 'report' );
         $fetched = self::timestamp( $report['fetched_at_utc'] ?? '' );
         $summary = self::normalize_values( $category, $report['summary'] ?? array(), true );
         $context = self::context( $report['context'] ?? array() );
         if ( is_wp_error( $fetched ) || is_wp_error( $summary ) || is_wp_error( $context ) || strlen( $fetched ) !== 20 ) return self::error( 'report' );
-        // This service never authorizes an undocumented blood-pressure fetch.
+        // Transport and category authorization remain restricted to the explicit iHealth Personal API importer.
         $rows = array();
         foreach ( $observations as $observation ) {
             $row = self::normalize_observation( $category, $observation );

@@ -93,6 +93,7 @@ final class IHealthOAuthTest extends TestCase {
         $_GET = array(
             'ihealth_status' => ' imported ',
             'ihealth_added' => '12',
+            'ihealth_bp_added' => '3',
             'ihealth_updated' => array( 'unexpected' ),
             'unrecognized' => 'not accepted',
         );
@@ -101,6 +102,7 @@ final class IHealthOAuthTest extends TestCase {
         try {
             $this->assertSame( 'imported', $reader->invoke( null, 'ihealth_status' ) );
             $this->assertSame( '12', $reader->invoke( null, 'ihealth_added' ) );
+            $this->assertSame( '3', $reader->invoke( null, 'ihealth_bp_added' ) );
             $this->assertSame( '', $reader->invoke( null, 'ihealth_updated' ) );
             $this->assertSame( '', $reader->invoke( null, 'unrecognized' ) );
         } finally {
@@ -266,6 +268,34 @@ final class IHealthOAuthTest extends TestCase {
         $this->assertArrayNotHasKey( 'access_token', IHealth::connection( 42 ) );
     }
 
+    public function test_blood_pressure_scope_uses_its_encrypted_api_signing_code() {
+        global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url, $swimlog_test_ihealth_args, $swimlog_test_options;
+        $owner = 42;
+        $view = IHealth::application_view();
+        $this->assertTrue( IHealth::save_application( $owner, 'synthetic-bp-client', 'synthetic-bp-secret', array( 'OpenApiBP' ), $view['revision'], array( 'sc' => 'synthetic-bp-sc', 'blood_pressure_sv' => 'synthetic-bp-sv' ) ) );
+        $app_view = IHealth::application_view();
+        $this->assertTrue( $app_view['has_blood_pressure_sv'] );
+        $this->assertArrayNotHasKey( 'blood_pressure_sv', $app_view );
+        $this->assertStringNotContainsString( 'synthetic-bp-sv', $swimlog_test_options[ IHealth::APP_OPTION ] );
+
+        list( , $state ) = $this->start_authorization( $owner );
+        $swimlog_test_ihealth_http = array(
+            'response' => array( 'code' => 200 ),
+            'body' => wp_json_encode( array( 'APIName' => 'OpenApiBP', 'AccessToken' => 'synthetic-bp-token', 'RefreshToken' => 'synthetic-bp-refresh', 'UserID' => 'synthetic-bp-user', 'Expires' => 3600 ) ),
+        );
+        $this->assertTrue( IHealth::complete_authorization( $owner, array( 'state' => $state, 'code' => 'synthetic-bp-code' ) ) );
+        $swimlog_test_ihealth_http = array( 'response' => array( 'code' => 200 ), 'body' => wp_json_encode( array( 'BPUnit' => 'mmHg', 'BPDataList' => array() ) ) );
+        $result = \SwimLogEvaluation\IHealth_Personal_API::get_resource( $owner, 'OpenApiBP', 'bp.json', array( 'page_index' => 1 ) );
+
+        $this->assertSame( array( 'BPUnit' => 'mmHg', 'BPDataList' => array() ), $result );
+        $this->assertSame( '/openapiv2/user/synthetic-bp-user/bp.json/', parse_url( $swimlog_test_ihealth_url, PHP_URL_PATH ) );
+        parse_str( (string) parse_url( $swimlog_test_ihealth_url, PHP_URL_QUERY ), $query );
+        $this->assertSame( 'synthetic-bp-sv', $query['sv'] ?? '' );
+        $this->assertSame( 'synthetic-bp-sc', $query['sc'] ?? '' );
+        $this->assertSame( 0, $swimlog_test_ihealth_args['redirection'] );
+        $this->assertTrue( $swimlog_test_ihealth_args['sslverify'] );
+    }
+
     public function test_personal_api_rejects_wrong_owner_scope_and_unsafe_request_inputs() {
         global $swimlog_test_current_user_id, $swimlog_test_ihealth_url;
         $this->authorize_weight_scope();
@@ -275,6 +305,7 @@ final class IHealthOAuthTest extends TestCase {
         $swimlog_test_current_user_id = 42;
         $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiBP', 'bp.json' ) ) );
         $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', '../weight.json' ) ) );
+        $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiBP', 'weight.json' ) ) );
         $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json', array( 'access_token' => 'attacker-value' ) ) ) );
         $this->assertSame( '', $swimlog_test_ihealth_url );
     }
