@@ -322,7 +322,7 @@ final class Health_Measurement_Store {
                 if ( null !== $row['observed_at_utc'] ) {
                     $peers = Database::read( 'get_var', $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE user_id = %d AND provider = %s AND category = %s AND record_role = %s AND observed_at_utc = %s AND id != %d', $measurements, $owner, $provider, $category, $row['record_role'], $row['observed_at_utc'], $id ) );
                     if ( null === $peers ) throw new \RuntimeException( 'read' );
-                    if ( (int) $peers > 0 ) ++$counts['conflicts'];
+                    if ( (int) $peers > 0 && ! $cross['conflicts'] ) ++$counts['conflicts'];
                 }
                 // Both rows were resolved/created by owner identity within this transaction.
                 $member_id = Database::read( 'get_var', $wpdb->prepare( 'SELECT id FROM %i WHERE user_id = %d AND report_id = %d AND measurement_id = %d', $members, $owner, $report_id, $id ) );
@@ -347,8 +347,8 @@ final class Health_Measurement_Store {
             return array( 'matches' => false, 'possible' => false, 'conflicts' => 0 );
         }
         $candidates = Database::read( 'get_results', $wpdb->prepare(
-            'SELECT provider,category,observed_at_utc,calendar_date,values_json FROM %i WHERE user_id = %d AND provider != %s AND category IN (%s,%s) AND record_role = %s AND observed_at_utc IS NOT NULL AND (observed_at_utc = %s OR calendar_date = %s) ORDER BY id LIMIT 201',
-            $table, $owner, $provider, 'weight', 'body_composition', 'sample', $row['observed_at_utc'], $row['calendar_date']
+            'SELECT provider,category,observed_at_utc,calendar_date,values_json FROM %i WHERE user_id = %d AND category IN (%s,%s) AND record_role = %s AND observed_at_utc IS NOT NULL AND (observed_at_utc = %s OR calendar_date = %s) ORDER BY id LIMIT 201',
+            $table, $owner, 'weight', 'body_composition', 'sample', $row['observed_at_utc'], $row['calendar_date']
         ) );
         if ( ! empty( $wpdb->last_error ) || count( (array) $candidates ) > 200 ) return self::error( 'read' );
         $exact = false;
@@ -359,13 +359,16 @@ final class Health_Measurement_Store {
             $value = is_array( $envelope ) ? ( $envelope['values']['weight'] ?? null ) : null;
             if ( ! is_array( $value ) || 'kg' !== ( $value['unit'] ?? null ) || ! is_string( $value['value'] ?? null ) ) continue;
             if ( $candidate->observed_at_utc === $row['observed_at_utc'] ) {
-                if ( round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) $exact = true;
-                else ++$conflicts;
-            } elseif ( $candidate->calendar_date === $row['calendar_date'] && round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) {
+                $same_weight = round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 );
+                if ( $same_weight && $candidate->provider !== $provider ) $exact = true;
+                elseif ( ! $same_weight ) $conflicts = 1;
+            } elseif ( $candidate->provider !== $provider && $candidate->calendar_date === $row['calendar_date'] && round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) {
                 $possible = true;
             }
         }
-        return array( 'matches' => $exact, 'possible' => ! $exact && $possible, 'conflicts' => $conflicts );
+        // A matching provider cannot suppress a reading when another provider reports
+        // a different value for the same instant.
+        return array( 'matches' => $exact && 0 === $conflicts, 'possible' => ! $exact && $possible, 'conflicts' => $conflicts );
     }
 
     /** Owner-only lookup; same-instant ambiguity is derived, never arrival-order resolution. */
