@@ -249,11 +249,13 @@ final class IHealthOAuthTest extends TestCase {
     public function test_personal_api_refuses_near_expiry_and_does_not_echo_provider_errors() {
         global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url;
         $this->authorize_weight_scope( 30 );
+        $swimlog_test_ihealth_url = '';
         $near_expiry = \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json' );
         $this->assertTrue( is_wp_error( $near_expiry ) );
         $this->assertSame( '', $swimlog_test_ihealth_url );
 
         $this->authorize_weight_scope();
+        $swimlog_test_ihealth_url = '';
         $swimlog_test_ihealth_http = array( 'response' => array( 'code' => 503 ), 'body' => 'sensitive-provider-payload-and-token' );
         $failure = \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json' );
         $this->assertTrue( is_wp_error( $failure ) );
