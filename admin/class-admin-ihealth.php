@@ -30,6 +30,24 @@ final class Admin_IHealth {
         exit;
     }
 
+    /**
+     * Read only allowlisted query parameters used to display post/redirect/get notices.
+     *
+     * @param string $key Notice parameter name.
+     * @return string
+     */
+    private static function notice_parameter( $key ) {
+        $allowed = array( 'ihealth_status', 'ihealth_added', 'ihealth_updated', 'ihealth_skipped', 'ihealth_duplicates', 'ihealth_possible_duplicates', 'ihealth_conflicts', 'ihealth_invalid', 'ihealth_page', 'ihealth_has_more' );
+        if ( ! in_array( $key, $allowed, true ) ) {
+            return '';
+        }
+        $query = wp_unslash( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Allowlisted values only select sanitized, read-only notices after a state-changing action has already completed; they cannot trigger or authorize a write.
+        if ( ! is_array( $query ) || ! isset( $query[ $key ] ) || ! is_string( $query[ $key ] ) ) {
+            return '';
+        }
+        return sanitize_text_field( $query[ $key ] );
+    }
+
     public function save() {
         self::require_admin();
         check_admin_referer( 'swimlog_ihealth_save_application' );
@@ -92,7 +110,7 @@ final class Admin_IHealth {
             'authorization_failed' => __( 'iHealth authorization did not complete. Check the credentials, selected categories and registered redirect, then try again.', 'chriss-swim-training-progress-evaluation' ),
             'import_failed' => __( 'The private iHealth import could not be completed. No provider payload was displayed or logged.', 'chriss-swim-training-progress-evaluation' ),
         );
-        $status = isset( $_GET['ihealth_status'] ) && is_string( $_GET['ihealth_status'] ) ? sanitize_key( wp_unslash( $_GET['ihealth_status'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only notice selector; it does not change settings or data.
+        $status = sanitize_key( self::notice_parameter( 'ihealth_status' ) );
         $host = wp_parse_url( IHealth_OAuth::callback_url(), PHP_URL_HOST );
         $redirect_domain = is_string( $host ) && '' !== $host ? 'https://' . strtolower( $host ) : '';
         ?>
@@ -106,11 +124,11 @@ final class Admin_IHealth {
                     printf(
                         /* translators: 1: added count, 2: updated count, 3: skipped count, 4: exact duplicate count, 5: possible duplicate count, 6: conflict count, 7: invalid count, 8: provider page number. */
                         esc_html__( 'iHealth page %8$d import complete: %1$d added, %2$d updated, %3$d unchanged, %4$d exact cross-provider duplicates, %5$d possible same-day duplicates, %6$d same-time conflicts, %7$d unusable records.', 'chriss-swim-training-progress-evaluation' ),
-                        absint( wp_unslash( $_GET['ihealth_added'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_updated'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_skipped'] ?? 0 ) ),
-                        absint( wp_unslash( $_GET['ihealth_duplicates'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_possible_duplicates'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_conflicts'] ?? 0 ) ),
-                        absint( wp_unslash( $_GET['ihealth_invalid'] ?? 0 ) ), absint( wp_unslash( $_GET['ihealth_page'] ?? 1 ) )
+                        absint( self::notice_parameter( 'ihealth_added' ) ), absint( self::notice_parameter( 'ihealth_updated' ) ), absint( self::notice_parameter( 'ihealth_skipped' ) ),
+                        absint( self::notice_parameter( 'ihealth_duplicates' ) ), absint( self::notice_parameter( 'ihealth_possible_duplicates' ) ), absint( self::notice_parameter( 'ihealth_conflicts' ) ),
+                        absint( self::notice_parameter( 'ihealth_invalid' ) ), absint( self::notice_parameter( 'ihealth_page' ) )
                     );
-                    if ( isset( $_GET['ihealth_has_more'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['ihealth_has_more'] ) ) ) esc_html_e( ' More provider records may be available on a later page.', 'chriss-swim-training-progress-evaluation' );
+                    if ( '1' === self::notice_parameter( 'ihealth_has_more' ) ) esc_html_e( ' More provider records may be available on a later page.', 'chriss-swim-training-progress-evaluation' );
                 ?></p></div>
             <?php endif; ?>
             <p><?php esc_html_e( 'Enter the iHealth Client ID and Client Secret from the developer portal. These app-level credentials are encrypted in WordPress and shared by the integration. Only a WordPress administrator can view or change this screen. Saved secrets are never displayed; leave a secret field blank to retain its existing value.', 'chriss-swim-training-progress-evaluation' ); ?></p>
