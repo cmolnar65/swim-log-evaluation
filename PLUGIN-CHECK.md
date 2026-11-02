@@ -148,7 +148,7 @@ The preferred approach is to keep Plugin Check output visible, compare it with t
 
 `admin/class-admin-ihealth.php`, `Admin_IHealth::callback()`: the callback uses the OAuth state value as its CSRF defense rather than a WordPress form nonce. State is random, short-lived, hashed in storage, bound to the initiating administrator and consumed once before code exchange. The only non-nonce request values consumed are the validated state and authorization code.
 
-`admin/class-admin-ihealth.php`, `Admin_IHealth::page()`: `ihealth_status` is a sanitized query parameter used only to choose a success/error notice. It performs no write or other state-changing action, so a nonce is not appropriate.
+`admin/class-admin-ihealth.php`, `Admin_IHealth::notice_parameter()`: one statement-level `WordPress.Security.NonceVerification.Recommended` exception reads the allowlisted `ihealth_status` and numeric import-result query values after a completed POST/redirect/GET action. The helper rejects unknown keys and non-string values and sanitizes accepted strings. These values only select an administrator-only success/error notice and display import counts; they cannot initiate or authorize an import, change settings, or mutate data. The same exception does not apply to any other query input or state-changing path.
 
 ## Canonical visibility query review
 
