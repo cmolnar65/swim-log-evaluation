@@ -229,7 +229,7 @@ final class IHealth_OAuth {
         if ( ! is_array( $connection ) || (int) ( $connection['owner'] ?? 0 ) !== (int) $owner
             || ! is_string( $connection['client_id'] ?? null ) || ! is_string( $connection['app_revision'] ?? null )
             || ! is_string( $connection['access_token'] ?? null ) || ! is_string( $connection['refresh_token'] ?? null )
-            || ! is_array( $connection['api_names'] ?? null ) ) return null;
+            || ! is_array( $connection['api_names'] ?? null ) || (int) ( $connection['expires_at'] ?? 0 ) <= time() ) return null;
         $app = self::application();
         if ( ! is_array( $app ) || ! hash_equals( $app['client_id'], $connection['client_id'] ) || ! hash_equals( self::revision(), $connection['app_revision'] ) ) return null;
         return array(

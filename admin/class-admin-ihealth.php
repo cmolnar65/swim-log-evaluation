@@ -36,7 +36,12 @@ final class Admin_IHealth {
         $owner = (int) get_current_user_id();
         $client_id = isset( $_POST['client_id'] ) && is_string( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
         $client_secret = isset( $_POST['client_secret'] ) && is_string( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : '';
-        $api_names = isset( $_POST['api_names'] ) && is_array( $_POST['api_names'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['api_names'] ) ) : array();
+        $api_names = array();
+        if ( isset( $_POST['api_names'] ) && is_array( $_POST['api_names'] ) ) {
+            foreach ( wp_unslash( $_POST['api_names'] ) as $api_name ) {
+                if ( is_string( $api_name ) ) $api_names[] = sanitize_text_field( $api_name );
+            }
+        }
         $revision = isset( $_POST['revision'] ) && is_string( $_POST['revision'] ) ? sanitize_text_field( wp_unslash( $_POST['revision'] ) ) : '';
         $saved = IHealth_OAuth::save_application( $owner, $client_id, $client_secret, $api_names, $revision );
         self::return_to_page( is_wp_error( $saved ) ? 'save_failed' : 'saved' );
@@ -73,7 +78,7 @@ final class Admin_IHealth {
             'authorization_failed' => __( 'iHealth authorization did not complete. Check the credentials, selected categories and registered redirect, then try again.', 'chriss-swim-training-progress-evaluation' ),
         );
         $status = isset( $_GET['ihealth_status'] ) && is_string( $_GET['ihealth_status'] ) ? sanitize_key( wp_unslash( $_GET['ihealth_status'] ) ) : '';
-        $host = wp_parse_url( home_url(), PHP_URL_HOST );
+        $host = wp_parse_url( IHealth_OAuth::callback_url(), PHP_URL_HOST );
         $redirect_domain = is_string( $host ) && '' !== $host ? 'https://' . strtolower( $host ) : '';
         ?>
         <div class="wrap">
@@ -93,7 +98,7 @@ final class Admin_IHealth {
                 <fieldset>
                     <legend><?php esc_html_e( 'Categories to request from iHealth', 'chriss-swim-training-progress-evaluation' ); ?></legend>
                     <?php foreach ( IHealth_OAuth::api_names() as $api_name => $label ) : ?>
-                        <label style="display:block;margin:6px 0"><input type="checkbox" name="api_names[]" value="<?php echo esc_attr( $api_name ); ?>" <?php checked( in_array( $api_name, $app['api_names'], true ) ); ?>> <?php echo esc_html( $label ); ?></label>
+                        <label class="ihealth-api-category"><input type="checkbox" name="api_names[]" value="<?php echo esc_attr( $api_name ); ?>" <?php checked( in_array( $api_name, $app['api_names'], true ) ); ?>> <?php echo esc_html( $label ); ?></label>
                     <?php endforeach; ?>
                     <p class="description"><?php esc_html_e( 'Select only the categories needed. This setup verifies authorization; it does not yet import data.', 'chriss-swim-training-progress-evaluation' ); ?></p>
                 </fieldset>
