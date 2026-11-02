@@ -36,7 +36,7 @@ final class IHealthBloodPressureImportTest extends TestCase {
         $this->assertNull( Importer::adapt_record( array_merge( $record, array( 'HP' => 'invalid' ) ), 'mmHg' ) );
         $this->assertNull( Importer::adapt_record( array_merge( $record, array( 'LP' => 0 ) ), 'mmHg' ) );
         $this->assertNull( Importer::adapt_record( array_merge( $record, array( 'DataID' => '../invalid' ) ), 'mmHg' ) );
-        $this->assertTrue( is_wp_error( Store::normalize_values( 'blood_pressure', array( 'systolic' => array( 'value' => 120, 'unit' => 'kPa' ), 'diastolic' => array( 'value' => 80, 'unit' => 'kPa' ) ) ) );
+        $this->assertTrue( is_wp_error( Store::normalize_values( 'blood_pressure', array( 'systolic' => array( 'value' => 120, 'unit' => 'kPa' ), 'diastolic' => array( 'value' => 80, 'unit' => 'kPa' ) ) ) ) );
     }
 
     public function test_request_window_is_limited_to_ninety_days_and_twenty_pages() {
