@@ -238,4 +238,35 @@ final class IHealth_OAuth {
             'api_names' => array_values( array_intersect( array_keys( self::api_names() ), $connection['api_names'] ) ),
         );
     }
+
+    /**
+     * Private input for server-side Personal API requests; never expose this from a route or view.
+     * The API client enforces the same administrator and scope checks before making a request.
+     */
+    public static function personal_api_context( $owner, $api_name ) {
+        if ( ! self::authorized_admin( $owner ) ) return self::error( 'forbidden', __( 'Only the connected WordPress administrator can request iHealth data.', 'chriss-swim-training-progress-evaluation' ), 403 );
+        if ( ! is_string( $api_name ) || ! array_key_exists( $api_name, self::api_names() ) ) return self::error( 'category', __( 'The requested iHealth category is not supported.', 'chriss-swim-training-progress-evaluation' ) );
+
+        $connection = self::open( get_user_meta( (int) $owner, self::CONNECTION_META, true ), 'connection:' . (int) $owner );
+        if ( ! is_array( $connection ) || (int) ( $connection['owner'] ?? 0 ) !== (int) $owner
+            || ! is_string( $connection['client_id'] ?? null ) || ! is_string( $connection['app_revision'] ?? null )
+            || ! is_string( $connection['ihealth_user_id'] ?? null ) || '' === $connection['ihealth_user_id']
+            || ! is_string( $connection['access_token'] ?? null ) || '' === $connection['access_token']
+            || ! is_array( $connection['api_names'] ?? null ) ) {
+            return self::error( 'reauthorize', __( 'The iHealth account is not connected. Authorize it again from iHealth App Setup.', 'chriss-swim-training-progress-evaluation' ), 409 );
+        }
+        $app = self::application();
+        if ( ! is_array( $app ) || ! hash_equals( $app['client_id'], $connection['client_id'] )
+            || ! hash_equals( self::revision(), $connection['app_revision'] )
+            || ! in_array( $api_name, $app['api_names'], true ) || ! in_array( $api_name, $connection['api_names'], true ) ) {
+            return self::error( 'scope', __( 'The iHealth account is not authorized for this category. Review app settings and authorize it again.', 'chriss-swim-training-progress-evaluation' ), 403 );
+        }
+        // Leave a small safety margin so requests do not begin with a nearly expired token.
+        if ( (int) ( $connection['expires_at'] ?? 0 ) <= time() + 60 ) return self::error( 'reauthorize', __( 'The iHealth access grant has expired or is about to expire. Authorize the account again.', 'chriss-swim-training-progress-evaluation' ), 409 );
+
+        return array(
+            'ihealth_user_id' => $connection['ihealth_user_id'],
+            'access_token' => $connection['access_token'],
+        );
+    }
 }

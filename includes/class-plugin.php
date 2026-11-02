@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-ihealth-personal-api.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-sync.php';
 		Garmin_Measurement_Sync::register();
         require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history-jobs.php';

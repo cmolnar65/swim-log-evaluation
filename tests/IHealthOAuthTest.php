@@ -3,10 +3,12 @@ use PHPUnit\Framework\TestCase;
 use SwimLogEvaluation\IHealth_OAuth as IHealth;
 
 require_once dirname( __DIR__ ) . '/includes/class-ihealth-oauth.php';
+require_once dirname( __DIR__ ) . '/includes/class-ihealth-personal-api.php';
 
 $GLOBALS['swimlog_test_ihealth_meta'] = array();
 $GLOBALS['swimlog_test_ihealth_http'] = array();
 $GLOBALS['swimlog_test_ihealth_url'] = '';
+$GLOBALS['swimlog_test_ihealth_args'] = array();
 
 if ( ! function_exists( 'wp_salt' ) ) {
     function wp_salt( $scheme = 'auth' ) { return 'synthetic-ihealth-test-salt-' . $scheme; }
@@ -53,8 +55,9 @@ if ( ! function_exists( 'add_query_arg' ) ) {
 }
 if ( ! function_exists( 'wp_remote_get' ) ) {
     function wp_remote_get( $url, $args = array() ) {
-        global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url;
+        global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url, $swimlog_test_ihealth_args;
         $swimlog_test_ihealth_url = $url;
+        $swimlog_test_ihealth_args = $args;
         return $swimlog_test_ihealth_http;
     }
 }
@@ -67,11 +70,12 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
 
 final class IHealthOAuthTest extends TestCase {
     protected function setUp(): void {
-        global $swimlog_test_options, $swimlog_test_user_meta, $swimlog_test_ihealth_http, $swimlog_test_ihealth_url, $swimlog_test_current_user_id, $swimlog_test_capabilities, $swimlog_test_logged_in;
+        global $swimlog_test_options, $swimlog_test_user_meta, $swimlog_test_ihealth_http, $swimlog_test_ihealth_url, $swimlog_test_ihealth_args, $swimlog_test_current_user_id, $swimlog_test_capabilities, $swimlog_test_logged_in;
         $swimlog_test_options = array();
         $swimlog_test_user_meta = array();
         $swimlog_test_ihealth_http = array();
         $swimlog_test_ihealth_url = '';
+        $swimlog_test_ihealth_args = array();
         $swimlog_test_current_user_id = 42;
         $swimlog_test_capabilities = array( 'manage_options' => true );
         $swimlog_test_logged_in = true;
@@ -193,5 +197,67 @@ final class IHealthOAuthTest extends TestCase {
         $this->assertTrue( is_wp_error( IHealth::complete_authorization( $owner, array( 'state' => $state, 'code' => 'incomplete-code' ) ) ) );
         $this->assertSame( $original_grant, $swimlog_test_user_meta[ $owner ][ IHealth::CONNECTION_META ] );
         $this->assertTrue( IHealth::connection( $owner )['connected'] );
+    }
+
+    private function authorize_weight_scope( $expires = 3600 ) {
+        global $swimlog_test_ihealth_http;
+        $owner = 42;
+        $view = IHealth::application_view();
+        $this->assertTrue( IHealth::save_application( $owner, 'synthetic-client', 'synthetic-secret', array( 'OpenApiWeight' ), $view['revision'] ) );
+        list( , $state ) = $this->start_authorization( $owner );
+        $swimlog_test_ihealth_http = array(
+            'response' => array( 'code' => 200 ),
+            'body' => wp_json_encode( array( 'APIName' => 'OpenApiWeight', 'AccessToken' => 'synthetic-api-token', 'RefreshToken' => 'synthetic-refresh-token', 'UserID' => 'synthetic-user/segment', 'Expires' => $expires ) ),
+        );
+        $this->assertTrue( IHealth::complete_authorization( $owner, array( 'state' => $state, 'code' => 'synthetic-code' ) ) );
+    }
+
+    public function test_personal_api_request_uses_fixed_https_endpoint_and_private_grant() {
+        global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url, $swimlog_test_ihealth_args;
+        $this->authorize_weight_scope();
+        $swimlog_test_ihealth_http = array( 'response' => array( 'code' => 200 ), 'body' => wp_json_encode( array( 'RecordCount' => 1, 'Result' => array( array( 'Weight' => 150 ) ) ) ) );
+        $result = \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json', array( 'page' => 2 ) );
+
+        $this->assertSame( array( 'RecordCount' => 1, 'Result' => array( array( 'Weight' => 150 ) ) ), $result );
+        $this->assertSame( 'https', parse_url( $swimlog_test_ihealth_url, PHP_URL_SCHEME ) );
+        $this->assertSame( 'api.ihealthlabs.com', parse_url( $swimlog_test_ihealth_url, PHP_URL_HOST ) );
+        $this->assertSame( 8443, parse_url( $swimlog_test_ihealth_url, PHP_URL_PORT ) );
+        $this->assertSame( '/openapiv2/user/synthetic-user%2Fsegment/weight.json/', parse_url( $swimlog_test_ihealth_url, PHP_URL_PATH ) );
+        parse_str( (string) parse_url( $swimlog_test_ihealth_url, PHP_URL_QUERY ), $query );
+        $this->assertSame( 'synthetic-api-token', $query['access_token'] ?? '' );
+        $this->assertSame( '2', $query['page'] ?? '' );
+        $this->assertSame( 0, $swimlog_test_ihealth_args['redirection'] );
+        $this->assertTrue( $swimlog_test_ihealth_args['sslverify'] );
+        $this->assertSame( 1048576, $swimlog_test_ihealth_args['limit_response_size'] );
+        $this->assertSame( array( 'Accept' => 'application/json' ), $swimlog_test_ihealth_args['headers'] );
+        $this->assertArrayNotHasKey( 'access_token', IHealth::connection( 42 ) );
+    }
+
+    public function test_personal_api_rejects_wrong_owner_scope_and_unsafe_request_inputs() {
+        global $swimlog_test_current_user_id, $swimlog_test_ihealth_url;
+        $this->authorize_weight_scope();
+        $swimlog_test_ihealth_url = '';
+        $swimlog_test_current_user_id = 43;
+        $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json' ) ) );
+        $swimlog_test_current_user_id = 42;
+        $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiBP', 'bp.json' ) ) );
+        $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', '../weight.json' ) ) );
+        $this->assertTrue( is_wp_error( \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json', array( 'access_token' => 'attacker-value' ) ) ) );
+        $this->assertSame( '', $swimlog_test_ihealth_url );
+    }
+
+    public function test_personal_api_refuses_near_expiry_and_does_not_echo_provider_errors() {
+        global $swimlog_test_ihealth_http, $swimlog_test_ihealth_url;
+        $this->authorize_weight_scope( 30 );
+        $near_expiry = \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json' );
+        $this->assertTrue( is_wp_error( $near_expiry ) );
+        $this->assertSame( '', $swimlog_test_ihealth_url );
+
+        $this->authorize_weight_scope();
+        $swimlog_test_ihealth_http = array( 'response' => array( 'code' => 503 ), 'body' => 'sensitive-provider-payload-and-token' );
+        $failure = \SwimLogEvaluation\IHealth_Personal_API::get_resource( 42, 'OpenApiWeight', 'weight.json' );
+        $this->assertTrue( is_wp_error( $failure ) );
+        $this->assertStringNotContainsString( 'sensitive-provider-payload', $failure->get_error_message() );
+        $this->assertStringNotContainsString( 'synthetic-api-token', $failure->get_error_message() );
     }
 }
