@@ -52,7 +52,7 @@ final class Admin_IHealth {
         check_admin_referer( 'swimlog_ihealth_connect' );
         $url = IHealth_OAuth::begin_authorization( (int) get_current_user_id() );
         if ( is_wp_error( $url ) ) self::return_to_page( 'authorization_failed' );
-        wp_redirect( $url, 303 );
+        wp_redirect( esc_url_raw( $url ), 303 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect -- OAuth requires the fixed external iHealth authorization endpoint.
         exit;
     }
 

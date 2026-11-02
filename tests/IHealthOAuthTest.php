@@ -102,7 +102,7 @@ final class IHealthOAuthTest extends TestCase {
     }
 
     public function test_admin_capability_stale_revision_and_blank_secret_rules() {
-        global $swimlog_test_capabilities, $swimlog_test_current_user_id, $swimlog_test_options;
+        global $swimlog_test_capabilities, $swimlog_test_current_user_id, $swimlog_test_ihealth_http, $swimlog_test_ihealth_url;
         $view = IHealth::application_view();
         $this->assertTrue( is_wp_error( IHealth::save_application( 43, 'synthetic-client', 'synthetic-secret', array( 'OpenApiWeight' ), $view['revision'] ) ) );
         $swimlog_test_capabilities['manage_options'] = false;
@@ -112,13 +112,15 @@ final class IHealthOAuthTest extends TestCase {
         $this->assertTrue( IHealth::save_application( 42, 'synthetic-client', 'synthetic-secret', array( 'OpenApiWeight' ), $view['revision'] ) );
         $saved = IHealth::application_view();
         $this->assertTrue( IHealth::save_application( 42, 'synthetic-client', '', array( 'OpenApiWeight' ), $saved['revision'] ) );
-        $this->assertTrue( $this->has_secret( $swimlog_test_options[ IHealth::APP_OPTION ] ) );
+        list( , $state ) = $this->start_authorization( 42 );
+        $swimlog_test_ihealth_http = array(
+            'response' => array( 'code' => 200 ),
+            'body' => wp_json_encode( array( 'APIName' => 'OpenApiWeight', 'AccessToken' => 'synthetic-access', 'RefreshToken' => 'synthetic-refresh', 'UserID' => 'synthetic-user', 'Expires' => 3600 ) ),
+        );
+        $this->assertTrue( IHealth::complete_authorization( 42, array( 'state' => $state, 'code' => 'synthetic-code' ) ) );
+        parse_str( (string) parse_url( $swimlog_test_ihealth_url, PHP_URL_QUERY ), $exchange );
+        $this->assertSame( 'synthetic-secret', $exchange['client_secret'] ?? '' );
         $this->assertTrue( is_wp_error( IHealth::save_application( 42, 'synthetic-client', '', array( 'OpenApiWeight' ), $view['revision'] ) ) );
-    }
-
-    private function has_secret( $sealed ) {
-        $view = IHealth::application_view();
-        return $view['has_secret'] && is_string( $sealed ) && '' !== $sealed;
     }
 
     public function test_oauth_is_owner_bound_single_use_and_stores_tokens_encrypted() {
