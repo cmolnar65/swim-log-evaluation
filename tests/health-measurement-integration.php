@@ -1,6 +1,7 @@
 <?php
 // Synthetic private persistence checks against real WordPress/MariaDB.
 use SwimLogEvaluation\Database;
+use SwimLogEvaluation\Calendar_Measurements;
 use SwimLogEvaluation\Health_Measurement_Store as Store;
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
 require_once SWIMLOG_EVALUATION_DIR . 'includes/class-calendar-measurements.php';
