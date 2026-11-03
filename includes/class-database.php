@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_activities', 'health_connect_heart_rate_samples', 'workout_visibility', 'goals' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_tokens', 'health_connect_activities', 'health_connect_heart_rate_samples', 'workout_visibility', 'goals' );
 	}
 
 	public static function schema_is_complete() {
@@ -161,6 +161,13 @@ final class Database {
 				if ( array_values( $actual ) !== $definition[0] ) return false;
 			}
 		}
+		$token_indexes = self::read( 'get_results', $wpdb->prepare( 'SHOW INDEX FROM %i', self::table( 'health_connect_tokens' ) ) );
+		foreach ( array( 'PRIMARY' => array( 'owner_id' ), 'token_hash' => array( 'token_hash' ) ) as $key => $expected_columns ) {
+			$actual = array();
+			foreach ( (array) $token_indexes as $index ) if ( $key === $index->Key_name && 0 === (int) $index->Non_unique && null === $index->Sub_part ) $actual[ (int) $index->Seq_in_index ] = $index->Column_name;
+			ksort( $actual );
+			if ( array_values( $actual ) !== $expected_columns ) return false;
+		}
 		foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
 			$expected = 'health_report_members' === $name ? array( 'user_id', 'report_id', 'measurement_id' ) : array( 'user_id', 'identity_hash' );
 			$key = 'health_report_members' === $name ? 'owner_report_measurement' : 'owner_identity';
@@ -190,6 +197,7 @@ final class Database {
 
 	private static function health_connect_schema_columns() {
 		return array(
+			'health_connect_tokens' => array( 'owner_id', 'token_hash', 'created_at_utc' ),
 			'health_connect_activities' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'content_hash', 'source_origin', 'start_utc', 'end_utc', 'start_local', 'end_local', 'start_offset_seconds', 'end_offset_seconds', 'possible_duplicate', 'created_at_utc', 'updated_at_utc' ),
 			'health_connect_heart_rate_samples' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'sample_utc', 'beats_per_minute', 'source_origin', 'created_at_utc' ),
 		);
@@ -216,6 +224,7 @@ final class Database {
 		$health_reports = self::table( 'health_reports' );
 		$health_measurements = self::table( 'health_measurements' );
 		$health_report_members = self::table( 'health_report_members' );
+		$health_connect_tokens = self::table( 'health_connect_tokens' );
 		$health_connect_activities = self::table( 'health_connect_activities' );
 		$health_connect_heart_rate_samples = self::table( 'health_connect_heart_rate_samples' );
 
@@ -533,6 +542,14 @@ final class Database {
 			PRIMARY KEY  (id),
 			UNIQUE KEY owner_report_measurement (user_id,report_id,measurement_id),
 			KEY owner_measurement (user_id,measurement_id)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_connect_tokens (
+			owner_id bigint(20) unsigned NOT NULL,
+			token_hash char(64) NOT NULL,
+			created_at_utc datetime NOT NULL,
+			PRIMARY KEY  (owner_id),
+			UNIQUE KEY token_hash (token_hash)
 		) $charset_collate;";
 
 		$sql[] = "CREATE TABLE $health_connect_activities (

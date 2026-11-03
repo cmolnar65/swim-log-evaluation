@@ -8,19 +8,52 @@ require_once dirname( __DIR__ ) . '/includes/class-health-measurement-store.php'
 require_once dirname( __DIR__ ) . '/includes/class-health-connect-tokens.php';
 require_once dirname( __DIR__ ) . '/includes/class-health-connect-import.php';
 
+final class HealthConnectTestDB {
+	public $prefix = 'wp_';
+	public $last_error = '';
+	public $tokens = array();
+	public function replace( $table, $data ) { $this->tokens[(int) $data['owner_id']] = $data; return 1; }
+	public function delete( $table, $where ) { $owner = (int) $where['owner_id']; if ( ! isset( $this->tokens[$owner] ) ) return 0; unset( $this->tokens[$owner] ); return 1; }
+	public function prepare( $sql, ...$args ) { return json_encode( array( $sql, $args ) ); }
+	public function get_row( $prepared ) {
+		list( $sql, $args ) = json_decode( $prepared, true );
+		foreach ( $this->tokens as $owner => $data ) {
+			if ( false !== strpos( $sql, 'token_hash = %s' ) && hash_equals( $data['token_hash'], $args[1] ) ) return (object) array( 'owner_id' => $owner );
+			if ( false !== strpos( $sql, 'owner_id = %d' ) && (int) $owner === (int) $args[1] ) return (object) array( 'owner_id' => $owner );
+		}
+		return null;
+	}
+	public function get_var( $prepared ) { $row = $this->get_row( $prepared ); return $row ? $row->owner_id : null; }
+}
+
 final class HealthConnectReceiverTest extends TestCase {
 	public function test_tokens_are_random_hashed_and_revocable_per_owner() {
-		global $swimlog_test_user_meta, $swimlog_test_current_user_id, $swimlog_test_capabilities;
-		$swimlog_test_user_meta = array();
-		$swimlog_test_current_user_id = 42;
-		$swimlog_test_capabilities = array( 'swimlog_manage_own_workouts' => true );
-		$token = Health_Connect_Tokens::issue( 42 );
-		$this->assertTrue( is_string( $token ) && 0 === strpos( $token, 'slhc_' ) );
-		$this->assertTrue( is_string( $token ) && $token !== $swimlog_test_user_meta[42][Health_Connect_Tokens::META] );
-		$this->assertSame( 42, Health_Connect_Tokens::owner_for_token( $token ) );
-		$this->assertSame( 0, Health_Connect_Tokens::owner_for_token( 'not-a-token' ) );
-		$this->assertTrue( Health_Connect_Tokens::revoke( 42 ) );
-		$this->assertSame( 0, Health_Connect_Tokens::owner_for_token( $token ) );
+		global $wpdb, $swimlog_test_current_user_id, $swimlog_test_capabilities;
+		$had_wpdb = isset( $wpdb );
+		$previous_wpdb = $had_wpdb ? $wpdb : null;
+		$had_user_id = isset( $swimlog_test_current_user_id );
+		$previous_user_id = $had_user_id ? $swimlog_test_current_user_id : null;
+		$had_capabilities = isset( $swimlog_test_capabilities );
+		$previous_capabilities = $had_capabilities ? $swimlog_test_capabilities : null;
+		try {
+			$wpdb = new HealthConnectTestDB();
+			$swimlog_test_current_user_id = 42;
+			$swimlog_test_capabilities = array( 'swimlog_manage_own_workouts' => true );
+			$token = Health_Connect_Tokens::issue( 42 );
+			$this->assertTrue( is_string( $token ) && 0 === strpos( $token, 'slhc_' ) );
+			$this->assertTrue( is_string( $token ) && $token !== $wpdb->tokens[42]['token_hash'] );
+			$this->assertSame( 42, Health_Connect_Tokens::owner_for_token( $token ) );
+			$this->assertSame( 0, Health_Connect_Tokens::owner_for_token( 'not-a-token' ) );
+			$this->assertTrue( Health_Connect_Tokens::revoke( 42 ) );
+			$this->assertSame( 0, Health_Connect_Tokens::owner_for_token( $token ) );
+		} finally {
+			if ( $had_wpdb ) $wpdb = $previous_wpdb;
+			else unset( $wpdb );
+			if ( $had_user_id ) $swimlog_test_current_user_id = $previous_user_id;
+			else unset( $swimlog_test_current_user_id );
+			if ( $had_capabilities ) $swimlog_test_capabilities = $previous_capabilities;
+			else unset( $swimlog_test_capabilities );
+		}
 	}
 
 	public function test_receiver_accepts_only_versioned_bounded_batches_and_rejects_unsupported_sports() {

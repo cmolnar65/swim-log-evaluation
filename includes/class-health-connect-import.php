@@ -21,6 +21,7 @@ final class Health_Connect_Import {
 		Database::write( 'query', $wpdb->prepare( 'DELETE membership FROM %i membership INNER JOIN %i measurement ON measurement.id = membership.measurement_id AND measurement.user_id = membership.user_id WHERE membership.user_id = %d AND measurement.provider = %s', Database::table( 'health_report_members' ), Database::table( 'health_measurements' ), $owner, 'health_connect' ) );
 		Database::write( 'delete', Database::table( 'health_measurements' ), array( 'user_id' => $owner, 'provider' => 'health_connect' ) );
 		Database::write( 'delete', Database::table( 'health_reports' ), array( 'user_id' => $owner, 'provider' => 'health_connect' ) );
+		Database::write( 'delete', Database::table( 'health_connect_tokens' ), array( 'owner_id' => $owner ) );
 		Database::write( 'delete', Database::table( 'health_connect_heart_rate_samples' ), array( 'user_id' => $owner ) );
 		Database::write( 'delete', Database::table( 'health_connect_activities' ), array( 'user_id' => $owner ) );
 		Database::write( 'query', $wpdb->prepare( 'DELETE visibility FROM %i visibility INNER JOIN %i workout ON workout.id = visibility.workout_id AND workout.user_id = visibility.owner_id WHERE workout.user_id = %d AND workout.source_type = %s', Database::table( 'workout_visibility' ), Database::table( 'workouts' ), $owner, 'health_connect' ) );

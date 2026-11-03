@@ -134,11 +134,11 @@ final class Admin_Settings {
 				<h2><?php esc_html_e( 'Health Connect App Sync', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 				<p><?php esc_html_e( 'A separate, owner-scoped app token lets your Android app add selected Health Connect measurements and workout summaries. Imported records remain private. The token is shown only when generated; keep it out of messages and screenshots.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<?php if ( $health_connect_token ) : ?><div class="notice notice-warning"><p><strong><?php esc_html_e( 'Copy this token now. It will not be shown again.', 'chriss-swim-training-progress-evaluation' ); ?></strong></p><p><code><?php echo esc_html( $health_connect_token ); ?></code></p></div><?php endif; ?>
-				<?php if ( get_user_meta( $uid, Health_Connect_Tokens::META, true ) ) : ?>
+				<?php if ( Health_Connect_Tokens::is_active( $uid ) ) : ?>
 					<p><?php esc_html_e( 'An app token is active. Generating a replacement revokes it immediately.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<?php else : ?><p><?php esc_html_e( 'No app token is active.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
 				<form method="post"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="issue"><button class="button button-secondary" type="submit"><?php esc_html_e( 'Generate / replace app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form>
-				<?php if ( get_user_meta( $uid, Health_Connect_Tokens::META, true ) ) : ?><form method="post" style="margin-top:8px"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="revoke"><button class="button" type="submit"><?php esc_html_e( 'Revoke app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form><?php endif; ?>
+				<?php if ( Health_Connect_Tokens::is_active( $uid ) ) : ?><form method="post" style="margin-top:8px"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="revoke"><button class="button" type="submit"><?php esc_html_e( 'Revoke app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form><?php endif; ?>
 				<?php endif; ?>
 		</div>
 		<?php
