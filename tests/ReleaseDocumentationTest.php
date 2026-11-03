@@ -4,6 +4,7 @@ use PHPUnit\Framework\TestCase;
 final class ReleaseDocumentationTest extends TestCase {
  public function test_development_metadata_preserves_version_12_release_checkpoint(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   $this->assertStringContainsString('Stable tag: 1.3-dev',$readme);
@@ -25,6 +26,7 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v11_docs_cover_planned_workout_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Planned Workouts','Duplicate Week','planned-versus-actual','wp-admin Calendar','read-only','database schema to 1.2')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Planned Workouts','duplicate a week','Matching is never automatic','administration **Calendar**','REST remains read-only','database schema to **1.2**')as$feature)$this->assertStringContainsString($feature,$github);
@@ -32,6 +34,7 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v10_docs_cover_calendar_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly','mobile','GPS','database schema remains 0.9')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly summaries','date-grouped agenda','Escape-to-close','database schema remains version 0.9')as$feature)$this->assertStringContainsString($feature,$github);
@@ -40,18 +43,21 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v09_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST-API.md','per-length stroke counts','admin','PHP 7.4')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Pool Analytics','Training Trends','Race Readiness 2.0','REST API and data-portability surface','REST-API.md','administration architecture','no new database schema migration')as$feature)$this->assertStringContainsString($feature,$github);
  }
  public function test_v08_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('manual pool-workout','measured repetition times','intervals/send-offs','transactional','per-length FIT stroke counts','Total Strokes','heart-rate and cadence','Apple Watch','FIT Activity local timestamps','gzip','ZIP','three workout photos','database schema to 0.9')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('manual pool-workout','per-length stroke counts','total-strokes','heart-rate/cadence','Apple Watch','FIT Activity local timestamps','FIT gzip','FORM ZIP','three photos','schema is version 0.9')as$feature)$this->assertStringContainsString($feature,$github);
  }
  public function test_v07_docs_cover_block_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Latest Workouts','Personal Bests','Upcoming Events','Workout','Training Log','Progress')as$block){$this->assertStringContainsString($block,$readme);$this->assertStringContainsString($block,$github);}
   foreach(array('[swimlog_latest]','[swimlog_bests]','[swimlog_upcoming_events]','[swimlog_workout]','[swimlog_log]','[swimlog_progress]')as$shortcode){$this->assertStringContainsString($shortcode,$readme);$this->assertStringContainsString($shortcode,$github);}
@@ -62,6 +68,7 @@ final class ReleaseDocumentationTest extends TestCase {
  }
  public function test_v06_changelog_covers_open_water_release_work(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
+  $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   foreach(array('Garmin Personal API import-state presentation','optimized trackpoint processing','deterministic open-water/import regression coverage','transactional workout rebuilds','GPX and TCX open-water import','scheduled Garmin synchronization','first-GPS-fix matching within 500 meters','swimlog/v1 REST API','all registered public shortcodes','Garmin scheduled-sync operational telemetry','persist the authoritative import','analytics metric unit/provenance metadata')as$feature)$this->assertStringContainsString($feature,$readme);
  }
  public function test_manual_workout_help_preserves_v08_timing_contract(){
