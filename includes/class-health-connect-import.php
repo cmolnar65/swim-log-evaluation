@@ -137,8 +137,6 @@ final class Health_Connect_Import {
 		if ( ! empty( $wpdb->last_error ) ) return self::error( 'read', 503 );
 		if ( $old ) return hash_equals( $old->content_hash, $content_hash ) ? array( 'status' => 'duplicate', 'record_key' => $key ) : self::error( 'source_conflict', 409 );
 		$duration_ms = (int) round( $duration_us / 1000 );
-		$average = self::heart_rate_summary( $hr_rows, 'average_heart_rate' );
-		$maximum = self::heart_rate_summary( $hr_rows, 'max_heart_rate' );
 		$possible = self::possible_duplicate( $owner, $type, $wp_start_sql, $distance );
 		if ( is_wp_error( $possible ) ) return $possible;
 		$workouts = Database::table( 'workouts' );
@@ -151,7 +149,7 @@ final class Health_Connect_Import {
 		if ( false === Database::write( 'query', 'START TRANSACTION' ) ) return self::error( 'storage', 503 );
 		try {
 			$map = array( 'pool_swimming' => 'pool', 'open_water_swimming' => 'open_water', 'running' => 'running', 'running_treadmill' => 'running', 'walking' => 'walking' );
-			$data = array( 'user_id' => $owner, 'source_type' => 'health_connect', 'workout_type' => $map[$type], 'activity_environment' => $environment, 'workout_start' => $wp_start_sql, 'workout_end' => $wp_end_sql, 'total_distance_m' => $distance, 'original_distance' => $distance, 'original_distance_unit' => null === $distance ? null : 'm', 'elapsed_time_ms' => $duration_ms, 'moving_time_ms' => null, 'average_heart_rate' => $average, 'max_heart_rate' => $maximum, 'average_cadence' => null, 'max_cadence' => null, 'pool_length_m' => $pool_m, 'original_pool_length' => $pool_value, 'pool_length_unit' => $course, 'end_date' => $wp_end->format( 'Y-m-d' ), 'created_at' => $now, 'updated_at' => $now, 'source_activity_id' => $key );
+			$data = array( 'user_id' => $owner, 'source_type' => 'health_connect', 'workout_type' => $map[$type], 'activity_environment' => $environment, 'workout_start' => $wp_start_sql, 'workout_end' => $wp_end_sql, 'total_distance_m' => $distance, 'original_distance' => $distance, 'original_distance_unit' => null === $distance ? null : 'm', 'elapsed_time_ms' => $duration_ms, 'moving_time_ms' => null, 'average_heart_rate' => null, 'max_heart_rate' => null, 'average_cadence' => null, 'max_cadence' => null, 'pool_length_m' => $pool_m, 'original_pool_length' => $pool_value, 'pool_length_unit' => $course, 'end_date' => $wp_end->format( 'Y-m-d' ), 'created_at' => $now, 'updated_at' => $now, 'source_activity_id' => $key );
 			if ( false === Database::write( 'insert', $workouts, $data ) ) throw new \RuntimeException( 'storage' );
 			$workout_id = (int) $wpdb->insert_id;
 			if ( false === Database::write( 'insert', $visibility, array( 'workout_id' => $workout_id, 'owner_id' => $owner, 'visibility' => 'private', 'route_public' => 0, 'revision' => 1, 'updated_at_gmt' => $now ) ) ) throw new \RuntimeException( 'storage' );
@@ -166,12 +164,6 @@ final class Health_Connect_Import {
 			Database::write( 'query', 'ROLLBACK' );
 			return self::error( 'storage', 503 );
 		}
-	}
-
-	private static function heart_rate_summary( $rows, $key ) {
-		if ( ! $rows ) return null;
-		$values = array_column( $rows, 'bpm' );
-		return 'average_heart_rate' === $key ? (int) round( array_sum( $values ) / count( $values ) ) : max( $values );
 	}
 
 	private static function possible_duplicate( $owner, $activity, $start, $distance ) {

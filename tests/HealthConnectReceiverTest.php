@@ -44,9 +44,10 @@ final class HealthConnectReceiverTest extends TestCase {
 	public function test_health_connect_storage_is_owner_private_and_does_not_accept_routes_or_cycling() {
 		$db = file_get_contents( dirname( __DIR__ ) . '/includes/class-health-connect-import.php' );
 		$this->assertStringContainsString( "'visibility' => 'private'", $db );
-		$this->assertStringContainsString( "'owner_id' => $owner", $db );
+		$this->assertStringContainsString( '\'owner_id\' => $owner', $db );
 		$this->assertStringNotContainsString( "'cycling' =>", $db );
 		$this->assertStringNotContainsString( 'trackpoints', $db );
+		$this->assertStringContainsString( "'average_heart_rate' => null", $db );
 		$workout = file_get_contents( dirname( __DIR__ ) . '/includes/class-workout.php' );
 		$this->assertStringContainsString( 'health_connect_heart_rate_samples', $workout );
 		$this->assertStringContainsString( 'health_connect_activities', $workout );
