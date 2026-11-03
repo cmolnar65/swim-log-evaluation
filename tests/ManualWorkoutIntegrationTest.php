@@ -21,7 +21,7 @@ final class ManualWorkoutIntegrationTest extends TestCase {
  public function test_manual_workout_rest_api_remains_read_only_and_source_agnostic(){
   $rest=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');
   $this->assertStringContainsString("'methods'=>\\WP_REST_Server::READABLE",$rest);$this->assertStringContainsString('Workout::get_for_user($id,$uid)',$rest);
-  $this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);$this->assertStringNotContainsString("source_type='import'",$rest);
+  $this->assertStringContainsString("'/health-connect/import-batch'",$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);$this->assertStringNotContainsString("source_type='import'",$rest);
  }
  public function test_create_edit_post_workflow_embeds_shared_workout_block_for_manual_workouts(){
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin-workouts.php');

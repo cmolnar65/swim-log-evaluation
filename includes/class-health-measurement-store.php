@@ -59,7 +59,7 @@ final class Health_Measurement_Store {
         }
         if ( $summary ) return array();
         if ( 'weight' === $category ) return array( 'weight' => 'kg' );
-        if ( 'body_composition' === $category ) return array( 'weight' => 'kg', 'body_fat' => '%', 'body_water' => '%', 'bone_mass' => 'kg', 'muscle_mass' => 'kg', 'bmi' => 'kg/m2' );
+        if ( 'body_composition' === $category ) return array( 'weight' => 'kg', 'body_fat' => '%', 'body_water' => '%', 'bone_mass' => 'kg', 'muscle_mass' => 'kg', 'lean_body_mass' => 'kg', 'bmi' => 'kg/m2' );
         if ( 'blood_pressure' === $category ) return array( 'systolic' => 'mmHg', 'diastolic' => 'mmHg', 'pulse' => 'bpm' );
         return array();
     }
@@ -73,7 +73,7 @@ final class Health_Measurement_Store {
             if ( ! isset( $units[ $name ] ) || ! is_array( $entry ) || array_diff( array_keys( $entry ), array( 'value', 'unit' ) ) || ! isset( $entry['value'], $entry['unit'] ) || $units[ $name ] !== $entry['unit'] ) return self::error( 'unit' );
             $value = self::decimal( $entry['value'] );
             if ( is_wp_error( $value ) ) return $value;
-            if ( ( '%' === $entry['unit'] && (float) $value > 100 ) || ( ( 'spo2' === $category || in_array( $name, array( 'weight', 'systolic', 'diastolic', 'pulse' ), true ) ) && (float) $value <= 0 ) ) return self::error( 'value' );
+            if ( ( '%' === $entry['unit'] && (float) $value > 100 ) || ( ( 'spo2' === $category || in_array( $name, array( 'weight', 'lean_body_mass', 'systolic', 'diastolic', 'pulse' ), true ) ) && (float) $value <= 0 ) ) return self::error( 'value' );
             $out[ $name ] = array( 'value' => $value, 'unit' => $entry['unit'] );
         }
         if ( 'blood_pressure' === $category && ! $summary && ( ! isset( $out['systolic'] ) || ! isset( $out['diastolic'] ) ) ) return self::error( 'pair' );
@@ -83,7 +83,7 @@ final class Health_Measurement_Store {
 
     private static function context( $input ) {
         if ( ! is_array( $input ) ) return self::error( 'context' );
-        $allowed = array( 'normalization_version', 'device', 'source_format', 'source_weight_grams', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local', 'source_fields', 'deduplicated_values' );
+        $allowed = array( 'normalization_version', 'device', 'source_format', 'source_weight_grams', 'window_start_utc', 'window_end_utc', 'window_start_local', 'window_end_local', 'method', 'coverage', 'source_revision', 'sleep_start_utc', 'sleep_end_utc', 'next_sleep_start_utc', 'next_sleep_end_utc', 'latest_time_utc', 'sleep_start_local', 'sleep_end_local', 'next_sleep_start_local', 'next_sleep_end_local', 'latest_time_local', 'source_fields', 'deduplicated_values', 'possible_cross_provider_duplicate' );
         $out = array();
         foreach ( $input as $key => $value ) {
             if ( ! in_array( $key, $allowed, true ) ) return self::error( 'context' );
@@ -96,6 +96,11 @@ final class Health_Measurement_Store {
             if ( 'deduplicated_values' === $key ) {
                 if ( ! is_array( $value ) || array_diff( $value, array( 'weight' ) ) || count( $value ) > 1 ) return self::error( 'context' );
                 $out[ $key ] = array_values( array_unique( $value ) );
+                continue;
+            }
+            if ( 'possible_cross_provider_duplicate' === $key ) {
+                if ( ! is_bool( $value ) ) return self::error( 'context' );
+                $out[ $key ] = $value;
                 continue;
             }
             if ( ! is_string( $value ) || strlen( $value ) > 191 || preg_match( '/[\\x00-\\x1f]/', $value ) ) return self::error( 'context' );
@@ -207,15 +212,17 @@ final class Health_Measurement_Store {
     }
 
     /** Save one bounded, prevalidated report and its observations atomically. */
-    public static function save_report( $owner, $report, $observations ) {
+    public static function save_report( $owner, $report, $observations, $health_connect = false ) {
         global $wpdb;
-        if ( ! self::authorized( $owner ) ) return self::error( 'forbidden' );
+        if ( ! is_bool( $health_connect ) || ( $health_connect ? ( ! is_int( $owner ) || $owner <= 0 || ! is_array( $report ) || ! get_userdata( $owner ) ) : ! self::authorized( $owner ) ) ) return self::error( 'forbidden' );
         if ( ! is_array( $report ) || ! is_array( $observations ) || count( $observations ) > 1000 || array_diff( array_keys( $report ), array( 'provider', 'category', 'calendar_date', 'fetched_at_utc', 'summary', 'context' ) ) ) return self::error( 'report' );
         $provider = $report['provider'] ?? '';
         $category = $report['category'] ?? '';
         $day = $report['calendar_date'] ?? '';
-        if ( ! in_array( $provider, array( 'garmin', 'ihealth' ), true ) || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
+        if ( ! in_array( $provider, array( 'garmin', 'ihealth', 'health_connect' ), true ) || ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure', 'spo2' ), true ) || ! self::date( $day ) ) return self::error( 'report' );
+        if ( $health_connect && 'health_connect' !== $provider ) return self::error( 'forbidden' );
         if ( 'ihealth' === $provider && ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure' ), true ) ) return self::error( 'report' );
+        if ( 'health_connect' === $provider && ! in_array( $category, array( 'weight', 'body_composition', 'blood_pressure' ), true ) ) return self::error( 'report' );
         $fetched = self::timestamp( $report['fetched_at_utc'] ?? '' );
         $summary = self::normalize_values( $category, $report['summary'] ?? array(), true );
         $context = self::context( $report['context'] ?? array() );
@@ -275,6 +282,7 @@ final class Health_Measurement_Store {
                     $row['provenance']['deduplicated_values'] = array( 'weight' );
                     ++$counts['duplicates'];
                 } elseif ( $cross['possible'] ) {
+                    $row['provenance']['possible_cross_provider_duplicate'] = true;
                     ++$counts['possible_duplicates'];
                 }
                 $counts['conflicts'] += $cross['conflicts'];
@@ -358,9 +366,11 @@ final class Health_Measurement_Store {
             $envelope = json_decode( $candidate->values_json, true );
             $value = is_array( $envelope ) ? ( $envelope['values']['weight'] ?? null ) : null;
             if ( ! is_array( $value ) || 'kg' !== ( $value['unit'] ?? null ) || ! is_string( $value['value'] ?? null ) ) continue;
-            if ( $candidate->observed_at_utc === $row['observed_at_utc'] ) {
+                $health_connect_pair = 'health_connect' === $provider || 'health_connect' === $candidate->provider;
+                if ( $candidate->observed_at_utc === $row['observed_at_utc'] ) {
                 $same_weight = round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 );
-                if ( $same_weight && $candidate->provider !== $provider ) $exact = true;
+                    if ( $same_weight && $candidate->provider !== $provider && $health_connect_pair ) $possible = true;
+                    elseif ( $same_weight && $candidate->provider !== $provider ) $exact = true;
                 elseif ( ! $same_weight ) $conflicts = 1;
             } elseif ( $candidate->provider !== $provider && $candidate->calendar_date === $row['calendar_date'] && round( (float) $value['value'] * 1000 ) === round( (float) $row['values']['weight']['value'] * 1000 ) ) {
                 $possible = true;

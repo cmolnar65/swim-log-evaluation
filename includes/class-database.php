@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'workout_visibility', 'goals' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_activities', 'health_connect_heart_rate_samples', 'workout_visibility', 'goals' );
 	}
 
 	public static function schema_is_complete() {
@@ -148,6 +148,19 @@ final class Database {
 				return false;
 			}
 		}
+		foreach ( self::health_connect_schema_columns() as $name => $required ) {
+			$columns = self::read( 'get_col', $wpdb->prepare( 'SHOW COLUMNS FROM %i', self::table( $name ) ) );
+			if ( array_diff( $required, (array) $columns ) ) return false;
+		}
+		foreach ( array( 'health_connect_activities' => array( 'owner_source_key' => array( array( 'user_id', 'source_key_hash' ), true ), 'owner_workout' => array( array( 'user_id', 'workout_id' ), true ), 'owner_start' => array( array( 'user_id', 'start_utc' ), false ) ), 'health_connect_heart_rate_samples' => array( 'owner_source_key' => array( array( 'user_id', 'source_key_hash' ), true ), 'owner_workout_time' => array( array( 'user_id', 'workout_id', 'sample_utc' ), false ) ) ) as $name => $expected ) {
+			$indexes = self::read( 'get_results', $wpdb->prepare( 'SHOW INDEX FROM %i', self::table( $name ) ) );
+			foreach ( $expected as $key => $definition ) {
+				$actual = array();
+				foreach ( (array) $indexes as $index ) if ( $key === $index->Key_name && ( $definition[1] === ( 0 === (int) $index->Non_unique ) ) && null === $index->Sub_part ) $actual[ (int) $index->Seq_in_index ] = $index->Column_name;
+				ksort( $actual );
+				if ( array_values( $actual ) !== $definition[0] ) return false;
+			}
+		}
 		foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
 			$expected = 'health_report_members' === $name ? array( 'user_id', 'report_id', 'measurement_id' ) : array( 'user_id', 'identity_hash' );
 			$key = 'health_report_members' === $name ? 'owner_report_measurement' : 'owner_identity';
@@ -175,6 +188,13 @@ final class Database {
 		);
 	}
 
+	private static function health_connect_schema_columns() {
+		return array(
+			'health_connect_activities' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'content_hash', 'source_origin', 'start_utc', 'end_utc', 'start_local', 'end_local', 'start_offset_seconds', 'end_offset_seconds', 'possible_duplicate', 'created_at_utc', 'updated_at_utc' ),
+			'health_connect_heart_rate_samples' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'sample_utc', 'beats_per_minute', 'source_origin', 'created_at_utc' ),
+		);
+	}
+
 	public static function install_schema() {
 		global $wpdb;
 
@@ -196,6 +216,8 @@ final class Database {
 		$health_reports = self::table( 'health_reports' );
 		$health_measurements = self::table( 'health_measurements' );
 		$health_report_members = self::table( 'health_report_members' );
+		$health_connect_activities = self::table( 'health_connect_activities' );
+		$health_connect_heart_rate_samples = self::table( 'health_connect_heart_rate_samples' );
 
 		$visibility = self::table('workout_visibility');
         $sql = array();
@@ -511,6 +533,42 @@ final class Database {
 			PRIMARY KEY  (id),
 			UNIQUE KEY owner_report_measurement (user_id,report_id,measurement_id),
 			KEY owner_measurement (user_id,measurement_id)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_connect_activities (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			workout_id bigint(20) unsigned NOT NULL,
+			source_key_hash char(64) NOT NULL,
+			content_hash char(64) NOT NULL,
+			source_origin varchar(191) NOT NULL,
+			start_utc varchar(32) NOT NULL,
+			end_utc varchar(32) NOT NULL,
+			start_local varchar(40) NOT NULL,
+			end_local varchar(40) NOT NULL,
+			start_offset_seconds int(11) NOT NULL,
+			end_offset_seconds int(11) NOT NULL,
+			possible_duplicate tinyint(1) NOT NULL DEFAULT 0,
+			created_at_utc datetime NOT NULL,
+			updated_at_utc datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY owner_source_key (user_id,source_key_hash),
+			UNIQUE KEY owner_workout (user_id,workout_id),
+			KEY owner_start (user_id,start_utc)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_connect_heart_rate_samples (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			user_id bigint(20) unsigned NOT NULL,
+			workout_id bigint(20) unsigned NOT NULL,
+			source_key_hash char(64) NOT NULL,
+			sample_utc varchar(32) NOT NULL,
+			beats_per_minute smallint(5) unsigned NOT NULL,
+			source_origin varchar(191) NOT NULL,
+			created_at_utc datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY owner_source_key (user_id,source_key_hash),
+			KEY owner_workout_time (user_id,workout_id,sample_utc)
 		) $charset_collate;";
 
 		foreach ( $sql as $statement ) {

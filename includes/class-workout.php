@@ -344,6 +344,8 @@ final class Workout {
 		$trackpoints = Database::table( 'trackpoints' );
 		$performances = Database::table( 'performances' );
 		$workouts = Database::table( 'workouts' );
+		$health_connect_activities = Database::table( 'health_connect_activities' );
+		$health_connect_heart_rate_samples = Database::table( 'health_connect_heart_rate_samples' );
 		$source_paths = Database::read( 'get_col',  $wpdb->prepare( "SELECT stored_path FROM %i WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $imports, $workout_id, $user_id ) );
 		$photo_ids = self::photos( $workout_id, $user_id );
 
@@ -356,6 +358,8 @@ final class Workout {
 			if ( false === Database::write( 'delete',  $trackpoints, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'trackpoints' );
 			if ( false === Database::write( 'delete',  $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
 			if ( false === Database::write( 'delete',  $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
+			if ( false === Database::write( 'delete', $health_connect_heart_rate_samples, array( 'workout_id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'health_connect_samples' );
+			if ( false === Database::write( 'delete', $health_connect_activities, array( 'workout_id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'health_connect_activity' );
 			if ( Workout_Visibility::ready() && false === Database::write('delete',Database::table('workout_visibility'),array('workout_id'=>$workout_id,'owner_id'=>$user_id)) ) throw new \Exception('visibility');
             if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
 			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';

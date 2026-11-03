@@ -21,8 +21,13 @@ if(!function_exists('number_format_i18n')){function number_format_i18n($number,$
 if(!function_exists('is_user_logged_in')){function is_user_logged_in(){global $swimlog_test_logged_in;return null===$swimlog_test_logged_in?true:(bool)$swimlog_test_logged_in;}}
 if(!function_exists('get_current_user_id')){function get_current_user_id(){global $swimlog_test_current_user_id;return $swimlog_test_current_user_id?:42;}}
 if(!function_exists('current_user_can')){function current_user_can($cap){global $swimlog_test_capabilities;return !empty($swimlog_test_capabilities[$cap]);}}
+if(!function_exists('user_can')){function user_can($user,$cap){global $swimlog_test_capabilities;return !empty($swimlog_test_capabilities[$cap]);}}
 if(!function_exists('get_user_meta')){function get_user_meta($uid,$key,$single=true){global $swimlog_test_user_meta;return $swimlog_test_user_meta[$uid][$key]??'';}}
 if(!function_exists('update_user_meta')){function update_user_meta($uid,$key,$value){global $swimlog_test_user_meta;$swimlog_test_user_meta[$uid][$key]=$value;return true;}}
+if(!function_exists('delete_user_meta')){function delete_user_meta($uid,$key){global $swimlog_test_user_meta;unset($swimlog_test_user_meta[$uid][$key]);return true;}}
+if(!function_exists('get_userdata')){function get_userdata($uid){return (int)$uid>0?(object)array('ID'=>(int)$uid):false;}}
+if(!function_exists('get_users')){function get_users($args=array()){global $swimlog_test_user_meta;$found=array();foreach((array)$swimlog_test_user_meta as $id=>$meta)if(($meta[$args['meta_key']]??null)===$args['meta_value'])$found[]=(int)$id;return array_slice($found,0,(int)($args['number']??10));}}
+if(!function_exists('wp_salt')){function wp_salt($scheme='auth'){return 'synthetic-test-salt-'.$scheme;}}
 if(!class_exists('WP_Error')){class WP_Error{private $code,$message,$data;public function __construct($c='',$m='',$d=null){$this->code=$c;$this->message=$m;$this->data=$d;}public function get_error_message(){return$this->message;}public function get_error_code(){return$this->code;}public function get_error_data(){return$this->data;}}}
 if(!function_exists('is_wp_error')){function is_wp_error($v){return$v instanceof WP_Error;}}
 require_once dirname(__DIR__).'/includes/class-database.php';

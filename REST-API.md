@@ -10,7 +10,7 @@ All routes use the WordPress REST namespace `swimlog/v1`:
 https://example.com/wp-json/swimlog/v1
 ```
 
-All plugin REST routes are **GET-only**. There are no REST endpoints for creating, editing, rebuilding, or deleting plugin data.
+The existing **GET-only read routes** are unchanged. One owner-scoped **POST** receiver is available for the Android Health Connect app. It only creates private, supported records; it does not provide general workout editing or deletion.
 
 ## Authorization
 
@@ -43,6 +43,47 @@ Do not store Application Passwords in source control, client-side JavaScript, pu
 - Stroke codes are `FR`, `BR`, `BACK`, `FLY`, `MIXED`, and where applicable `UNKNOWN`.
 - Optional source measurements can be `null`; missing measurements are not manufactured.
 - The API deliberately excludes workout notes, preserved source files/paths, original uploaded filenames, import records, open-water coordinates, and GPS trackpoints.
+
+## Health Connect app receiver
+
+`POST /health-connect/import-batch` accepts batches from the Swim Log Android app. It uses a dedicated owner-scoped bearer token, separate from WordPress Application Passwords and from read API access. Generate or revoke the token in **Swim Training → Swimmer Configuration → Health Connect App Sync**. The plaintext one-time token is shown once. The server stores only a keyed token hash. Send it only over HTTPS in the `Authorization: Bearer …` header; the route rejects non-HTTPS requests.
+
+The token can write only to the swimmer who generated it. The request has no owner ID, and an owner ID in the payload is rejected. Records are private by default; Health Connect measurements are accessible only through the owner's existing private calendar measurement view. The receiver never returns measurement values or heart-rate sample values in its response.
+
+The contract is version 1, with a 512 KiB maximum body, at most 50 workouts, and at most 500 measurement observations. Each workout supports up to 2,000 within-session heart-rate samples. Unsupported records are rejected individually; successful records in the same batch remain successful. The Android app can retry the same batch safely.
+
+```json
+{
+  "contract_version": 1,
+  "batch_id": "batch-20261103-0001",
+  "workouts": [{
+    "record_id": "stable-source-record-id",
+    "origin": "com.example.healthprovider",
+    "activity": "pool_swimming",
+    "start_time": "2026-11-03T07:00:00-07:00",
+    "end_time": "2026-11-03T07:45:00-07:00",
+    "distance_m": 1800,
+    "pool_length_value": 25,
+    "pool_length_unit": "m",
+    "heart_rate_samples": [{"record_id":"sample-1","origin":"com.example.healthprovider","time":"2026-11-03T07:01:00-07:00","bpm":120}]
+  }],
+  "measurements": [{
+    "record_id": "stable-source-measurement-id",
+    "origin": "com.example.healthprovider",
+    "category": "weight",
+    "time": "2026-11-03T06:50:00-07:00",
+    "values": {"weight":{"value":"72.5","unit":"kg"}}
+  }]
+}
+```
+
+Workout `activity` must be exactly `pool_swimming`, `open_water_swimming`, `running`, `running_treadmill`, or `walking`. These values are explicit activity classifications; missing GPS never changes them. `running_treadmill` is stored as running with indoor environment. Other running sessions can optionally specify `environment` as `indoor` or `outdoor`. Cycling and other activities are not accepted. Distance is meters. Pool length carries its original `m` or `yd` value/unit and is normalized to meters for storage; absent pool-course information stays unclassified. Summary-only workouts are stored without invented laps, lengths, strokes, or GPS data. Heart-rate samples must have the same data origin as their workout, lie within its session interval, and are stored in a private owner-scoped table; summary average and maximum are computed only from those samples.
+
+Measurements accept `weight` (`weight` in kg), `body_composition` (`weight` in kg, `body_fat` in %, `lean_body_mass` in kg), and `blood_pressure` (`systolic` and `diastolic` in mmHg). Timestamps must include `Z` or an explicit UTC offset, with at most microsecond precision. The source local date and offset are retained with UTC time. Unknown measurement types, fields, or units are rejected; no medical interpretation or conflicting-record merge is performed.
+
+The source record ID is never stored in plaintext. Per-owner source-key hashes prevent same-source duplicates; a repeat with identical content is reported as `duplicate`, while a changed record under the same source key is a conflict. Cross-source workout matches are retained and marked as possible duplicates. Measurement records are also retained; Health Connect readings are flagged as possible cross-provider duplicates instead of replacing another source.
+
+Successful HTTP 200 responses contain `contract_version`, the echoed `batch_id`, and per-record status/code entries, never health or sample values. Per-record `duplicate` means an identical prior import, `conflict` means changed content under a known identity and requires review, `retry` means transient storage contention, and `rejected` means invalid/unsupported data. Retry only `retry` items; do not retry a conflict as a new identity. Top-level errors use HTTP 400 for malformed contracts, 401 for a missing/invalid token, 403 for non-HTTPS, and 413 for size/count limits. Do not log request bodies, bearer headers, or health values.
 
 ## GET /workouts
 

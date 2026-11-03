@@ -13,7 +13,7 @@ $original_user = get_current_user_id();
 $prefix = $original_prefix . 'healthtest_' . strtolower( wp_generate_password( 8, false ) ) . '_';
 $admin = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) );
 $verify( ! empty( $admin ), 'No disposable administrator.' );
-$health = array( 'health_reports', 'health_measurements', 'health_report_members' );
+$health = array( 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_activities', 'health_connect_heart_rate_samples' );
 $failure_filter = null;
 try {
     // Only plugin table resolution changes; WordPress core users/options stay on the original tables.

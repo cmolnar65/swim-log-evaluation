@@ -29,6 +29,6 @@ final class AdminCalendarTest extends TestCase {
   $admin=file_get_contents(dirname(__DIR__).'/admin/class-admin.php');$goal=file_get_contents(dirname(__DIR__).'/admin/class-admin-goals.php');
   $this->assertStringContainsString("'Goals'",$admin);$this->assertStringContainsString("'swimlog-goals', 'goals'",$admin);
   $this->assertStringContainsString('function page()',$goal);$this->assertStringContainsString('List Goals',$goal);$this->assertStringContainsString('Set Goal',$goal);
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.6'",$main);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.7'",$main);
  }
 }

@@ -9,8 +9,22 @@ final class Admin_Settings {
 			wp_die( esc_html__( 'You do not have permission to manage swimmer configuration.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$uid = get_current_user_id();
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
 		$saved = false;
 		$error = '';
+		$health_connect_token = '';
+		if ( isset( $_POST['swimlog_health_connect_action'] ) ) {
+			check_admin_referer( 'swimlog_health_connect_token' );
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
+			$action = sanitize_key( wp_unslash( $_POST['swimlog_health_connect_action'] ) );
+			if ( 'issue' === $action ) {
+				$issued = Health_Connect_Tokens::issue( $uid );
+				if ( is_wp_error( $issued ) ) $error = $issued->get_error_message();
+				else { $health_connect_token = $issued; nocache_headers(); }
+			} elseif ( 'revoke' === $action ) {
+				if ( ! Health_Connect_Tokens::revoke( $uid ) ) $error = __( 'The Health Connect token could not be revoked.', 'chriss-swim-training-progress-evaluation' );
+			}
+		}
 		if ( isset( $_POST['swimlog_privacy_action'] ) && 'save' === sanitize_key( wp_unslash( $_POST['swimlog_privacy_action'] ) ) ) {
 			check_admin_referer( 'swimlog_save_privacy' );
 			$public = isset( $_POST['public_results'] ) ? '1' : '0';
@@ -115,6 +129,17 @@ final class Admin_Settings {
 				</table>
 				<?php submit_button( __( 'Save Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ) ); ?>
 			</form>
+				<?php if ( current_user_can( 'swimlog_manage_own_workouts' ) ) : ?>
+				<hr>
+				<h2><?php esc_html_e( 'Health Connect App Sync', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'A separate, owner-scoped app token lets your Android app add selected Health Connect measurements and workout summaries. Imported records remain private. The token is shown only when generated; keep it out of messages and screenshots.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<?php if ( $health_connect_token ) : ?><div class="notice notice-warning"><p><strong><?php esc_html_e( 'Copy this token now. It will not be shown again.', 'chriss-swim-training-progress-evaluation' ); ?></strong></p><p><code><?php echo esc_html( $health_connect_token ); ?></code></p></div><?php endif; ?>
+				<?php if ( get_user_meta( $uid, Health_Connect_Tokens::META, true ) ) : ?>
+					<p><?php esc_html_e( 'An app token is active. Generating a replacement revokes it immediately.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<?php else : ?><p><?php esc_html_e( 'No app token is active.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
+				<form method="post"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="issue"><button class="button button-secondary" type="submit"><?php esc_html_e( 'Generate / replace app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form>
+				<?php if ( get_user_meta( $uid, Health_Connect_Tokens::META, true ) ) : ?><form method="post" style="margin-top:8px"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="revoke"><button class="button" type="submit"><?php esc_html_e( 'Revoke app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form><?php endif; ?>
+				<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -139,6 +164,7 @@ final class Admin_Settings {
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/events' ); ?></code></td><td><?php esc_html_e( 'Return upcoming events with descriptive Race Readiness 2.0 evidence.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/analytics/pool' ); ?></code></td><td><?php esc_html_e( 'Return pool performance and efficiency analytics.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/analytics/training-trends' ); ?></code></td><td><?php esc_html_e( 'Return longitudinal training-volume trends.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+			<tr><td><code>POST</code></td><td><code><?php echo esc_html( $base . '/health-connect/import-batch' ); ?></code></td><td><?php esc_html_e( 'Owner-token authenticated Health Connect receiver for selected private measurements and workout summaries; see REST-API.md for its bounded versioned contract.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			</tbody></table></div>
 			<h2><?php esc_html_e( 'Workout list parameters', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Parameter', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Meaning', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><tr><td><code>page</code></td><td><?php esc_html_e( 'Page number; minimum 1.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>per_page</code></td><td><?php esc_html_e( 'Results per page; default 20, maximum 100.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>workout_type</code></td><td><code>pool</code> / <code>open_water</code></td></tr><tr><td><code>date_from</code></td><td><?php esc_html_e( 'Beginning of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>date_to</code></td><td><?php esc_html_e( 'End of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr></tbody></table></div>

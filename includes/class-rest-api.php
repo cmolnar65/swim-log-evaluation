@@ -2,11 +2,12 @@
 namespace SwimLogEvaluation;
 if(!defined('ABSPATH')){exit;}
 
-/** Read-only authenticated REST surface for external integrations and data portability. */
+/** Owner-scoped REST surface: authenticated reads plus one scoped Health Connect receiver. */
 final class REST_API {
  const NS='swimlog/v1';
 
  public static function register(){
+  register_rest_route(self::NS,'/health-connect/import-batch',array('methods'=>\WP_REST_Server::CREATABLE,'callback'=>array(__CLASS__,'health_connect_import_batch'),'permission_callback'=>array(__CLASS__,'health_connect_permission')));
   register_rest_route(self::NS,'/public/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workouts'),'permission_callback'=>'__return_true','args'=>array('user'=>array('sanitize_callback'=>'absint','required'=>true))));
   register_rest_route(self::NS,'/public/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workout'),'permission_callback'=>'__return_true'));
 
@@ -19,6 +20,36 @@ final class REST_API {
   register_rest_route(self::NS,'/analytics/training-trends',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'training_trends'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/calendar',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar'),'permission_callback'=>array(__CLASS__,'calendar_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
   register_rest_route(self::NS,'/calendar/measurements',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar_measurements'),'permission_callback'=>array(__CLASS__,'calendar_measurements_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
+ }
+
+ /** Health Connect app tokens authorize writes only to their owner-bound receiver. */
+ public static function health_connect_permission($request){
+  if(!is_ssl())return new \WP_Error('swimlog_hc_https_required',__('Health Connect sync requires HTTPS.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-tokens.php';
+  $header=trim((string)$request->get_header('authorization'));
+  if(!preg_match('/^Bearer\s+(slhc_[A-Za-z0-9_-]{40,64})$/iD',$header,$match))return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  if(!Health_Connect_Tokens::owner_for_token($match[1]))return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  return true;
+ }
+
+ public static function health_connect_import_batch($request){
+  $owner=self::health_connect_owner($request);
+  if(!$owner)return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  $body=(string)$request->get_body();
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-import.php';
+  if(strlen($body)>Health_Connect_Import::MAX_BYTES)return new \WP_Error('swimlog_hc_payload',__('The Health Connect batch is too large.','chriss-swim-training-progress-evaluation'),array('status'=>413));
+  $payload=$request->get_json_params();
+  if(!is_array($payload))return new \WP_Error('swimlog_hc_payload',__('The Health Connect batch must be a JSON object.','chriss-swim-training-progress-evaluation'),array('status'=>400));
+  $result=Health_Connect_Import::receive($owner,$payload);
+  if(is_wp_error($result))return $result;
+  $response=rest_ensure_response($result);$response->header('Cache-Control','private, no-store');return $response;
+ }
+
+ private static function health_connect_owner($request){
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-tokens.php';
+  $header=trim((string)$request->get_header('authorization'));
+  if(!preg_match('/^Bearer\s+(slhc_[A-Za-z0-9_-]{40,64})$/iD',$header,$match))return 0;
+  return Health_Connect_Tokens::owner_for_token($match[1]);
  }
 
  public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}

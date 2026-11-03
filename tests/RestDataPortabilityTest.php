@@ -2,7 +2,7 @@
 use PHPUnit\Framework\TestCase;
 
 final class RestDataPortabilityTest extends TestCase {
-	public function test_expanded_routes_are_read_only_and_share_existing_permission_gate() {
+	public function test_read_routes_keep_their_existing_gate_and_only_health_connect_can_write() {
 		$code = file_get_contents( dirname( __DIR__ ) . '/includes/class-rest-api.php' );
 		foreach ( array(
 			'/personal-bests',
@@ -15,7 +15,8 @@ final class RestDataPortabilityTest extends TestCase {
 		}
 		$this->assertGreaterThanOrEqual( 7, substr_count( $code, "'methods'=>\\WP_REST_Server::READABLE" ) );
 		$this->assertGreaterThanOrEqual( 7, substr_count( $code, "'permission_callback'=>array(__CLASS__,'permission')" ) );
-		$this->assertStringNotContainsString( 'CREATABLE', $code );
+		$this->assertStringContainsString( "'/health-connect/import-batch'", $code );
+		$this->assertStringContainsString( "'methods'=>\\WP_REST_Server::CREATABLE", $code );
 		$this->assertStringNotContainsString( 'EDITABLE', $code );
 		$this->assertStringNotContainsString( 'DELETABLE', $code );
 	}
@@ -75,7 +76,7 @@ final class RestDataPortabilityTest extends TestCase {
 		}
 		$this->assertStringContainsString( 'per-length stroke counts', $help );
 		$this->assertStringContainsString( 'REST API and data-portability surface', $readme );
-		$this->assertStringContainsString( 'No write/create/delete REST methods are added', $readme );
-		$this->assertStringContainsString( 'requires no database schema change', $readme );
+		$this->assertStringContainsString( 'Health Connect import receiver', $readme );
+		$this->assertStringContainsString( 'schema to 1.7', $readme );
 	}
 }
