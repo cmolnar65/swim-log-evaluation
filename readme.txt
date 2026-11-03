@@ -8,6 +8,8 @@ Stable tag: 1.3-dev
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
+Import and review swimming workouts, personal bests, training goals, and private health readings.
+
 == Description ==
 
 Chris's Swim Training Progress and Evaluation helps swimmers preserve and review workout history, personal bests, events, and training goals. Import pool and open-water swims from supported FIT or CSV files, record pool workouts manually, and import private Garmin measurements and iHealth weight, blood-pressure, and pulse readings.
@@ -15,6 +17,13 @@ Chris's Swim Training Progress and Evaluation helps swimmers preserve and review
 The plugin also supports private running and walking logs, structured swim prescriptions, training-plan review, calendar and analytics views, and selected public swim results. Measurements remain owner-private; land activities remain separate from swim totals. Imported source history is retained where supported so normalized workout data can be rebuilt.
 
 PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog below for release history and the development notes above for current unreleased features.
+
+
+== Installation ==
+
+1. Upload the plugin files to the `/wp-content/plugins/chriss-swim-training-progress-evaluation` directory, or install the plugin ZIP through the WordPress Plugins screen.
+2. Activate the plugin in WordPress.
+3. Use the Swim Log administration pages to configure the plugin and manage workouts.
 
 == Screenshots ==
 
