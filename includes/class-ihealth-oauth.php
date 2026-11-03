@@ -278,6 +278,7 @@ final class IHealth_OAuth {
         $api_sv = 'OpenApiWeight' === $api_name ? ( $app['weight_sv'] ?? '' ) : ( 'OpenApiBP' === $api_name ? ( $app['blood_pressure_sv'] ?? '' ) : '' );
         $api_label = 'OpenApiWeight' === $api_name ? __( 'Weight', 'chriss-swim-training-progress-evaluation' ) : ( 'OpenApiBP' === $api_name ? __( 'Blood pressure', 'chriss-swim-training-progress-evaluation' ) : __( 'requested', 'chriss-swim-training-progress-evaluation' ) );
         if ( ! is_string( $app['sc'] ?? null ) || '' === $app['sc'] || ! is_string( $api_sv ) || '' === $api_sv ) {
+            /* translators: %s: iHealth data category, either Weight or Blood pressure. */
             return self::error( 'api_codes', sprintf( __( 'Enter the iHealth SC and %s API SV codes in iHealth App Setup before importing data.', 'chriss-swim-training-progress-evaluation' ), $api_label ), 409 );
         }
         // Leave a small safety margin so requests do not begin with a nearly expired token.
