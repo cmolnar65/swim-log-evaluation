@@ -12,12 +12,11 @@ Import and review swimming workouts, personal bests, training goals, and private
 
 == Description ==
 
-Chris's Swim Training Progress and Evaluation helps swimmers preserve and review workout history, personal bests, events, and training goals. Import pool and open-water swims from supported FIT or CSV files, record pool workouts manually, and import private Garmin measurements and iHealth weight, blood-pressure, and pulse readings.
+Import and review pool and open-water swims from FIT or CSV, record pool workouts manually, and track personal bests, events, and goals. Private Garmin and iHealth measurements are supported.
 
-The plugin also supports private running and walking logs, structured swim prescriptions, training-plan review, calendar and analytics views, and selected public swim results. Measurements remain owner-private; land activities remain separate from swim totals. Imported source history is retained where supported so normalized workout data can be rebuilt.
+Running and walking logs remain separate from swimming totals. The plugin includes structured swim prescriptions, training-plan review, calendar and analytics views, and selected public swim results.
 
-PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog below for release history and the development notes above for current unreleased features.
-
+PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog for release history and development notes below for current unreleased features.
 
 == Installation ==
 
