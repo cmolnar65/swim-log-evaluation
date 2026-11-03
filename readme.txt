@@ -24,17 +24,6 @@ PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog 
 2. Activate the plugin in WordPress.
 3. Use the Swim Log administration pages to configure the plugin and manage workouts.
 
-== Screenshots ==
-
-1. Swim Training Dashboard provides an overview of the latest workout, personal bests, upcoming events, and recent training activity.
-2. Workout Details displays imported workout information, detected performances, preserved source imports, and normalized swim data.
-3. Personal Bests tracks performances by age group, course, distance, and stroke, with lifetime personal bests identified.
-4. PB Progression shows the performance history for a selected distance and stroke over time.
-5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
-6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
-
-Canonical per-workout sharing is development-only: public viewing requires explicit swimmer Public Results plus individual workout approval. Route sharing requires a separate workout flag and explicit route consent. Notes, photos, sources, raw metadata and measurements are excluded. Schema 1.5 adds visibility state without rewriting workout history. Plugin remains 1.3-dev and unreleased.
-
 == Changelog ==
 
 = 1.3-dev (unreleased) =
@@ -297,3 +286,14 @@ Version 0.7 adds native Block Editor support for the six existing public display
 * Progress — `[swimlog_progress]`: swimmer, course, stroke, distance, and heading controls.
 
 Public-results authorization is unchanged. Applicable blocks use the page/post author when no swimmer override is supplied and never fall back to the logged-in viewer. Open-water GPS routes remain separately opt-in, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
+
+== Screenshots ==
+
+1. Swim Training Dashboard provides an overview of the latest workout, personal bests, upcoming events, and recent training activity.
+2. Workout Details displays imported workout information, detected performances, preserved source imports, and normalized swim data.
+3. Personal Bests tracks performances by age group, course, distance, and stroke, with lifetime personal bests identified.
+4. PB Progression shows the performance history for a selected distance and stroke over time.
+5. Native WordPress blocks provide latest workouts, personal bests, upcoming events, individual workouts, training logs, progress displays, and the private Swim Training Calendar.
+6. Swim Training Calendar displays recorded workouts, planned swims, and upcoming events in a monthly view, with workout scheduling, personal-best indicators, and planned-workout matching.
+
+Canonical per-workout sharing is development-only: public viewing requires explicit swimmer Public Results plus individual workout approval. Route sharing requires a separate workout flag and explicit route consent. Notes, photos, sources, raw metadata and measurements are excluded. Schema 1.5 adds visibility state without rewriting workout history. Plugin remains 1.3-dev and unreleased.
