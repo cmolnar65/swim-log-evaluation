@@ -39,7 +39,7 @@ final class ReleaseDocumentationTest extends TestCase {
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly','mobile','GPS','database schema remains 0.9')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Swim Training Calendar','Month and Week','Saturday','Sunday','Monday','weekly summaries','date-grouped agenda','Escape-to-close','database schema remains version 0.9')as$feature)$this->assertStringContainsString($feature,$github);
   $this->assertStringContainsString('## v1.0',$github);
-  $this->assertStringContainsString('= v1.0 =',$readme);
+  $this->assertStringContainsString('### v1.0',$readme);
  }
  public function test_v09_docs_cover_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
