@@ -26,7 +26,7 @@ final class PrimaryStrokeDerivationTest extends TestCase {
                 array( 'length_type' => 'active', 'stroke' => 'BR', 'distance_m' => 1550 ),
             ),
         );
-        $result = \\SwimLogEvaluation\\Importer::derive_primary_stroke( $parsed );
+        $result = \SwimLogEvaluation\Importer::derive_primary_stroke( $parsed );
         $this->assertSame( 'MIXED', $result['workout']['primary_stroke'] );
     }
 
@@ -38,7 +38,7 @@ final class PrimaryStrokeDerivationTest extends TestCase {
                 array( 'length_type' => 'active', 'stroke' => 'BR', 'distance_m' => 40 ),
             ),
         );
-        $result = \\SwimLogEvaluation\\Importer::derive_primary_stroke( $parsed );
+        $result = \SwimLogEvaluation\Importer::derive_primary_stroke( $parsed );
         $this->assertSame( 'FR', $result['workout']['primary_stroke'] );
     }
 
