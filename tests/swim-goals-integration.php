@@ -17,8 +17,10 @@ try {
 	foreach ( array( $owner, $other ) as $user_id ) ( new WP_User( $user_id ) )->add_cap( 'swimlog_manage_own_workouts' );
 	$verify( '1.7' === get_option( 'swimlog_db_version' ) && Database::schema_is_complete(), 'Schema 1.7 is installed and complete.' );
 	$today = wp_date( 'Y-m-d', null, wp_timezone() );
-	$past_start = wp_date( 'Y-m-d', time() - ( 3 * DAY_IN_SECONDS ), wp_timezone() );
-	$past_middle = wp_date( 'Y-m-d', time() - ( 2 * DAY_IN_SECONDS ), wp_timezone() );
+	$past_start = wp_date( 'Y-m-d', time() - ( 5 * DAY_IN_SECONDS ), wp_timezone() );
+	$past_middle = wp_date( 'Y-m-d', time() - ( 4 * DAY_IN_SECONDS ), wp_timezone() );
+	$crossing_day = wp_date( 'Y-m-d', time() - ( 3 * DAY_IN_SECONDS ), wp_timezone() );
+	$past_later = wp_date( 'Y-m-d', time() - ( 2 * DAY_IN_SECONDS ), wp_timezone() );
 	$past_end = wp_date( 'Y-m-d', time() - DAY_IN_SECONDS, wp_timezone() );
 	$due = wp_date( 'Y-m-d', time() + ( 7 * DAY_IN_SECONDS ), wp_timezone() );
 	$now = current_time( 'mysql' );
@@ -29,12 +31,14 @@ try {
 	};
 	$insert_workout( 'pool', $past_start, 1000 );
 	$insert_workout( 'pool', $past_middle, 914.4 ); // 1,000 yd, normalized in canonical meters.
-	$insert_workout( 'open_water', $past_end, 500 );
+	$insert_workout( 'open_water', $crossing_day, 500 );
 	$insert_workout( 'running', $past_middle, 5000 );
+	$insert_workout( 'pool', $past_later, 5000 );
+	$insert_workout( 'pool', $past_end, 10000 );
 	$insert_workout( 'pool', $today, 900 );
 	$period = Swim_Goals::create( $owner, array( 'goal_type' => Swim_Goals::PERIOD, 'course_unit' => 'm', 'target_distance' => '2000', 'start_date' => $past_start, 'end_date' => $past_end, 'title' => 'Synthetic all-swimming period' ) );
 	$verify( ! is_wp_error( $period ), 'Create date-range goal.' ); $created_goals[] = $period['id'];
-	$verify( abs( $period['progress_meters'] - 2414.4 ) < 0.001 && 'achieved' === $period['status'], 'Date-range distance includes pool and open-water canonical totals and excludes land/out-of-range distance.' );
+	$verify( abs( $period['progress_meters'] - 2000 ) < 0.001 && 100.0 === $period['progress_percent'] && $crossing_day === $period['completion_date'] && 'achieved' === $period['status'], 'Date-range progress caps at its target on the first crossing day and excludes later in-range swims, land and out-of-range distance.' );
 	$single = Swim_Goals::create( $owner, array( 'goal_type' => Swim_Goals::SINGLE, 'course_unit' => 'm', 'target_distance_value' => 1500, 'target_pace_ms' => 120000, 'start_date' => $today, 'end_date' => $due, 'title' => 'Synthetic pace goal' ) );
 	$verify( ! is_wp_error( $single ), 'Create one-time pace goal.' ); $created_goals[] = $single['id'];
 	$one_day = Swim_Goals::create( $owner, array( 'goal_type' => Swim_Goals::PERIOD, 'course_unit' => 'yd', 'target_distance' => '500', 'start_date' => $past_middle, 'end_date' => $past_middle, 'title' => 'Synthetic one-day goal' ) );
@@ -42,14 +46,14 @@ try {
 	$performance_workout = $insert_workout( 'pool', $today, 1500 );
 	Database::write( 'insert', Database::table( 'performances' ), array( 'user_id' => $owner, 'workout_id' => $performance_workout, 'distance_value' => 1500, 'course_unit' => 'm', 'stroke' => 'BR', 'duration_ms' => 1700000, 'evaluation_version' => 'synthetic', 'achieved_at' => $now, 'created_at' => $now ) );
 	$single = Swim_Goals::get_for_user( $single['id'], $owner );
-	$verify( 'achieved' === $single['status'] && '' === $single['stroke'], 'Matching exact-course performance at any stroke achieves the one-time goal.' );
+	$verify( 'achieved' === $single['status'] && '' === $single['stroke'] && substr( $now, 0, 10 ) === $single['completion_date'], 'Matching exact-course performance at any stroke achieves the one-time goal and reports its completion date.' );
 	$verify( array() === Swim_Goals::list_for_user( $other ), 'Another swimmer cannot list this owner’s goals.' );
 	$verify( false === Swim_Goals::delete_for_user( $period['id'], $other ), 'Another swimmer cannot delete this owner’s goal.' );
 	$markers = Swim_Goals::calendar_markers( $owner, $past_start, $due );
 	$marker_pairs = array(); foreach ( $markers as $marker ) $marker_pairs[] = $marker['id'] . ':' . $marker['marker'];
 	$verify( in_array( $period['id'] . ':goal_start', $marker_pairs, true ) && in_array( $period['id'] . ':goal_end', $marker_pairs, true ) && in_array( $single['id'] . ':goal_due', $marker_pairs, true ) && in_array( $one_day['id'] . ':goal_start_end', $marker_pairs, true ), 'Private calendar includes date-range first/last days, one-day range and the one-time due date.' );
 	wp_set_current_user( $owner ); $_GET = array( 'page' => 'swimlog-goals' ); ob_start(); Admin_Goals::page(); $page = ob_get_clean();
-	$verify( false !== strpos( $page, 'Set Goal' ) && false !== strpos( $page, 'List Goals' ) && false !== strpos( $page, 'Synthetic all-swimming period' ) && false !== strpos( $page, 'Synthetic pace goal' ), 'Goals page lists both private goals and their progress.' );
+	$verify( false !== strpos( $page, 'Set Goal' ) && false !== strpos( $page, 'List Goals' ) && false !== strpos( $page, 'Synthetic all-swimming period' ) && false !== strpos( $page, 'Synthetic pace goal' ) && false !== strpos( $page, 'Completed ' ), 'Goals page lists private goals, progress and achieved completion dates.' );
 	$verify( Swim_Goals::delete_for_user( $period['id'], $owner ) && Swim_Goals::delete_for_user( $single['id'], $owner ) && Swim_Goals::delete_for_user( $one_day['id'], $owner ), 'Owner can remove their goals.' );
 	$created_goals = array();
 	WP_CLI::success( 'Synthetic swim goal storage, progress, ownership and calendar checks passed ' . $checks . ' assertions.' );

@@ -129,35 +129,54 @@ final class Swim_Goals {
 			Database::table( 'performances' ), Database::table( 'workouts' ), $goal['user_id'], $goal['target_distance_value'], $goal['course_unit'], $goal['start_date'] . ' 00:00:00', self::next_day( $goal['end_date'] ) . ' 00:00:00'
 		) );
 		$best = null;
+		$completion_date = null;
+		$target_duration_distance = (int) $goal['target_pace_ms'] * (int) $goal['target_distance_value'];
 		foreach ( (array) $rows as $row ) {
 			$duration = (int) $row->duration_ms;
+			$achieved_at = (string) $row->achieved_at;
 			$pace = (int) round( $duration * 100 / max( 1, (int) $goal['target_distance_value'] ) );
-			if ( null === $best || $duration < $best['duration_ms'] ) $best = array( 'duration_ms' => $duration, 'pace_ms' => $pace, 'achieved_at' => (string) $row->achieved_at );
+			if ( null === $best || $duration < $best['duration_ms'] ) $best = array( 'duration_ms' => $duration, 'pace_ms' => $pace, 'achieved_at' => $achieved_at );
+			if ( $duration * 100 <= $target_duration_distance ) {
+				$date = substr( $achieved_at, 0, 10 );
+				if ( null === $completion_date || $date < $completion_date ) $completion_date = $date;
+			}
 		}
-		$achieved = null !== $best && ( $best['duration_ms'] * 100 <= (int) $goal['target_pace_ms'] * (int) $goal['target_distance_value'] );
 		return array(
 			'best_pace_ms' => null === $best ? null : $best['pace_ms'],
 			'achieved_at' => null === $best ? null : $best['achieved_at'],
+			'completion_date' => $completion_date,
 			'progress_meters' => null,
 			'progress_percent' => null,
-			'status' => self::status( $goal, $achieved ),
+			'status' => self::status( $goal, null !== $completion_date ),
 		);
 	}
 
 	private static function distance_progress( $goal ) {
 		global $wpdb;
-		$meters = Database::read( 'get_var', $wpdb->prepare(
-			"SELECT COALESCE(SUM(total_distance_m),0) FROM %i WHERE user_id = %d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s",
+		$rows = Database::read( 'get_results', $wpdb->prepare(
+			"SELECT id,workout_start,total_distance_m FROM %i WHERE user_id = %d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s ORDER BY workout_start ASC,id ASC",
 			Database::table( 'workouts' ), $goal['user_id'], $goal['start_date'] . ' 00:00:00', self::next_day( $goal['end_date'] ) . ' 00:00:00'
 		) );
-		$meters = max( 0.0, (float) $meters );
 		$target = max( 0.001, (float) $goal['target_distance_m'] );
+		$meters = 0.0;
+		$completion_date = null;
+		foreach ( (array) $rows as $row ) {
+			$distance = (float) $row->total_distance_m;
+			if ( ! is_finite( $distance ) || $distance <= 0 ) continue;
+			$meters += $distance;
+			if ( $meters >= $target ) {
+				$meters = $target;
+				$completion_date = substr( (string) $row->workout_start, 0, 10 );
+				break;
+			}
+		}
 		return array(
 			'progress_meters' => $meters,
 			'progress_percent' => round( 100 * $meters / $target, 1 ),
 			'best_pace_ms' => null,
 			'achieved_at' => null,
-			'status' => self::status( $goal, $meters >= $target ),
+			'completion_date' => $completion_date,
+			'status' => self::status( $goal, null !== $completion_date ),
 		);
 	}
 
