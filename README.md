@@ -12,7 +12,7 @@ Version 1.4 is the current plugin release. The plugin header/runtime and WordPre
 
 The release adds private swimming goals for one-time pace targets, cumulative date-range distance and single-workout distance; completion dates and capped progress; per-swimmer primary/secondary unit display; private Health Connect imports; Garmin and iHealth personal-measurement workflows; separate running/walking logs and totals; canonical read-only workout visibility; and explicit planned/structured workout unlinking.
 
-Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Opt-in automatic measurement synchronization is separately configured and off by default.
+Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Optional opt-in automatic measurement synchronization is separately configured and off by default.
 
 Health Connect imports remain owner-private and require the per-owner app token. Supported workout types are pool/open-water swimming, running and walking; cycling and GPS payloads are excluded. Same-source retries are idempotent and changed content under a known identity is rejected. Land activities do not contribute to swimming analytics.
 
