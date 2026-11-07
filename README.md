@@ -12,7 +12,7 @@ Version 1.4 is the current plugin release. The plugin header/runtime and WordPre
 
 The release adds private swimming goals for one-time pace targets, cumulative date-range distance and single-workout distance; completion dates and capped progress; per-swimmer primary/secondary unit display; private Health Connect imports; Garmin and iHealth personal-measurement workflows; separate running/walking logs and totals; canonical read-only workout visibility; and explicit planned/structured workout unlinking.
 
-Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Optional automatic measurement synchronization is separately configured and off by default.
+Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Opt-in automatic measurement synchronization is separately configured and off by default.
 
 Health Connect imports remain owner-private and require the per-owner app token. Supported workout types are pool/open-water swimming, running and walking; cycling and GPS payloads are excluded. Same-source retries are idempotent and changed content under a known identity is rejected. Land activities do not contribute to swimming analytics.
 
@@ -119,7 +119,7 @@ The fourth v0.9 milestone expands the authenticated, opt-in, read-only **REST AP
 
 The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. This historical v0.9 milestone adds no write routes or schema changes.
 
-The v1.4 Health Connect receiver provides one HTTPS-only owner-bound batch import route and one-time app-token management in Swimmer Configuration. It accepts private pool/open-water swimming, running and walking summaries, within-session heart-rate samples, and supported personal measurements; it excludes cycling and GPS payloads. Same-source retries are idempotent, changed content under a known identity is rejected, and cross-source possible duplicates remain separate. Private receiver tables use schema 1.7.
+The v1.4 Health Connect import receiver provides one HTTPS-only owner-bound batch import route and one-time app-token management in Swimmer Configuration. It accepts private pool/open-water swimming, running and walking summaries, within-session heart-rate samples, and supported personal measurements; it excludes cycling and GPS payloads. Same-source retries are idempotent, changed content under a known identity is rejected, and cross-source possible duplicates remain separate. Private receiver tables advance the database schema to 1.7.
 
 The v0.9 administration architecture was also refactored from the former monolithic Admin class into focused components for workouts, manual workouts, analytics, personal bests, events/locations, shortcode help, Garmin, settings, Race Readiness presentation, and shared UI helpers. The refactor preserves existing menu slugs, permissions, nonces, URLs, and behavior while making future development more maintainable.
 
