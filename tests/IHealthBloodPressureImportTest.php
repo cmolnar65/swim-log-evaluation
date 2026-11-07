@@ -48,7 +48,7 @@ final class IHealthBloodPressureImportTest extends TestCase {
         $this->assertSame( 'default', $request['locale'] );
         $this->assertGreaterThan( $request['start_time'], $request['end_time'] );
         $this->assertTrue( is_wp_error( Importer::request( '2026-01-01', '2026-04-01', 1 ) ) );
-        $this->assertTrue( is_wp_error( Importer::request( '2026-11-03', '2026-11-03', 1 ) ) );
+        $this->assertTrue( is_wp_error( Importer::request( '2099-01-01', '2099-01-01', 1 ) ) );
         $this->assertTrue( is_wp_error( Importer::request( '2026-11-01', '2026-11-02', 21 ) ) );
     }
 }
