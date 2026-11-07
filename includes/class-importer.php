@@ -288,9 +288,8 @@ final class Importer {
 		return $result;
 	}
 	/**
-	 * Derive the dominant recorded swimming stroke from active pool lengths.
-	 * Unknown, drill and mixed labels do not override a known swimming stroke.
-	 * A tie is resolved deterministically by first occurrence.
+	 * Assign a workout stroke only when one stroke clearly dominates active pool distance.
+	 * Otherwise label the workout mixed instead of overstating a narrow lead.
 	 */
 	public static function derive_primary_stroke( $parsed ) {
 		if ( ! isset( $parsed['workout'] ) || ! is_array( $parsed['workout'] ) ) return $parsed;
@@ -307,7 +306,11 @@ final class Importer {
 		}
 		if ( $distance_by_stroke ) {
 			arsort( $distance_by_stroke, SORT_NUMERIC );
-			$parsed['workout']['primary_stroke'] = (string) key( $distance_by_stroke );
+			$classified_distance = array_sum( $distance_by_stroke );
+			$dominant_distance = (float) reset( $distance_by_stroke );
+			$parsed['workout']['primary_stroke'] = $dominant_distance / $classified_distance >= 0.60
+				? (string) key( $distance_by_stroke )
+				: 'MIXED';
 		}
 		return $parsed;
 	}

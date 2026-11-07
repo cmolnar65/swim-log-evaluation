@@ -18,6 +18,30 @@ final class PrimaryStrokeDerivationTest extends TestCase {
         $this->assertSame( 'FR', $result['workout']['primary_stroke'] );
     }
 
+    public function test_near_balanced_freestyle_and_breaststroke_distance_is_mixed() {
+        $parsed = array(
+            'workout' => array( 'workout_type' => 'pool', 'primary_stroke' => null ),
+            'lengths' => array(
+                array( 'length_type' => 'active', 'stroke' => 'FR', 'distance_m' => 2050 ),
+                array( 'length_type' => 'active', 'stroke' => 'BR', 'distance_m' => 1550 ),
+            ),
+        );
+        $result = \\SwimLogEvaluation\\Importer::derive_primary_stroke( $parsed );
+        $this->assertSame( 'MIXED', $result['workout']['primary_stroke'] );
+    }
+
+    public function test_stroke_at_sixty_percent_is_clear_primary_stroke() {
+        $parsed = array(
+            'workout' => array( 'workout_type' => 'pool', 'primary_stroke' => null ),
+            'lengths' => array(
+                array( 'length_type' => 'active', 'stroke' => 'FR', 'distance_m' => 60 ),
+                array( 'length_type' => 'active', 'stroke' => 'BR', 'distance_m' => 40 ),
+            ),
+        );
+        $result = \\SwimLogEvaluation\\Importer::derive_primary_stroke( $parsed );
+        $this->assertSame( 'FR', $result['workout']['primary_stroke'] );
+    }
+
     public function test_missing_reliable_stroke_does_not_invent_a_primary_stroke() {
         $parsed = array(
             'workout' => array( 'workout_type' => 'pool', 'primary_stroke' => null ),
