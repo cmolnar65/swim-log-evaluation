@@ -65,11 +65,12 @@ final class Admin_Goals {
 					</form>
 				</section>
 				<section class="swimlog-settings-section"><h3><?php esc_html_e( 'Swimming distance over a date range', 'chriss-swim-training-progress-evaluation' ); ?></h3>
-					<p class="description"><?php esc_html_e( 'Pool and open-water swims both count. Swimming is totaled in canonical meters; the selected meter or yard unit controls goal entry and display. Individual swim distances and course-specific records stay separate.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Pool and open-water swims both count. Swimming is totaled in canonical meters; the selected meter or yard unit controls goal entry and display. Check Single Workout to require one swim to meet the target; otherwise swims accumulate across the date range. Individual swim distances and course-specific records stay separate.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 					<form method="post"><?php wp_nonce_field( 'swimlog_goal_action' ); ?><?php Admin_UI::context_fields( $user_id ); ?><input type="hidden" name="swimlog_goal_action" value="create"><input type="hidden" name="goal[goal_type]" value="period_distance">
 						<table class="form-table" role="presentation"><tbody>
 							<tr><th><label for="swimlog-goal-distance-title"><?php esc_html_e( 'Goal name (optional)', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input class="regular-text" id="swimlog-goal-distance-title" name="goal[title]" type="text" maxlength="191"></td></tr>
-							<tr><th><label for="swimlog-goal-distance-target"><?php esc_html_e( 'Total distance', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-goal-distance-target" name="goal[target_distance]" type="number" min="0.001" max="100000000" step="0.001"> <?php self::course_select( 'goal[course_unit]', 'swimlog-goal-distance-course', $default_unit ); ?></td></tr>
+							<tr><th><label for="swimlog-goal-distance-target"><?php esc_html_e( 'Target distance', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-goal-distance-target" name="goal[target_distance]" type="number" min="0.001" max="100000000" step="0.001"> <?php self::course_select( 'goal[course_unit]', 'swimlog-goal-distance-course', $default_unit ); ?></td></tr>
+							<tr><th><?php esc_html_e( 'Goal condition', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label for="swimlog-goal-single-workout"><input id="swimlog-goal-single-workout" name="goal[single_workout]" type="checkbox" value="1"> <?php esc_html_e( 'Single Workout', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'When checked, one pool or open-water swim must reach the target within the dates. Progress shows the longest single swim until achieved.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 							<tr><th><label for="swimlog-goal-distance-start"><?php esc_html_e( 'First day', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-goal-distance-start" name="goal[start_date]" type="date" value="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></td></tr>
 							<tr><th><label for="swimlog-goal-distance-end"><?php esc_html_e( 'Last day', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><input required id="swimlog-goal-distance-end" name="goal[end_date]" type="date" value="<?php echo esc_attr( wp_date( 'Y-m-d', null, wp_timezone() ) ); ?>"></td></tr>
 						</tbody></table><?php submit_button( __( 'Set Distance Goal', 'chriss-swim-training-progress-evaluation' ) ); ?>
@@ -101,7 +102,8 @@ final class Admin_Goals {
 	}
 
 	private static function goal_type_label( $goal ) {
-		return Swim_Goals::SINGLE === $goal['goal_type'] ? __( 'One-time performance', 'chriss-swim-training-progress-evaluation' ) : __( 'Date-range distance', 'chriss-swim-training-progress-evaluation' );
+		if ( Swim_Goals::SINGLE === $goal['goal_type'] ) return __( 'One-time performance', 'chriss-swim-training-progress-evaluation' );
+		return Swim_Goals::SINGLE_WORKOUT === $goal['goal_type'] ? __( 'Date-range distance · single workout', 'chriss-swim-training-progress-evaluation' ) : __( 'Date-range distance', 'chriss-swim-training-progress-evaluation' );
 	}
 
 	private static function date_range( $goal ) {

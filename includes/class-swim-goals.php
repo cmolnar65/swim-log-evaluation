@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class Swim_Goals {
 	const SINGLE = 'single_performance';
 	const PERIOD = 'period_distance';
+	const SINGLE_WORKOUT = 'single_workout_distance';
 	const YARDS_TO_METERS = 0.9144;
 
 	public static function create( $user_id, $input ) {
@@ -44,8 +45,8 @@ final class Swim_Goals {
 	public static function calendar_markers( $user_id, $start, $end ) {
 		global $wpdb;
 		$rows = Database::read( 'get_results', $wpdb->prepare(
-			"SELECT * FROM %i WHERE user_id = %d AND ((goal_type = %s AND end_date BETWEEN %s AND %s) OR (goal_type = %s AND (start_date BETWEEN %s AND %s OR end_date BETWEEN %s AND %s))) ORDER BY start_date ASC, id ASC",
-			Database::table( 'goals' ), absint( $user_id ), self::SINGLE, $start, $end, self::PERIOD, $start, $end, $start, $end
+			"SELECT * FROM %i WHERE user_id = %d AND ((goal_type = %s AND end_date BETWEEN %s AND %s) OR (goal_type IN (%s,%s) AND (start_date BETWEEN %s AND %s OR end_date BETWEEN %s AND %s))) ORDER BY start_date ASC, id ASC",
+			Database::table( 'goals' ), absint( $user_id ), self::SINGLE, $start, $end, self::PERIOD, self::SINGLE_WORKOUT, $start, $end, $start, $end
 		) );
 		$markers = array();
 		foreach ( (array) $rows as $row ) {
@@ -67,8 +68,9 @@ final class Swim_Goals {
 	public static function normalize_input( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$type = isset( $input['goal_type'] ) ? sanitize_key( $input['goal_type'] ) : '';
+		if ( self::PERIOD === $type && ! empty( $input['single_workout'] ) ) $type = self::SINGLE_WORKOUT;
 		$unit = isset( $input['course_unit'] ) ? sanitize_key( $input['course_unit'] ) : '';
-		if ( ! in_array( $type, array( self::SINGLE, self::PERIOD ), true ) ) return new \WP_Error( 'swimlog_goal_type', __( 'Select a supported goal type.', 'chriss-swim-training-progress-evaluation' ) );
+		if ( ! in_array( $type, array( self::SINGLE, self::PERIOD, self::SINGLE_WORKOUT ), true ) ) return new \WP_Error( 'swimlog_goal_type', __( 'Select a supported goal type.', 'chriss-swim-training-progress-evaluation' ) );
 		if ( ! in_array( $unit, array( 'm', 'yd' ), true ) ) return new \WP_Error( 'swimlog_goal_course', __( 'Select meters or yards.', 'chriss-swim-training-progress-evaluation' ) );
 		$start = self::valid_date( $input['start_date'] ?? '' );
 		$end = self::valid_date( $input['end_date'] ?? '' );
@@ -102,7 +104,10 @@ final class Swim_Goals {
 			$distance = isset( $input['target_distance'] ) && is_numeric( $input['target_distance'] ) ? (float) $input['target_distance'] : 0.0;
 			if ( ! is_finite( $distance ) || $distance <= 0 || $distance > 100000000 ) return new \WP_Error( 'swimlog_goal_volume', __( 'Enter a positive distance for the date-range goal.', 'chriss-swim-training-progress-evaluation' ) );
 			$base['target_distance_m'] = round( 'yd' === $unit ? $distance * self::YARDS_TO_METERS : $distance, 3 );
-			if ( '' === $base['title'] ) $base['title'] = sprintf( /* translators: 1: distance, 2: course unit. */ __( '%1$s %2$s swim distance goal', 'chriss-swim-training-progress-evaluation' ), self::format_native( $distance ), $unit );
+			if ( '' === $base['title'] ) {
+				$title_format = self::SINGLE_WORKOUT === $type ? __( '%1$s %2$s single-workout goal', 'chriss-swim-training-progress-evaluation' ) : __( '%1$s %2$s swim distance goal', 'chriss-swim-training-progress-evaluation' );
+				$base['title'] = sprintf( /* translators: 1: distance, 2: course unit. */ $title_format, self::format_native( $distance ), $unit );
+			}
 		}
 		return $base;
 	}
@@ -158,11 +163,22 @@ final class Swim_Goals {
 			Database::table( 'workouts' ), $goal['user_id'], $goal['start_date'] . ' 00:00:00', self::next_day( $goal['end_date'] ) . ' 00:00:00'
 		) );
 		$target = max( 0.001, (float) $goal['target_distance_m'] );
+		$single_workout = self::SINGLE_WORKOUT === $goal['goal_type'];
 		$meters = 0.0;
+		$best_single_workout = 0.0;
 		$completion_date = null;
 		foreach ( (array) $rows as $row ) {
 			$distance = (float) $row->total_distance_m;
 			if ( ! is_finite( $distance ) || $distance <= 0 ) continue;
+			if ( $single_workout ) {
+				$best_single_workout = max( $best_single_workout, $distance );
+				if ( $distance >= $target ) {
+					$meters = $target;
+					$completion_date = substr( (string) $row->workout_start, 0, 10 );
+					break;
+				}
+				continue;
+			}
 			$meters += $distance;
 			if ( $meters >= $target ) {
 				$meters = $target;
@@ -170,6 +186,7 @@ final class Swim_Goals {
 				break;
 			}
 		}
+		if ( $single_workout && null === $completion_date ) $meters = $best_single_workout;
 		return array(
 			'progress_meters' => $meters,
 			'progress_percent' => round( 100 * $meters / $target, 1 ),
@@ -195,7 +212,8 @@ final class Swim_Goals {
 			'target_distance_value' => $goal['target_distance_value'], 'target_pace_ms' => $goal['target_pace_ms'],
 			'stroke' => $goal['stroke'], 'start_date' => $goal['start_date'], 'end_date' => $goal['end_date'],
 			'progress_meters' => $goal['progress_meters'], 'progress_percent' => $goal['progress_percent'],
-			'best_pace_ms' => $goal['best_pace_ms'], 'status' => $goal['status'],
+			'best_pace_ms' => $goal['best_pace_ms'], 'completion_date' => $goal['completion_date'] ?? null,
+			'single_workout' => self::SINGLE_WORKOUT === $goal['goal_type'], 'status' => $goal['status'],
 		);
 	}
 

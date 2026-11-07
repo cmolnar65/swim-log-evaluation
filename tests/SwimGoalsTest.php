@@ -20,6 +20,21 @@ final class SwimGoalsTest extends TestCase {
 		$this->assertNull( $goal['target_distance_value'] );
 	}
 
+	public function test_date_range_single_workout_option_uses_existing_goal_type_storage() {
+		$goal = Swim_Goals::normalize_input( array(
+			'goal_type' => Swim_Goals::PERIOD,
+			'single_workout' => '1',
+			'course_unit' => 'yd',
+			'target_distance' => '5000',
+			'start_date' => '2026-11-01',
+			'end_date' => '2026-11-30',
+		) );
+		$this->assertIsArray( $goal );
+		$this->assertSame( Swim_Goals::SINGLE_WORKOUT, $goal['goal_type'] );
+		$this->assertSame( 4572.0, $goal['target_distance_m'] );
+		$this->assertLessThanOrEqual( 24, strlen( Swim_Goals::SINGLE_WORKOUT ) );
+	}
+
 	public function test_single_performance_goal_uses_exact_course_and_accepts_any_stroke() {
 		$goal = Swim_Goals::normalize_input( array(
 			'goal_type' => Swim_Goals::SINGLE,

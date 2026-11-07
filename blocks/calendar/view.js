@@ -443,10 +443,11 @@
 			detailRow( list, 'Best recorded pace', goal.best_pace_ms === null ? 'No qualifying performance yet' : paceText( goal.best_pace_ms ) + ' per 100 ' + goal.course_unit );
 		} else {
 			detailRow( list, 'Target distance', distanceText( goal.target_distance_m, 'pool', root, goal.course_unit ) );
-			detailRow( list, 'Swimming recorded in period', distanceText( goal.progress_meters, 'pool', root, goal.course_unit ) );
+			detailRow( list, goal.single_workout ? 'Longest single workout in period' : 'Swimming recorded in period', distanceText( goal.progress_meters, 'pool', root, goal.course_unit ) );
 			detailRow( list, 'Progress', Number( goal.progress_percent || 0 ).toLocaleString( undefined, { maximumFractionDigits: 1 } ) + '%' );
 		}
-		detailRow( list, 'Status', goalStatus( goal.status ) ); panel.appendChild( list );
+		detailRow( list, 'Status', goalStatus( goal.status ) );
+		if ( goal.status === 'achieved' && goal.completion_date ) detailRow( list, 'Completed', goal.completion_date ); panel.appendChild( list );
 		if ( root.dataset.goalsUrl ) { var link = document.createElement( 'a' ); link.className = 'swimlog-calendar-button'; link.href = root.dataset.goalsUrl; link.textContent = 'View Goals'; panel.appendChild( link ); }
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close ); panel.scrollIntoView( { block: 'nearest' } ); close.focus();
 	}
