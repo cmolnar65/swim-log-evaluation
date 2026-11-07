@@ -4,7 +4,7 @@ Tags: swimming, swim log, personal bests, fit, csv
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3-dev
+Stable tag: 1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,11 +12,11 @@ Import and review swimming workouts, personal bests, training goals, and private
 
 == Description ==
 
-Import and review pool and open-water swims from FIT or CSV, record pool workouts manually, and track personal bests, events, and goals. Private Garmin and iHealth measurements are supported.
+Import and review pool and open-water swims from FIT or CSV, record pool workouts manually, and track personal bests, events, and goals. Private Garmin, iHealth, and Health Connect data integrations are supported.
 
 Running and walking logs remain separate from swimming totals. The plugin includes structured swim prescriptions, training-plan review, calendar and analytics views, and selected public swim results.
 
-PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog for release history and current unreleased features.
+PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog for release history and supported features.
 
 == Installation ==
 
@@ -36,18 +36,16 @@ PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog 
 
 == Changelog ==
 
-= 1.3-dev (unreleased) =
-* Add running/walking FIT import, private recorded GPS details, owner log/calendar entries and separate sport totals; swimming analytics remain swim-only. Schema 1.4 adds an optional environment field without rewriting existing workouts.
-* Show derived sleep periods, Garmin-local bedtime and wake time in private calendar-day details, using UTC elapsed time, local wake dates and duplicate-window handling; clarify summary-only SpO2 headings.
-* Add private weight/BMI and Garmin-reported SpO2 measurement imports with additive schema 1.3, owner-only storage, duplicate handling and source-date preservation.
-* Add separate opt-in scheduled measurement checks and bounded manual imports, retaining existing records on failure.
-* Display private measurement indicators after workouts/events, with accessible overflow and complete calendar-day details on desktop and mobile.
-* Add historical Garmin activity/measurement background jobs with inclusive date ranges, full pagination, status-aware activity retries, persistent progress, pause/resume/cancel, failed-item retries and private review results.
-* Serialize incoming activity imports and preserve conservative matching/location review and recorded history.
-* Repair calendar pool-length normalization; expand migration, persistence, full-year/restart/privacy and desktop/mobile regressions.
-* Add canonical read-only per-workout visibility for pool, open-water, running and walking activities, with separate route approval and consent. Schema 1.5 adds visibility state; only explicitly public legacy swimming history is preserved as public, while land history and measurements stay private.
-* Add per-swimmer display preferences for running, walking and cycling units, body-weight units, optional secondary units, and the default swim course. Canonical land distance and weight storage and meter/yard swim-course separation remain unchanged.
-
+= 1.4 =
+* Add private swim goals for a single performance by a due date, cumulative distance across an inclusive date range, and a single-workout distance target. Show the first completion date and cap achieved progress so later swims do not add to it.
+* Add per-swimmer primary units and optional secondary display units for running, walking, cycling display and body weight; set swim-course defaults without combining meter and yard records.
+* Add the owner-scoped Health Connect batch receiver and one-time app tokens with additive private schema 1.7 tables. Support private pool/open-water swims, running, walking, heart-rate samples and supported personal measurements. Retries are idempotent; conflicting changes under a known source identity are rejected, and cross-source possible duplicates remain separate.
+* Add private Garmin measurement and historical-import workflows, including weight/BMI, provider SpO2 summaries, sleep-window details, bounded manual imports and resumable historical jobs.
+* Add iHealth app setup with encrypted credentials, administrator-authorized OAuth verification, and bounded manual weight/body-composition and blood-pressure/pulse imports with duplicate checks.
+* Add private running and walking FIT activity logging, optional recorded GPS maps and separate sport totals. These activities remain outside swimming totals and coaching/evaluation metrics; cycling remains unsupported.
+* Add canonical read-only public workout visibility with separate owner-wide and per-workout approvals, distinct route-sharing gates, server-side owner management, and private measurements and notes.
+* Add explicit unlinking for planned and structured workouts while preserving recorded workout history.
+* Improve swimming stroke classification, units, goal progress, calendar details, responsive administration and accessibility while retaining existing records and privacy boundaries.
 = 1.2 =
 * Redesign the owner-scoped dashboard with navigation tiles, selectable history ranges, training-volume and measured SWOLF charts, and keyboard/swipe chart controls.
 * Add optional SwimLog Wide Content and SwimLog Full Width Page/Post templates for Twenty Twenty-Four, with scoped responsive styles and per-page table display preferences.

@@ -1,6 +1,6 @@
 # REST API Reference
 
-This is the developer reference for the read-only REST API provided by **Chris's Swim Training Progress and Evaluation**. The API is intended for swimmer-owned integrations and data portability.
+This is the developer reference for the owner-scoped REST API provided by **Chris's Swim Training Progress and Evaluation**. Existing data-portability routes remain read-only; the single Health Connect batch receiver is a restricted write route that creates only private supported records.
 
 ## Base URL and version
 

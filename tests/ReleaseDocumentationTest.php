@@ -2,22 +2,24 @@
 use PHPUnit\Framework\TestCase;
 
 final class ReleaseDocumentationTest extends TestCase {
- public function test_development_metadata_preserves_version_12_release_checkpoint(){
+ public function test_v14_release_metadata_preserves_version_12_checkpoint(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');
   $readme.="\n".file_get_contents(dirname(__DIR__).'/docs/readme-feature-history.md');
   $plugin=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');
   $github=file_get_contents(dirname(__DIR__).'/README.md');
-  $this->assertStringContainsString('Stable tag: 1.3-dev',$readme);
+  $this->assertStringContainsString('Stable tag: 1.4',$readme);
   $this->assertStringContainsString('= 1.2 =',$readme);
-  $this->assertStringContainsString("Version: 1.3-dev",$plugin);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.3-dev'",$plugin);
+  $this->assertStringContainsString('= 1.4 =',$readme);
+  foreach(array('single-workout distance target','Health Connect batch receiver','blood-pressure/pulse imports','canonical read-only public workout visibility')as$feature)$this->assertStringContainsString($feature,$readme);
+  $this->assertStringContainsString("Version: 1.4",$plugin);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.4'",$plugin);
   $this->assertStringContainsString('## v1.2 release checkpoint',$github);
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.7'",$plugin);
-  $this->assertStringContainsString('## v1.3 development',$github);
+  $this->assertStringContainsString('## v1.4 release',$github);
   $this->assertStringContainsString('opt-in automatic measurement synchronization',$github);
   $release_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/release-package.yml');
   $plugin_check_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/plugin-check.yml');
-  $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.2.zip',$release_workflow);
+  $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.4.zip',$release_workflow);
   $this->assertStringNotContainsString('chriss-swim-training-progress-evaluation-1.0.zip',$release_workflow);
   $this->assertStringContainsString('--stage-only',$plugin_check_workflow);
   $this->assertStringNotContainsString('.zip',$plugin_check_workflow);
@@ -30,7 +32,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $github=file_get_contents(dirname(__DIR__).'/README.md');
   foreach(array('Planned Workouts','Duplicate Week','planned-versus-actual','wp-admin Calendar','read-only','database schema to 1.2')as$feature)$this->assertStringContainsString($feature,$readme);
   foreach(array('Planned Workouts','duplicate a week','Matching is never automatic','administration **Calendar**','REST remains read-only','database schema to **1.2**')as$feature)$this->assertStringContainsString($feature,$github);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.3-dev'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_VERSION', '1.4'",file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php'));
  }
  public function test_v10_docs_cover_calendar_release_features(){
   $readme=file_get_contents(dirname(__DIR__).'/readme.txt');

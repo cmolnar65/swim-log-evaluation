@@ -10,7 +10,7 @@ designed to be rebuildable from preserved authoritative workout data.
 
 
 
-Development note (1.3-dev): Schema 1.5 added canonical per-workout visibility and schema 1.6 adds private swim goals. Running/walking log and calendar details are owner-scoped, with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling is deferred. The latest test ZIP is reported operational on the test server, but real-life v1.3 acceptance remains pending. No v1.3 release is published.
+Version 1.4 release note: schema 1.5 added canonical per-workout visibility, schema 1.6 added private swim goals, and schema 1.7 added Health Connect receiver storage. Running/walking log and calendar details remain owner-scoped with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling remains deferred. Live Garmin subtype-key coverage and physical-device acceptance have not been established.
 
 Import or manually record, preserve, evaluate, and display swimming workout history and personal bests.
 
@@ -18,9 +18,9 @@ Import or manually record, preserve, evaluate, and display swimming workout hist
 
 For WordPress Twenty Twenty-Four sites displaying SwimLog tables, the preferred Page/Post templates are **SwimLog Wide Content** and **SwimLog Full Width**. Select one from the editor's Template selector. Both preserve the theme header, footer, and page content while providing appropriate table width and responsive display. Wide Content is suitable for wider tables with a bounded content area; Full Width is suited to the widest tables and multi-column layouts. Both were manually verified in Twenty Twenty-Four during v1.2 Phase 03. These templates are optional, and existing pages need not change.
 
-## Development status
+## v1.4 release status
 
-The develop branch continues v1.3-dev; public stable remains 1.2. Development schema is 1.6: additive measurement storage (1.3), activity environment (1.4), canonical workout visibility (1.5) and private swim goals (1.6). Private Garmin measurements and historical imports, administrator-only manual iHealth weight/body-composition and blood-pressure/pulse imports, running/walking logs with separate swim-excluded totals, canonical read-only workout sharing, and swimming goals are implemented on develop. The latest test ZIP is reported installed and operational on the test server; real-life acceptance remains pending and release remains on hold.
+The v1.4 release uses plugin/runtime version 1.4 and database schema 1.7. It includes private Garmin and iHealth measurement workflows, the owner-scoped Health Connect receiver, distinct running/walking totals, canonical read-only workout visibility, swimmer unit preferences, and cumulative and single-workout swimming goals with completion dates and capped achieved progress. Existing workouts, measurements, access controls and privacy boundaries are preserved by additive schema migrations. See the v1.4 release checklist for exact commit, test runs, package checksum, tag and WordPress.org revision.
 
 ## Garmin measurements and historical imports (v1.3 development)
 
@@ -144,4 +144,4 @@ Version 0.7 adds native Block Editor support for the six existing public display
 Public-results authorization is unchanged. Applicable blocks use the page/post author when no swimmer override is supplied and never fall back to the logged-in viewer. Open-water GPS routes remain separately opt-in, and GPS coordinates/trackpoints are not stored in block attributes or editor scripts.
 
 ## Screenshots
-Canonical per-workout sharing is development-only: public viewing requires explicit swimmer Public Results plus individual workout approval. Route sharing requires a separate workout flag and explicit route consent. Notes, photos, sources, raw metadata and measurements are excluded. Schema 1.5 adds visibility state without rewriting workout history. Plugin remains 1.3-dev and unreleased.
+Canonical per-workout sharing in v1.4 is read-only: public viewing requires explicit swimmer Public Results plus individual workout approval. Route sharing requires a separate workout flag and explicit route consent. Notes, photos, sources, raw metadata and measurements are excluded. Schema 1.5 added visibility state without rewriting workout history.

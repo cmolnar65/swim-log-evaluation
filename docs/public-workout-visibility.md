@@ -1,6 +1,6 @@
 # Canonical workout visibility (development)
 
-This is approved development scope; plugin version remains **1.3-dev**, unreleased/on hold. Database schema becomes **1.5** because an additive visibility table is required. Released v1.2 and its schema 1.2 are unchanged. No deployment, package or release is authorized.
+This canonical visibility policy is included in plugin release **1.4**. It was introduced with additive schema **1.5** and remains unchanged in the current schema 1.7. The v1.4 release does not alter any access, privacy, route-consent, owner-management or revocation rules below.
 
 ## Policy
 

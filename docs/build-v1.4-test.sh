@@ -13,7 +13,7 @@ git -C "$SWIMLOG_REPO" merge-base --is-ancestor "$SWIMLOG_COMMIT" refs/remotes/o
     echo "Commit is not on the fetched origin/develop history." >&2; exit 1;
 }
 SWIMLOG_SHORT="${SWIMLOG_COMMIT:0:12}"
-SWIMLOG_OUTPUT="$SWIMLOG_REPO/build/chriss-swim-training-progress-evaluation-1.3-dev-test-$SWIMLOG_SHORT.zip"
+SWIMLOG_OUTPUT="$SWIMLOG_REPO/build/chriss-swim-training-progress-evaluation-1.4-test-$SWIMLOG_SHORT.zip"
 [[ ! -e "$SWIMLOG_OUTPUT" && ! -L "$SWIMLOG_OUTPUT" && ! -e "$SWIMLOG_OUTPUT.sha256" && ! -L "$SWIMLOG_OUTPUT.sha256" ]] || {
     echo "Test output already exists; move that test ZIP/checksum before rebuilding: $SWIMLOG_OUTPUT" >&2; exit 1;
 }
@@ -59,9 +59,9 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         assert root + required in names, "Missing runtime file: " + required
     entry = archive.read(root + "swim-log-evaluation.php").decode()
     readme = archive.read(root + "readme.txt").decode()
-    assert re.search(r"Version:\s*1\.3-dev\s*$", entry, re.M), "Unexpected plugin version"
-    assert re.search(r"Stable tag:\s*1\.3-dev\s*$", readme, re.M), "Unexpected test stable tag"
-    assert "define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.6' );" in entry, "Unexpected schema version"
+    assert re.search(r"Version:\s*1\.4\s*$", entry, re.M), "Unexpected plugin version"
+    assert re.search(r"Stable tag:\s*1\.4\s*$", readme, re.M), "Unexpected test stable tag"
+    assert "define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.7' );" in entry, "Unexpected schema version"
 print("Test package audit passed: runtime dependencies, history assets, metadata and exclusions.")
 PY
 cp -- "$SWIMLOG_STAGED_ZIP" "$SWIMLOG_OUTPUT"
