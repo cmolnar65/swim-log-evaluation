@@ -128,7 +128,7 @@ final class Admin_Goals {
 	}
 
 	private static function completion_date_label( $date ) {
-		$parsed = \\DateTimeImmutable::createFromFormat( '!Y-m-d', (string) $date, wp_timezone() );
+		$parsed = \DateTimeImmutable::createFromFormat( '!Y-m-d', (string) $date, wp_timezone() );
 		return $parsed ? wp_date( get_option( 'date_format' ), $parsed->getTimestamp(), wp_timezone() ) : (string) $date;
 	}
 
