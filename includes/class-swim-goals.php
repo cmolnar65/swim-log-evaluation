@@ -105,7 +105,13 @@ final class Swim_Goals {
 			if ( ! is_finite( $distance ) || $distance <= 0 || $distance > 100000000 ) return new \WP_Error( 'swimlog_goal_volume', __( 'Enter a positive distance for the date-range goal.', 'chriss-swim-training-progress-evaluation' ) );
 			$base['target_distance_m'] = round( 'yd' === $unit ? $distance * self::YARDS_TO_METERS : $distance, 3 );
 			if ( '' === $base['title'] ) {
-				$title_format = self::SINGLE_WORKOUT === $type ? __( '%1$s %2$s single-workout goal', 'chriss-swim-training-progress-evaluation' ) : __( '%1$s %2$s swim distance goal', 'chriss-swim-training-progress-evaluation' );
+				if ( self::SINGLE_WORKOUT === $type ) {
+					/* translators: 1: distance, 2: course unit. */
+					$title_format = __( '%1$s %2$s single-workout goal', 'chriss-swim-training-progress-evaluation' );
+				} else {
+					/* translators: 1: distance, 2: course unit. */
+					$title_format = __( '%1$s %2$s swim distance goal', 'chriss-swim-training-progress-evaluation' );
+				}
 				$base['title'] = sprintf( /* translators: 1: distance, 2: course unit. */ $title_format, self::format_native( $distance ), $unit );
 			}
 		}
