@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
@@ -29,6 +30,7 @@ final class Planned_Structure_Link {
     }
 
     public static function attach( $plan_id, $structure_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $plan_id = absint( $plan_id );
         $structure_id = absint( $structure_id );
         $owner_id = absint( $owner_id );
@@ -62,6 +64,7 @@ final class Planned_Structure_Link {
 
     /** Preserve legacy/current recorded history before a plan clears or loses its match. */
     public static function preserve_recorded_lock( $plan_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $plan = Planned_Workout::get_for_user( $plan_id, $owner_id );
         if ( ! $plan ) return new \WP_Error( 'swimlog_plan_not_found', 'Planned workout not found.' );
         if ( empty( $plan->completed_workout_id ) ) return true;
@@ -78,12 +81,14 @@ final class Planned_Structure_Link {
     }
 
     public static function detach( $plan_id, $owner_id ) {
+        $authority = Workout_Visibility::owner_error($owner_id); if ($authority) return $authority;
         $existing = self::for_plan( $plan_id, $owner_id );
         if ( is_wp_error( $existing ) ) return $existing;
         if ( ! $existing ) return true;
-        $locked = Structured_Workout_Store::is_locked( $existing['id'], $owner_id );
-        if ( is_wp_error( $locked ) ) return $locked;
-        if ( $locked ) return new \WP_Error( 'swimlog_structure_locked', 'A recorded-swim prescription cannot be unlinked.' );
+        // Preserve the historical workout reference before removing the plan link.
+        // The structure remains locked by META_RECORDED when it has recorded history.
+        $history = self::preserve_recorded_lock( $plan_id, $owner_id );
+        if ( is_wp_error( $history ) ) return $history;
         delete_post_meta( $existing['id'], self::META_KEY, absint( $plan_id ) );
         return true;
     }

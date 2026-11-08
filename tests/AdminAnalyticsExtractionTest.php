@@ -34,5 +34,6 @@ final class AdminAnalyticsExtractionTest extends TestCase {
 		$this->assertStringContainsString( "'swimlog-training-volume', 'training_volume'", $admin );
 		$this->assertStringContainsString( "'swimlog-training-trends', 'training_trends'", $admin );
 		$this->assertStringContainsString( "'swimlog-pool-analytics', 'pool_analytics'", $admin );
+		$this->assertStringContainsString( "'swimlog-goals', 'goals'", $admin );
 	}
 }

@@ -41,6 +41,107 @@ jobs:
           strict: true
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
 
+      - name: Verify canonical workout visibility migration and read-only public access
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/workout-visibility-integration.php)"
+
+      - name: Verify private swim goals, progress and calendar boundaries
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/swim-goals-integration.php)"
+
+      - name: Verify historical Garmin traversal and activity retries
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-integration.php)"
+
+      - name: Verify persistent historical jobs and controls
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-jobs-integration.php)" | tee "$RUNNER_TEMP/garmin-history-jobs.log"
+
+      - name: Verify persistent full-range historical jobs and recovery gaps
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-history-extended-integration.php)"
+
+      - name: Verify historical jobs across separate PHP processes
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "define('SWIMLOG_H8_PHASE', 'setup'); $(tail -n +2 tests/garmin-history-restart-integration.php)"
+          wp-env run cli wp eval "define('SWIMLOG_H8_PHASE', 'verify'); $(tail -n +2 tests/garmin-history-restart-integration.php)"
+
+      - name: Verify private measurement schema migration
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/health-schema-integration.php)"
+
+      - name: Verify private running and walking import logs and maps
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "eval('?>' . base64_decode('$(base64 -w0 tests/land-activity-fixtures.php)')); $(tail -n +2 tests/land-activity-integration.php)" | tee "$RUNNER_TEMP/land-activity.log"
+
+      - name: Verify page hierarchy dates status and empty states
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/admin-hierarchy-status-integration.php)" | tee "$RUNNER_TEMP/admin-hierarchy-status.log"
+
+      - name: Verify simpler manual entry and swimming analytics
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/manual-analytics-usability-integration.php)" | tee "$RUNNER_TEMP/manual-analytics-usability.log"
+
+      - name: Verify administrator swimmer context and prescription previews
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/admin-context-editor-integration.php)" | tee "$RUNNER_TEMP/admin-context-editor.log"
+
+      - name: Verify friendly planned entry and failed-save recovery
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/admin-usability-integration.php)" | tee "$RUNNER_TEMP/admin-usability.log"
+
+      - name: Verify Garmin workspace setup and section order
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-workspace-integration.php)" | tee "$RUNNER_TEMP/garmin-workspace.log"
+
+      - name: Verify pool review matching and four-sport scheduled synchronization
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/pool-match-sync-integration.php)"
+
+      - name: Verify private measurement persistence
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/health-measurement-integration.php)"
+
+      - name: Verify private iHealth blood-pressure import
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/ihealth-blood-pressure-import-integration.php)"
+
+      - name: Verify manual Garmin measurement import
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-measurement-import-integration.php)"
+
+      - name: Verify scheduled Garmin measurement imports
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/garmin-measurement-sync-integration.php)"
+
+      - name: Verify manual scheduled calendar measurement pipeline
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/measurement-pipeline-integration.php)"
+
+      - name: Verify private calendar measurement retrieval
+        run: |
+          set -euo pipefail
+          wp-env run cli wp eval "$(tail -n +2 tests/calendar-measurement-integration.php)"
+
       - name: Verify database cache ownership and persistence in WordPress
         run: |
           set -euo pipefail
@@ -72,3 +173,42 @@ jobs:
           wp-env run cli wp eval "$(tail -n +2 tests/calendar-day-integration.php)" | tee "$RUNNER_TEMP/calendar-day.log"
           "$RUNNER_TEMP/swimlog-browser-tests/node_modules/.bin/playwright" install --with-deps webkit
           NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/calendar-day-browser.cjs "$RUNNER_TEMP/calendar-day.log"
+
+      - name: Verify historical import controls on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/garmin-history-browser.cjs "$RUNNER_TEMP/garmin-history-jobs.log"
+
+
+      - name: Verify private land activity maps on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/land-activity-browser.cjs "$RUNNER_TEMP/land-activity.log"
+
+
+      - name: Verify Garmin workspace on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/garmin-workspace-browser.cjs "$RUNNER_TEMP/garmin-workspace.log"
+
+      - name: Verify administration table and recovery layouts on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/admin-usability-browser.cjs "$RUNNER_TEMP/admin-usability.log"
+
+      - name: Verify administrator navigation and structured editor accessibility
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/admin-context-editor-browser.cjs "$RUNNER_TEMP/admin-context-editor.log"
+
+
+      - name: Verify manual and analytics layouts on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/manual-analytics-usability-browser.cjs "$RUNNER_TEMP/manual-analytics-usability.log"
+
+
+      - name: Verify list navigation and status layouts on desktop and mobile
+        run: |
+          set -euo pipefail
+          NODE_PATH="$RUNNER_TEMP/swimlog-browser-tests/node_modules" node tests/admin-hierarchy-status-browser.cjs "$RUNNER_TEMP/admin-hierarchy-status.log"

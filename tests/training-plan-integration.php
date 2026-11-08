@@ -145,7 +145,7 @@ try {
             $verify( ! is_wp_error( Store::get( $post->ID, $owner ) ), 'Rollback removed source structure.' );
         }
     } );
-    $run( 'recorded locks survive clearing and deleting plans; copies stay independent', function() use ( $verify, $owner, &$original_plans, &$structures, $monday ) {
+    $run( 'recorded locks survive unlinking, clearing and deleting plans; copies stay independent', function() use ( $verify, $owner, &$original_plans, &$structures, $monday ) {
         $verify( is_array( $original_plans ) && count( $original_plans ) === 2, 'Schedule prerequisite.' );
         global $wpdb;
         Database::write( 'insert', Database::table( 'workouts' ), array( 'user_id' => $owner, 'workout_start' => $monday->format( 'Y-m-d' ) . ' 12:00:00', 'created_at' => current_time( 'mysql' ), 'updated_at' => current_time( 'mysql' ) ) );
@@ -155,14 +155,23 @@ try {
         $verify( true === Plan::associate_completed_workout( $plan, $owner, $recorded ), 'Match recorded swim.' );
         $verify( true === Store::is_locked( $id, $owner ), 'Recorded prescription not locked.' );
         $verify( is_wp_error( Store::save( $owner, 'Forbidden edit', $source['document'], $id ) ), 'Recorded prescription edited.' );
-        $verify( is_wp_error( Link::detach( $plan, $owner ) ), 'Recorded prescription unlinked.' );
         $copy = Plan::duplicate( $plan, $owner, $monday->modify( '+15 days' )->format( 'Y-m-d' ) );
         $verify( ! is_wp_error( $copy ), 'Copy locked prescription to a new plan.' );
         $copy_structure = Link::for_plan( $copy, $owner );
         $verify( ! is_wp_error( $copy_structure ) && $id !== $copy_structure['id'], 'Copy shares original structure.' );
         $verify( ! is_wp_error( Store::save( $owner, 'Editable copy', $copy_structure['document'], $copy_structure['id'] ) ), 'Copy not independently editable.' );
         $verify( $source === Store::get( $id, $owner ), 'Copy modified original.' );
+        $verify( true === Link::detach( $plan, $owner ), 'Recorded prescription could not be unlinked.' );
+        $verify( null === Link::for_plan( $plan, $owner ), 'Unlink left the plan-to-structure association.' );
+        $verify( $recorded === absint( get_post_meta( $id, Store::META_RECORDED, true ) ), 'Unlink did not preserve recorded history.' );
+        $verify( true === Store::is_locked( $id, $owner ), 'Unlinking unlocked historical prescription.' );
+        $verify( null !== Plan::get_for_user( $plan, $owner ), 'Unlink deleted the planned workout.' );
+        $verify( ! is_wp_error( Store::get( $id, $owner ) ), 'Unlink deleted the structured workout.' );
+        $verify( ! is_wp_error( \SwimLogEvaluation\Workout::get_for_user( $recorded, $owner ) ), 'Unlink deleted the recorded workout.' );
         $verify( true === Plan::clear_completed_workout( $plan, $owner ), 'Clear mistaken completion.' );
+        $cleared_plan = Plan::get_for_user( $plan, $owner );
+        $verify( $cleared_plan && 'planned' === $cleared_plan->status && empty( $cleared_plan->completed_workout_id ), 'Unlink did not return the plan to Planned.' );
+        $verify( ! is_wp_error( \SwimLogEvaluation\Workout::get_for_user( $recorded, $owner ) ), 'Unlink deleted the recorded workout.' );
         $verify( true === Store::is_locked( $id, $owner ), 'Clearing completion unlocked historical prescription.' );
         $verify( true === Plan::delete( $plan, $owner ), 'Delete scheduled row.' );
         $verify( true === Store::is_locked( $id, $owner ), 'Deleting plan unlocked historical prescription.' );

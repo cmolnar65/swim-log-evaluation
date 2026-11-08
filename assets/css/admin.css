@@ -104,3 +104,98 @@
 @media(prefers-reduced-motion:reduce){.swimlog-dashboard .swimlog-dash-chart-track{scroll-behavior:auto}}
 @media(max-width:782px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.swimlog-dashboard .swimlog-dash-chart{padding:10px}}
 @media(max-width:420px){.swimlog-dashboard .swimlog-dash-tiles{grid-template-columns:1fr}}
+
+
+/* Recorded land summaries have few columns and fit directly on phones. */
+.swimlog-land-activity table.widefat {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+.swimlog-land-activity table.widefat th,
+.swimlog-land-activity table.widefat td {
+    overflow-wrap: anywhere;
+}
+
+
+/* Garmin owner workspace: task order is rendered on the server. */
+.swimlog-garmin { max-width: 1100px; }
+.swimlog-garmin .swimlog-garmin-status { margin: 16px 0; }
+.swimlog-garmin .swimlog-garmin-nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 16px 0; }
+.swimlog-garmin .swimlog-garmin-nav a { display: inline-flex; align-items: center; min-height: 44px; }
+.swimlog-garmin .swimlog-garmin-section { box-sizing: border-box; min-width: 0; max-width: 100%; padding: 20px; margin: 20px 0; background: #fff; border: 1px solid #c3c4c7; border-radius: 6px; scroll-margin-top: 48px; }
+.swimlog-garmin .swimlog-garmin-section > h2 { margin-top: 0; }
+.swimlog-garmin .swimlog-garmin-section > p, .swimlog-garmin form > p, .swimlog-garmin .description { max-width: 75ch; }
+.swimlog-garmin #swimlog-garmin-settings > summary { cursor: pointer; min-height: 44px; }
+.swimlog-garmin #swimlog-garmin-settings > summary h2 { display: inline; margin: 0; }
+.swimlog-garmin fieldset > p { margin: 0; }
+.swimlog-garmin fieldset label { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.swimlog-garmin fieldset br { display: none; }
+.swimlog-garmin .button { white-space: normal; height: auto; min-height: 36px; }
+.swimlog-garmin input, .swimlog-garmin select { max-width: 100%; }
+.swimlog-garmin .swimlog-table-wrap { max-width: 100%; margin-block: 12px; }
+.swimlog-garmin summary:focus-visible, .swimlog-garmin a:focus-visible, .swimlog-garmin button:focus-visible { outline: 2px solid #2271b1; outline-offset: 3px; }
+@media (max-width: 782px) {
+    .swimlog-garmin .swimlog-garmin-section { padding: 14px; }
+    .swimlog-garmin .button, .swimlog-garmin fieldset label { min-height: 44px; }
+    .swimlog-garmin .form-table, .swimlog-garmin .form-table th, .swimlog-garmin .form-table td { box-sizing: border-box; width: 100%; display: block; }
+}
+@media (max-width: 782px) {
+    .swimlog-garmin input, .swimlog-garmin select, .swimlog-garmin textarea { box-sizing: border-box; min-width: 0; font-size: 16px; }
+    .swimlog-garmin .form-table { table-layout: fixed; }
+    .swimlog-garmin .form-table tbody, .swimlog-garmin .form-table tr { display: block; width: 100%; }
+}
+
+/* All administration data tables scroll locally without widening the page. */
+.swimlog-admin .swimlog-table-wrap { box-sizing: border-box; max-width: 100%; min-width: 0; margin-block: 12px; overscroll-behavior-inline: contain; }
+.swimlog-admin .swimlog-table-wrap:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
+.swimlog-admin .swimlog-table-wrap > table { width: 100%; }
+.swimlog-admin [data-swimlog-form-error]:focus { outline: 2px solid #2271b1; outline-offset: 2px; }
+@media (max-width: 782px) {
+    .swimlog-admin input, .swimlog-admin select, .swimlog-admin textarea { box-sizing: border-box; max-width: 100%; min-width: 0; }
+    .swimlog-admin .form-table, .swimlog-admin .form-table tbody, .swimlog-admin .form-table tr, .swimlog-admin .form-table th, .swimlog-admin .form-table td { box-sizing: border-box; display: block; width: 100%; }
+    .swimlog-admin .form-table { table-layout: fixed; }
+    .swimlog-admin .form-table th, .swimlog-admin .form-table td { padding-inline: 0; }
+}
+
+/* Visible request-local swimmer context; private owner-only pages do not inherit it. */
+.swimlog-swimmer-context { box-sizing: border-box; max-width: 100%; margin: 16px 0; padding: 12px 16px; border-left: 4px solid #2271b1; background: #fff; }
+.swimlog-swimmer-context p { margin: 0 0 8px; }
+.swimlog-swimmer-context nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.swimlog-swimmer-context nav a { display: inline-flex; align-items: center; min-height: 36px; }
+.swimlog-swimmer-context nav a[aria-current=page] { font-weight: 700; }
+
+.swimlog-admin .swimlog-prescription-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; border: 1px solid #c3c4c7; background: #fff; }
+
+
+.swimlog-admin .swimlog-manual-sets { margin: 16px 0; }
+.swimlog-admin .swimlog-manual-sets summary,
+.swimlog-admin .swimlog-metric-help summary { padding: 10px 0; cursor: pointer; }
+.swimlog-admin .swimlog-manual-sets input:not([hidden]),
+.swimlog-admin .swimlog-manual-sets select { min-width: 110px; }
+.swimlog-admin .swimlog-manual-sets [hidden],
+.swimlog-admin th[hidden], .swimlog-admin td[hidden] { display: none; }
+.swimlog-admin .swimlog-analytics-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.swimlog-admin .swimlog-analytics-filters input[type="number"] { width: 80px; }
+.swimlog-admin .swimlog-report-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+.swimlog-admin .swimlog-metric-help { margin: 16px 0; max-width: 850px; }
+.swimlog-admin .swimlog-metric-help dt { font-weight: 600; }
+.swimlog-admin .swimlog-metric-help dd { margin: 4px 0 12px; }
+
+
+.swimlog-admin .swimlog-page-header { margin: 8px 0 20px; }
+.swimlog-admin .swimlog-page-header p { max-width: 850px; }
+.swimlog-admin .swimlog-library,
+.swimlog-admin .swimlog-page-editor { padding: 16px; margin: 18px 0; background: #fff; border: 1px solid #dcdcde; min-width: 0; }
+.swimlog-admin .swimlog-page-editor > h2,
+.swimlog-admin .swimlog-library > h2 { margin-top: 0; }
+.swimlog-admin .swimlog-more-actions { margin-top: 8px; max-width: 340px; }
+.swimlog-admin .swimlog-more-actions summary,
+.swimlog-admin .swimlog-technical-details summary { cursor: pointer; padding: 8px 0; }
+.swimlog-admin .swimlog-more-actions form { display: block !important; margin: 8px 0; }
+.swimlog-admin .swimlog-more-actions .button { margin: 3px 2px; }
+.swimlog-admin .swimlog-empty-state { padding: 12px 0; }
+.swimlog-admin tr:target { outline: 2px solid #2271b1; outline-offset: -2px; }
+@media (max-width: 782px) {
+ .swimlog-admin .swimlog-library, .swimlog-admin .swimlog-page-editor { padding: 10px; }
+}

@@ -13,6 +13,7 @@ $verify = static function( $ok, $message ) {
 $verify( Database::schema_is_complete(), 'Activated schema is incomplete.' );
 $owner = wp_create_user( 'swimlog_cleanup_' . wp_generate_password( 8, false ), wp_generate_password( 32 ) );
 $verify( ! is_wp_error( $owner ), 'Could not create synthetic owner.' );
+$original_user=get_current_user_id();(new WP_User($owner))->add_cap('swimlog_manage_own_workouts');wp_set_current_user($owner);
 $table = Database::table( 'workouts' );
 $id = 0;
 $post_id = 0;
@@ -56,6 +57,7 @@ try {
     $output = Shortcodes::workout( array( 'id' => $id ) );
     $verify( false !== strpos( $output, 'unavailable' ), 'Private workout is publicly visible.' );
     $verify( false === strpos( $output, 'external write' ), 'Private notes leaked.' );
+    wp_set_current_user($owner);
     $verify( true === Workout::delete( $id, $owner ), 'Workout deletion failed.' );
     $verify( null === Workout::get_for_user( $id, $owner ), 'Deleted workout remained cached.' );
     $id = 0;
@@ -65,5 +67,5 @@ try {
     if ( $post_id && ! is_wp_error( $post_id ) ) wp_delete_post( $post_id, true );
     if ( $id ) Database::write( 'delete', $table, array( 'id' => $id, 'user_id' => $owner ) );
     require_once ABSPATH . 'wp-admin/includes/user.php';
-    wp_delete_user( $owner );
+    wp_delete_user( $owner );wp_set_current_user($original_user);
 }

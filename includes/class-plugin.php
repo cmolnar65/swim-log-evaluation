@@ -6,10 +6,24 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Main plugin bootstrap. */
 final class Plugin {
 	public function run() {
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-ihealth-personal-api.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-measurement-sync.php';
+		Garmin_Measurement_Sync::register();
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-garmin-history-jobs.php';
+        Garmin_History_Jobs::register();
+        require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-garmin-history.php';
+        add_action( 'wp_ajax_swimlog_history_status', array( 'SwimLogEvaluation\\Admin_Garmin_History', 'ajax_status' ) );
 		// Database is a foundational dependency for workout, event, planned-workout,
 		// calendar, shortcode, block, and administration services. Load it before
 		// any of those services can be invoked through WordPress hooks or admin pages.
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-unit-preferences.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-swim-goals.php';
+        require_once SWIMLOG_EVALUATION_DIR . 'includes/class-workout-visibility.php';
+        add_action('deleted_user',array('SwimLogEvaluation\\Workout_Visibility','deleted_user'));
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-import.php';
+		Health_Connect_Import::register();
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout-store.php';
@@ -26,6 +40,14 @@ final class Plugin {
 		add_action( 'rest_api_init', array( $this, 'register_rest_api' ) );
 		add_action( 'swimlog_garmin_scheduled_sync', array( $this, 'run_garmin_scheduled_sync' ), 10, 1 );
 		if ( is_admin() ) {
+			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin-ihealth.php';
+			$ihealth_admin = new Admin_IHealth();
+			add_action( 'admin_menu', array( $ihealth_admin, 'register_menu' ), 20 );
+			add_action( 'admin_post_swimlog_ihealth_save', array( $ihealth_admin, 'save' ) );
+			add_action( 'admin_post_swimlog_ihealth_connect', array( $ihealth_admin, 'connect' ) );
+			add_action( 'admin_post_swimlog_ihealth_import_weight', array( $ihealth_admin, 'import_weight' ) );
+			add_action( 'admin_post_swimlog_ihealth_import_blood_pressure', array( $ihealth_admin, 'import_blood_pressure' ) );
+			add_action( 'admin_post_swimlog_ihealth_oauth_callback', array( $ihealth_admin, 'callback' ) );
 			require_once SWIMLOG_EVALUATION_DIR . 'admin/class-admin.php';
 			$admin = new Admin();
 			add_action( 'admin_menu', array( $admin, 'register_menu' ) );
@@ -36,6 +58,7 @@ final class Plugin {
 			add_action( 'admin_init', array( $admin, 'handle_planned_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_structured_workout_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_event_actions' ) );
+			add_action( 'admin_init', array( $admin, 'handle_goal_actions' ) );
 			add_action( 'admin_init', array( $admin, 'handle_location_actions' ) );
 		}
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-shortcodes.php';

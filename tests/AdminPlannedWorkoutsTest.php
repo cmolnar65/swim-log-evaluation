@@ -27,11 +27,11 @@ final class AdminPlannedWorkoutsTest extends TestCase {
 
 	public function test_form_contains_required_phase_three_fields_and_preserves_multiline_instructions() {
 		$source = file_get_contents( dirname( __DIR__ ) . '/admin/class-admin-planned-workouts.php' );
-		foreach ( array( 'planned_date', 'planned_start_time', 'title', 'workout_type', 'planned_distance_m', 'planned_duration_ms', 'pool_length_m', 'pool_course', 'primary_stroke', 'workout_instructions', 'notes' ) as $field ) {
+		foreach ( array( 'planned_date', 'planned_start_time', 'title', 'workout_type', 'planned_distance', 'planned_distance_unit', 'planned_duration', 'pool_length_native', 'pool_course', 'primary_stroke', 'workout_instructions', 'notes' ) as $field ) {
 			$this->assertStringContainsString( 'name="' . $field . '"', $source );
 		}
 		$this->assertStringContainsString( 'Workout Plan / Workout Instructions', $source );
-		$this->assertStringContainsString( 'esc_textarea( $editing ? $editing->workout_instructions', $source );
+		$this->assertStringContainsString( 'esc_textarea( $form->workout_instructions', $source );
 		$this->assertStringContainsString( 'white-space:pre-wrap', $source );
 	}
 
@@ -47,6 +47,7 @@ final class AdminPlannedWorkoutsTest extends TestCase {
 		$main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
 		$this->assertStringContainsString( 'public static function all_for_user( $user_id )', $service );
 		$this->assertStringContainsString( 'WHERE user_id = %d ORDER BY planned_date DESC', $service );
-		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.2'", $main );
+		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.7'", $main );
 	}
 }
+

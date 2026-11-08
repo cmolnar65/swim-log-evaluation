@@ -57,6 +57,27 @@ final class CalendarTest extends TestCase {
 		);
 	}
 
+	public function test_calendar_pool_length_is_normalized_and_missing_values_stay_null() {
+		$missing = $this->workout();
+		$data = Calendar::assemble_rows(
+			$this->range(),
+			array(
+				$this->workout( array( 'pool_length_m' => '25.000' ) ),
+				$this->workout( array( 'pool_length_m' => '22.860', 'pool_length_unit' => 'yd' ) ),
+				$this->workout( array( 'workout_type' => 'open_water', 'pool_length_m' => null ) ),
+				$missing,
+			),
+			array()
+		);
+		$this->assertSame( 25.0, $data['workouts'][0]['pool_length_m'] );
+		$this->assertSame( 22.86, $data['workouts'][1]['pool_length_m'] );
+		$this->assertSame( 'yd', $data['workouts'][1]['pool_length_unit'] );
+		$this->assertArrayHasKey( 'pool_length_m', $data['workouts'][2] );
+		$this->assertNull( $data['workouts'][2]['pool_length_m'] );
+		$this->assertArrayHasKey( 'pool_length_m', $data['workouts'][3] );
+		$this->assertNull( $data['workouts'][3]['pool_length_m'] );
+	}
+
 	public function test_calendar_model_normalizes_existing_workouts_and_events() {
 		$data = Calendar::assemble_rows( $this->range(), array( $this->workout() ), array( $this->event() ) );
 		$this->assertSame( '2026-10-01', $data['range']['start'] );
@@ -69,6 +90,17 @@ final class CalendarTest extends TestCase {
 		$this->assertSame( 'event', $data['events'][0]['kind'] );
 		$this->assertSame( 'October Meet', $data['events'][0]['event_name'] );
 		$this->assertSame( 'BR', $data['events'][0]['stroke'] );
+	}
+
+	public function test_calendar_model_carries_owner_scoped_goal_boundary_markers() {
+		$markers = array(
+			array( 'id' => 8, 'goal_type' => 'single_performance', 'title' => 'Pace goal', 'date' => '2026-10-20', 'marker' => 'goal_due', 'status' => 'in_progress' ),
+			array( 'id' => 9, 'goal_type' => 'period_distance', 'title' => 'Monthly distance', 'date' => '2026-10-01', 'marker' => 'goal_start', 'status' => 'in_progress' ),
+			array( 'id' => 9, 'goal_type' => 'period_distance', 'title' => 'Monthly distance', 'date' => '2026-10-31', 'marker' => 'goal_end', 'status' => 'in_progress' ),
+		);
+		$data = Calendar::assemble_rows( $this->range(), array(), array(), 'sunday', array(), $markers );
+		$this->assertSame( $markers, $data['goals'] );
+		$this->assertSame( array( 'goal_due', 'goal_start', 'goal_end' ), array_column( $data['goals'], 'marker' ) );
 	}
 
 	public function test_manual_and_imported_workouts_receive_the_same_calendar_fields() {

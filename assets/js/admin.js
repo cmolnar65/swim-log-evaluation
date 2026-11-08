@@ -9,14 +9,42 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function () {
-		var garminPage = document.querySelector('.swimlog-admin[data-swimlog-garmin-configured="1"]');
-		var garminActivities = document.getElementById('swimlog-garmin-activities');
-		if (garminPage && garminActivities) {
-			var statusTable = garminPage.querySelector('.form-table');
-			if (statusTable) {
-				statusTable.insertAdjacentElement('afterend', garminActivities);
-			}
-		}
+        var context = document.querySelector('[data-swimlog-context-owner]');
+        if (context) {
+            var pages = JSON.parse(context.dataset.swimlogContextPages);
+            document.querySelectorAll('#toplevel_page_swimlog-dashboard a').forEach(function (link) {
+                var url = new URL(link.href, window.location.href);
+                if (url.origin !== window.location.origin || !pages.includes(url.searchParams.get('page'))) return;
+                url.searchParams.set('swimmer_id', context.dataset.swimlogContextOwner);
+                url.searchParams.set('_swimlog_swimmer_nonce', context.dataset.swimlogContextNonce);
+                link.href = url.href;
+            });
+        }
+
+        var editor = document.querySelector('.swimlog-page-editor');
+        if (editor && !document.querySelector('[data-swimlog-form-error]')) {
+            var editorHeading = editor.querySelector('h2');
+            if (editorHeading) { editorHeading.tabIndex = -1; editorHeading.focus(); }
+        }
+        var formError = document.querySelector('[data-swimlog-form-error]');
+        if (formError) formError.focus();
+        document.querySelectorAll('.swimlog-admin .swimlog-table-wrap').forEach(function (region) {
+            var heading = region.previousElementSibling;
+            while (heading && !/^H[1-6]$/.test(heading.tagName)) heading = heading.previousElementSibling;
+            if (!heading) heading = region.closest('.swimlog-admin').querySelector('h1');
+            if (heading) region.setAttribute('aria-label', heading.textContent.trim());
+        });
+
+
+        document.querySelectorAll('.swimlog-garmin-nav a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                var target = document.querySelector(link.getAttribute('href'));
+                if (target && target.tagName === 'DETAILS') {
+                    target.open = true;
+                    target.querySelector('summary').focus();
+                }
+            });
+        });
 
 		var apiKey = document.getElementById('swimlog-garmin-api-key');
 		var apiKeySubmit = document.getElementById('swimlog-garmin-api-key-submit');
@@ -30,17 +58,32 @@
 
 		var manualRows = document.getElementById('swimlog-manual-set-rows');
 		var addManualRow = document.getElementById('swimlog-add-set-row');
-		if (manualRows && addManualRow) {
-			addManualRow.addEventListener('click', function () {
-				var rows = manualRows.querySelectorAll('.swimlog-manual-set-row');
-				var clone = rows[rows.length - 1].cloneNode(true);
-				clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
-				clone.querySelectorAll('select').forEach(function (select) { select.selectedIndex = 0; });
-				clone.querySelector('.swimlog-set-number').textContent = String(rows.length + 1);
-				manualRows.appendChild(clone);
-			});
-		}
-
+        if (manualRows && addManualRow) {
+            var prepareManualRow = function (row, number) {
+                row.querySelector('.swimlog-set-number').textContent = String(number);
+                row.querySelectorAll('[data-field-label]').forEach(function (field) {
+                    field.setAttribute('aria-label', row.dataset.setLabel.replace('%1$d', number).replace('%2$s', field.dataset.fieldLabel));
+                });
+                var timing = row.querySelector('[name="segment_timing_type[]"]');
+                var updateTiming = function () {
+                    var modes = {segment_rep_times:'measured_rep', segment_set_time:'measured_set', segment_interval:'interval'};
+                    Object.keys(modes).forEach(function (field) {
+                        var input = row.querySelector('[name="'+field+'[]"]');
+                        input.hidden = timing.value !== modes[field];
+                    });
+                };
+                timing.addEventListener('change', updateTiming); updateTiming();
+            };
+            manualRows.querySelectorAll('.swimlog-manual-set-row').forEach(function (row, i) { prepareManualRow(row, i+1); });
+            addManualRow.addEventListener('click', function () {
+                var rows = manualRows.querySelectorAll('.swimlog-manual-set-row');
+                var clone = rows[rows.length-1].cloneNode(true);
+                clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+                clone.querySelectorAll('select').forEach(function (select) { select.selectedIndex = 0; });
+                manualRows.appendChild(clone); prepareManualRow(clone, rows.length+1);
+                clone.querySelector('input').focus();
+            });
+        }
         var carousel = document.querySelector('.swimlog-dashboard .swimlog-dash-chart-track');
         if (carousel) {
             var panels = carousel.querySelectorAll('.swimlog-dash-chart');
@@ -99,3 +142,6 @@
 		updateGarminBatchButtons(form);
 	});
 }());
+
+
+

@@ -1,5 +1,6 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Private owner-scoped structured prescriptions; no new SQL tables. */
@@ -74,6 +75,7 @@ final class Structured_Workout_Store {
         return $plan && ! empty( $plan->completed_workout_id );
     }
     public static function save( $owner_id, $title, $document, $id = 0 ) {
+        $authority=Workout_Visibility::owner_error($owner_id);if($authority)return$authority;
         $owner_id = absint( $owner_id );
         if ( ! $owner_id || ! user_can( $owner_id, 'swimlog_manage_own_workouts' ) ) {
             return new \WP_Error( 'swimlog_structure_permission', __( 'Permission denied.', 'chriss-swim-training-progress-evaluation' ) );

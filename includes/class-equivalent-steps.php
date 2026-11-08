@@ -9,6 +9,7 @@ final class Equivalent_Steps {
   $rate = (int) $rate;
   if ( $rate < 1 || $rate > 1000 ) return null;
   $type = is_array($w) ? ($w['workout_type']??'pool') : ($w->workout_type??'pool');
+  if (!in_array($type,array('pool','open_water'),true)) return null;
   $moving = is_array($w) ? ($w['moving_time_ms']??null) : ($w->moving_time_ms??null);
   $active = 0; $has_lengths = false;
   if ('pool' === $type) foreach ($lengths as $length) {
@@ -50,4 +51,5 @@ final class Equivalent_Steps {
   return $processed;
  }
 }
+
 

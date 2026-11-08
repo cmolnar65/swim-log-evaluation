@@ -7,12 +7,12 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString("wp_ajax_swimlog_calendar_plan",$plugin);
   $this->assertStringContainsString("Blocks', 'calendar_plan_action'",$plugin);
   $this->assertStringNotContainsString('/calendar/planned-workouts',$rest);
-  $this->assertStringNotContainsString('CREATABLE',$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);
+  $this->assertStringContainsString("'/health-connect/import-batch'",$rest);$this->assertStringNotContainsString('EDITABLE',$rest);$this->assertStringNotContainsString('DELETABLE',$rest);
  }
  public function test_ajax_handler_requires_nonce_and_owner_management_capability(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-blocks.php');$start=strpos($code,'public static function calendar_plan_action');$end=strpos($code,'public static function render_calendar',$start);$body=substr($code,$start,$end-$start);
   $this->assertStringContainsString("check_ajax_referer( 'swimlog_calendar_plan', 'nonce' )",$body);
-  $this->assertStringContainsString("'swimlog_manage_own_workouts'",$body);$this->assertStringContainsString("'swimlog_manage_all_users'",$body);
+  $this->assertStringContainsString("'swimlog_manage_own_workouts'",$body);$this->assertStringNotContainsString("'swimlog_manage_all_users'",$body);
   foreach(array('Planned_Workout::save( $user_id, $data, $id )','Planned_Workout::duplicate( $id, $user_id','Planned_Workout::set_status( $id, $user_id','Planned_Workout::delete( $id, $user_id )')as$needle)$this->assertStringContainsString($needle,$body);
   $this->assertStringContainsString("\$data['notes'] = \$existing ? \$existing->notes : '';",$body);
  }
@@ -57,6 +57,6 @@ final class CalendarPlanningInteractionTest extends TestCase {
   $this->assertStringContainsString('public static function move( $id, $user_id, $date )',$service);
   $this->assertStringContainsString('Only unmatched planned workouts can be moved.',$service);
   $this->assertStringContainsString('swimlog_planned_workout_move_date',$service);
-  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
+  $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.7'",$main);
  }
 }

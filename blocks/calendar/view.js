@@ -1,6 +1,168 @@
 ( function () {
 	'use strict';
 
+
+	function isLand(type){return type==='running'||type==='walking'||type==='cycling';}
+	    function workoutLabel(type){return {pool:'Pool Swim',open_water:'Open Water',running:'🏃 Running',walking:'🚶 Walking',cycling:'🚴 Cycling'}[type]||'Recorded activity';}
+	function unitPreferences(root){try{return JSON.parse(root.dataset.unitPreferences||'{}');}catch(error){return{};}}
+	function numberText(value,decimals){return Number(value).toLocaleString(undefined,{maximumFractionDigits:decimals});}
+	function distanceText(meters,type,root,course){
+		if(meters===null||meters===undefined||!Number.isFinite(Number(meters)))return'';
+		var value=Number(meters),prefs=unitPreferences(root),primary,secondary;
+		if(isLand(type)){primary=prefs[type]==='mi'?'mi':'km';var factor=primary==='mi'?1609.344:1000,text=numberText(value/factor,2)+' '+primary;if(prefs.show_secondary){secondary=primary==='mi'?'km':'mi';text+=' ('+numberText(value/(secondary==='mi'?1609.344:1000),2)+' '+secondary+')';}return text;}
+		primary=type==='pool'&&course==='yd'?'yd':'m';if(primary==='yd')value/=0.9144;return numberText(value,0)+' '+primary;
+	}
+	function landDistanceText(workouts,root){
+		return ['running','walking','cycling'].map(function(type){var rows=workouts.filter(function(row){return row.workout_type===type;});if(!rows.length)return '';var known=rows.filter(function(row){return row.total_distance_m!==null&&row.total_distance_m!==undefined;});return ' · '+(type==='running'?'Running: ':type==='walking'?'Walking: ':'Cycling: ')+(known.length?distanceText(known.reduce(function(total,row){return total+Number(row.total_distance_m);},0),type,root):'distance unavailable');}).join('');
+    }
+    var healthCategories = { weight: ['⚖', 'Weight'], body_composition: ['◈', 'Body composition'], blood_pressure: ['♥', 'Blood pressure'], spo2: ['O₂', 'SpO₂'] };
+    var healthLabels = { weight: 'Weight', bmi: 'BMI', body_fat: 'Body fat', body_water: 'Body water', bone_mass: 'Bone mass', muscle_mass: 'Muscle mass', systolic: 'Systolic', diastolic: 'Diastolic', pulse: 'Pulse', spo2: 'SpO₂', average: 'Garmin average SpO₂', lowest: 'Garmin minimum SpO₂', latest: 'Latest SpO₂', sleep_average: 'Garmin sleep average SpO₂', next_sleep_average: 'Garmin next-sleep average SpO₂', seven_day_average: 'Garmin seven-day baseline SpO₂' };
+	function healthValue(value,root,category,key) {
+        if (!value || value.value === null || value.value === undefined || value.value === '' || !Number.isFinite(Number(value.value))) return '';
+		var amount=Number(value.value),unit=value.unit,prefs=unitPreferences(root),mass=(category==='weight'&&key==='weight')||(category==='body_composition'&&['weight','bone_mass','muscle_mass'].indexOf(key)!==-1);
+		if(mass&&unit==='kg'){var primary=prefs.weight==='lb'?'lb':'kg';amount=amount*(primary==='lb'?2.2046226218:1);var result=numberText(amount,1)+' '+primary;if(prefs.show_secondary){var secondary=primary==='lb'?'kg':'lb';result+=' ('+numberText(Number(value.value)*(secondary==='lb'?2.2046226218:1),1)+' '+secondary+')';}return result;}
+		return numberText(amount,3) + (unit === '%' ? '%' : ' ' + unit);
+    }
+    function healthGroups(day) {
+        var groups = {};
+        ['reports','readings','aggregates'].forEach(function(role) {
+            ((day && day[role]) || []).forEach(function(row) {
+                if (!healthCategories[row.category]) return;
+                if (!groups[row.category]) groups[row.category] = {reports:[],readings:[],aggregates:[]};
+                groups[row.category][role].push(row);
+            });
+        });
+        return groups;
+    }
+	function healthSummary(category, group, root) {
+        if (category === 'spo2') {
+            var report = group.reports.find(function(row){return row.values && row.values.average;});
+			if (report) return 'Garmin average ' + healthValue(report.values.average,root,category,'average');
+        }
+        var reading = group.readings[group.readings.length - 1];
+        if (reading && reading.values) {
+            if (category === 'blood_pressure' && reading.values.systolic && reading.values.diastolic) return reading.values.systolic.value + '/' + reading.values.diastolic.value + ' mmHg';
+            var key = Object.keys(reading.values)[0];
+			return (healthLabels[key] || key) + ' ' + healthValue(reading.values[key],root,category,key);
+        }
+        return 'Provider summaries';
+    }
+    function applyDayOverflow(root) {
+        root.querySelectorAll('.swimlog-calendar-grid .swimlog-calendar-day, [data-calendar-agenda] .swimlog-calendar-agenda-day').forEach(function(cell){
+            var old = cell.querySelector('[data-calendar-overflow]');
+            if (old) old.remove();
+            var items = Array.prototype.filter.call(cell.children,function(child){return child.classList.contains('swimlog-calendar-item');});
+            items.forEach(function(child){child.hidden=false;child.removeAttribute('data-calendar-overflow-hidden');});
+            if (!cell.getClientRects().length) return;
+            var budget = cell.classList.contains('swimlog-calendar-agenda-day') ? 200 : 180, used = 0, hidden = 0;
+            items.forEach(function(child){
+                var height = child.getBoundingClientRect().height + 12;
+                if (hidden || used + height > budget) {child.hidden=true;child.dataset.calendarOverflowHidden='1';hidden++;}
+                else used += height;
+            });
+            if (hidden) {
+                var more = document.createElement('button'); more.type='button';more.className='swimlog-calendar-more';more.dataset.calendarOverflow='1';more.dataset.calendarDay=cell.dataset.date;more.textContent='…';
+                more.setAttribute('aria-label','Show all items for '+cell.dataset.date+' ('+hidden+' more)');more.setAttribute('aria-haspopup','dialog');cell.appendChild(more);
+            }
+        });
+    }
+    function healthURL(root,start,end) {
+        var url=new URL(root.dataset.restUrl,window.location.origin);url.pathname=url.pathname.replace(/\/$/,'')+'/measurements';url.search='';
+        url.searchParams.set('start',start);url.searchParams.set('end',end);if(root.dataset.user)url.searchParams.set('user',root.dataset.user);return url;
+    }
+    function fetchHealth(root,start,end,signal) {
+        return fetch(healthURL(root,start,end).toString(),{credentials:'same-origin',signal:signal,headers:{'X-WP-Nonce':(window.wpApiSettings&&window.wpApiSettings.nonce)||''}})
+            .then(function(response){if(!response.ok)throw new Error('health');return response.json();})
+            .then(function(data){if(!data || !Array.isArray(data.days) || !data.range || data.range.start!==start || data.range.end!==end)throw new Error('health');return data;});
+    }
+    function renderHealthDay(root,state) {
+        if(root._calendarDayView!==state || root.dataset.healthEnabled!=='1')return;
+        var old=state.content.querySelector('[data-calendar-health-details]');
+        if(old && old.contains(document.activeElement))state.dialog.querySelector('[data-calendar-day-close]').focus({preventScroll:true});
+        if(old)old.remove();
+        var section=document.createElement('section');section.dataset.calendarHealthDetails='1';section.className='swimlog-calendar-health-details';
+        var title=document.createElement('h3');title.textContent='Private measurements';section.appendChild(title);state.content.appendChild(section);
+        var data=state.healthData || root._healthData, covered=data&&data.range&&state.date>=data.range.start&&state.date<=data.range.end;
+        if(!covered) {
+            var message=document.createElement('p');message.setAttribute('role','status');message.textContent=(state.healthError||root._healthError)?'Unable to load private measurements. Workouts remain available.':'Loading private measurements…';section.appendChild(message);
+            if(state.healthError||root._healthError){var retry=document.createElement('button');retry.type='button';retry.className='swimlog-calendar-button';retry.textContent='Retry measurements';retry.addEventListener('click',function(){state.healthError=false;root._healthError=false;loadHealthDay(root,state,true);});section.appendChild(retry);}
+            return;
+        }
+        var day=data.days.find(function(row){return row.date===state.date;}), groups=healthGroups(day);
+        if(!Object.keys(groups).length && !(day&&day.sleep_periods&&day.sleep_periods.length)){var empty=document.createElement('p');empty.textContent='No private measurements for this day.';section.appendChild(empty);}
+        Object.keys(healthCategories).forEach(function(category){
+            var group=groups[category];if(!group)return;
+            var heading=document.createElement('h4');heading.textContent=healthCategories[category][1]+' · '+(group.readings.length ? group.readings.length+' imported reading'+(group.readings.length===1?'':'s') : (group.reports.length ? 'Garmin summary' : 'Imported aggregates'));section.appendChild(heading);
+            ['reports','readings','aggregates'].forEach(function(role){
+                group[role].forEach(function(row){
+                    var article=document.createElement('article');article.className='swimlog-calendar-measurement-record';
+                    var label=document.createElement('p');label.textContent=role==='reports'?'Garmin-reported summary':(row.role==='calculated_mean'?'Calculated mean of imported readings':(row.role==='sample'?'Recorded measurement':row.role==='hourly_average'?'Hourly average':'Sleep average'));article.appendChild(label);
+                    var list=document.createElement('dl');list.className='swimlog-calendar-detail-list';
+					Object.keys(row.values||{}).forEach(function(key){detailRow(list,healthLabels[key]||key,healthValue(row.values[key],root,category,key));});
+                    detailRow(list,'Source',row.source);detailRow(list,'Time (UTC)',row.time_utc);detailRow(list,'Source-local time',row.source_local_time);
+                    Object.keys(row.window||{}).forEach(function(key){detailRow(list,key.replace(/_/g,' '),row.window[key]);});
+                    if(row.has_conflict)detailRow(list,'Data status','Conflicting readings at this instant; excluded from any future calculated mean until resolved.');
+                    article.appendChild(list);section.appendChild(article);
+                });
+            });
+        });
+        var periods=(day&&day.sleep_periods)||[];
+        if(periods.length){
+            var sleepHeading=document.createElement('h4');sleepHeading.textContent='Sleep period';section.appendChild(sleepHeading);
+            var note=document.createElement('p');note.textContent='Elapsed time between Garmin sleep boundaries; may include time awake. Shown on the local wake-up date.';section.appendChild(note);
+            periods.forEach(function(period){
+                var minutes=Math.floor(Number(period.duration_seconds)/60);
+                if(!Number.isFinite(minutes)||minutes<0)return;
+                var list=document.createElement('dl');list.className='swimlog-calendar-detail-list';list.dataset.calendarSleepPeriod='1';
+                detailRow(list,'Sleep period',Math.floor(minutes/60)+'h '+String(minutes%60).padStart(2,'0')+'m');
+                detailRow(list,'Bedtime (Garmin local)',period.start_local ? period.start_local.replace('T',' ') : 'Unavailable');
+                detailRow(list,'Wake time (Garmin local)',period.end_local.replace('T',' '));
+                section.appendChild(list);
+            });
+        } else if(groups.spo2&&groups.spo2.reports.length) {
+            var unavailable=document.createElement('p');unavailable.textContent='Sleep period unavailable: complete, valid sleep boundaries for this wake-up date were not available.';section.appendChild(unavailable);
+        }
+        if(data.invalid_records){var warning=document.createElement('p');warning.textContent='Some stored records could not be displayed because their format was invalid.';section.appendChild(warning);}
+    }
+    function loadHealthDay(root,state,force) {
+        if(root.dataset.healthEnabled!=='1')return;
+        if(!force && root._healthData && state.date>=root._healthData.range.start && state.date<=root._healthData.range.end){renderHealthDay(root,state);return;}
+        renderHealthDay(root,state);
+        if(!force && root._healthPromise){root._healthPromise.then(function(){if(root._calendarDayView===state)renderHealthDay(root,state);});return;}
+        if(!force && root._healthError)return;
+        if(state.healthRequest)state.healthRequest.abort();state.healthRequest=new AbortController();
+        fetchHealth(root,state.date,state.date,state.healthRequest.signal).then(function(data){if(root._calendarDayView!==state)return;state.healthData=data;state.healthError=false;renderHealthDay(root,state);})
+            .catch(function(error){if(root._calendarDayView!==state||error.name==='AbortError')return;state.healthError=true;renderHealthDay(root,state);});
+    }
+    function paintHealth(root) {
+        root.querySelectorAll('[data-calendar-measurement]').forEach(function(node){node.remove();});
+        (root._healthData&&root._healthData.days||[]).forEach(function(day){
+            var groups=healthGroups(day);
+            root.querySelectorAll('.swimlog-calendar-grid [data-date], [data-calendar-agenda] [data-date]').forEach(function(cell){
+                if(cell.dataset.date!==day.date)return;
+                Object.keys(healthCategories).forEach(function(category){var group=groups[category];if(!group)return;
+                    var button=document.createElement('button');button.type='button';button.className='swimlog-calendar-item swimlog-calendar-measurement';button.dataset.calendarMeasurement=category;button.dataset.calendarDay=day.date;button.setAttribute('aria-haspopup','dialog');
+					button.textContent=healthCategories[category][0]+' '+healthCategories[category][1]+' · '+healthSummary(category,group,root);cell.appendChild(button);
+                });
+            });
+        });
+        applyDayOverflow(root);
+    }
+    function loadHealthRange(root) {
+        applyDayOverflow(root);
+        if(root.dataset.healthEnabled!=='1')return;
+        var cells=root.querySelectorAll('.swimlog-calendar-grid .swimlog-calendar-day[data-date]');if(!cells.length)return;
+        var start=cells[0].dataset.date,end=cells[cells.length-1].dataset.date;
+        if(root._healthRequest)root._healthRequest.abort();root._healthRequest=new AbortController();
+        var seq=(root._healthSeq||0)+1;root._healthSeq=seq;root._healthData=null;root._healthError=false;
+        var status=root.querySelector('[data-calendar-health-status]');
+        if(!status){status=document.createElement('div');status.dataset.calendarHealthStatus='1';status.setAttribute('role','status');root.querySelector('.swimlog-calendar-status').after(status);}
+        status.textContent='Loading private measurements…';
+        root._healthPromise=fetchHealth(root,start,end,root._healthRequest.signal).then(function(data){if(root._healthSeq!==seq)return;root._healthData=data;status.textContent='';paintHealth(root);if(root._calendarDayView)renderHealthDay(root,root._calendarDayView);})
+            .catch(function(error){if(root._healthSeq!==seq||error.name==='AbortError')return;root._healthError=true;status.textContent='Private measurements could not be loaded. Open a day to retry; workouts remain available.';if(root._calendarDayView)renderHealthDay(root,root._calendarDayView);})
+            .finally(function(){if(root._healthSeq===seq)root._healthPromise=null;});
+    }
+
 	function pad( value ) { return String( value ).padStart( 2, '0' ); }
 	function dateKey( date ) { return date.getFullYear() + '-' + pad( date.getMonth() + 1 ) + '-' + pad( date.getDate() ); }
 	function monthName( date ) { return date.toLocaleDateString( undefined, { month: 'long', year: 'numeric' } ); }
@@ -16,10 +178,10 @@
 		return hours ? hours + 'h ' + String( minutes ).padStart( 2, '0' ) + 'm' : minutes + 'm';
 	}
 	function item( className, parts, strong, workout, plannedWorkout, calendarEvent ) {
-		var interactive = workout || plannedWorkout || calendarEvent, div = document.createElement( interactive ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className; if ( workout && workout.matched_to_plan ) div.classList.add( 'is-matched-to-plan' );
+		var interactive = workout || plannedWorkout || calendarEvent, div = document.createElement( interactive ? 'button' : 'div' ); div.className = 'swimlog-calendar-item ' + className; if ( workout && !isLand( workout.workout_type ) && workout.matched_to_plan ) div.classList.add( 'is-matched-to-plan' );
 		var kind = className.indexOf( 'planned-workout' ) !== -1 ? 'Planned' : ( className.indexOf( 'calendar-event' ) !== -1 ? 'Event' : 'Recorded' );
 		var badge = document.createElement( 'span' ); badge.className = 'swimlog-calendar-kind'; badge.textContent = kind; div.appendChild( badge );
-		if ( workout && workout.has_personal_best ) { var star = document.createElement( 'span' ); star.className = 'swimlog-calendar-personal-best'; star.textContent = '★'; star.setAttribute( 'aria-label', 'Personal best' ); star.title = 'Personal best'; div.appendChild( star ); }
+		if ( workout && !isLand( workout.workout_type ) && workout.has_personal_best ) { var star = document.createElement( 'span' ); star.className = 'swimlog-calendar-personal-best'; star.textContent = '★'; star.setAttribute( 'aria-label', 'Personal best' ); star.title = 'Personal best'; div.appendChild( star ); }
 		if ( workout ) { div.type = 'button'; div.dataset.calendarWorkout = JSON.stringify( workout ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-' + workout.id ); }
 		if ( plannedWorkout ) { if ( plannedWorkout.status === 'planned' && !plannedWorkout.completed_workout_id ) div.draggable = true; div.type = 'button'; div.dataset.calendarPlannedWorkout = JSON.stringify( plannedWorkout ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-plan-' + plannedWorkout.id ); }
 		if ( calendarEvent ) { div.type = 'button'; div.dataset.calendarEvent = JSON.stringify( calendarEvent ); div.setAttribute( 'aria-expanded', 'false' ); div.setAttribute( 'aria-controls', 'swimlog-calendar-detail-event-' + calendarEvent.id ); }
@@ -30,25 +192,31 @@
 		} );
 		return div;
 	}
+	function goalItem( goal ) {
+		var button = document.createElement( 'button' ); button.type = 'button'; button.className = 'swimlog-calendar-item swimlog-calendar-goal status-' + ( goal.status || 'in_progress' ); button.dataset.calendarGoal = JSON.stringify( goal ); button.setAttribute( 'aria-expanded', 'false' ); button.setAttribute( 'aria-controls', 'swimlog-calendar-detail-goal-' + goal.id + '-' + goal.marker );
+		var marker = goal.marker === 'goal_due' ? 'Due' : ( goal.marker === 'goal_start' ? 'Starts' : ( goal.marker === 'goal_start_end' ? 'Starts and ends' : 'Ends' ) );
+		var badge = document.createElement( 'span' ); badge.className = 'swimlog-calendar-kind'; badge.textContent = 'Goal · ' + marker; button.appendChild( badge ); var title = document.createElement( 'strong' ); title.textContent = goal.title || 'Swim Goal'; button.appendChild( title ); return button;
+	}
 	function planDateButton( key, root ) {
 		if ( !root.dataset.siteToday || key < root.dataset.siteToday ) return null;
 		var button = document.createElement( 'button' ); button.type = 'button'; button.className = 'swimlog-calendar-plan-date'; button.dataset.calendarPlanDate = key; button.textContent = 'Plan workout'; return button;
 	}
-	function agendaItemsByDate( data ) {
+	function agendaItemsByDate( data, root ) {
 		var byDate = {};
 		( data.workouts || [] ).forEach( function ( workout ) {
-			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workout.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' ];
-			if ( workout.total_distance_m !== null ) parts.push( Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
+			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workoutLabel(workout.workout_type) ];
+			if ( workout.total_distance_m !== null ) parts.push( distanceText( workout.total_distance_m, workout.workout_type, root, workout.pool_length_unit ) );
 			var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) parts.push( duration( active ) );
 			( byDate[ key ] = byDate[ key ] || [] ).push( item( 'swimlog-calendar-workout', parts, false, workout ) );
 		} );
 		( data.planned_workouts || [] ).forEach( function ( plan ) {
 			var parts = [ plan.title || 'Planned Workout' ];
-			if ( plan.planned_distance_m !== null ) parts.push( Math.round( plan.planned_distance_m ).toLocaleString() + ' m' );
+			if ( plan.planned_distance_m !== null ) parts.push( distanceText( plan.planned_distance_m, plan.workout_type, root, plan.pool_course ) );
 			if ( Number( plan.planned_duration_ms || 0 ) > 0 ) parts.push( duration( plan.planned_duration_ms ) );
 			( byDate[ plan.planned_date ] = byDate[ plan.planned_date ] || [] ).push( item( 'swimlog-calendar-planned-workout status-' + ( plan.status || 'planned' ), parts, true, null, plan ) );
 		} );
 		( data.events || [] ).forEach( function ( event ) { ( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null, null, event ) ); } );
+		( data.goals || [] ).forEach( function ( goal ) { ( byDate[ goal.date ] = byDate[ goal.date ] || [] ).push( goalItem( goal ) ); } );
 		return byDate;
 	}
 	var dayDialogSequence = 0, openDayDialogs = 0;
@@ -62,6 +230,7 @@
 		var state = root._calendarDayView; if ( ! state ) return;
 		root._calendarDayView = null;
 		if ( state.request ) state.request.abort();
+        if ( state.healthRequest ) state.healthRequest.abort();
 		if ( state.dialog.open ) state.dialog.close();
 		closeWorkoutDetail( root, false );
 		state.home.insertBefore( state.panel, state.next && state.next.parentNode === state.home ? state.next : null );
@@ -81,21 +250,23 @@
 		var workouts = ( data.workouts || [] ).filter( function ( row ) { return String( row.workout_start || '' ).slice( 0, 10 ) === state.date; } );
 		var plans = ( data.planned_workouts || [] ).filter( function ( row ) { return row.planned_date === state.date; } );
 		var events = ( data.events || [] ).filter( function ( row ) { return row.event_date === state.date; } );
+		var goals = ( data.goals || [] ).filter( function ( row ) { return row.date === state.date; } );
 		var summary = document.createElement( 'p' ); summary.className = 'swimlog-calendar-day-summary';
-		var distance = workouts.reduce( function ( total, row ) { return total + Number( row.total_distance_m || 0 ); }, 0 );
-		summary.textContent = workouts.length + ' recorded · ' + Math.round( distance ).toLocaleString() + ' m recorded · ' + plans.length + ' planned · ' + events.length + ' events'; content.appendChild( summary );
+		var distance = workouts.filter(function(row){return !isLand(row.workout_type);}).reduce( function ( total, row ) { return total + Number( row.total_distance_m || 0 ); }, 0 );
+		summary.textContent = workouts.length + (workouts.length === 1 ? ' recorded activity · ' : ' recorded activities · ') + Math.round( distance ).toLocaleString() + ' m recorded (swimming)' + landDistanceText(workouts,root) + ' · ' + plans.length + (plans.length === 1 ? ' planned workout · ' : ' planned workouts · ') + events.length + (events.length === 1 ? ' event · ' : ' events · ') + goals.length + (goals.length === 1 ? ' goal marker' : ' goal markers'); content.appendChild( summary );
 		var planButton = planDateButton( state.date, root ); if ( planButton ) content.appendChild( planButton );
 		var sections = document.createElement( 'div' ); sections.dataset.calendarDaySections = '1'; content.appendChild( sections );
-		var definitions = [ [ 'Recorded swims', workouts, 'workouts', 'swimlog-calendar-workout' ], [ 'Planned workouts', plans, 'planned_workouts', 'swimlog-calendar-planned-workout' ], [ 'Events', events, 'events', 'swimlog-calendar-event' ] ];
+		var definitions = [ [ 'Recorded activities', workouts, 'workouts' ], [ 'Planned workouts', plans, 'planned_workouts' ], [ 'Events', events, 'events' ], [ 'Goals', goals, 'goals' ] ];
 		definitions.forEach( function ( definition ) {
 			if ( ! definition[1].length ) return;
 			var section = document.createElement( 'section' ); section.className = 'swimlog-calendar-day-section';
 			var heading = document.createElement( 'h3' ); heading.textContent = definition[0]; section.appendChild( heading );
-			var selected = { workouts: [], planned_workouts: [], events: [] }; selected[definition[2]] = definition[1];
-			( agendaItemsByDate( selected )[state.date] || [] ).forEach( function ( entry ) { entry.draggable = false; section.appendChild( entry ); } );
+			var selected = { workouts: [], planned_workouts: [], events: [], goals: [] }; selected[definition[2]] = definition[1];
+			( agendaItemsByDate( selected, root )[state.date] || [] ).forEach( function ( entry ) { entry.draggable = false; section.appendChild( entry ); } );
 			sections.appendChild( section );
 		} );
-		if ( ! workouts.length && ! plans.length && ! events.length ) { var empty = document.createElement( 'p' ); empty.textContent = 'No workouts or events for this day.'; sections.appendChild( empty ); }
+		loadHealthDay( root, state, false );
+		if ( ! workouts.length && ! plans.length && ! events.length && ! goals.length ) { var empty = document.createElement( 'p' ); empty.textContent = 'No workouts, events, or goal markers for this day.'; sections.appendChild( empty ); }
 	}
 	function loadDayContents( root, state ) {
 		var cached = root._calendarData;
@@ -147,7 +318,7 @@
 	}
 	function renderAgenda( root, data, start, end ) {
 		var agenda = root.querySelector( '[data-calendar-agenda]' ); if ( ! agenda ) return;
-		agenda.textContent = ''; var byDate = agendaItemsByDate( data ), cursor = new Date( start.getFullYear(), start.getMonth(), start.getDate() ), itemCount = 0;
+		agenda.textContent = ''; var byDate = agendaItemsByDate( data, root ), cursor = new Date( start.getFullYear(), start.getMonth(), start.getDate() ), itemCount = 0;
 		while ( cursor <= end ) {
 			var key = dateKey( cursor ), items = byDate[ key ] || [];
 			var group = document.createElement( 'section' ); group.className = 'swimlog-calendar-agenda-day'; group.dataset.date = key;
@@ -169,18 +340,19 @@
 		} );
 		var byDate = {};
 		( data.workouts || [] ).forEach( function ( workout ) {
-			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workout.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' ];
-			if ( workout.total_distance_m !== null ) parts.push( Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
+			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workoutLabel(workout.workout_type) ];
+			if ( workout.total_distance_m !== null ) parts.push( distanceText( workout.total_distance_m, workout.workout_type, root, workout.pool_length_unit ) );
 			var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) parts.push( duration( active ) );
 			( byDate[ key ] = byDate[ key ] || [] ).push( item( 'swimlog-calendar-workout', parts, false, workout ) );
 		} );
 		( data.planned_workouts || [] ).forEach( function ( plan ) {
-			var parts = [ plan.title || 'Planned Workout' ]; if ( plan.planned_distance_m !== null ) parts.push( Math.round( plan.planned_distance_m ).toLocaleString() + ' m' );
+			var parts = [ plan.title || 'Planned Workout' ]; if ( plan.planned_distance_m !== null ) parts.push( distanceText( plan.planned_distance_m, plan.workout_type, root, plan.pool_course ) );
 			( byDate[ plan.planned_date ] = byDate[ plan.planned_date ] || [] ).push( item( 'swimlog-calendar-planned-workout status-' + ( plan.status || 'planned' ), parts, true, null, plan ) );
 		} );
 		( data.events || [] ).forEach( function ( event ) {
 			( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null, null, event ) );
 		} );
+		( data.goals || [] ).forEach( function ( goal ) { ( byDate[ goal.date ] = byDate[ goal.date ] || [] ).push( goalItem( goal ) ); } );
 		var first = new Date( focus.getFullYear(), focus.getMonth(), 1 ), last = new Date( focus.getFullYear(), focus.getMonth() + 1, 0 );
 		var back = ( first.getDay() - firstDayNumber( firstDay ) + 7 ) % 7, forward = ( firstDayNumber( firstDay ) + 6 - last.getDay() + 7 ) % 7;
 		var cursor = new Date( first.getFullYear(), first.getMonth(), 1 - back ), end = new Date( last.getFullYear(), last.getMonth(), last.getDate() + forward );
@@ -192,6 +364,7 @@
 			cursor.setDate( cursor.getDate() + 1 );
 		}
 		renderAgenda( root, data, first, last );
+        loadHealthRange(root);
 	}
 	function detailRow( list, label, value ) {
 		if ( value === null || value === undefined || value === '' ) return;
@@ -205,21 +378,23 @@
 	}
 	function showWorkoutDetail( root, button ) {
 		var workout; try { workout = JSON.parse( button.dataset.calendarWorkout || '{}' ); } catch ( error ) { return; }
-		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
+		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
 		button.setAttribute( 'aria-expanded', 'true' );
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = button.getAttribute( 'aria-controls' ) || ''; root.dataset.detailTrigger = workout.id || '';
-		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = workout.workout_type === 'open_water' ? 'Open Water Workout' : 'Pool Swim Workout'; panel.appendChild( heading );
+		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = isLand(workout.workout_type)?workoutLabel(workout.workout_type)+' Activity':(workout.workout_type === 'open_water' ? 'Open Water Workout' : 'Pool Swim Workout'); panel.appendChild( heading );
 		var list = document.createElement( 'dl' ); list.className = 'swimlog-calendar-detail-list';
 		if ( workout.workout_start ) { var when = new Date( String( workout.workout_start ).replace( ' ', 'T' ) ); detailRow( list, 'Date', isNaN( when.getTime() ) ? String( workout.workout_start ) : when.toLocaleString() ); }
 		detailRow( list, 'Location', workout.location );
-		if ( workout.total_distance_m !== null ) detailRow( list, 'Distance', Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
-		var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) detailRow( list, workout.moving_time_ms ? 'Active time' : 'Elapsed time', duration( active ) );
+		if ( workout.total_distance_m !== null ) detailRow( list, 'Distance', distanceText( workout.total_distance_m, workout.workout_type, root, workout.pool_length_unit ) );
+		var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) detailRow( list, workout.moving_time_ms ? (isLand(workout.workout_type)?'Recorded moving time':'Active time') : 'Elapsed time', duration( active ) );
 		if ( workout.moving_time_ms && workout.elapsed_time_ms && Number( workout.elapsed_time_ms ) !== Number( workout.moving_time_ms ) ) detailRow( list, 'Elapsed time', duration( workout.elapsed_time_ms ) );
-		if ( workout.workout_type !== 'open_water' ) {
+        if(isLand(workout.workout_type)&&workout.moving_time_ms===0)detailRow(list,'Recorded moving time',duration(0));
+		if ( workout.workout_type === 'pool' ) {
 			if ( workout.original_pool_length !== null && workout.original_pool_length !== undefined && workout.pool_length_unit ) detailRow( list, 'Pool length', workout.original_pool_length + ' ' + workout.pool_length_unit );
-			else if ( workout.pool_length_m !== null && workout.pool_length_m !== undefined ) detailRow( list, 'Pool length', workout.pool_length_m + ' m' );
+			else if ( workout.pool_length_m !== null && workout.pool_length_m !== undefined ) detailRow( list, 'Pool length', distanceText( workout.pool_length_m, 'pool', root, workout.pool_length_unit ) );
 			detailRow( list, 'Primary stroke', strokeName( workout.primary_stroke ) );
 		}
+        if(isLand(workout.workout_type))detailRow(list,'Environment',workout.activity_environment||'Unknown');
 		panel.appendChild( list );
 		if ( workout.id && root.dataset.workoutDetailUrl ) {
 			var link = document.createElement( 'a' ); link.className = 'swimlog-calendar-button'; link.href = root.dataset.workoutDetailUrl + encodeURIComponent( workout.id ); link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'View Workout'; panel.appendChild( link );
@@ -229,7 +404,7 @@
 	}
 	function showEventDetail( root, button ) {
 		var calendarEvent; try { calendarEvent = JSON.parse( button.dataset.calendarEvent || '{}' ); } catch ( error ) { return; }
-		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ).forEach( function ( node ) { node.setAttribute( 'aria-expanded', 'false' ); } );
+		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ).forEach( function ( node ) { node.setAttribute( 'aria-expanded', 'false' ); } );
 		button.setAttribute( 'aria-expanded', 'true' );
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = button.getAttribute( 'aria-controls' ) || '';
 		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = calendarEvent.event_name || 'Swim Event'; panel.appendChild( heading );
@@ -255,6 +430,29 @@
 		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close );
 		panel.scrollIntoView( { block: 'nearest' } ); close.focus();
 	}
+	function showGoalDetail( root, button ) {
+		var goal; try { goal = JSON.parse( button.dataset.calendarGoal || '{}' ); } catch ( error ) { return; }
+		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ).forEach( function ( node ) { node.setAttribute( 'aria-expanded', 'false' ); } );
+		button.setAttribute( 'aria-expanded', 'true' );
+		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = button.getAttribute( 'aria-controls' ) || '';
+		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = goal.title || 'Swim Goal'; panel.appendChild( heading );
+		var list = document.createElement( 'dl' ); list.className = 'swimlog-calendar-detail-list';
+		detailRow( list, 'Goal date', goal.date ); detailRow( list, 'Goal period', goal.start_date === goal.end_date ? goal.start_date : goal.start_date + ' through ' + goal.end_date );
+		if ( goal.goal_type === 'single_performance' ) {
+			detailRow( list, 'Target', goal.target_distance_value + ' ' + goal.course_unit + ' at ' + paceText( goal.target_pace_ms ) + ' per 100 ' + goal.course_unit );
+			detailRow( list, 'Best recorded pace', goal.best_pace_ms === null ? 'No qualifying performance yet' : paceText( goal.best_pace_ms ) + ' per 100 ' + goal.course_unit );
+		} else {
+			detailRow( list, 'Target distance', distanceText( goal.target_distance_m, 'pool', root, goal.course_unit ) );
+			detailRow( list, goal.single_workout ? 'Longest single workout in period' : 'Swimming recorded in period', distanceText( goal.progress_meters, 'pool', root, goal.course_unit ) );
+			detailRow( list, 'Progress', Number( goal.progress_percent || 0 ).toLocaleString( undefined, { maximumFractionDigits: 1 } ) + '%' );
+		}
+		detailRow( list, 'Status', goalStatus( goal.status ) );
+		if ( goal.status === 'achieved' && goal.completion_date ) detailRow( list, 'Completed', goal.completion_date ); panel.appendChild( list );
+		if ( root.dataset.goalsUrl ) { var link = document.createElement( 'a' ); link.className = 'swimlog-calendar-button'; link.href = root.dataset.goalsUrl; link.textContent = 'View Goals'; panel.appendChild( link ); }
+		var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button swimlog-calendar-detail-close'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Close'; panel.appendChild( close ); panel.scrollIntoView( { block: 'nearest' } ); close.focus();
+	}
+	function paceText( milliseconds ) { var total = Math.max( 0, Number( milliseconds || 0 ) ), seconds = Math.floor( total / 1000 ), hundredths = Math.round( ( total % 1000 ) / 10 ); if ( hundredths === 100 ) { seconds++; hundredths = 0; } return Math.floor( seconds / 60 ) + ':' + String( seconds % 60 ).padStart( 2, '0' ) + '.' + String( hundredths ).padStart( 2, '0' ); }
+	function goalStatus( value ) { return { upcoming: 'Upcoming', in_progress: 'In progress', achieved: 'Achieved', missed: 'Not achieved by date' }[value] || 'Unknown'; }
 	function requestEventResult( root, id, operation, values ) {
 		var settings = window.swimlogCalendarSettings || {};
 		if ( ! settings.ajaxUrl || ! settings.eventNonce ) return Promise.reject( new Error( 'Event result editing is unavailable.' ) );
@@ -267,19 +465,19 @@
 	}
 	function showPlannedWorkoutDetail( root, button ) {
 		var plan; try { plan = JSON.parse( button.dataset.calendarPlannedWorkout || '{}' ); } catch ( error ) { return; }
-		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
+		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
 		button.setAttribute( 'aria-expanded', 'true' );
 		var panel = root.querySelector( '[data-calendar-detail]' ); panel.textContent = ''; panel.hidden = false; panel.id = button.getAttribute( 'aria-controls' ) || '';
 		var heading = document.createElement( 'h3' ); heading.className = 'swimlog-calendar-detail-title'; heading.textContent = plan.title || 'Planned Workout'; panel.appendChild( heading );
 		var list = document.createElement( 'dl' ); list.className = 'swimlog-calendar-detail-list';
 		detailRow( list, 'Date', plan.planned_date ); detailRow( list, 'Start time', plan.planned_start_time ? String( plan.planned_start_time ).slice( 0, 5 ) : '' );
 		detailRow( list, 'Type', plan.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' );
-		if ( plan.planned_distance_m !== null ) detailRow( list, 'Planned distance', Math.round( plan.planned_distance_m ).toLocaleString() + ' m' );
+		if ( plan.planned_distance_m !== null ) detailRow( list, 'Planned distance', distanceText( plan.planned_distance_m, plan.workout_type, root, plan.pool_course ) );
 		if ( Number( plan.planned_duration_ms || 0 ) > 0 ) detailRow( list, 'Planned duration', duration( plan.planned_duration_ms ) );
-		if ( plan.workout_type !== 'open_water' ) { if ( plan.pool_length_m !== null ) detailRow( list, 'Pool length', plan.pool_length_m + ' m' ); detailRow( list, 'Course', plan.pool_course ); detailRow( list, 'Primary stroke', strokeName( plan.primary_stroke ) ); }
+		if ( plan.workout_type !== 'open_water' ) { if ( plan.pool_length_m !== null ) detailRow( list, 'Pool length', distanceText( plan.pool_length_m, 'pool', root, plan.pool_course ) ); detailRow( list, 'Course', plan.pool_course ); detailRow( list, 'Primary stroke', strokeName( plan.primary_stroke ) ); }
 		detailRow( list, 'Status', plan.status ? plan.status.charAt( 0 ).toUpperCase() + plan.status.slice( 1 ) : 'Planned' ); panel.appendChild( list );
 		if ( plan.comparison ) { var comparisonHeading = document.createElement( 'h4' ); comparisonHeading.textContent = 'Planned vs Actual'; panel.appendChild( comparisonHeading ); var comparison = document.createElement( 'dl' ); comparison.className = 'swimlog-calendar-comparison';
-			if ( plan.comparison.planned_distance_m !== null && plan.comparison.actual_distance_m !== null ) detailRow( comparison, 'Distance', Math.round( plan.comparison.planned_distance_m ).toLocaleString() + ' m planned · ' + Math.round( plan.comparison.actual_distance_m ).toLocaleString() + ' m actual · ' + ( plan.comparison.distance_difference_m >= 0 ? '+' : '' ) + Math.round( plan.comparison.distance_difference_m ).toLocaleString() + ' m' );
+			if ( plan.comparison.planned_distance_m !== null && plan.comparison.actual_distance_m !== null ) detailRow( comparison, 'Distance', distanceText( plan.comparison.planned_distance_m, plan.workout_type, root, plan.pool_course ) + ' planned · ' + distanceText( plan.comparison.actual_distance_m, plan.workout_type, root, plan.pool_course ) + ' actual · ' + ( plan.comparison.distance_difference_m >= 0 ? '+' : '' ) + distanceText( plan.comparison.distance_difference_m, plan.workout_type, root, plan.pool_course ) );
 			if ( plan.comparison.planned_duration_ms !== null && plan.comparison.actual_duration_ms !== null ) detailRow( comparison, 'Duration', duration( plan.comparison.planned_duration_ms ) + ' planned · ' + duration( plan.comparison.actual_duration_ms ) + ' actual · ' + ( plan.comparison.duration_difference_ms >= 0 ? '+' : '−' ) + duration( Math.abs( plan.comparison.duration_difference_ms ) ) ); panel.appendChild( comparison ); }
 		if ( plan.workout_instructions ) { var label = document.createElement( 'h4' ); label.textContent = 'Workout Instructions'; panel.appendChild( label ); var instructions = document.createElement( 'pre' ); instructions.className = 'swimlog-calendar-plan-instructions'; instructions.textContent = plan.workout_instructions; panel.appendChild( instructions ); }
 		var actions = document.createElement( 'div' ); actions.className = 'swimlog-calendar-plan-actions'; if ( plan.status === 'completed' && plan.completed_workout_id ) { var unlink = document.createElement( 'button' ); unlink.type = 'button'; unlink.className = 'swimlog-calendar-button'; unlink.dataset.calendarPlanAction = 'unlink'; unlink.dataset.plan = JSON.stringify( plan ); unlink.textContent = 'Remove Workout Match'; actions.appendChild( unlink ); } else if ( plan.status === 'planned' ) { var match = document.createElement( 'button' ); match.type = 'button'; match.className = 'swimlog-calendar-button'; match.dataset.calendarPlanAction = 'match'; match.dataset.plan = JSON.stringify( plan ); match.textContent = 'Match Recorded Workout'; actions.appendChild( match ); } [ [ 'edit', 'Edit' ], [ 'move-date', 'Move to Date' ], [ 'copy', 'Copy Workout' ], [ 'cut', 'Cut Workout' ], [ 'duplicate', 'Duplicate' ], [ 'repeat', 'Repeat' ], [ 'skip', 'Mark Skipped' ], [ 'cancel', 'Cancel Plan' ], [ 'delete', 'Delete' ] ].forEach( function ( pair ) { if ( ( pair[0] === 'skip' || pair[0] === 'cancel' || pair[0] === 'cut' || pair[0] === 'move-date' ) && ( plan.status !== 'planned' || ( pair[0] !== 'skip' && pair[0] !== 'cancel' && plan.completed_workout_id ) ) ) return; var action = document.createElement( 'button' ); action.type = 'button'; action.className = 'swimlog-calendar-button'; action.dataset.calendarPlanAction = pair[0]; action.dataset.plan = JSON.stringify( plan ); action.textContent = pair[1]; actions.appendChild( action ); } ); if ( plan.status === 'skipped' || plan.status === 'cancelled' ) { var restore = document.createElement( 'button' ); restore.type = 'button'; restore.className = 'swimlog-calendar-button'; restore.dataset.calendarPlanAction = 'restore'; restore.dataset.plan = JSON.stringify( plan ); restore.textContent = 'Restore'; actions.appendChild( restore ); } panel.appendChild( actions );
@@ -330,7 +528,7 @@
 			panel.textContent = ''; var heading = document.createElement( 'h3' ); heading.textContent = 'Match Recorded Workout'; panel.appendChild( heading );
 			var intro = document.createElement( 'p' ); intro.textContent = 'Choose the recorded workout that completed this plan. No match is made until you confirm it.'; panel.appendChild( intro );
 			var candidates = data.candidates || []; if ( ! candidates.length ) { var none = document.createElement( 'p' ); none.textContent = 'No same-day recorded workouts of the same type were found.'; panel.appendChild( none ); }
-			candidates.forEach( function ( candidate ) { var row = document.createElement( 'div' ); row.className = 'swimlog-calendar-match-candidate'; var label = document.createElement( 'span' ); var parts = [ String( candidate.workout_start || '' ).replace( ' ', ' · ' ) ]; if ( candidate.total_distance_m !== null ) parts.push( Math.round( candidate.total_distance_m ).toLocaleString() + ' m' ); if ( candidate.active_time_ms ) parts.push( duration( candidate.active_time_ms ) ); label.textContent = parts.join( ' · ' ); row.appendChild( label ); var choose = document.createElement( 'button' ); choose.type = 'button'; choose.className = 'swimlog-calendar-button'; choose.dataset.calendarMatchWorkout = candidate.id; choose.dataset.planId = plan.id; choose.textContent = 'Confirm Match'; row.appendChild( choose ); panel.appendChild( row ); } );
+			candidates.forEach( function ( candidate ) { var row = document.createElement( 'div' ); row.className = 'swimlog-calendar-match-candidate'; var label = document.createElement( 'span' ); var parts = [ String( candidate.workout_start || '' ).replace( ' ', ' · ' ) ]; if ( candidate.total_distance_m !== null ) parts.push( distanceText( candidate.total_distance_m, candidate.workout_type || candidate.candidate_type || plan.workout_type, root, candidate.pool_length_unit || candidate.candidate_course ) ); if ( candidate.active_time_ms ) parts.push( duration( candidate.active_time_ms ) ); label.textContent = parts.join( ' · ' ); row.appendChild( label ); var choose = document.createElement( 'button' ); choose.type = 'button'; choose.className = 'swimlog-calendar-button'; choose.dataset.calendarMatchWorkout = candidate.id; choose.dataset.planId = plan.id; choose.textContent = 'Confirm Match'; row.appendChild( choose ); panel.appendChild( row ); } );
 			var close = document.createElement( 'button' ); close.type = 'button'; close.className = 'swimlog-calendar-button'; close.dataset.calendarDetailClose = '1'; close.textContent = 'Back'; panel.appendChild( close ); status.textContent = '';
 		} ).catch( function ( error ) { status.textContent = error.message; } ).finally( function () { root.setAttribute( 'aria-busy', 'false' ); } );
 	}
@@ -406,9 +604,9 @@
 	}
 	function closeWorkoutDetail( root, restoreFocus ) {
 		root._calendarDetailGeneration = ( root._calendarDetailGeneration || 0 ) + 1;
-		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ), returnFocus = trigger || root._calendarReturnFocus;
+		var trigger = root.querySelector( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ), returnFocus = trigger || root._calendarReturnFocus;
 		var panel = root.querySelector( '[data-calendar-detail]' ); if ( panel ) { panel.hidden = true; panel.textContent = ''; panel.removeAttribute( 'id' ); }
-		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
+		root.querySelectorAll( '[data-calendar-workout][aria-expanded="true"],[data-calendar-planned-workout][aria-expanded="true"],[data-calendar-event][aria-expanded="true"],[data-calendar-goal][aria-expanded="true"]' ).forEach( function ( item ) { item.setAttribute( 'aria-expanded', 'false' ); } );
 		if ( restoreFocus && returnFocus && document.contains( returnFocus ) ) returnFocus.focus(); root._calendarReturnFocus = null;
 	}
 	function weekStart( focus, firstDay ) {
@@ -428,13 +626,14 @@
 		var grid = root.querySelector( '.swimlog-calendar-grid' ); grid.textContent = ''; grid.classList.add( 'is-week-view' );
 		var byDate = {};
 		( data.workouts || [] ).forEach( function ( workout ) {
-			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workout.workout_type === 'open_water' ? 'Open Water' : 'Pool Swim' ];
-			if ( workout.total_distance_m !== null ) parts.push( Math.round( workout.total_distance_m ).toLocaleString() + ' m' );
+			var key = String( workout.workout_start || '' ).slice( 0, 10 ), parts = [ workoutLabel(workout.workout_type) ];
+			if ( workout.total_distance_m !== null ) parts.push( distanceText( workout.total_distance_m, workout.workout_type, root, workout.pool_length_unit ) );
 			var active = Number( workout.moving_time_ms || workout.elapsed_time_ms || 0 ); if ( active > 0 ) parts.push( duration( active ) );
 			( byDate[ key ] = byDate[ key ] || [] ).push( item( 'swimlog-calendar-workout', parts, false, workout ) );
 		} );
-		( data.planned_workouts || [] ).forEach( function ( plan ) { var parts = [ plan.title || 'Planned Workout' ]; if ( plan.planned_distance_m !== null ) parts.push( Math.round( plan.planned_distance_m ).toLocaleString() + ' m' ); ( byDate[ plan.planned_date ] = byDate[ plan.planned_date ] || [] ).push( item( 'swimlog-calendar-planned-workout status-' + ( plan.status || 'planned' ), parts, true, null, plan ) ); } );
+		( data.planned_workouts || [] ).forEach( function ( plan ) { var parts = [ plan.title || 'Planned Workout' ]; if ( plan.planned_distance_m !== null ) parts.push( distanceText( plan.planned_distance_m, plan.workout_type, root, plan.pool_course ) ); ( byDate[ plan.planned_date ] = byDate[ plan.planned_date ] || [] ).push( item( 'swimlog-calendar-planned-workout status-' + ( plan.status || 'planned' ), parts, true, null, plan ) ); } );
 		( data.events || [] ).forEach( function ( event ) { ( byDate[ event.event_date ] = byDate[ event.event_date ] || [] ).push( item( 'swimlog-calendar-event', [ event.event_name || 'Swim Event' ], true, null, null, event ) ); } );
+		( data.goals || [] ).forEach( function ( goal ) { ( byDate[ goal.date ] = byDate[ goal.date ] || [] ).push( goalItem( goal ) ); } );
 		for ( var i = 0; i < 7; i++ ) {
 			var date = new Date( start.getFullYear(), start.getMonth(), start.getDate() + i ), key = dateKey( date ), cell = document.createElement( 'div' );
 			cell.className = 'swimlog-calendar-day swimlog-calendar-week-day'; cell.setAttribute( 'role', 'gridcell' ); cell.dataset.date = key;
@@ -445,10 +644,11 @@
 		var summary = ( data.weeks || [] )[0];
 		if ( summary ) {
 			var totals = document.createElement( 'div' ); totals.className = 'swimlog-calendar-week-summary';
-			totals.textContent = summary.workout_count + ' recorded · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m actual · ' + duration( summary.active_time_ms || 0 ) + ' recorded time · ' + ( summary.planned_workout_count || 0 ) + ' planned · ' + Math.round( summary.planned_distance_m || 0 ).toLocaleString() + ' m planned · ' + ( summary.completed_planned_workout_count || 0 ) + ' matched plans';
+			totals.textContent = summary.workout_count + ' swims · ' + Math.round( summary.distance_m || 0 ).toLocaleString() + ' m swimming' + (summary.running_count?' · Running: '+(summary.running_distance_samples?distanceText(summary.running_distance_m,'running',root):'distance unavailable'):'') + (summary.walking_count?' · Walking: '+(summary.walking_distance_samples?distanceText(summary.walking_distance_m,'walking',root):'distance unavailable'):'') + ' · ' + duration( summary.active_time_ms || 0 ) + ' recorded time · ' + ( summary.planned_workout_count || 0 ) + ' planned · ' + Math.round( summary.planned_distance_m || 0 ).toLocaleString() + ' m planned · ' + ( summary.completed_planned_workout_count || 0 ) + ' matched plans';
 			grid.appendChild( totals );
 		}
 		renderAgenda( root, data, start, end );
+        loadHealthRange(root);
 	}
 	function showDuplicateWeekEditor( root, sourceStart ) {
 		if ( document.activeElement && root.contains( document.activeElement ) ) root._calendarReturnFocus = document.activeElement;
@@ -489,6 +689,7 @@
 			.finally( function () { root.classList.remove( 'is-loading' ); root.setAttribute( 'aria-busy', 'false' ); } );
 	}
 	function init( root ) {
+		window.addEventListener('resize',function(){requestAnimationFrame(function(){applyDayOverflow(root);});});
 		root.dataset.view = 'month'; root.setAttribute( 'aria-busy', 'false' ); root.dataset.focusDate = dateKey( new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		loadMonth( root, new Date( Number( root.dataset.year ), Number( root.dataset.month ) - 1, 1 ) );
 		root.addEventListener( 'keydown', function ( event ) {
@@ -542,6 +743,7 @@
 			var matchButton = event.target.closest( '[data-calendar-match-workout]' ); if ( matchButton ) { mutatePlan( root, { plan_action: 'associate', id: matchButton.dataset.planId, workout_id: matchButton.dataset.calendarMatchWorkout } ); return; }
 			var workoutButton = event.target.closest( '[data-calendar-workout]' ); if ( workoutButton ) { showWorkoutDetail( root, workoutButton ); return; }
 			var eventButton = event.target.closest( '[data-calendar-event]' ); if ( eventButton ) { showEventDetail( root, eventButton ); return; }
+			var goalButton = event.target.closest( '[data-calendar-goal]' ); if ( goalButton ) { showGoalDetail( root, goalButton ); return; }
 			var plannedButton = event.target.closest( '[data-calendar-planned-workout]' ); if ( plannedButton ) { showPlannedWorkoutDetail( root, plannedButton ); return; }
 			var closeButton = event.target.closest( '[data-calendar-detail-close]' ); if ( closeButton ) { closeWorkoutDetail( root, true ); return; }
 			var viewButton = event.target.closest( '[data-calendar-view]' );
@@ -563,3 +765,4 @@
 	}
 	document.addEventListener( 'DOMContentLoaded', function () { document.querySelectorAll( '[data-swimlog-calendar="1"]' ).forEach( init ); } );
 } )();
+

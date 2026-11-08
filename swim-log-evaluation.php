@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Chris's Swim Training Progress and Evaluation
  * Description: Import, normalize, evaluate, and display swimming workout history and personal bests.
- * Version: 1.2
+ * Version: 1.4
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Author: Christopher Molnar
@@ -13,8 +13,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWIMLOG_EVALUATION_VERSION', '1.2' );
-define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.2' );
+define( 'SWIMLOG_EVALUATION_VERSION', '1.4' );
+define( 'SWIMLOG_EVALUATION_DB_VERSION', '1.7' );
 define( 'SWIMLOG_EVALUATION_FILE', __FILE__ );
 define( 'SWIMLOG_EVALUATION_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SWIMLOG_EVALUATION_URL', plugin_dir_url( __FILE__ ) );
@@ -24,8 +24,13 @@ require_once SWIMLOG_EVALUATION_DIR . 'includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( 'SwimLogEvaluation\\Activator', 'activate' ) );
 
+register_deactivation_hook( __FILE__, array( 'SwimLogEvaluation\\Garmin_Measurement_Sync', 'deactivate' ) );
+
+register_deactivation_hook( __FILE__, array( 'SwimLogEvaluation\\Garmin_History_Jobs', 'deactivate' ) );
+
 function swimlog_evaluation_run() {
 	$plugin = new SwimLogEvaluation\Plugin();
 	$plugin->run();
 }
 swimlog_evaluation_run();
+

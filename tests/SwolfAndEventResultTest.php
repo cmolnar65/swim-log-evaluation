@@ -46,7 +46,7 @@ final class SwolfAndEventResultTest extends TestCase {
         $this->assertStringContainsString( 'is_user_logged_in()', $handler );
         $this->assertStringContainsString( "check_ajax_referer( 'swimlog_calendar_event_result', 'nonce' )", $handler );
         $this->assertStringContainsString( "current_user_can( 'swimlog_manage_own_workouts' )", $handler );
-        $this->assertStringContainsString( "current_user_can( 'swimlog_manage_all_users' )", $handler );
+        $this->assertStringNotContainsString( "current_user_can( 'swimlog_manage_all_users' )", $handler );
         $this->assertStringContainsString( 'Event::get_for_user( $id, $user_id )', $handler );
         $this->assertStringContainsString( 'Event::save_result( $id, $user_id, $time, $place, $notes )', $handler );
         $event_row = substr( $calendar, strpos( $calendar, 'private static function event_row(' ) );

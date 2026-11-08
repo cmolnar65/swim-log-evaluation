@@ -25,8 +25,8 @@ final class PlannedVsActualSummaryTest extends TestCase {
   $week=Calendar::assemble_rows($this->range(),array(),array(),'sunday',array($plan))['weeks'][1];$this->assertSame(0,$week['planned_workout_count']);$this->assertSame(0.0,$week['planned_distance_m']);$this->assertSame(0,$week['planned_duration_ms']);
  }
  public function test_calendar_ui_labels_comparisons_as_plain_math_not_training_scores(){
-  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$this->assertStringContainsString('Planned vs Actual',$view);$this->assertStringContainsString('m planned',$view);$this->assertStringContainsString('m actual',$view);
+  $view=file_get_contents(dirname(__DIR__).'/blocks/calendar/view.js');$this->assertStringContainsString('Planned vs Actual',$view);$this->assertStringContainsString('distanceText( plan.comparison.planned_distance_m',$view);$this->assertStringContainsString('distanceText( plan.comparison.actual_distance_m',$view);
   foreach(array('adherence score','readiness','training load','compliance score')as$forbidden)$this->assertStringNotContainsString($forbidden,strtolower($view));
-  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.2'",$main);
+  $main=file_get_contents(dirname(__DIR__).'/swim-log-evaluation.php');$this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.7'",$main);
  }
 }

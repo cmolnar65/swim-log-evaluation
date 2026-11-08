@@ -1,6 +1,6 @@
 # REST API Reference
 
-This is the developer reference for the read-only REST API provided by **Chris's Swim Training Progress and Evaluation**. The API is intended for swimmer-owned integrations and data portability.
+This is the developer reference for the owner-scoped REST API provided by **Chris's Swim Training Progress and Evaluation**. Existing data-portability routes remain read-only; the single Health Connect batch receiver is a restricted write route that creates only private supported records.
 
 ## Base URL and version
 
@@ -10,7 +10,7 @@ All routes use the WordPress REST namespace `swimlog/v1`:
 https://example.com/wp-json/swimlog/v1
 ```
 
-All plugin REST routes are **GET-only**. There are no REST endpoints for creating, editing, rebuilding, or deleting plugin data.
+The existing **GET-only read routes** are unchanged. One owner-scoped **POST** receiver is available for the Android Health Connect app. It only creates private, supported records; it does not provide general workout editing or deletion.
 
 ## Authorization
 
@@ -43,6 +43,47 @@ Do not store Application Passwords in source control, client-side JavaScript, pu
 - Stroke codes are `FR`, `BR`, `BACK`, `FLY`, `MIXED`, and where applicable `UNKNOWN`.
 - Optional source measurements can be `null`; missing measurements are not manufactured.
 - The API deliberately excludes workout notes, preserved source files/paths, original uploaded filenames, import records, open-water coordinates, and GPS trackpoints.
+
+## Health Connect app receiver
+
+`POST /health-connect/import-batch` accepts batches from the Swim Log Android app. It uses a dedicated owner-scoped bearer token, separate from WordPress Application Passwords and from read API access. Generate or revoke the token in **Swim Training → Swimmer Configuration → Health Connect App Sync**. The plaintext one-time token is shown once. The server stores only a keyed token hash. Send it only over HTTPS in the `Authorization: Bearer …` header; the route rejects non-HTTPS requests.
+
+The token can write only to the swimmer who generated it. The request has no owner ID, and an owner ID in the payload is rejected. Records are private by default; Health Connect measurements are accessible only through the owner's existing private calendar measurement view. The receiver never returns measurement values or heart-rate sample values in its response.
+
+The contract is version 1, with a 512 KiB maximum body, at most 50 workouts, and at most 500 measurement observations. Each workout supports up to 2,000 within-session heart-rate samples. Unsupported records are rejected individually; successful records in the same batch remain successful. The Android app can retry the same batch safely.
+
+```json
+{
+  "contract_version": 1,
+  "batch_id": "batch-20261103-0001",
+  "workouts": [{
+    "record_id": "stable-source-record-id",
+    "origin": "com.example.healthprovider",
+    "activity": "pool_swimming",
+    "start_time": "2026-11-03T07:00:00-07:00",
+    "end_time": "2026-11-03T07:45:00-07:00",
+    "distance_m": 1800,
+    "pool_length_value": 25,
+    "pool_length_unit": "m",
+    "heart_rate_samples": [{"record_id":"sample-1","origin":"com.example.healthprovider","time":"2026-11-03T07:01:00-07:00","bpm":120}]
+  }],
+  "measurements": [{
+    "record_id": "stable-source-measurement-id",
+    "origin": "com.example.healthprovider",
+    "category": "weight",
+    "time": "2026-11-03T06:50:00-07:00",
+    "values": {"weight":{"value":"72.5","unit":"kg"}}
+  }]
+}
+```
+
+Workout `activity` must be exactly `pool_swimming`, `open_water_swimming`, `running`, `running_treadmill`, or `walking`. These values are explicit activity classifications; missing GPS never changes them. `running_treadmill` is stored as running with indoor environment. Other running sessions can optionally specify `environment` as `indoor` or `outdoor`. Cycling and other activities are not accepted. Distance is meters. Pool length carries its original `m` or `yd` value/unit and is normalized to meters for storage; absent pool-course information stays unclassified. Summary-only workouts are stored without invented laps, lengths, strokes, or GPS data. Heart-rate samples must have the same data origin as their workout, lie within its session interval, and are stored in a private owner-scoped table. The receiver does not invent average or maximum heart-rate summaries from the sample series.
+
+Measurements accept `weight` (`weight` in kg), `body_composition` (`weight` in kg, `body_fat` in %, `lean_body_mass` in kg), and `blood_pressure` (`systolic` and `diastolic` in mmHg). Timestamps must include `Z` or an explicit UTC offset, with at most microsecond precision. The source local date and offset are retained with UTC time. Unknown measurement types, fields, or units are rejected; no medical interpretation or conflicting-record merge is performed.
+
+The source record ID is never stored in plaintext. Per-owner source-key hashes prevent same-source duplicates; a repeat with identical content is reported as `duplicate`, while a changed record under the same source key is a conflict. Cross-source workout matches are retained and marked as possible duplicates. Measurement records are also retained; Health Connect readings are flagged as possible cross-provider duplicates instead of replacing another source.
+
+Successful HTTP 200 responses contain `contract_version`, the echoed `batch_id`, and per-record status/code entries, never health or sample values. Per-record `duplicate` means an identical prior import, `conflict` means changed content under a known identity and requires review, `retry` means transient storage contention, and `rejected` means invalid/unsupported data. Retry only `retry` items; do not retry a conflict as a new identity. Top-level errors use HTTP 400 for malformed contracts, 401 for a missing/invalid token, 403 for non-HTTPS, and 413 for size/count limits. Do not log request bodies, bearer headers, or health values.
 
 ## GET /workouts
 
@@ -122,7 +163,7 @@ Returns current PBs for a course.
 
 | Parameter | Required | Values/default |
 | --- | --- | --- |
-| `course` | No | `m` or `yd`; site default if omitted; unsupported values fall back to `m`. |
+| `course` | No | `m` or `yd`; the swimmer's saved default course if omitted (the site default is the initial fallback); unsupported values fall back to `m`. |
 
 ```bash
 curl --user "wordpress_username:APPLICATION_PASSWORD" \
@@ -283,3 +324,29 @@ Do not make client logic depend on a particular WordPress-generated authenticati
 | GET | `/calendar` | Private calendar data and weekly summaries. |
 | GET | `/analytics/pool` | Pool performance/efficiency analytics. |
 | GET | `/analytics/training-trends` | Training-volume trends. |
+
+
+## GET /calendar/measurements
+
+Internal health-calendar projection only. This route requires the current owner's valid WordPress logged-in cookie AND an X-WP-Nonce header verified for wp_rest, plus swimlog_view_own_results and swimlog_manage_own_workouts. Application Password or other noncookie authentication alone is insufficient. No external REST opt-in or public-results setting grants access. A user parameter may only identify the current owner; swimlog_manage_all_users does not authorize another owner's health records.
+
+Required start/end: exact YYYY-MM-DD, at most 62 inclusive days (enough for a full calendar grid). Unknown or unassigned measurement dates are not inferred from UTC. Queries use stored calendar_date/provider_date and half-open indexed boundaries. More than 500 report rows or 2,000 observations returns HTTP 413, requesting a smaller range; no silent truncation.
+
+Response: range (start/end/date_policy), days (date, reports, readings, aggregates) and invalid_records. Provider reports expose named summary roles and verified reporting/sleep windows. Readings expose approved grouped values/units, source label, UTC/local time and verified offset, date_basis and conflict flag. Non-sample observations remain in aggregates. No averaging or clinical interpretation is performed.
+
+Observation IDs identify only owner-authorized internal records. External measurement/account IDs, owner IDs, hashes, arbitrary provenance/context, devices and raw payloads are excluded. Unknown/malformed numeric envelopes are counted and omitted. Responses use Cache-Control: private, no-store.
+
+This separate route does not change GET /calendar or existing portability responses. No visible measurement indicators are added until the calendar presentation phase.
+
+## Canonical public workout reads (development)
+
+These separate **GET-only** routes allow anonymous reads of the canonical whitelist:
+
+- `/swimlog/v1/public/workouts?user={owner_id}&page=1&per_page=20` (`/public/workouts`): eligible workouts, `total`, `pages`, `page`, `per_page`. Optional `workout_type`, `date_from`, `date_to` filters. Counts and pagination exclude private history.
+- `/swimlog/v1/public/workouts/{id}` (`/public/workouts/{id}`): a single projected workout, or 404 for private/missing/unsupported records.
+
+Both require explicit owner Public Results and the per-workout public grant. Responses are `private, no-store`; public embeds also disable caching. Supported types are pool, open_water, running and walking. This does not open the authenticated portability or calendar/measurement routes above. No public route accepts writes.
+
+Public fields: ID, date without start clock, type, distance/native units, elapsed/moving durations, pool course, stroke, SWOLF/equivalent swimming steps, recorded active lengths, safe splits and performance durations. Notes, photos, location labels, device/source details, files, raw metadata, health/sensor fields and stored personal-best flags are excluded. `route` is null unless the additional workout route flag and applicable explicit owner route consent permit geometry. When allowed, it contains `segments` of latitude/longitude pairs, without timestamps or sensor values. A public workout grants no management permission.
+
+See [canonical contract](docs/public-workout-visibility.md) and [standalone implementation prompt](docs/standalone-public-visibility-handoff.md). The legacy authenticated API remains separate and excludes GPS trackpoints even when route sharing is enabled.

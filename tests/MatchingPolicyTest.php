@@ -81,4 +81,34 @@ final class MatchingPolicyTest extends TestCase {
   $this->assertSame('exact',$match['status']);
   $this->assertSame(103,(int)$match['workout']->id);
  }
+ public function test_pool_recordings_with_multiple_length_difference_require_review_without_auto_attachment(){
+  global $wpdb;
+  $candidate=(object)array('id'=>88,'workout_type'=>'pool','workout_start'=>'2026-10-06 08:00:00','pool_length_unit'=>'yd','pool_length_m'=>22.86,'total_distance_m'=>5486.4,'elapsed_time_ms'=>7980000);
+  $wpdb=new class($candidate) {
+   public $prefix='wp_';private $candidate;
+   public function __construct($candidate){$this->candidate=$candidate;}
+   public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+   public function get_row($query){return null;}
+   public function get_results($query){return array($this->candidate);}
+  };
+  $incoming=array('workout_type'=>'pool','workout_start'=>'2026-10-06 08:01:00','pool_length_unit'=>'yd','pool_length_m'=>22.86,'total_distance_m'=>5532.12,'elapsed_time_ms'=>7990000);
+  $this->assertSame('probable',Importer::classify_match(42,$incoming)['status']);
+  unset($incoming['pool_length_unit'],$incoming['pool_length_m']);
+  $this->assertSame('probable',Importer::classify_match(42,$incoming)['status'],'Garmin discovery without course metadata still warns for review');
+  $incoming['total_distance_m']=7000;
+  $this->assertSame('none',Importer::classify_match(42,$incoming)['status'],'Different-distance activity stays separate');
+  $incoming['total_distance_m']=5532.12;$incoming['pool_length_unit']='m';$incoming['pool_length_m']=25;
+  $this->assertSame('disagreement',Importer::classify_match(42,$incoming)['status'],'Course conflict remains explicit');
+ }
+ public function test_back_to_back_pool_sessions_remain_separate(){
+  global $wpdb;
+  $wpdb=new class {
+   public $prefix='wp_';
+   public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+   public function get_row($query){return null;}
+   public function get_results($query){return array((object)array('id'=>99,'workout_start'=>'2026-10-06 08:00:00','elapsed_time_ms'=>60000,'pool_length_m'=>25,'pool_length_unit'=>'m','total_distance_m'=>100));}
+  };
+  $this->assertSame('none',Importer::classify_match(42,array('workout_type'=>'pool','workout_start'=>'2026-10-06 08:02:00','elapsed_time_ms'=>60000,'pool_length_unit'=>'m','pool_length_m'=>25,'total_distance_m'=>125))['status']);
+ }
+
 }

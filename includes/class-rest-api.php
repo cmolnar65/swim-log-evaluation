@@ -2,11 +2,15 @@
 namespace SwimLogEvaluation;
 if(!defined('ABSPATH')){exit;}
 
-/** Read-only authenticated REST surface for external integrations and data portability. */
+/** Owner-scoped REST surface: authenticated reads plus one scoped Health Connect receiver. */
 final class REST_API {
  const NS='swimlog/v1';
 
  public static function register(){
+  register_rest_route(self::NS,'/health-connect/import-batch',array('methods'=>\WP_REST_Server::CREATABLE,'callback'=>array(__CLASS__,'health_connect_import_batch'),'permission_callback'=>array(__CLASS__,'health_connect_permission')));
+  register_rest_route(self::NS,'/public/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workouts'),'permission_callback'=>'__return_true','args'=>array('user'=>array('sanitize_callback'=>'absint','required'=>true))));
+  register_rest_route(self::NS,'/public/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workout'),'permission_callback'=>'__return_true'));
+
   register_rest_route(self::NS,'/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workouts'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('page'=>array('sanitize_callback'=>'absint'),'per_page'=>array('sanitize_callback'=>'absint'),'workout_type'=>array('sanitize_callback'=>'sanitize_key'),'date_from'=>array('sanitize_callback'=>'sanitize_text_field'),'date_to'=>array('sanitize_callback'=>'sanitize_text_field'))));
   register_rest_route(self::NS,'/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'workout'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('id'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/personal-bests',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'personal_bests'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'))));
@@ -15,6 +19,37 @@ final class REST_API {
   register_rest_route(self::NS,'/analytics/pool',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'pool_analytics'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('course'=>array('sanitize_callback'=>'sanitize_key'),'stroke'=>array('sanitize_callback'=>'sanitize_key'),'months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/analytics/training-trends',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'training_trends'),'permission_callback'=>array(__CLASS__,'permission'),'args'=>array('months'=>array('sanitize_callback'=>'absint'))));
   register_rest_route(self::NS,'/calendar',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar'),'permission_callback'=>array(__CLASS__,'calendar_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
+  register_rest_route(self::NS,'/calendar/measurements',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'calendar_measurements'),'permission_callback'=>array(__CLASS__,'calendar_measurements_permission'),'args'=>array('user'=>array('sanitize_callback'=>'absint'),'start'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true),'end'=>array('sanitize_callback'=>'sanitize_text_field','required'=>true))));
+ }
+
+ /** Health Connect app tokens authorize writes only to their owner-bound receiver. */
+ public static function health_connect_permission($request){
+  if(!is_ssl())return new \WP_Error('swimlog_hc_https_required',__('Health Connect sync requires HTTPS.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-tokens.php';
+  $header=trim((string)$request->get_header('authorization'));
+  if(!preg_match('/^Bearer\s+(slhc_[A-Za-z0-9_-]{40,64})$/iD',$header,$match))return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  if(!Health_Connect_Tokens::owner_for_token($match[1]))return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  return true;
+ }
+
+ public static function health_connect_import_batch($request){
+  $owner=self::health_connect_owner($request);
+  if(!$owner)return new \WP_Error('swimlog_hc_unauthorized',__('A valid Health Connect app token is required.','chriss-swim-training-progress-evaluation'),array('status'=>401));
+  $body=(string)$request->get_body();
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-import.php';
+  if(strlen($body)>Health_Connect_Import::MAX_BYTES)return new \WP_Error('swimlog_hc_payload',__('The Health Connect batch is too large.','chriss-swim-training-progress-evaluation'),array('status'=>413));
+  $payload=$request->get_json_params();
+  if(!is_array($payload))return new \WP_Error('swimlog_hc_payload',__('The Health Connect batch must be a JSON object.','chriss-swim-training-progress-evaluation'),array('status'=>400));
+  $result=Health_Connect_Import::receive($owner,$payload);
+  if(is_wp_error($result))return $result;
+  $response=rest_ensure_response($result);$response->header('Cache-Control','private, no-store');return $response;
+ }
+
+ private static function health_connect_owner($request){
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-tokens.php';
+  $header=trim((string)$request->get_header('authorization'));
+  if(!preg_match('/^Bearer\s+(slhc_[A-Za-z0-9_-]{40,64})$/iD',$header,$match))return 0;
+  return Health_Connect_Tokens::owner_for_token($match[1]);
  }
 
  public static function permission(){if(!is_user_logged_in()||!current_user_can('swimlog_view_own_results'))return false;return '1'===(string)get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true);}
@@ -27,9 +62,28 @@ final class REST_API {
   return current_user_can('swimlog_manage_all_users');
  }
 
+
+ /** Health records require the owner's real login cookie and a REST nonce, not portability opt-in. */
+ public static function calendar_measurements_permission($request){
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-calendar-measurements.php';
+  $owner=(int)get_current_user_id();
+  $requested=absint($request->get_param('user'));
+  if(($requested&&$requested!==$owner)||!Calendar_Measurements::authorized($owner))return false;
+  return $owner===(int)wp_validate_auth_cookie('','logged_in') && (bool)wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),'wp_rest');
+ }
+
+ public static function calendar_measurements($request){
+  if(!self::calendar_measurements_permission($request))return new \WP_Error('swimlog_health_calendar_forbidden',__('Private calendar measurements are unavailable.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  $data=Calendar_Measurements::for_user((int)get_current_user_id(),$request->get_param('start'),$request->get_param('end'));
+  if(is_wp_error($data))return $data;
+  $response=rest_ensure_response($data);
+  $response->header('Cache-Control','private, no-store');
+  return $response;
+ }
+
  public static function workouts($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-  $uid=get_current_user_id();$page=max(1,(int)$request->get_param('page'));$per=max(1,min(100,(int)($request->get_param('per_page')?:20)));$filters=array();
+  $uid=get_current_user_id();$page=max(1,(int)$request->get_param('page'));$per=max(1,min(100,(int)($request->get_param('per_page')?:20)));$filters=array('swim_only'=>true);
   foreach(array('workout_type','date_from','date_to')as$key){$v=$request->get_param($key);if(null!==$v&&''!==$v)$filters[$key]=$v;}
   $result=Workout::query_for_user($uid,$filters,$page,$per);$rows=array();foreach($result['rows']as$w)$rows[]=self::summary($w);
   return rest_ensure_response(array('workouts'=>$rows,'page'=>$page,'per_page'=>$per,'total'=>(int)$result['total'],'pages'=>(int)$result['pages']));
@@ -37,7 +91,7 @@ final class REST_API {
 
  public static function workout($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-workout.php';
-  $uid=get_current_user_id();$id=absint($request->get_param('id'));$w=Workout::get_for_user($id,$uid);if(!$w)return new \WP_Error('swimlog_rest_not_found',__('Workout not found.','chriss-swim-training-progress-evaluation'),array('status'=>404));
+  $uid=get_current_user_id();$id=absint($request->get_param('id'));$w=Workout::get_for_user($id,$uid);if(!$w||Land_Activity::is_land($w->workout_type??''))return new \WP_Error('swimlog_rest_not_found',__('Workout not found.','chriss-swim-training-progress-evaluation'),array('status'=>404));
   $data=self::summary($w);$data['laps']=array_map(array(__CLASS__,'lap'),Workout::laps($id,$uid));$data['performances']=array_map(array(__CLASS__,'performance'),Workout::performances($id,$uid));
   if('open_water'===($w->workout_type??'pool'))$data['analytics']=self::safe_analytics(Workout::open_water_analytics($id,$uid));
   else $data['lengths']=array_map(array(__CLASS__,'length'),Workout::lengths($id,$uid));
@@ -47,7 +101,7 @@ final class REST_API {
  public static function personal_bests($request){
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-records.php';
   require_once SWIMLOG_EVALUATION_DIR.'includes/class-evaluator.php';
-  $uid=get_current_user_id();$course=strtolower((string)($request->get_param('course')?:get_option('swimlog_default_course_unit','m')));if(!in_array($course,array('m','yd'),true))$course='m';
+  $uid=get_current_user_id();$course=strtolower((string)($request->get_param('course')?:Unit_Preferences::get($uid)['swim_course']));if(!in_array($course,array('m','yd'),true))$course='m';
   $map=Records::personal_bests($uid,$course);$rows=array();
   foreach($map as$distance=>$strokes)foreach($strokes as$stroke=>$row)$rows[]=array('distance_value'=>(int)$distance,'course_unit'=>$course,'stroke'=>(string)$stroke,'duration_ms'=>(int)$row->duration_ms,'achieved_at'=>$row->achieved_at,'workout_id'=>(int)($row->workout_id??0));
   return rest_ensure_response(array('course_unit'=>$course,'personal_bests'=>$rows));
@@ -76,7 +130,10 @@ final class REST_API {
   if($uid!==$current&&!current_user_can('swimlog_manage_all_users'))return new \WP_Error('swimlog_calendar_forbidden',__('You cannot view this swimmer calendar.','chriss-swim-training-progress-evaluation'),array('status'=>403));
   $start=trim((string)$request->get_param('start'));$end=trim((string)$request->get_param('end'));
   $range_error=self::calendar_range_error($start,$end);if($range_error)return $range_error;
-  return rest_ensure_response(Calendar::for_user($uid,$start,$end));
+  $include_land=function_exists('wp_validate_auth_cookie')&&method_exists($request,'get_header')&&Land_Activity::authorized($uid)&&$uid===(int)wp_validate_auth_cookie('','logged_in')&&(bool)wp_verify_nonce((string)$request->get_header('X-WP-Nonce'),'wp_rest');
+  $response=rest_ensure_response(Calendar::for_user($uid,$start,$end,$include_land));
+  if(!is_wp_error($response))$response->header('Cache-Control','private, no-store');
+  return $response;
  }
 
  private static function calendar_range_error($start,$end){
@@ -105,4 +162,16 @@ final class REST_API {
  private static function performance($x){return array('workout_id'=>(int)($x->workout_id??0),'course_unit'=>$x->course_unit,'distance_value'=>(int)$x->distance_value,'stroke'=>$x->stroke,'duration_ms'=>(int)$x->duration_ms,'achieved_at'=>$x->achieved_at,'is_personal_best'=>isset($x->is_personal_best)?(bool)$x->is_personal_best:null);}
  private static function safe_analytics($a){return array('elapsed_pace_100m_ms'=>$a['elapsed_pace_100m_ms']??null,'moving_pace_100m_ms'=>$a['moving_pace_100m_ms']??null,'non_moving_time_ms'=>$a['non_moving_time_ms']??null,'active_percent'=>$a['active_percent']??null,'cadence_point_count'=>(int)($a['cadence_point_count']??0),'splits'=>$a['splits']??array());}
  private static function safe_readiness($r){$keys=array('lookback_days','course_unit','stroke','event_distance','days_until_event','workout_count','length_count','distance_native','active_time_ms','last_workout_start','longest_recent_distance','longest_recent_duration_ms','longest_recent_workout_id','event_distance_or_longer','lifetime_pb_duration_ms','lifetime_pb_achieved_at','lifetime_pb_workout_id','recent_performance_count','recent_best_duration_ms','recent_best_achieved_at','recent_best_workout_id','recent_best_pace_100_ms','recent_average_pace_100_ms','latest_duration_ms','latest_achieved_at','latest_pace_100_ms','recent_change_ms','recent_change_percent','recent_best_vs_pb_ms','recent_best_vs_pb_percent','descriptive_only');$out=array();foreach($keys as$key)$out[$key]=$r[$key]??null;return$out;}
+ public static function public_workout($request){
+  require_once __DIR__.'/class-workout-visibility.php';
+  $data=Workout_Visibility::get_public($request->get_param('id'));if(is_wp_error($data))return$data;
+  $response=rest_ensure_response($data);$response->header('Cache-Control','no-store, private');return$response;
+ }
+ public static function public_workouts($request){
+  require_once __DIR__.'/class-workout-visibility.php';$filters=array();
+  foreach(array('workout_type','date_from','date_to')as$key){$v=$request->get_param($key);if(null!==$v&&''!==$v)$filters[$key]=$v;}
+  $data=Workout_Visibility::query_public($request->get_param('user'),$filters,$request->get_param('page')?:1,$request->get_param('per_page')?:20);if(is_wp_error($data))return$data;
+  $response=rest_ensure_response($data);$response->header('Cache-Control','no-store, private');return$response;
+ }
+
 }

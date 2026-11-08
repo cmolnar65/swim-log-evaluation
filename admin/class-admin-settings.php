@@ -1,6 +1,7 @@
 <?php
 namespace SwimLogEvaluation;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-unit-preferences.php';
 /** Swimmer configuration, REST API help, and plugin settings administration. */
 final class Admin_Settings {
 	public static function privacy() {
@@ -8,13 +9,28 @@ final class Admin_Settings {
 			wp_die( esc_html__( 'You do not have permission to manage swimmer configuration.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$uid = get_current_user_id();
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
 		$saved = false;
 		$error = '';
+		$health_connect_token = '';
+		if ( isset( $_POST['swimlog_health_connect_action'] ) ) {
+			check_admin_referer( 'swimlog_health_connect_token' );
+			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
+			$action = sanitize_key( wp_unslash( $_POST['swimlog_health_connect_action'] ) );
+			if ( 'issue' === $action ) {
+				$issued = Health_Connect_Tokens::issue( $uid );
+				if ( is_wp_error( $issued ) ) $error = $issued->get_error_message();
+				else { $health_connect_token = $issued; nocache_headers(); }
+			} elseif ( 'revoke' === $action ) {
+				if ( ! Health_Connect_Tokens::revoke( $uid ) ) $error = __( 'The Health Connect token could not be revoked.', 'chriss-swim-training-progress-evaluation' );
+			}
+		}
 		if ( isset( $_POST['swimlog_privacy_action'] ) && 'save' === sanitize_key( wp_unslash( $_POST['swimlog_privacy_action'] ) ) ) {
 			check_admin_referer( 'swimlog_save_privacy' );
 			$public = isset( $_POST['public_results'] ) ? '1' : '0';
 			$public_routes = isset( $_POST['public_ows_routes'] ) ? '1' : '0';
-			$rest_api = isset( $_POST['rest_api_access'] ) ? '1' : '0';
+			$all_routes = isset($_POST['public_routes']) ? '1' : '0';
+            $rest_api = isset( $_POST['rest_api_access'] ) ? '1' : '0';
 			$birthdate = isset( $_POST['birthdate'] ) ? sanitize_text_field( wp_unslash( $_POST['birthdate'] ) ) : '';
 			$training_volume_months = isset( $_POST['training_volume_months'] ) ? absint( wp_unslash( $_POST['training_volume_months'] ) ) : 3;
 			$training_volume_months = max( 1, min( 24, $training_volume_months ) );
@@ -22,6 +38,9 @@ final class Admin_Settings {
 			if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
 				$calendar_first_day = 'sunday';
 			}
+			$unit_preferences_input = isset( $_POST['unit_preferences'] ) ? map_deep( wp_unslash( $_POST['unit_preferences'] ), 'sanitize_text_field' ) : null;
+			$unit_preferences = is_array( $unit_preferences_input ) ? Unit_Preferences::sanitize( $unit_preferences_input ) : Unit_Preferences::get( $uid );
+			if ( is_wp_error( $unit_preferences ) ) $error = __( 'Choose valid unit preferences.', 'chriss-swim-training-progress-evaluation' );
 			if ( '' !== $birthdate ) {
 				$parsed_birthdate = \DateTimeImmutable::createFromFormat( '!Y-m-d', $birthdate, wp_timezone() );
 				$birthdate_errors = \DateTimeImmutable::getLastErrors();
@@ -32,6 +51,7 @@ final class Admin_Settings {
 				}
 			}
 			if ( '' === $error ) {
+				Unit_Preferences::save( $uid, $unit_preferences );
 				if ( '' === $birthdate ) {
 					delete_user_meta( $uid, 'swimlog_birthdate' );
 				} else {
@@ -39,6 +59,7 @@ final class Admin_Settings {
 				}
 				update_user_meta( $uid, 'swimlog_public_results', $public );
 				update_user_meta( $uid, 'swimlog_public_ows_routes', $public_routes );
+                update_user_meta($uid,'swimlog_public_routes',$all_routes);
 				update_user_meta( $uid, 'swimlog_rest_api_access', $rest_api );
 				update_user_meta( $uid, 'swimlog_training_volume_months', $training_volume_months );
 				update_user_meta( $uid, 'swimlog_calendar_first_day', $calendar_first_day );
@@ -47,13 +68,15 @@ final class Admin_Settings {
 		}
 		$value = get_user_meta( $uid, 'swimlog_public_results', true );
 		if ( '' === $value ) {
-			$value = get_option( 'swimlog_public_results_default', '0' );
+			$value = '0';
 		}
 		$birthdate = (string) get_user_meta( $uid, 'swimlog_birthdate', true );
 		$public_routes = (string) get_user_meta( $uid, 'swimlog_public_ows_routes', true );
-		$rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
+		$all_routes = (string)get_user_meta($uid,'swimlog_public_routes',true);
+        $rest_api = (string) get_user_meta( $uid, 'swimlog_rest_api_access', true );
 		$training_volume_months = (int) get_user_meta( $uid, 'swimlog_training_volume_months', true );
 		$calendar_first_day = sanitize_key( (string) get_user_meta( $uid, 'swimlog_calendar_first_day', true ) );
+		$unit_preferences = Unit_Preferences::get( $uid );
 		if ( ! in_array( $calendar_first_day, array( 'saturday', 'sunday', 'monday' ), true ) ) {
 			$calendar_first_day = 'sunday';
 		}
@@ -85,16 +108,38 @@ final class Admin_Settings {
 						<td><input id="swimlog-training-volume-months" type="number" name="training_volume_months" min="1" max="24" step="1" value="<?php echo esc_attr( $training_volume_months ); ?>"> <?php esc_html_e( 'months', 'chriss-swim-training-progress-evaluation' ); ?><p class="description"><?php esc_html_e( 'Pool Training Volume by Stroke uses this rolling period. Choose from 1 to 24 months; the default is 3 months.', 'chriss-swim-training-progress-evaluation' ); ?></p></td>
 					</tr>
 				</table>
+				<h2><?php esc_html_e( 'Units and Display', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'These per-swimmer preferences affect display only. Stored land distances remain in meters and stored body weight remains in kilograms. Swimming records stay in their recorded meter or yard course; the selection below sets the default course only.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<table class="form-table" role="presentation">
+					<tr><th scope="row"><label for="swimlog-unit-swim-course"><?php esc_html_e( 'Default swimming course', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><select id="swimlog-unit-swim-course" name="unit_preferences[swim_course]"><option value="m" <?php selected( $unit_preferences['swim_course'], 'm' ); ?>><?php esc_html_e( 'Meters', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="yd" <?php selected( $unit_preferences['swim_course'], 'yd' ); ?>><?php esc_html_e( 'Yards', 'chriss-swim-training-progress-evaluation' ); ?></option></select><p class="description"><?php esc_html_e( 'Meter events remain separate from yard events. This preference does not convert personal-best distances.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<?php foreach ( array( 'running' => __( 'Running distance', 'chriss-swim-training-progress-evaluation' ), 'walking' => __( 'Walking distance', 'chriss-swim-training-progress-evaluation' ), 'cycling' => __( 'Cycling distance', 'chriss-swim-training-progress-evaluation' ) ) as $unit_key => $unit_label ) : ?>
+					<tr><th scope="row"><label for="swimlog-unit-<?php echo esc_attr( $unit_key ); ?>"><?php echo esc_html( $unit_label ); ?></label></th><td><select id="swimlog-unit-<?php echo esc_attr( $unit_key ); ?>" name="unit_preferences[<?php echo esc_attr( $unit_key ); ?>]"><option value="km" <?php selected( $unit_preferences[ $unit_key ], 'km' ); ?>><?php esc_html_e( 'Kilometers', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="mi" <?php selected( $unit_preferences[ $unit_key ], 'mi' ); ?>><?php esc_html_e( 'Miles', 'chriss-swim-training-progress-evaluation' ); ?></option></select></td></tr>
+					<?php endforeach; ?>
+					<tr><th scope="row"><label for="swimlog-unit-weight"><?php esc_html_e( 'Body weight', 'chriss-swim-training-progress-evaluation' ); ?></label></th><td><select id="swimlog-unit-weight" name="unit_preferences[weight]"><option value="kg" <?php selected( $unit_preferences['weight'], 'kg' ); ?>><?php esc_html_e( 'Kilograms', 'chriss-swim-training-progress-evaluation' ); ?></option><option value="lb" <?php selected( $unit_preferences['weight'], 'lb' ); ?>><?php esc_html_e( 'Pounds', 'chriss-swim-training-progress-evaluation' ); ?></option></select></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Secondary units', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="unit_preferences[show_secondary]" value="1" <?php checked( $unit_preferences['show_secondary'] ); ?>> <?php esc_html_e( 'Show the other unit in parentheses where applicable.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Swimming course distances always remain in their recorded meter or yard course.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+				</table>
 				<hr>
 				<h2><?php esc_html_e( 'Privacy', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-				<p><?php esc_html_e( 'Your swim results are private unless you explicitly enable public results. This controls the public swim shortcodes; it does not change who can manage your workouts in WordPress administration.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<p><?php esc_html_e( 'Public Results is a master permission. Only workouts you also mark public may appear in public blocks, shortcodes or the public API. Sharing never permits anyone else to manage a workout.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 				<table class="form-table" role="presentation">
-					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my swim results to be displayed by public swim shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. When OFF, you can still preview your own shortcode output while logged in. Administrators can also preview private results, but private results are not made public.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'Public Open-Water Routes', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_ows_routes" value="1" <?php checked( $public_routes, '1' ); ?>> <?php esc_html_e( 'Allow GPS route shapes from my open-water workouts to appear in public workout shortcodes.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'GPS routes can reveal where you swim, including start and finish locations. This setting is separate from Public Results and must be enabled explicitly.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
-					<tr><th scope="row"><?php esc_html_e( 'REST API Access', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="rest_api_access" value="1" <?php checked( $rest_api, '1' ); ?>> <?php esc_html_e( 'Allow authenticated read-only access to my swim workout data through the swimlog/v1 REST API.', 'chriss-swim-training-progress-evaluation' ); ?></label> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-api-help' ) ); ?>"><?php esc_html_e( 'API Help / Documentation', 'chriss-swim-training-progress-evaluation' ); ?></a><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'This permission is separate from Public Results and Public Open-Water Routes. API requests are limited to the authenticated swimmer and never expose preserved source files or open-water GPS coordinates/trackpoints.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Public Results', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_results" value="1" <?php checked( $value, '1' ); ?>> <?php esc_html_e( 'Allow my individually approved workouts to be publicly viewed.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><?php esc_html_e( 'Default is OFF. Turning this on does not publish private history. Public embeds never show private previews, even to their owner or an administrator; use your private workout pages instead.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'Public Swimming Routes', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="public_ows_routes" value="1" <?php checked( $public_routes, '1' ); ?>> <?php esc_html_e( 'Keep my existing swimming-only route permission. Each workout must also have route sharing approved.', 'chriss-swim-training-progress-evaluation' ); ?></label><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'GPS routes can reveal where you swim, including start and finish locations. This setting is separate from Public Results and must be enabled explicitly.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
+                    <tr><th scope="row"><?php esc_html_e('Public Routes — All Supported Sports','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="public_routes" value="1" <?php checked($all_routes,'1'); ?>> <?php esc_html_e('Allow routes from individually approved public swimming, running and walking workouts.','chriss-swim-training-progress-evaluation'); ?></label><p class="description"><?php esc_html_e('Off by default. Existing swimming consent never enables land routes. GPS can reveal start and finish locations. A route also needs Public Results, a public workout and its separate Share route publicly flag.','chriss-swim-training-progress-evaluation'); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'REST API Access', 'chriss-swim-training-progress-evaluation' ); ?></th><td><label><input type="checkbox" name="rest_api_access" value="1" <?php checked( $rest_api, '1' ); ?>> <?php esc_html_e( 'Allow authenticated read-only access to my swim workout data through the swimlog/v1 REST API.', 'chriss-swim-training-progress-evaluation' ); ?></label> <a href="<?php echo esc_url( admin_url( 'admin.php?page=swimlog-api-help' ) ); ?>"><?php esc_html_e( 'API Help / Documentation', 'chriss-swim-training-progress-evaluation' ); ?></a><p class="description"><strong><?php esc_html_e( 'Default is OFF.', 'chriss-swim-training-progress-evaluation' ); ?></strong> <?php esc_html_e( 'This permission is separate from Public Results and Public Swimming Routes. API requests are limited to the authenticated swimmer and never expose preserved source files or open-water GPS coordinates/trackpoints.', 'chriss-swim-training-progress-evaluation' ); ?></p></td></tr>
 				</table>
 				<?php submit_button( __( 'Save Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ) ); ?>
 			</form>
+				<?php if ( current_user_can( 'swimlog_manage_own_workouts' ) ) : ?>
+				<hr>
+				<h2><?php esc_html_e( 'Health Connect App Sync', 'chriss-swim-training-progress-evaluation' ); ?></h2>
+				<p><?php esc_html_e( 'A separate, owner-scoped app token lets your Android app add selected Health Connect measurements and workout summaries. Imported records remain private. The token is shown only when generated; keep it out of messages and screenshots.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<?php if ( $health_connect_token ) : ?><div class="notice notice-warning"><p><strong><?php esc_html_e( 'Copy this token now. It will not be shown again.', 'chriss-swim-training-progress-evaluation' ); ?></strong></p><p><code><?php echo esc_html( $health_connect_token ); ?></code></p></div><?php endif; ?>
+				<?php if ( Health_Connect_Tokens::is_active( $uid ) ) : ?>
+					<p><?php esc_html_e( 'An app token is active. Generating a replacement revokes it immediately.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<?php else : ?><p><?php esc_html_e( 'No app token is active.', 'chriss-swim-training-progress-evaluation' ); ?></p><?php endif; ?>
+				<form method="post"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="issue"><button class="button button-secondary" type="submit"><?php esc_html_e( 'Generate / replace app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form>
+				<?php if ( Health_Connect_Tokens::is_active( $uid ) ) : ?><form method="post" style="margin-top:8px"><?php wp_nonce_field( 'swimlog_health_connect_token' ); ?><input type="hidden" name="swimlog_health_connect_action" value="revoke"><button class="button" type="submit"><?php esc_html_e( 'Revoke app token', 'chriss-swim-training-progress-evaluation' ); ?></button></form><?php endif; ?>
+				<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -111,7 +156,7 @@ final class Admin_Settings {
 			<p><?php esc_html_e( 'Requests must authenticate as a WordPress user who has permission to view their own swim results and who has explicitly enabled REST API Access. The API always uses the authenticated WordPress user as the swimmer; a request cannot select another swimmer.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<p><?php esc_html_e( 'For external clients, use a WordPress-supported authentication method appropriate to your site, such as an Application Password over HTTPS. Do not place credentials in a public URL.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<h2><?php esc_html_e( 'Routes', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Method', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Endpoint', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Purpose', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Method', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Endpoint', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Purpose', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/workouts' ); ?></code></td><td><?php esc_html_e( 'List the authenticated swimmer’s workouts.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/workouts/{id}' ); ?></code></td><td><?php esc_html_e( 'Return one owned workout with normalized laps, lengths, stroke counts, and performances.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/personal-bests' ); ?></code></td><td><?php esc_html_e( 'Return current personal bests for meters or yards.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
@@ -119,13 +164,14 @@ final class Admin_Settings {
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/events' ); ?></code></td><td><?php esc_html_e( 'Return upcoming events with descriptive Race Readiness 2.0 evidence.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/analytics/pool' ); ?></code></td><td><?php esc_html_e( 'Return pool performance and efficiency analytics.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
 			<tr><td><code>GET</code></td><td><code><?php echo esc_html( $base . '/analytics/training-trends' ); ?></code></td><td><?php esc_html_e( 'Return longitudinal training-volume trends.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
-			</tbody></table>
+			<tr><td><code>POST</code></td><td><code><?php echo esc_html( $base . '/health-connect/import-batch' ); ?></code></td><td><?php esc_html_e( 'Owner-token authenticated Health Connect receiver for selected private measurements and workout summaries; see REST-API.md for its bounded versioned contract.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr>
+			</tbody></table></div>
 			<h2><?php esc_html_e( 'Workout list parameters', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Parameter', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Meaning', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><tr><td><code>page</code></td><td><?php esc_html_e( 'Page number; minimum 1.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>per_page</code></td><td><?php esc_html_e( 'Results per page; default 20, maximum 100.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>workout_type</code></td><td><code>pool</code> / <code>open_water</code></td></tr><tr><td><code>date_from</code></td><td><?php esc_html_e( 'Beginning of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>date_to</code></td><td><?php esc_html_e( 'End of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr></tbody></table>
+			<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Parameter', 'chriss-swim-training-progress-evaluation' ); ?></th><th><?php esc_html_e( 'Meaning', 'chriss-swim-training-progress-evaluation' ); ?></th></tr></thead><tbody><tr><td><code>page</code></td><td><?php esc_html_e( 'Page number; minimum 1.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>per_page</code></td><td><?php esc_html_e( 'Results per page; default 20, maximum 100.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>workout_type</code></td><td><code>pool</code> / <code>open_water</code></td></tr><tr><td><code>date_from</code></td><td><?php esc_html_e( 'Beginning of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr><tr><td><code>date_to</code></td><td><?php esc_html_e( 'End of the requested date range.', 'chriss-swim-training-progress-evaluation' ); ?></td></tr></tbody></table></div>
 			<h2><?php esc_html_e( 'Returned data', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><?php esc_html_e( 'Workout summaries include workout/source type, timestamps, saved location name, distance and timing values, pool information when applicable, primary stroke, heart-rate/cadence summaries, and recording-device manufacturer/model. Pool workout details include normalized lap/length offsets, source indexes when recorded, per-length stroke counts, and derived performances. Additional read-only routes expose current personal bests, progression history, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends. Open-water workout detail continues to expose only non-geographic analytics/splits.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<h2><?php esc_html_e( 'Privacy exclusions', 'chriss-swim-training-progress-evaluation' ); ?></h2>
-			<p><?php esc_html_e( 'The API does not expose preserved source files or paths, import records, workout notes, open-water latitude/longitude, or GPS trackpoints. Enabling Public Open-Water Routes does not change the REST API: geographic route data remains excluded.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+			<p><?php esc_html_e( 'The API does not expose preserved source files or paths, import records, workout notes, open-water latitude/longitude, or GPS trackpoints. Enabling Public Swimming Routes does not change the REST API: geographic route data remains excluded.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<h2><?php esc_html_e( 'Examples', 'chriss-swim-training-progress-evaluation' ); ?></h2>
 			<p><code>GET <?php echo esc_html( $base . '/workouts?per_page=10&workout_type=pool' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/workouts/123' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/personal-bests?course=m' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/progression?distance=100&course=m&stroke=BR' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/events?limit=5' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/analytics/pool?course=m&stroke=BR&months=6' ); ?></code></p><p><code>GET <?php echo esc_html( $base . '/analytics/training-trends?months=6' ); ?></code></p>
 			<h2><?php esc_html_e( 'Errors', 'chriss-swim-training-progress-evaluation' ); ?></h2>
@@ -164,7 +210,7 @@ final class Admin_Settings {
 			if(!$settings_error){
 				update_option('swimlog_default_course_unit',$course);update_option('swimlog_default_event_count',$count);update_option('swimlog_allowed_upload_types',array_values(array_unique($types)));
 				if(!defined('SWIMLOG_PRIVATE_STORAGE_DIR'))update_option('swimlog_private_storage_dir',$storage_dir);
-				// v0.2 preservation remains enabled; destructive uninstall is deliberately not exposed here.
+				// Preserve history; destructive uninstall is deliberately not exposed here.
 				update_option('swimlog_data_preservation','1');update_option('swimlog_public_results_default','0');$saved=true;
 			}
 		}
@@ -176,15 +222,17 @@ final class Admin_Settings {
 		<tr><th><label for="swimlog-event-count"><?php esc_html_e('Upcoming event count','chriss-swim-training-progress-evaluation'); ?></label></th><td><input id="swimlog-event-count" type="number" min="1" max="50" name="default_event_count" value="<?php echo esc_attr($count); ?>"></td></tr></table>
 		<h2><?php esc_html_e('Upload Controls','chriss-swim-training-progress-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Allowed workout files','chriss-swim-training-progress-evaluation'); ?></th><td><label><input type="checkbox" name="allowed_upload_types[]" value="fit" <?php checked(in_array('fit',$types,true)); ?>> FIT</label><br><label><input type="checkbox" name="allowed_upload_types[]" value="csv" <?php checked(in_array('csv',$types,true)); ?>> CSV</label><br><label><input type="checkbox" name="allowed_upload_types[]" value="gpx" <?php checked(in_array('gpx',$types,true)); ?>> GPX</label><br><label><input type="checkbox" name="allowed_upload_types[]" value="tcx" <?php checked(in_array('tcx',$types,true)); ?>> TCX</label><p class="description"><?php esc_html_e('At least one type must remain enabled. File content is still validated during import.','chriss-swim-training-progress-evaluation'); ?></p></td></tr>
 		<tr><th><label for="swimlog-private-storage"><?php esc_html_e('Private Workout Storage Directory','chriss-swim-training-progress-evaluation'); ?></label></th><td><input id="swimlog-private-storage" class="regular-text code" type="text" name="private_storage_dir" value="<?php echo esc_attr($storage_dir); ?>" <?php disabled($storage_locked); ?>><p class="description"><?php esc_html_e('Absolute server filesystem path outside the public web root. WordPress must be able to create or write to this directory. Original FIT, FIT.GZ, ZIP, CSV, GPX, and TCX uploads are preserved here unchanged.','chriss-swim-training-progress-evaluation'); ?></p><?php if($storage_locked):?><p class="description"><strong><?php esc_html_e('This path is locked by SWIMLOG_PRIVATE_STORAGE_DIR in server configuration.','chriss-swim-training-progress-evaluation'); ?></strong></p><?php elseif($storage_dir===''):?><p class="description"><?php esc_html_e('If left blank, the plugin will try to derive a private directory one level above the web document root.','chriss-swim-training-progress-evaluation'); ?></p><?php endif;?></td></tr></table>
-		<h2><?php esc_html_e('Privacy and Data Preservation','chriss-swim-training-progress-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Public Results default','chriss-swim-training-progress-evaluation'); ?></th><td><strong><?php esc_html_e('OFF','chriss-swim-training-progress-evaluation'); ?></strong><p class="description"><?php esc_html_e('New swimmers remain private until they explicitly enable Public Results on their Privacy page.','chriss-swim-training-progress-evaluation'); ?></p></td></tr><tr><th><?php esc_html_e('Historical data','chriss-swim-training-progress-evaluation'); ?></th><td><strong><?php esc_html_e('Preserve data','chriss-swim-training-progress-evaluation'); ?></strong><p class="description"><?php esc_html_e('Deactivation, normal updates, and derived-performance rebuilds do not delete workout history, original source files, normalized laps or lengths, locations, or events. Data preservation is mandatory in v0.2.','chriss-swim-training-progress-evaluation'); ?></p></td></tr></table>
+		<h2><?php esc_html_e('Privacy and Data Preservation','chriss-swim-training-progress-evaluation'); ?></h2><table class="form-table" role="presentation"><tr><th><?php esc_html_e('Public Results default','chriss-swim-training-progress-evaluation'); ?></th><td><strong><?php esc_html_e('OFF','chriss-swim-training-progress-evaluation'); ?></strong><p class="description"><?php esc_html_e('New swimmers remain private until they explicitly enable Public Results on Swimmer Configuration.','chriss-swim-training-progress-evaluation'); ?></p></td></tr><tr><th><?php esc_html_e('Historical data','chriss-swim-training-progress-evaluation'); ?></th><td><strong><?php esc_html_e('Preserve data','chriss-swim-training-progress-evaluation'); ?></strong><p class="description"><?php esc_html_e('Deactivation, normal updates, and derived-performance rebuilds do not delete workout history, original source files, normalized laps or lengths, locations, or events. Data preservation remains enabled.','chriss-swim-training-progress-evaluation'); ?></p></td></tr></table>
 		<?php submit_button(__('Save Settings','chriss-swim-training-progress-evaluation')); ?></form>
-		<hr><h2><?php esc_html_e('Rebuild Derived Performances','chriss-swim-training-progress-evaluation'); ?></h2>
-		<p><?php esc_html_e('Recalculate all derived performances and personal-best flags from the authoritative normalized workout history for every swimmer. Use this after evaluator changes or when calculated results need to be regenerated.','chriss-swim-training-progress-evaluation'); ?></p>
+		<hr><section class="swimlog-performance-maintenance" aria-labelledby="swimlog-performance-maintenance-title"><h2 id="swimlog-performance-maintenance-title"><?php esc_html_e('Performance Maintenance','chriss-swim-training-progress-evaluation'); ?></h2>
+		<p><?php esc_html_e('Recalculate performance results and personal-best flags from the stored workout history for every swimmer. Use this when calculated results need refreshing. Recorded workouts and original source files remain unchanged.','chriss-swim-training-progress-evaluation'); ?></p>
 		<div class="notice notice-info inline"><p><strong><?php esc_html_e('Historical data is protected.','chriss-swim-training-progress-evaluation'); ?></strong> <?php esc_html_e('This operation replaces only derived performance records. It does not delete or modify original FIT/CSV/GPX/TCX source files, imports, workouts, laps, lengths, locations, events, or swimmer privacy settings.','chriss-swim-training-progress-evaluation'); ?></p></div>
 		<?php if($rebuild_error):?><div class="notice notice-error inline"><p><?php echo esc_html($rebuild_error); ?></p></div><?php endif;?>
 		<?php if($rebuild):?><div class="notice notice-success inline"><p><?php /* translators: 1: swimmers rebuilt, 2: workouts processed, 3: derived performances generated, 4: previous derived rows replaced. */ echo esc_html(sprintf(__('Rebuild complete: %1$d swimmers, %2$d workouts processed, and %3$d derived performances generated. %4$d previous derived performance rows were replaced.','chriss-swim-training-progress-evaluation'),$rebuild['users'],$rebuild['workouts'],$rebuild['performances'],$rebuild['deleted'])); ?></p></div><?php endif;?>
-		<form method="post"><?php wp_nonce_field('swimlog_rebuild_performances'); ?><input type="hidden" name="swimlog_rebuild_action" value="rebuild"><?php submit_button(__('Rebuild Derived Performances','chriss-swim-training-progress-evaluation'),'secondary','submit',false,array('onclick'=>"return confirm('".esc_js(__('Rebuild all derived performances and personal-best flags? Historical workout and source data will not be changed.','chriss-swim-training-progress-evaluation'))."');")); ?></form>
+		<form method="post"><?php wp_nonce_field('swimlog_rebuild_performances'); ?><input type="hidden" name="swimlog_rebuild_action" value="rebuild"><?php submit_button(__('Rebuild Derived Performances','chriss-swim-training-progress-evaluation'),'secondary','submit',false,array('onclick'=>"return confirm('".esc_js(__('Rebuild all derived performances and personal-best flags? Historical workout and source data will not be changed.','chriss-swim-training-progress-evaluation'))."');")); ?></form></section>
 		</div><?php
 	}
 }
+
+
 

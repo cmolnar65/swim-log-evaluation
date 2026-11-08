@@ -12,21 +12,21 @@ final class Admin_Dashboard {
         $end = $now->format( 'Y-m-d H:i:s' );
         $start_value = null === $start ? '' : $start;
         $cache_key = 'summary_' . md5( wp_json_encode( array( $user_id, $range, $end ) ) );
-        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
+        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard_swim_only' );
         if ( false !== $cached ) return $cached;
         // The plugin owns these custom tables; SQL identifiers and values are prepared.
 
         $totals = Database::read( 'get_row',  $wpdb->prepare(
-            "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s",
+            "SELECT COUNT(*) AS sessions, COALESCE(SUM(total_distance_m),0) AS meters, COALESCE(SUM(elapsed_time_ms),0) AS elapsed_ms FROM %i WHERE user_id = %d AND workout_type IN ('pool','open_water') AND (%s = '' OR workout_start >= %s) AND workout_start <= %s",
             $table, $user_id, $start_value, $start_value, $end
         ) );
 
         $volume = Database::read( 'get_results',  $wpdb->prepare(
-            "SELECT DATE_FORMAT(workout_start,'%%Y-%%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE user_id = %d AND (%s = '' OR workout_start >= %s) AND workout_start <= %s GROUP BY DATE_FORMAT(workout_start,'%%Y-%%m') ORDER BY month ASC",
+            "SELECT DATE_FORMAT(workout_start,'%%Y-%%m') AS month, SUM(COALESCE(total_distance_m,0)) AS meters FROM %i WHERE user_id = %d AND workout_type IN ('pool','open_water') AND (%s = '' OR workout_start >= %s) AND workout_start <= %s GROUP BY DATE_FORMAT(workout_start,'%%Y-%%m') ORDER BY month ASC",
             $table, $user_id, $start_value, $start_value, $end
         ) );
         $result = array( 'totals' => $totals, 'volume' => $volume, 'start' => $start, 'end' => $end );
-        wp_cache_set( $cache_key, $result, 'swimlog_dashboard', 60 );
+        wp_cache_set( $cache_key, $result, 'swimlog_dashboard_swim_only', 60 );
         return $result;
     }
 
@@ -37,7 +37,7 @@ final class Admin_Dashboard {
         $start_value = null === $start ? '' : $start;
         $stroke_value = 'all' === $stroke ? '' : $stroke;
         $cache_key = 'swolf_' . md5( wp_json_encode( array( $user_id, $start_value, $end, $course, $stroke_value ) ) );
-        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard' );
+        $cached = wp_cache_get( $cache_key, 'swimlog_dashboard_swim_only' );
         if ( false !== $cached ) return $cached;
         // SWOLF is grouped by native pool length; different lengths must not be mixed.
 
@@ -45,13 +45,13 @@ final class Admin_Dashboard {
             "SELECT DATE_FORMAT(w.workout_start,'%%Y-%%m') AS month, w.original_pool_length AS pool_length, AVG(n.swolf_score) AS score, COUNT(*) AS samples FROM %i w INNER JOIN %i n ON n.workout_id = w.id WHERE w.user_id = %d AND w.workout_type = 'pool' AND w.pool_length_unit = %s AND n.length_type = 'active' AND n.swolf_score IS NOT NULL AND n.swolf_score > 0 AND w.workout_start <= %s AND (%s = '' OR w.workout_start >= %s) AND (%s = '' OR n.stroke = %s) AND w.original_pool_length > 0 GROUP BY DATE_FORMAT(w.workout_start,'%%Y-%%m'), w.original_pool_length ORDER BY month ASC, pool_length ASC",
             $workouts, $lengths, $user_id, $course, $end, $start_value, $start_value, $stroke_value, $stroke_value
         ) );
-        wp_cache_set( $cache_key, $rows, 'swimlog_dashboard', 60 );
+        wp_cache_set( $cache_key, $rows, 'swimlog_dashboard_swim_only', 60 );
         return $rows;
     }
 
     private static function link( $page, $user_id, $args = array() ) {
-        if ( current_user_can( 'swimlog_manage_all_users' ) ) $args['swimmer_id'] = $user_id;
-        return add_query_arg( array_merge( array( 'page' => $page ), $args ), admin_url( 'admin.php' ) );
+        
+        return Admin_UI::url(  array_merge( array( 'page' => $page ), $args ), $user_id );
     }
 
     private static function tile( $label, $value, $url ) {
@@ -108,7 +108,7 @@ final class Admin_Dashboard {
         echo '<div class="wrap swimlog-admin swimlog-dashboard"><h1>' . esc_html__( 'Swim Training Dashboard', 'chriss-swim-training-progress-evaluation' ) . '</h1>';
         Admin_UI::swimmer_selector( $user_id, 'swimlog-dashboard' );
         echo '<form class="swimlog-dash-filters" method="get"><input type="hidden" name="page" value="swimlog-dashboard">';
-        if ( current_user_can( 'swimlog_manage_all_users' ) ) echo '<input type="hidden" name="swimmer_id" value="' . esc_attr( $user_id ) . '">';
+        Admin_UI::context_fields( $user_id );
         echo '<label for="swimlog-dash-range">' . esc_html__( 'Period', 'chriss-swim-training-progress-evaluation' ) . '</label><select name="range" id="swimlog-dash-range">';
         foreach ( array( '1' => '1 month', '3' => '3 months', '6' => '6 months', '12' => '12 months', 'all' => 'All time' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '"' . selected( $range, (string) $value, false ) . '>' . esc_html( $label ) . '</option>';
         echo '</select><label for="swimlog-dash-course">' . esc_html__( 'SWOLF course', 'chriss-swim-training-progress-evaluation' ) . '</label><select id="swimlog-dash-course" name="course"><option value="m"' . selected( $course, 'm', false ) . '>Meters</option><option value="yd"' . selected( $course, 'yd', false ) . '>Yards</option></select>';
@@ -133,7 +133,7 @@ final class Admin_Dashboard {
         echo '<h2>' . esc_html__( 'Recent workouts', 'chriss-swim-training-progress-evaluation' ) . '</h2>';
         if ( ! $recent ) echo '<p>' . esc_html__( 'No recorded workouts yet.', 'chriss-swim-training-progress-evaluation' ) . '</p>';
         else {
-            echo '<div class="swimlog-table-wrap"><table class="widefat striped"><thead><tr><th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th></tr></thead><tbody>';
+            echo '<div class="swimlog-table-wrap" tabindex="0" role="group"><table class="widefat striped"><thead><tr><th>Workout</th><th>Date</th><th>Distance</th><th>Elapsed</th><th>Details</th></tr></thead><tbody>';
             foreach ( $recent as $workout ) echo '<tr><td>' . esc_html( $workout->id ) . '</td><td>' . esc_html( $workout->workout_start ) . '</td><td>' . esc_html( Admin_UI::display_measurement( $workout->original_distance, $workout->original_distance_unit ) ) . '</td><td>' . esc_html( Workout::format_duration( $workout->elapsed_time_ms ) ) . '</td><td><a href="' . esc_url( self::link( 'swimlog-workouts', $user_id, array( 'workout_id' => $workout->id ) ) ) . '">View</a></td></tr>';
             echo '</tbody></table></div>';
         }
@@ -151,4 +151,5 @@ final class Admin_Dashboard {
         echo '</div>';
     }
 }
+
 

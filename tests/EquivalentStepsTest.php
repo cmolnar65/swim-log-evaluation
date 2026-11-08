@@ -33,6 +33,6 @@ final class EquivalentStepsTest extends TestCase {
   $this->assertStringContainsString("'equivalent_steps'=>",$rest);
   $this->assertStringContainsString("'steps_method'=>",$rest);
   $this->assertStringContainsString("'permission_callback'=>array(__CLASS__,'permission')",$rest);
-  $this->assertStringNotContainsString('CREATABLE',$rest);
+  $this->assertStringContainsString("'/health-connect/import-batch'",$rest);
  }
 }

@@ -3,11 +3,34 @@ use PHPUnit\Framework\TestCase;
 use SwimLogEvaluation\FIT_Importer;
 
 final class FitNormalizationEnhancementsTest extends TestCase {
- private function normalize($session,$lengths,$activity=array()){
+ private function normalize($session,$lengths,$activity=array(),$laps=array()){
   $m=new ReflectionMethod(FIT_Importer::class,'normalize');$m->setAccessible(true);
   return $m->invoke(new FIT_Importer(),array(
-   'session'=>$session,'laps'=>array(),'lengths'=>$lengths,'records'=>array(),'device'=>array(),'activity'=>$activity
+   'session'=>$session,'laps'=>$laps,'lengths'=>$lengths,'records'=>array(),'device'=>array(),'activity'=>$activity
   ));
+ }
+
+ public function test_lap_stroke_uses_fit_swim_stroke_field_and_mixed_enum(){
+  $start=900000000;
+  $session=array(2=>$start,5=>5,6=>17,7=>30000,9=>5000,44=>2500,46=>0);
+  $lengths=array(
+   array(2=>$start,3=>15000,5=>10,7=>0,12=>1),
+   array(2=>$start+15,3=>15000,5=>10,7=>2,12=>1),
+  );
+  // FIT Lap field 24 is lap_trigger (0=manual); swim_stroke is field 38 (5=mixed).
+  $laps=array(array(2=>$start,7=>30000,9=>5000,24=>0,32=>2,35=>0,38=>5));
+  $result=$this->normalize($session,$lengths,array(),$laps);
+  $this->assertSame('MIXED',$result['laps'][0]['stroke']);
+ }
+
+ public function test_fit_drill_enum_is_not_mislabeled_as_mixed_and_lap_trigger_is_not_a_stroke(){
+  $start=900000000;
+  $session=array(2=>$start,5=>5,6=>17,7=>30000,9=>2500,44=>2500,46=>0);
+  $lengths=array(array(2=>$start,3=>30000,5=>10,7=>4,12=>1));
+  $laps=array(array(2=>$start,7=>30000,9=>2500,24=>0));
+  $result=$this->normalize($session,$lengths,array(),$laps);
+  $this->assertSame('UNKNOWN',$result['lengths'][0]['stroke']);
+  $this->assertNull($result['laps'][0]['stroke']);
  }
 
  public function test_length_stroke_count_is_normalized_for_active_lengths(){

@@ -4,6 +4,23 @@ Chris's Swim Training Progress and Evaluation is a WordPress plugin for importin
 
 The plugin supports FIT and supported CSV workout sources plus first-class manual pool-workout entry, normalized workout/lap/length storage, personal-best evaluation, events, locations, WordPress blocks, and front-end display shortcodes. Original workout source files are preserved so normalized and derived data can be rebuilt without discarding the historical source.
 
+Historical release feature descriptions and earlier v1.3 development notes are preserved in [the readme feature history](docs/readme-feature-history.md). The WordPress readme keeps its standard sections and concise release changelog.
+
+## v1.4 release
+
+Version 1.4 is the current plugin release. The plugin header/runtime and WordPress.org stable tag are 1.4; the database schema is 1.7. Additive schema versions 1.3–1.7 preserve existing workout and measurement history.
+
+The release adds private swimming goals for one-time pace targets, cumulative date-range distance and single-workout distance; completion dates and capped progress; per-swimmer primary/secondary unit display; private Health Connect imports; Garmin and iHealth personal-measurement workflows; separate running/walking logs and totals; canonical read-only workout visibility; and explicit planned/structured workout unlinking.
+
+Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Optional opt-in automatic measurement synchronization is separately configured and off by default.
+
+Health Connect imports remain owner-private and require the per-owner app token. Supported workout types are pool/open-water swimming, running and walking; cycling and GPS payloads are excluded. Same-source retries are idempotent and changed content under a known identity is rejected. Land activities do not contribute to swimming analytics.
+
+Public workout output remains read-only and requires both the owner's explicit public-results permission and per-workout approval. Route sharing has separate per-workout and owner-consent gates. Measurements, private notes, photos, source identifiers and device/raw metadata are not exposed.
+
+Garmin history availability and subtype coverage vary by account. Physical-device and complete live Garmin subtype-key acceptance were not established for this release. Do not infer missing activity types from absent GPS. See the [v1.4 release and validation record](docs/v1.4-release-checklist.md), [Garmin user guide](docs/v1.3-garmin-user-guide.md), [Health Connect REST contract](REST-API.md), [canonical visibility policy](docs/public-workout-visibility.md), and [swimming goals contract](docs/v1.3-swim-goals.md).
+
+
 ## v1.2
 
 Version 1.2 redesigns the dashboard with navigation tiles and training-volume/SWOLF charts, and adds private structured swimming workouts with sections, repeats, ladders, stroke, drill, equipment, pace and rest; training-plan PDF preview, review, selection and import; links to planned workouts; and recorded pool-swim conversion without changing recorded history. Download prescriptions as FIT Workout files, printable PDFs or text for copying to FORM. FIT destination support varies; TrainingPeaks planned-workout library import is not guaranteed. Calendar days expand in an accessible dialog on desktop and mobile, and the administration menu groups related tasks. Optional Twenty Twenty-Four layout templates improve wide-table presentation. PHP 7.4 through 8.5 is supported. The database schema remains 1.2; no new schema migration is required.
@@ -52,9 +69,9 @@ For sites using the WordPress **Twenty Twenty-Four** block theme, **SwimLog Wide
 
 Both templates were validated manually with Twenty Twenty-Four during v1.2 Phase 03. Their table layout, responsive behavior, and page rendering were confirmed working. They are optional; existing pages and other themes do not need to switch. The per-page SwimLog table density and font-size settings remain available.
 
-## v1.2 release readiness
+## v1.2 release checkpoint
 
-The `develop` branch identifies version **1.2**. All 18 user acceptance areas passed, including separately confirmed desktop/mobile calendar behavior and menu ordering. Automated validation covers PHP 7.4–8.5 and Plugin Check against production staging. See the [release-readiness checklist](docs/v1.2-development-checklist.md) for evidence and scope. Updating this metadata does not publish a release: protected `main` and WordPress.org stable remain at released v1.1 until separately authorized.
+Version 1.2 is accepted and released through PR #10, annotated tag `v1.2`, and GitHub release at commit `01aa3162f1ca283142f1e6192b116110f0ab31bb`. WordPress.org trunk and tags/1.2 were deployed from the audited installation ZIP at release revision 3773729. All 18 user acceptance areas passed. Historical development evidence remains in the [v1.2 checklist](docs/v1.2-development-checklist.md); its pre-release authorization statements describe that earlier stage.
 
 ## v1.1
 
@@ -100,7 +117,9 @@ Race Readiness 2.0 is deliberately descriptive rather than predictive. It does n
 
 The fourth v0.9 milestone expands the authenticated, opt-in, read-only **REST API and data-portability surface**. Pool workout detail now exposes preserved normalized lap/length offsets and source indexes when available, including per-length stroke counts. New GET endpoints expose current personal bests, exact-distance progression, upcoming events with descriptive Race Readiness 2.0 evidence, Pool Analytics, and Training Trends.
 
-The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. No write/create/delete REST methods are added, and this milestone requires no database schema change.
+The API remains owner-scoped to the authenticated swimmer and still requires explicit per-user REST API opt-in. It continues to exclude workout notes, preserved source files/paths, import records, open-water coordinates, and GPS trackpoints. This historical v0.9 milestone adds no write routes or schema changes.
+
+The v1.4 Health Connect import receiver provides one HTTPS-only owner-bound batch import route and one-time app-token management in Swimmer Configuration. It accepts private pool/open-water swimming, running and walking summaries, within-session heart-rate samples, and supported personal measurements; it excludes cycling and GPS payloads. Same-source retries are idempotent, changed content under a known identity is rejected, and cross-source possible duplicates remain separate. Private receiver tables advance the database schema to 1.7.
 
 The v0.9 administration architecture was also refactored from the former monolithic Admin class into focused components for workouts, manual workouts, analytics, personal bests, events/locations, shortcode help, Garmin, settings, Race Readiness presentation, and shared UI helpers. The refactor preserves existing menu slugs, permissions, nonces, URLs, and behavior while making future development more maintainable.
 
@@ -245,3 +264,7 @@ See **[REST-API.md](REST-API.md)** for the complete developer reference, includi
 
 The API deliberately excludes preserved source files/paths, import records, workout notes, original uploaded filenames, and open-water GPS coordinates/trackpoints.
 
+
+## Canonical workout sharing and goals
+
+Version 1.4 includes canonical read-only workout visibility, separate route consent, server-side owner controls, private swimming goals and completion-date progress rules. The visibility table was added in schema 1.5 and the goals table in 1.6; Health Connect added private receiver tables in 1.7. The single-workout goal mode reuses the existing goal schema. See the [visibility contract](docs/public-workout-visibility.md), [standalone integration handoff](docs/standalone-public-visibility-handoff.md), and [goals contract](docs/v1.3-swim-goals.md).

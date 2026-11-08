@@ -20,6 +20,12 @@ final class AdminSettingsExtractionTest extends TestCase {
   $this->assertStringContainsString("check_admin_referer('swimlog_rebuild_performances')",$source);
   $this->assertStringContainsString("rest_url( 'swimlog/v1' )",$source);
   $this->assertStringContainsString("update_user_meta( \$uid, 'swimlog_calendar_first_day', \$calendar_first_day );",$source);
+  $this->assertStringContainsString('Unit_Preferences::save( $uid, $unit_preferences );',$source);
+  $this->assertStringContainsString("map_deep( wp_unslash( \$_POST['unit_preferences'] ), 'sanitize_text_field' )",$source);
+  $this->assertStringContainsString('name="unit_preferences[swim_course]"',$source);
+  $this->assertStringContainsString('name="unit_preferences[<?php echo esc_attr( $unit_key ); ?>]"',$source);
+  $this->assertStringContainsString('name="unit_preferences[weight]"',$source);
+  $this->assertStringContainsString('name="unit_preferences[show_secondary]"',$source);
   $this->assertStringContainsString('name="calendar_first_day"',$source);
   foreach(array('saturday','sunday','monday') as $day){$this->assertStringContainsString('value="'.$day.'"',$source);}
   $this->assertStringContainsString('Importer::validate_storage_directory($storage_dir,true)',$source);

@@ -26,7 +26,9 @@ final class RestApiDocumentationTest extends TestCase {
 			'400 Bad Request',
 			'open-water coordinates',
 			'GPS trackpoints',
-			'GET-only',
+			'GET-only read routes',
+			'POST /health-connect/import-batch',
+			'one-time token',
 		) as $required ) {
 			$this->assertStringContainsString( $required, $doc );
 		}

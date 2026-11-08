@@ -14,7 +14,7 @@ final class RestIntegrationApiTest extends TestCase {
   $this->assertStringContainsString("get_user_meta(get_current_user_id(),'swimlog_rest_api_access',true)",$code);
   $this->assertStringContainsString('get_current_user_id()',$code);
   $this->assertStringContainsString('Workout::get_for_user($id,$uid)',$code);
-  $this->assertStringNotContainsString('CREATABLE',$code);
+  $this->assertStringContainsString("'/health-connect/import-batch'",$code);
   $this->assertStringNotContainsString('EDITABLE',$code);
   $this->assertStringNotContainsString('DELETABLE',$code);
  }

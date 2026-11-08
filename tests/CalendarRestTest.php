@@ -39,7 +39,7 @@ final class CalendarRestTest extends TestCase {
   $this->assertStringContainsString("'/calendar'", $code);
   $this->assertStringContainsString("'callback'=>array(__CLASS__,'calendar')", $code);
   $this->assertStringContainsString("'permission_callback'=>array(__CLASS__,'calendar_permission')", $code);
-  $this->assertStringContainsString('Calendar::for_user($uid,$start,$end)', $code);
+  $this->assertStringContainsString('Calendar::for_user($uid,$start,$end,$include_land)', $code);
  }
  public function test_calendar_permission_does_not_use_public_or_external_rest_preferences(){
   $code=file_get_contents(dirname(__DIR__).'/includes/class-rest-api.php');

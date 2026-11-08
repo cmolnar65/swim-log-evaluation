@@ -1,15 +1,20 @@
 <?php
 namespace SwimLogEvaluation;
+require_once __DIR__ . '/class-workout-visibility.php';
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+require_once __DIR__ . '/class-land-activity.php';
 
 /** User-owned normalized workout history service. */
 final class Workout {
 	const EVENT_READINESS_LOOKBACK_DAYS = 42;
 	public static function get_for_user( $id, $user_id ) {
+        if(!is_user_logged_in() || ((int)$user_id !== (int)get_current_user_id() && !current_user_can('swimlog_manage_all_users')))return null;
 		global $wpdb;
 		$w=Database::table('workouts'); $l=Database::table('locations');
-		return Database::read( 'get_row', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
+		$row = Database::read( 'get_row', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE w.id=%d AND w.user_id=%d",$w,$l,$id,$user_id));
+        return $row && Land_Activity::is_land( $row->workout_type ?? '' ) && ! Land_Activity::authorized( $user_id ) ? null : $row;
 	}
 
 	public static function query_for_user( $user_id, $filters=array(), $page=1, $per_page=20 ) {
@@ -19,12 +24,13 @@ final class Workout {
 		// values out of the dynamically assembled WHERE clause while leaving the
 		// final pagination query with a fixed, statically visible placeholder count.
 		$where=array($wpdb->prepare('w.user_id=%d',$user_id));
+        if ( ! empty( $filters['swim_only'] ) || ! Land_Activity::authorized( $user_id ) ) $where[]="w.workout_type IN ('pool','open_water')";
 		if(!empty($filters['date_from'])){$where[]=$wpdb->prepare('DATE(w.workout_start) >= %s',$filters['date_from']);}
 		if(!empty($filters['date_to'])){$where[]=$wpdb->prepare('DATE(w.workout_start) <= %s',$filters['date_to']);}
 		if(!empty($filters['location_id'])){$where[]=$wpdb->prepare('w.location_id=%d',absint($filters['location_id']));}
 		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);}
 		if(!empty($filters['stroke'])){$where[]=$wpdb->prepare('w.primary_stroke=%s',$filters['stroke']);}
-		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
+		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water','running','walking'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
 		$sql_where=implode(' AND ',$where);
 		$total=(int)Database::read( 'get_var', $wpdb->prepare( 'SELECT COUNT(*) FROM %i w WHERE ', $w ) . $sql_where);
 		$offset=max(0,($page-1)*$per_page);
@@ -38,7 +44,7 @@ final class Workout {
 	 * The end boundary is exclusive so callers can compose adjacent calendar
 	 * ranges without double-counting workouts that begin at midnight.
 	 */
-	public static function range_for_user( $user_id, $start, $end ) {
+	public static function range_for_user( $user_id, $start, $end, $include_land = false ) {
 		global $wpdb;
 		$w = Database::table( 'workouts' );
 		$l = Database::table( 'locations' );
@@ -47,13 +53,14 @@ final class Workout {
 				"SELECT w.*, l.name AS location_name
 				FROM %i w
 				LEFT JOIN %i l ON l.id = w.location_id AND l.user_id = w.user_id
-				WHERE w.user_id = %d AND w.workout_start >= %s AND w.workout_start < %s
+				WHERE w.user_id = %d AND w.workout_start >= %s AND w.workout_start < %s AND (%d = 1 OR w.workout_type IN ('pool','open_water'))
 				ORDER BY w.workout_start ASC, w.id ASC",
 				$w,
 				$l,
 				absint( $user_id ),
 				$start,
-				$end
+				$end,
+                $include_land && Land_Activity::authorized( $user_id ) ? 1 : 0
 			)
 		);
 	}
@@ -64,6 +71,8 @@ final class Workout {
 		$limit=max(1,min(20,(int)$limit));
 		$where=$wpdb->prepare('w.user_id=%d',$user_id);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
+        else $where .= " AND w.workout_type IN ('pool','open_water')";
 		return Database::read( 'get_results', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ",$w,$l) . $where . $wpdb->prepare(" ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$limit));
 	}
 
@@ -72,6 +81,8 @@ final class Workout {
 		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=(new \DateTimeImmutable($start,wp_timezone()))->modify('+1 month')->format('Y-m-d H:i:s');
 		$where=$wpdb->prepare('w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
+        else $where .= " AND w.workout_type IN ('pool','open_water')";
 		return Database::read( 'get_results', $wpdb->prepare( 'SELECT w.*,l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ', $w, $l ) . $where . ' ORDER BY w.workout_start ASC,w.id ASC');
 	}
 
@@ -80,7 +91,9 @@ final class Workout {
 		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
 		$where=$wpdb->prepare('user_id=%d AND workout_start >= %s AND workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('workout_type=%s',$workout_type);
-		return Database::read( 'get_results', $wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE ",$w) . $where . " GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'workout_type=%s', $workout_type ); }
+        else $where .= " AND workout_type IN ('pool','open_water')";
+		return Database::read( 'get_results', $wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, COUNT(total_distance_m) distance_samples, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE ",$w) . $where . " GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
 	}
 
 
@@ -260,11 +273,12 @@ final class Workout {
 
 	/** Replace the complete ordered photo set for a workout. */
 	public static function set_photos( $workout_id, $user_id, $attachment_ids ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		if ( ! self::get_for_user( $workout_id, $user_id ) ) return new \WP_Error( 'swimlog_workout_not_found', __( 'Workout not found.', 'chriss-swim-training-progress-evaluation' ) );
 		$ids = array_values( array_unique( array_filter( array_map( 'absint', (array) $attachment_ids ) ) ) );
 		if ( count( $ids ) > 3 ) return new \WP_Error( 'swimlog_workout_photo_limit', __( 'A workout may have no more than three photos.', 'chriss-swim-training-progress-evaluation' ) );
 		foreach ( $ids as $id ) {
-			if ( 'attachment' !== get_post_type( $id ) || 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be image attachments.', 'chriss-swim-training-progress-evaluation' ) );
+			if ( (int)get_post_field('post_author',$id) !== $user_id || 'attachment' !== get_post_type( $id ) || 0 !== strpos( (string) get_post_mime_type( $id ), 'image/' ) ) return new \WP_Error( 'swimlog_workout_photo_type', __( 'Workout photos must be image attachments.', 'chriss-swim-training-progress-evaluation' ) );
 		}
 		$key = '_swimlog_workout_photos_' . absint( $workout_id );
 		if ( $ids ) update_user_meta( $user_id, $key, $ids ); else delete_user_meta( $user_id, $key );
@@ -273,6 +287,7 @@ final class Workout {
 
 
 	public static function update_metadata( $workout_id, $user_id, $location_id, $notes ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$workout_id = absint( $workout_id );
 		$user_id = absint( $user_id );
@@ -315,6 +330,7 @@ final class Workout {
 
 
 	public static function delete( $workout_id, $user_id ) {
+        $authority = Workout_Visibility::owner_error($user_id); if ($authority) return $authority;
 		global $wpdb;
 		$workout_id = absint( $workout_id );
 		$user_id = absint( $user_id );
@@ -328,6 +344,8 @@ final class Workout {
 		$trackpoints = Database::table( 'trackpoints' );
 		$performances = Database::table( 'performances' );
 		$workouts = Database::table( 'workouts' );
+		$health_connect_activities = Database::table( 'health_connect_activities' );
+		$health_connect_heart_rate_samples = Database::table( 'health_connect_heart_rate_samples' );
 		$source_paths = Database::read( 'get_col',  $wpdb->prepare( "SELECT stored_path FROM %i WHERE workout_id=%d AND user_id=%d AND stored_path IS NOT NULL AND stored_path<>''", $imports, $workout_id, $user_id ) );
 		$photo_ids = self::photos( $workout_id, $user_id );
 
@@ -340,7 +358,10 @@ final class Workout {
 			if ( false === Database::write( 'delete',  $trackpoints, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'trackpoints' );
 			if ( false === Database::write( 'delete',  $laps, array( 'workout_id' => $workout_id ), array( '%d' ) ) ) throw new \Exception( 'laps' );
 			if ( false === Database::write( 'delete',  $imports, array( 'workout_id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'imports' );
-			if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
+			if ( false === Database::write( 'delete', $health_connect_heart_rate_samples, array( 'workout_id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'health_connect_samples' );
+			if ( false === Database::write( 'delete', $health_connect_activities, array( 'workout_id' => $workout_id, 'user_id' => $user_id ) ) ) throw new \Exception( 'health_connect_activity' );
+			if ( Workout_Visibility::ready() && false === Database::write('delete',Database::table('workout_visibility'),array('workout_id'=>$workout_id,'owner_id'=>$user_id)) ) throw new \Exception('visibility');
+            if ( 1 !== Database::write( 'delete',  $workouts, array( 'id' => $workout_id, 'user_id' => $user_id ), array( '%d', '%d' ) ) ) throw new \Exception( 'workout' );
 			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-evaluator.php';
 			Evaluator::recalculate_personal_bests( $user_id );
 			if ( false === Database::write( 'query',  'COMMIT' ) ) throw new \Exception( 'commit' );
@@ -350,6 +371,7 @@ final class Workout {
 		}
 
 		delete_user_meta( $user_id, '_swimlog_workout_photos_' . $workout_id );
+        delete_user_meta($user_id,'_standalone_workout_public_'.$workout_id);
 		foreach ( $photo_ids as $photo_id ) wp_delete_attachment( $photo_id, true );
 
 		$source_delete_failures = array();
