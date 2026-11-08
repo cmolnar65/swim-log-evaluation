@@ -85,4 +85,14 @@ final class HealthConnectReceiverTest extends TestCase {
 		$this->assertStringContainsString( 'health_connect_heart_rate_samples', $workout );
 		$this->assertStringContainsString( 'health_connect_activities', $workout );
 	}
+	public function test_health_connect_workout_insert_uses_existing_schema_columns() {
+		$import = file_get_contents( dirname( __DIR__ ) . '/includes/class-health-connect-import.php' );
+		$schema = file_get_contents( dirname( __DIR__ ) . '/includes/class-database.php' );
+		$this->assertSame( 1, preg_match( '/\$data = array\((.*?)\);/s', $import, $data_match ) );
+		$this->assertSame( 1, preg_match( '/CREATE TABLE \$workouts \((.*?)\) \$charset_collate;/s', $schema, $schema_match ) );
+		preg_match_all( "/'([a-z_]+)'\\s*=>/", $data_match[1], $insert_keys );
+		preg_match_all( '/^\\s*([a-z_]+)\\s+(?:bigint|varchar|decimal|smallint|text|datetime|int|tinyint)\\b/im', $schema_match[1], $schema_columns );
+		$this->assertSame( array(), array_values( array_diff( $insert_keys[1], $schema_columns[1] ) ), 'Health Connect workout insert contains a column missing from the workouts table.' );
+	}
+
 }
