@@ -12,6 +12,8 @@ final class HealthConnectAuthorizationTestDB {
 	public $last_error = '';
 	public $codes = array();
 	public $tokens = array();
+	public $lookup_reason = '';
+	public $consume_reason = '';
 
 	public function prepare( $sql, ...$args ) { return json_encode( array( $sql, $args ) ); }
 	public function get_row( $prepared ) {
@@ -19,7 +21,11 @@ final class HealthConnectAuthorizationTestDB {
 		if ( false !== strpos( $sql, 'health_connect_auth_codes' ) ) {
 			$hash = $args[1];
 			$code = isset( $this->codes[ $hash ] ) ? $this->codes[ $hash ] : null;
-			if ( ! $code || $code['client_id'] !== $args[2] || $code['redirect_uri'] !== $args[3] || $code['code_challenge'] !== $args[4] || $code['expires_at_utc'] <= $args[5] || null !== $code['consumed_at_utc'] ) return null;
+			if ( ! $code ) { $this->lookup_reason = 'missing'; return null; }
+			if ( $code['client_id'] !== $args[2] || $code['redirect_uri'] !== $args[3] || $code['code_challenge'] !== $args[4] ) { $this->lookup_reason = 'binding'; return null; }
+			if ( $code['expires_at_utc'] <= $args[5] ) { $this->lookup_reason = 'expired'; return null; }
+			if ( null !== $code['consumed_at_utc'] ) { $this->lookup_reason = 'consumed'; return null; }
+			$this->lookup_reason = 'matched';
 			return (object) array( 'owner_id' => $code['owner_id'] );
 		}
 		if ( false !== strpos( $sql, 'token_hash = %s' ) ) {
@@ -48,10 +54,13 @@ final class HealthConnectAuthorizationTestDB {
 		list( $sql, $args ) = json_decode( $prepared, true );
 		if ( 0 === strpos( $sql, 'UPDATE' ) ) {
 			$hash = $args[2];
-			if ( ! isset( $this->codes[ $hash ] ) ) return 0;
+			if ( ! isset( $this->codes[ $hash ] ) ) { $this->consume_reason = 'missing'; return 0; }
 			$code =& $this->codes[ $hash ];
-			if ( (int) $code['owner_id'] !== (int) $args[3] || $code['client_id'] !== $args[4] || $code['redirect_uri'] !== $args[5] || $code['code_challenge'] !== $args[6] || $code['expires_at_utc'] <= $args[7] || null !== $code['consumed_at_utc'] ) return 0;
+			if ( (int) $code['owner_id'] !== (int) $args[3] || $code['client_id'] !== $args[4] || $code['redirect_uri'] !== $args[5] || $code['code_challenge'] !== $args[6] ) { $this->consume_reason = 'binding'; return 0; }
+			if ( $code['expires_at_utc'] <= $args[7] ) { $this->consume_reason = 'expired'; return 0; }
+			if ( null !== $code['consumed_at_utc'] ) { $this->consume_reason = 'consumed'; return 0; }
 			$code['consumed_at_utc'] = $args[1];
+			$this->consume_reason = 'consumed-now';
 			return 1;
 		}
 		return 0;
@@ -116,7 +125,7 @@ final class HealthConnectAuthorizationTest extends TestCase {
 		$this->assertInstanceOf( WP_Error::class, Health_Connect_Authorization::exchange( $payload ) );
 		$payload['code_verifier'] = $verifier;
 		$result = Health_Connect_Authorization::exchange( $payload );
-		$this->assertIsArray( $result );
+		$this->assertIsArray( $result, $result instanceof WP_Error ? $result->get_error_message() . ' Lookup: ' . $wpdb->lookup_reason . '; consume: ' . $wpdb->consume_reason : '' );
 		$this->assertSame( array( 'access_token', 'token_type' ), array_keys( $result ) );
 		$this->assertSame( 'Bearer', $result['token_type'] );
 		$this->assertSame( 1, count( $wpdb->tokens ) );
