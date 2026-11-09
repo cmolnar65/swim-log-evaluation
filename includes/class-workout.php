@@ -30,7 +30,7 @@ final class Workout {
 		if(!empty($filters['location_id'])){$where[]=$wpdb->prepare('w.location_id=%d',absint($filters['location_id']));}
 		if(!empty($filters['course_unit'])&&in_array($filters['course_unit'],array('m','yd'),true)){$where[]=$wpdb->prepare('w.pool_length_unit=%s',$filters['course_unit']);}
 		if(!empty($filters['stroke'])){$where[]=$wpdb->prepare('w.primary_stroke=%s',$filters['stroke']);}
-		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water','running','walking'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
+		if(!empty($filters['workout_type'])&&in_array($filters['workout_type'],array('pool','open_water','running','walking','cycling'),true)){$where[]=$wpdb->prepare('w.workout_type=%s',$filters['workout_type']);}
 		$sql_where=implode(' AND ',$where);
 		$total=(int)Database::read( 'get_var', $wpdb->prepare( 'SELECT COUNT(*) FROM %i w WHERE ', $w ) . $sql_where);
 		$offset=max(0,($page-1)*$per_page);
@@ -71,7 +71,7 @@ final class Workout {
 		$limit=max(1,min(20,(int)$limit));
 		$where=$wpdb->prepare('w.user_id=%d',$user_id);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
-        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking', 'cycling' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
         else $where .= " AND w.workout_type IN ('pool','open_water')";
 		return Database::read( 'get_results', $wpdb->prepare("SELECT w.*, l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ",$w,$l) . $where . $wpdb->prepare(" ORDER BY w.workout_start DESC,w.id DESC LIMIT %d",$limit));
 	}
@@ -81,7 +81,7 @@ final class Workout {
 		$start=sprintf('%04d-%02d-01 00:00:00',$year,$month); $end=(new \DateTimeImmutable($start,wp_timezone()))->modify('+1 month')->format('Y-m-d H:i:s');
 		$where=$wpdb->prepare('w.user_id=%d AND w.workout_start >= %s AND w.workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('w.workout_type=%s',$workout_type);
-        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking', 'cycling' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'w.workout_type=%s', $workout_type ); }
         else $where .= " AND w.workout_type IN ('pool','open_water')";
 		return Database::read( 'get_results', $wpdb->prepare( 'SELECT w.*,l.name AS location_name FROM %i w LEFT JOIN %i l ON l.id=w.location_id AND l.user_id=w.user_id WHERE ', $w, $l ) . $where . ' ORDER BY w.workout_start ASC,w.id ASC');
 	}
@@ -91,7 +91,7 @@ final class Workout {
 		$start=sprintf('%04d-01-01 00:00:00',$year); $end=sprintf('%04d-01-01 00:00:00',$year+1);
 		$where=$wpdb->prepare('user_id=%d AND workout_start >= %s AND workout_start < %s',$user_id,$start,$end);
 		if(in_array($workout_type,array('pool','open_water'),true))$where.=' AND '.$wpdb->prepare('workout_type=%s',$workout_type);
-        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'workout_type=%s', $workout_type ); }
+        elseif ( Land_Activity::authorized( $user_id ) && in_array( $workout_type, array( 'all', 'running', 'walking', 'cycling' ), true ) ) { if ( 'all' !== $workout_type ) $where .= ' AND ' . $wpdb->prepare( 'workout_type=%s', $workout_type ); }
         else $where .= " AND workout_type IN ('pool','open_water')";
 		return Database::read( 'get_results', $wpdb->prepare("SELECT MONTH(workout_start) month_num, COUNT(*) workout_count, COUNT(total_distance_m) distance_samples, SUM(CASE WHEN original_distance_unit='m' THEN original_distance ELSE 0 END) meters, SUM(CASE WHEN original_distance_unit='yd' THEN original_distance ELSE 0 END) yards, SUM(elapsed_time_ms) elapsed_ms FROM %i WHERE ",$w) . $where . " GROUP BY MONTH(workout_start) ORDER BY month_num ASC");
 	}

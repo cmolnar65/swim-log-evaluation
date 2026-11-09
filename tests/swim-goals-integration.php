@@ -15,7 +15,7 @@ $owner = (int) $owner; $other = (int) $other;
 $old_user = get_current_user_id(); $get = $_GET; $created_workouts = array(); $created_goals = array();
 try {
 	foreach ( array( $owner, $other ) as $user_id ) ( new WP_User( $user_id ) )->add_cap( 'swimlog_manage_own_workouts' );
-	$verify( '1.8' === get_option( 'swimlog_db_version' ) && Database::schema_is_complete(), 'Schema 1.8 is installed and complete.' );
+	$verify( '1.9' === get_option( 'swimlog_db_version' ) && Database::schema_is_complete(), 'Schema 1.9 is installed and complete.' );
 	$today = wp_date( 'Y-m-d', null, wp_timezone() );
 	$past_start = wp_date( 'Y-m-d', time() - ( 5 * DAY_IN_SECONDS ), wp_timezone() );
 	$past_middle = wp_date( 'Y-m-d', time() - ( 4 * DAY_IN_SECONDS ), wp_timezone() );

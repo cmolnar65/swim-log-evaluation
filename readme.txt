@@ -37,6 +37,9 @@ PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog 
 == Changelog ==
 
 = 1.5-dev (unreleased) =
+* Extend Health Connect workout imports to accept cycling and retain available laps/splits, exercise segments, speed samples, calorie summaries, and route coordinates. Imported splits and GPS are stored owner-scoped and remain private; cycling stays separate from swimming totals.
+* Add additive private schema 1.9 detail storage. Validate detail counts, intervals, units, speed, calorie, cadence and power ranges, and GPS coordinates before persistence; include all details in the source-content hash so changed data conflicts instead of overwriting.
+* Retain Health Connect workout detail for run, walk and bike sessions where available: speed, active/total energy, elevation gain, floors, step/cycling cadence, power samples, laps, segments and owner-private routes. Ambiguous associations are omitted; Health Connect details never feed swim lengths or swimming totals.
 * Add a low-copy Health Connect authorization flow: the Android app opens the configured HTTPS WordPress site for sign-in and explicit consent, then exchanges a short-lived, single-use PKCE authorization code for the signed-in owner's app token. WordPress credentials stay in the browser; the owner remains derived from the WordPress session.
 * Handle consent from WordPress's authenticated admin-post action before page output, then attempt the Android callback automatically and show a **Return to Swim Log Android** link if the browser does not launch the app.
 * Add `POST /health-connect/token` with strict client and redirect binding, S256 PKCE verification, atomic one-time code consumption and no-store responses. Preserve the existing owner-scoped import receiver and manual token controls.

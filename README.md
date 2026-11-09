@@ -8,13 +8,13 @@ Historical release feature descriptions and earlier v1.3 development notes are p
 
 ## v1.4 release
 
-Version 1.4 remains the current public plugin release and WordPress.org stable tag. Its release schema was 1.7; the active `develop` branch is v1.5-dev with schema 1.8. Additive upgrades preserve existing workout and measurement history.
+Version 1.4 remains the current public plugin release and WordPress.org stable tag. Its release schema was 1.7; the active `develop` branch is v1.5-dev with schema 1.9. Additive upgrades preserve existing workout and measurement history.
 
 The release adds private swimming goals for one-time pace targets, cumulative date-range distance and single-workout distance; completion dates and capped progress; per-swimmer primary/secondary unit display; private Health Connect imports; Garmin and iHealth personal-measurement workflows; separate running/walking logs and totals; canonical read-only workout visibility; and explicit planned/structured workout unlinking.
 
 Garmin history imports use resumable owner-private background jobs with pause, resume, cancel and failed-item retry controls. Optional opt-in automatic measurement synchronization is separately configured and off by default.
 
-Health Connect imports remain owner-private and require the per-owner app token. Supported workout types are pool/open-water swimming, running and walking; cycling and GPS payloads are excluded. Same-source retries are idempotent and changed content under a known identity is rejected. Land activities do not contribute to swimming analytics.
+Health Connect imports remain owner-private and require the per-owner app token. Supported workout types are pool/open-water swimming, running, walking and cycling. Available laps, segments, speed, active/total calories, elevation gain, floors climbed, step/cycling cadence, power, and route points are retained as private workout details; route access is consent-gated on Android. Same-source retries are idempotent and changed content under a known identity is rejected. Land activities do not contribute to swimming analytics.
 
 Public workout output remains read-only and requires both the owner's explicit public-results permission and per-workout approval. Route sharing has separate per-workout and owner-consent gates. Measurements, private notes, photos, source identifiers and device/raw metadata are not exposed.
 

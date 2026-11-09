@@ -19,6 +19,8 @@ try {
     // Only plugin table resolution changes; WordPress core users/options stay on the original tables.
     $wpdb->prefix = $prefix;
     $verify( Database::install_schema(), 'Fresh health schema failed.' );
+    $activity_columns = $wpdb->get_col( $wpdb->prepare( 'SHOW COLUMNS FROM %i', Database::table( 'health_connect_activities' ) ) );
+    $verify( in_array( 'details_json', (array) $activity_columns, true ), 'Health Connect private workout detail column is missing.' );
     $legacy = array_diff( Database::required_tables(), $health );
     $legacy_schema = array();
     foreach ( $legacy as $name ) {

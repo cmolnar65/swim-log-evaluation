@@ -204,6 +204,8 @@ final class Calendar {
                 'running_distance_m' => $land['running'], 'walking_distance_m' => $land['walking'],
                 'running_count' => $land['running_count'], 'walking_count' => $land['walking_count'],
                 'running_distance_samples' => $land['running_known'], 'walking_distance_samples' => $land['walking_known'],
+                'cycling_distance_m' => $land['cycling'], 'cycling_count' => $land['cycling_count'],
+                'cycling_distance_samples' => $land['cycling_known'],
 				'active_time_ms' => $summary['active_time_ms'],
 				'pool_distance_m' => $summary['pool_distance_m'],
 				'open_water_distance_m' => $summary['open_water_distance_m'],

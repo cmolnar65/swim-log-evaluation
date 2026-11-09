@@ -17,7 +17,7 @@ final class ReleaseDocumentationTest extends TestCase {
   $this->assertStringContainsString("SWIMLOG_EVALUATION_DB_VERSION', '1.8'",$plugin);
   $this->assertStringContainsString('## v1.4 release',$github);
   $this->assertStringContainsString('opt-in automatic measurement synchronization',$github);
-  foreach(array('= 1.5-dev (unreleased) =','short-lived, single-use PKCE authorization code','POST /health-connect/token','schema 1.8')as$feature)$this->assertStringContainsString($feature,$readme);
+  foreach(array('= 1.5-dev (unreleased) =','short-lived, single-use PKCE authorization code','POST /health-connect/token','schema 1.9')as$feature)$this->assertStringContainsString($feature,$readme);
   $release_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/release-package.yml');
   $plugin_check_workflow=file_get_contents(dirname(__DIR__).'/.github/workflows/plugin-check.yml');
   $this->assertStringContainsString('chriss-swim-training-progress-evaluation-1.4.zip',$release_workflow);

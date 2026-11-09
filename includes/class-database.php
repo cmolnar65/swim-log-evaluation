@@ -206,7 +206,7 @@ final class Database {
 		return array(
 			'health_connect_tokens' => array( 'owner_id', 'token_hash', 'created_at_utc' ),
 			'health_connect_auth_codes' => array( 'code_hash', 'owner_id', 'client_id', 'redirect_uri', 'code_challenge', 'expires_at_utc', 'consumed_at_utc', 'created_at_utc' ),
-			'health_connect_activities' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'content_hash', 'source_origin', 'start_utc', 'end_utc', 'start_local', 'end_local', 'start_offset_seconds', 'end_offset_seconds', 'possible_duplicate', 'created_at_utc', 'updated_at_utc' ),
+			'health_connect_activities' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'content_hash', 'source_origin', 'start_utc', 'end_utc', 'start_local', 'end_local', 'start_offset_seconds', 'end_offset_seconds', 'possible_duplicate', 'details_json', 'created_at_utc', 'updated_at_utc' ),
 			'health_connect_heart_rate_samples' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'sample_utc', 'beats_per_minute', 'source_origin', 'created_at_utc' ),
 		);
 	}
@@ -589,6 +589,7 @@ final class Database {
 			start_offset_seconds int(11) NOT NULL,
 			end_offset_seconds int(11) NOT NULL,
 			possible_duplicate tinyint(1) NOT NULL DEFAULT 0,
+			details_json longtext NULL,
 			created_at_utc datetime NOT NULL,
 			updated_at_utc datetime NOT NULL,
 			PRIMARY KEY  (id),

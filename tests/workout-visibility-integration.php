@@ -19,7 +19,7 @@ try{
  $failure=static function($sql)use($vtable){return false!==strpos($sql,'INSERT IGNORE INTO `'.$vtable.'`')&&false!==strpos($sql,'SELECT w.id')?'INVALID SYNTHETIC SNAPSHOT':$sql;};
  add_filter('query',$failure,1);$suppress=$wpdb->suppress_errors(true);(new Plugin())->maybe_upgrade_schema();$wpdb->suppress_errors($suppress);remove_filter('query',$failure,1);$failure=null;
  $verify('1.4'===get_option('swimlog_db_version'),'Failed migration withholds schema version');$verify(!V::ready(),'Failed migration fails closed');$verify(6===(int)$wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i',$wtable)),'Failed migration preserves history');
- (new Plugin())->maybe_upgrade_schema();$verify('1.8'===get_option('swimlog_db_version')&&V::ready(),'Retry completes schema 1.8');
+ (new Plugin())->maybe_upgrade_schema();$verify('1.9'===get_option('swimlog_db_version')&&V::ready(),'Retry completes schema 1.9');
  wp_set_current_user(0);$verify(V::is_public($pool)&&V::is_public($ows),'Explicit old swimming consent retains public swims');$verify(!V::is_public($run)&&!V::is_public($walk),'Old route/global consent does not publish land');$verify(!V::is_public($private)&&!V::is_public($implicit),'Private owner and site default never become consent');
  $verify(null===V::get_public($pool)['route'],'Pool route not grandfathered');$verify(is_array(V::get_public($ows)['route']),'Old explicit OWS route consent retained');
  wp_set_current_user($owner);$state=V::get_for_owner($run);$verify($state['pending_standalone_preference']&&!$state['effective_public'],'Provisional preference remains pending');$nonce=wp_create_nonce('swimlog_workout_visibility_'.$run);
