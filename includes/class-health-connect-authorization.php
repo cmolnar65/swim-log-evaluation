@@ -38,10 +38,12 @@ final class Health_Connect_Authorization {
 
 		nocache_headers();
 		if ( ! headers_sent() ) header( 'Referrer-Policy: no-referrer' );
-		$input = 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : 'GET' ) ? wp_unslash( $_POST ) : wp_unslash( $_GET );
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
+		if ( ! in_array( $request_method, array( 'GET', 'POST' ), true ) ) wp_die( esc_html__( 'This Health Connect authorization request method is not allowed.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 405 ) );
+		$input = 'POST' === $request_method ? wp_unslash( $_POST ) : wp_unslash( $_GET );
 		if ( ! self::valid_authorization_parameters( $input ) ) wp_die( esc_html__( 'This Health Connect authorization request is invalid or expired. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
 		$error = '';
-		if ( 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : 'GET' ) ) {
+		if ( 'POST' === $request_method ) {
 			check_admin_referer( 'swimlog_hc_authorize' );
 			$action = isset( $input['swimlog_hc_authorization_action'] ) && is_string( $input['swimlog_hc_authorization_action'] ) ? sanitize_key( $input['swimlog_hc_authorization_action'] ) : '';
 			if ( 'cancel' === $action ) {
@@ -137,7 +139,7 @@ final class Health_Connect_Authorization {
 
 	private static function redirect_to_app( $parameters ) {
 		$query = http_build_query( $parameters, '', '&', PHP_QUERY_RFC3986 );
-		// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect -- Redirect uses only the fixed native-app URI constant and the validated, URL-encoded one-time code/state or cancellation state.
+		// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect uses only the fixed native-app URI constant and the validated, URL-encoded one-time code/state or cancellation state.
 		wp_redirect( self::REDIRECT_URI . '?' . $query, 302, 'Swim Log Health Connect' );
 		exit;
 	}

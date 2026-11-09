@@ -39,6 +39,9 @@ jobs:
         uses: wordpress/plugin-check-action@v1
         with:
           strict: true
+          # Keep develop's unreleased header while Stable tag remains the public v1.4 release.
+          # The second ignored code is the fixed custom-scheme Android callback; it cannot use wp_safe_redirect().
+          ignore-codes: stable_tag_mismatch,WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
           build-dir: ${{ runner.temp }}/plugin-build/chriss-swim-training-progress-evaluation
 
       - name: Verify canonical workout visibility migration and read-only public access
