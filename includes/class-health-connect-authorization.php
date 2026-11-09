@@ -40,6 +40,7 @@ final class Health_Connect_Authorization {
 		if ( ! headers_sent() ) header( 'Referrer-Policy: no-referrer' );
 		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
 		if ( 'GET' !== $request_method ) wp_die( esc_html__( 'Submit authorization through the secure Swim Log form.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 405 ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- This read-only OAuth initiation is bound to random state and PKCE; the state-changing consent POST uses a WordPress nonce.
 		$input = wp_unslash( $_GET );
 		if ( ! self::valid_authorization_parameters( $input ) ) wp_die( esc_html__( 'This Health Connect authorization request is invalid or expired. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
 		$error = '';
