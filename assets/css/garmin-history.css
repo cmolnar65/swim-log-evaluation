@@ -1,6 +1,7 @@
 #swimlog-garmin-history { max-width: 72rem; }
 #swimlog-garmin-history .swimlog-history-choice { display: flex; align-items: center; gap: .5rem; min-height: 44px; }
 #swimlog-garmin-history .swimlog-history-controls { display: flex; flex-wrap: wrap; gap: .75rem; }
+#swimlog-garmin-history .swimlog-history-controls .button { min-height: 48px; }
 #swimlog-garmin-history .button, #swimlog-garmin-history nav a, #swimlog-garmin-history .swimlog-history-refresh-note a { display: inline-flex; align-items: center; min-height: 44px; white-space: normal; }
 #swimlog-garmin-history nav { display: flex; flex-wrap: wrap; gap: 1rem; }
 #swimlog-garmin-history input[type=date] { max-width: 100%; min-height: 44px; }
