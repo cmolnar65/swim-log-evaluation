@@ -39,25 +39,10 @@ final class Health_Connect_Authorization {
 		nocache_headers();
 		if ( ! headers_sent() ) header( 'Referrer-Policy: no-referrer' );
 		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
-		if ( ! in_array( $request_method, array( 'GET', 'POST' ), true ) ) wp_die( esc_html__( 'This Health Connect authorization request method is not allowed.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 405 ) );
-		$input = 'POST' === $request_method ? wp_unslash( $_POST ) : wp_unslash( $_GET );
+		if ( 'GET' !== $request_method ) wp_die( esc_html__( 'Submit authorization through the secure Swim Log form.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 405 ) );
+		$input = wp_unslash( $_GET );
 		if ( ! self::valid_authorization_parameters( $input ) ) wp_die( esc_html__( 'This Health Connect authorization request is invalid or expired. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
 		$error = '';
-		if ( 'POST' === $request_method ) {
-			check_admin_referer( 'swimlog_hc_authorize' );
-			$action = isset( $input['swimlog_hc_authorization_action'] ) && is_string( $input['swimlog_hc_authorization_action'] ) ? sanitize_key( $input['swimlog_hc_authorization_action'] ) : '';
-			if ( 'cancel' === $action ) {
-				self::redirect_to_app( array( 'error' => 'access_denied', 'state' => $input['state'] ) );
-			}
-			if ( 'authorize' !== $action ) wp_die( esc_html__( 'This Health Connect authorization request is invalid. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
-			require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
-			$code = self::create_code_for_current_user( $input['code_challenge'] );
-			if ( is_wp_error( $code ) ) {
-				$error = $code->get_error_message();
-			} else {
-				self::redirect_to_app( array( 'code' => $code, 'state' => $input['state'] ) );
-			}
-		}
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Connect Swim Log Android', 'chriss-swim-training-progress-evaluation' ); ?></h1>
@@ -65,7 +50,7 @@ final class Health_Connect_Authorization {
 			<p><?php esc_html_e( 'You are signed in to the WordPress account that will receive these records. Allowing this connection creates a private app token for this account.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<p><?php esc_html_e( 'The app can upload the Health Connect workout summaries and measurements selected in Android, including swimming, running, walking, heart-rate samples matched to workouts, weight, body fat, lean body mass, and blood pressure. Imported records remain private to your account. This connection does not grant the app access to your WordPress password, other accounts, or the WordPress administration interface.', 'chriss-swim-training-progress-evaluation' ); ?></p>
 			<p><?php esc_html_e( 'There is one active Health Connect app token per Swim Log account. Authorizing this app replaces any previous Health Connect app token for this account. You can revoke the connection in Swimmer Configuration.', 'chriss-swim-training-progress-evaluation' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . self::AUTHORIZE_PAGE ) ); ?>">
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php?action=swimlog_hc_authorize' ) ); ?>">
 				<?php wp_nonce_field( 'swimlog_hc_authorize' ); ?>
 				<input type="hidden" name="response_type" value="code">
 				<input type="hidden" name="client_id" value="<?php echo esc_attr( $input['client_id'] ); ?>">
@@ -78,6 +63,27 @@ final class Health_Connect_Authorization {
 			</form>
 		</div>
 		<?php
+	}
+
+	/** Handle consent before WordPress renders the admin page so the app handoff can set headers. */
+	public static function handle_admin_post() {
+		if ( ! is_ssl() ) wp_die( esc_html__( 'Health Connect authorization requires HTTPS.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 403 ) );
+		if ( ! current_user_can( 'swimlog_manage_own_workouts' ) ) wp_die( esc_html__( 'You cannot authorize a Health Connect connection for this account.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 403 ) );
+
+		check_admin_referer( 'swimlog_hc_authorize' );
+		$input = isset( $_POST ) && is_array( $_POST ) ? wp_unslash( $_POST ) : array();
+		if ( ! self::valid_authorization_parameters( $input ) ) wp_die( esc_html__( 'This Health Connect authorization request is invalid or expired. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
+
+		$action = isset( $input['swimlog_hc_authorization_action'] ) && is_string( $input['swimlog_hc_authorization_action'] ) ? sanitize_key( $input['swimlog_hc_authorization_action'] ) : '';
+		if ( 'cancel' === $action ) {
+			self::redirect_to_app( array( 'error' => 'access_denied', 'state' => $input['state'] ) );
+		}
+		if ( 'authorize' !== $action ) wp_die( esc_html__( 'This Health Connect authorization request is invalid. Return to the Android app and try again.', 'chriss-swim-training-progress-evaluation' ), '', array( 'response' => 400 ) );
+
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
+		$code = self::create_code_for_current_user( $input['code_challenge'] );
+		if ( is_wp_error( $code ) ) wp_die( esc_html( $code->get_error_message() ), esc_html__( 'Health Connect authorization failed', 'chriss-swim-training-progress-evaluation' ), array( 'response' => 500 ) );
+		self::redirect_to_app( array( 'code' => $code, 'state' => $input['state'] ) );
 	}
 
 	/** Create one short-lived, hashed code for the currently authenticated owner. */
@@ -139,8 +145,32 @@ final class Health_Connect_Authorization {
 
 	private static function redirect_to_app( $parameters ) {
 		$query = http_build_query( $parameters, '', '&', PHP_QUERY_RFC3986 );
-		// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect uses only the fixed native-app URI constant and the validated, URL-encoded one-time code/state or cancellation state.
-		wp_redirect( self::REDIRECT_URI . '?' . $query, 302, 'Swim Log Health Connect' );
+		$callback = self::REDIRECT_URI . '?' . $query;
+		$title = isset( $parameters['error'] ) ? __( 'Authorization cancelled', 'chriss-swim-training-progress-evaluation' ) : __( 'Authorization complete', 'chriss-swim-training-progress-evaluation' );
+		nocache_headers();
+		if ( ! headers_sent() ) {
+			header( 'Referrer-Policy: no-referrer' );
+			header( 'Content-Type: text/html; charset=utf-8' );
+		}
+		status_header( 200 );
+		?>
+		<!doctype html>
+		<html <?php language_attributes(); ?>>
+		<head>
+			<meta charset="<?php bloginfo( 'charset' ); ?>">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+			<title><?php echo esc_html( $title ); ?></title>
+		</head>
+		<body>
+			<main>
+				<h1><?php echo esc_html( $title ); ?></h1>
+				<p><?php esc_html_e( 'Return to Swim Log Android to continue. If the app does not open automatically, use the button below.', 'chriss-swim-training-progress-evaluation' ); ?></p>
+				<p><a href="<?php echo esc_attr( $callback ); ?>"><?php esc_html_e( 'Return to Swim Log Android', 'chriss-swim-training-progress-evaluation' ); ?></a></p>
+			</main>
+			<script>window.location.replace(<?php echo wp_json_encode( $callback ); ?>);</script>
+		</body>
+		</html>
+		<?php
 		exit;
 	}
 }

@@ -24,7 +24,7 @@ Garmin history availability and subtype coverage vary by account. Physical-devic
 
 The `develop` branch adds a browser-based authorization flow for the Android Health Connect app. The app opens the configured HTTPS WordPress site in the browser; the swimmer signs in there and explicitly consents. WordPress returns a short-lived, single-use authorization code, which the Android app exchanges using PKCE for the existing owner-scoped Health Connect app token. The app never asks for or receives the WordPress password. A successful authorization replaces the account's single active app token; access can still be revoked under Swimmer Configuration.
 
-The authorization code is stored only as a hash in additive schema 1.8, expires after five minutes and is consumed atomically. The existing HTTPS-only import receiver and owner-private records are unchanged. Android client callback handling remains a separate integration step; no release or package is implied by this development note. See the [Health Connect API and authorization contract](REST-API.md).
+The authorization code is stored only as a hash in additive schema 1.8, expires after five minutes and is consumed atomically. The consent POST is handled before WordPress renders admin markup; the response attempts the Android callback and provides a visible return link if the browser blocks the custom URI. The app verifies callback state and completes the PKCE exchange over HTTPS. The existing HTTPS-only import receiver and owner-private records are unchanged. Real-device acceptance is still pending. See the [Health Connect API and authorization contract](REST-API.md).
 
 
 ## v1.2

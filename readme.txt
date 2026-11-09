@@ -38,6 +38,7 @@ PHP 7.4 through 8.5 and WordPress 6.2 or later are supported. See the Changelog 
 
 = 1.5-dev (unreleased) =
 * Add a low-copy Health Connect authorization flow: the Android app opens the configured HTTPS WordPress site for sign-in and explicit consent, then exchanges a short-lived, single-use PKCE authorization code for the signed-in owner's app token. WordPress credentials stay in the browser; the owner remains derived from the WordPress session.
+* Handle consent from WordPress's authenticated admin-post action before page output, then attempt the Android callback automatically and show a **Return to Swim Log Android** link if the browser does not launch the app.
 * Add `POST /health-connect/token` with strict client and redirect binding, S256 PKCE verification, atomic one-time code consumption and no-store responses. Preserve the existing owner-scoped import receiver and manual token controls.
 * Add private schema 1.8 storage for hashed, short-lived authorization codes. Existing workout, measurement and token records are preserved; a successful new authorization replaces the account's prior Health Connect app token.
 

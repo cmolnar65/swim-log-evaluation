@@ -24,6 +24,7 @@ final class Plugin {
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-import.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-authorization.php';
+		add_action( 'admin_post_swimlog_hc_authorize', array( 'SwimLogEvaluation\\Health_Connect_Authorization', 'handle_admin_post' ) );
 		Health_Connect_Import::register();
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';

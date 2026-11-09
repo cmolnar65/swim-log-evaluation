@@ -24,6 +24,7 @@ try {
 	( new WP_User( $owner ) )->add_cap( 'swimlog_manage_own_workouts' );
 	$_SERVER['HTTPS'] = 'on';
 	$verify( Database::install_schema(), 'Database schema install/verification failed.' );
+	$verify( false !== has_action( 'admin_post_swimlog_hc_authorize', array( Health_Connect_Authorization::class, 'handle_admin_post' ) ), 'Consent submissions must use the authenticated admin-post handler before page output.' );
 	update_option( 'swimlog_db_version', SWIMLOG_EVALUATION_DB_VERSION );
 	wp_set_current_user( $owner );
 	$verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
