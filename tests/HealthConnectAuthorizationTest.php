@@ -18,7 +18,7 @@ final class HealthConnectAuthorizationTestDB {
 	public function prepare( $sql, ...$args ) { return json_encode( array( $sql, $args ) ); }
 	public function get_row( $prepared ) {
 		list( $sql, $args ) = json_decode( $prepared, true );
-		if ( false !== strpos( $sql, 'health_connect_auth_codes' ) ) {
+		if ( false !== strpos( $sql, 'code_hash = %s' ) ) {
 			$hash = $args[1];
 			$code = isset( $this->codes[ $hash ] ) ? $this->codes[ $hash ] : null;
 			if ( ! $code ) { $this->lookup_reason = 'missing'; return null; }
