@@ -4,6 +4,10 @@ use SwimLogEvaluation\Database;
 use SwimLogEvaluation\Health_Connect_Authorization;
 use SwimLogEvaluation\Health_Connect_Tokens;
 
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-database.php';
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-tokens.php';
+require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-authorization.php';
+
 global $wpdb;
 $checks = 0;
 $verify = static function ( $condition, $message ) use ( &$checks ) {
