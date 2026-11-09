@@ -80,7 +80,7 @@ final class HealthConnectReceiverTest extends TestCase {
 		$this->assertStringContainsString( '\'owner_id\' => $owner', $db );
 		$this->assertStringContainsString( "'cycling' => 'cycling'", $db );
 		$this->assertStringContainsString( "Database::table( 'trackpoints' )", $db );
-		$this->assertStringContainsString( "'details_json' => null === $details", $db );
+		$this->assertStringContainsString( "'details_json' => null === \$details", $db );
 		$this->assertStringContainsString( "'average_heart_rate' => null", $db );
 		$workout = file_get_contents( dirname( __DIR__ ) . '/includes/class-workout.php' );
 		$this->assertStringContainsString( 'health_connect_heart_rate_samples', $workout );
