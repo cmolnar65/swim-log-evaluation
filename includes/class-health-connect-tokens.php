@@ -11,6 +11,12 @@ final class Health_Connect_Tokens {
 
 	public static function issue( $owner ) {
 		if ( ! is_int( $owner ) || $owner <= 0 || ! is_user_logged_in() || get_current_user_id() !== $owner || ! current_user_can( 'swimlog_manage_own_workouts' ) ) return new \WP_Error( 'swimlog_hc_forbidden', __( 'You cannot manage this Health Connect connection.', 'chriss-swim-training-progress-evaluation' ) );
+		return self::issue_for_authorized_owner( $owner );
+	}
+
+	/** Issue after Health_Connect_Authorization has consumed a one-time PKCE code. */
+	public static function issue_for_authorized_owner( $owner ) {
+		if ( ! is_int( $owner ) || $owner <= 0 || ! user_can( $owner, 'swimlog_manage_own_workouts' ) ) return new \WP_Error( 'swimlog_hc_forbidden', __( 'This swimmer cannot authorize a Health Connect connection.', 'chriss-swim-training-progress-evaluation' ) );
 		try {
 			$token = 'slhc_' . rtrim( strtr( base64_encode( random_bytes( 32 ) ), '+/', '-_' ), '=' );
 		} catch ( \Throwable $error ) {

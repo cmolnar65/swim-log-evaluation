@@ -10,7 +10,7 @@ All routes use the WordPress REST namespace `swimlog/v1`:
 https://example.com/wp-json/swimlog/v1
 ```
 
-The existing **GET-only read routes** are unchanged. One owner-scoped **POST** receiver is available for the Android Health Connect app. It only creates private, supported records; it does not provide general workout editing or deletion.
+The existing **GET-only read routes** are unchanged. The Android Health Connect app uses a browser-based authorization flow and one owner-scoped **POST** import receiver. The receiver only creates private, supported records; it does not provide general workout editing or deletion.
 
 ## Authorization
 
@@ -43,6 +43,27 @@ Do not store Application Passwords in source control, client-side JavaScript, pu
 - Stroke codes are `FR`, `BR`, `BACK`, `FLY`, `MIXED`, and where applicable `UNKNOWN`.
 - Optional source measurements can be `null`; missing measurements are not manufactured.
 - The API deliberately excludes workout notes, preserved source files/paths, original uploaded filenames, import records, open-water coordinates, and GPS trackpoints.
+
+## Health Connect Android authorization
+
+The Android app uses WordPress sign-in in the device browser; it never collects or receives the WordPress password. The browser consent page is:
+
+```text
+https://example.com/wp-admin/admin.php?page=swimlog-health-connect-authorize
+```
+
+The app adds `response_type=code`, `client_id=swimlog_android`, `redirect_uri=com.cmolnar65.swimlog:/oauth2redirect`, `code_challenge=<base64url-SHA256-of-verifier>`, `code_challenge_method=S256`, and a random `state`. WordPress requires an authenticated user with `swimlog_manage_own_workouts`, displays the data scope, and issues a code only after the user selects **Authorize Swim Log Android**. **Cancel** returns `error=access_denied` and the same state. The app must verify state before continuing. The owner comes from the WordPress login session; clients cannot supply an owner ID. The redirect URI and client ID are fixed; no client secret is used.
+
+The authorization code is high-entropy, expires after five minutes, is stored only as a hash, and is atomically consumed once. The app exchanges it immediately over HTTPS:
+
+```text
+POST /wp-json/swimlog/v1/health-connect/token
+Content-Type: application/json
+```
+
+Request fields are `grant_type` (`authorization_code`), `client_id`, the exact `redirect_uri`, the returned `code`, and the original `code_verifier` (43–128 RFC 7636 unreserved characters). Extra fields, including `owner_id`, are rejected. The server checks S256, code expiry, client and redirect binding, and one-time use, then returns `access_token` and `token_type` in a private no-store response. The token is the same owner-scoped token accepted by the import-batch route; the server keeps only its keyed hash. Only one token is active per owner, so a successful authorization replaces the previous token. Revoke it under **Swim Training → Swimmer Configuration → Health Connect App Sync**. The existing manual generate/revoke controls remain available.
+
+The token endpoint accepts only HTTPS requests. Invalid, expired, replayed, or mismatched codes return 401; non-HTTPS requests return 403. Never log the authorization code, verifier, token, WordPress cookies, or Health Connect values.
 
 ## Health Connect app receiver
 

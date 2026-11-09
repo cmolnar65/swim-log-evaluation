@@ -115,7 +115,7 @@ final class Database {
 	}
 
 	public static function required_tables() {
-		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_tokens', 'health_connect_activities', 'health_connect_heart_rate_samples', 'workout_visibility', 'goals' );
+		return array( 'imports', 'locations', 'workouts', 'manual_workouts', 'laps', 'lengths', 'trackpoints', 'performances', 'events', 'planned_workouts', 'health_reports', 'health_measurements', 'health_report_members', 'health_connect_tokens', 'health_connect_auth_codes', 'health_connect_activities', 'health_connect_heart_rate_samples', 'workout_visibility', 'goals' );
 	}
 
 	public static function schema_is_complete() {
@@ -168,6 +168,13 @@ final class Database {
 			ksort( $actual );
 			if ( array_values( $actual ) !== $expected_columns ) return false;
 		}
+		$auth_code_indexes = self::read( 'get_results', $wpdb->prepare( 'SHOW INDEX FROM %i', self::table( 'health_connect_auth_codes' ) ) );
+		foreach ( array( 'PRIMARY' => array( array( 'code_hash' ), true ), 'owner_expiry' => array( array( 'owner_id', 'expires_at_utc' ), false ), 'expiry' => array( array( 'expires_at_utc' ), false ) ) as $key => $definition ) {
+			$actual = array();
+			foreach ( (array) $auth_code_indexes as $index ) if ( $key === $index->Key_name && ( $definition[1] === ( 0 === (int) $index->Non_unique ) ) && null === $index->Sub_part ) $actual[ (int) $index->Seq_in_index ] = $index->Column_name;
+			ksort( $actual );
+			if ( array_values( $actual ) !== $definition[0] ) return false;
+		}
 		foreach ( array( 'health_reports', 'health_measurements', 'health_report_members' ) as $name ) {
 			$expected = 'health_report_members' === $name ? array( 'user_id', 'report_id', 'measurement_id' ) : array( 'user_id', 'identity_hash' );
 			$key = 'health_report_members' === $name ? 'owner_report_measurement' : 'owner_identity';
@@ -198,6 +205,7 @@ final class Database {
 	private static function health_connect_schema_columns() {
 		return array(
 			'health_connect_tokens' => array( 'owner_id', 'token_hash', 'created_at_utc' ),
+			'health_connect_auth_codes' => array( 'code_hash', 'owner_id', 'client_id', 'redirect_uri', 'code_challenge', 'expires_at_utc', 'consumed_at_utc', 'created_at_utc' ),
 			'health_connect_activities' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'content_hash', 'source_origin', 'start_utc', 'end_utc', 'start_local', 'end_local', 'start_offset_seconds', 'end_offset_seconds', 'possible_duplicate', 'created_at_utc', 'updated_at_utc' ),
 			'health_connect_heart_rate_samples' => array( 'id', 'user_id', 'workout_id', 'source_key_hash', 'sample_utc', 'beats_per_minute', 'source_origin', 'created_at_utc' ),
 		);
@@ -225,6 +233,7 @@ final class Database {
 		$health_measurements = self::table( 'health_measurements' );
 		$health_report_members = self::table( 'health_report_members' );
 		$health_connect_tokens = self::table( 'health_connect_tokens' );
+		$health_connect_auth_codes = self::table( 'health_connect_auth_codes' );
 		$health_connect_activities = self::table( 'health_connect_activities' );
 		$health_connect_heart_rate_samples = self::table( 'health_connect_heart_rate_samples' );
 
@@ -550,6 +559,20 @@ final class Database {
 			created_at_utc datetime NOT NULL,
 			PRIMARY KEY  (owner_id),
 			UNIQUE KEY token_hash (token_hash)
+		) $charset_collate;";
+
+		$sql[] = "CREATE TABLE $health_connect_auth_codes (
+			code_hash char(64) NOT NULL,
+			owner_id bigint(20) unsigned NOT NULL,
+			client_id varchar(64) NOT NULL,
+			redirect_uri varchar(191) NOT NULL,
+			code_challenge char(43) NOT NULL,
+			expires_at_utc datetime NOT NULL,
+			consumed_at_utc datetime NULL,
+			created_at_utc datetime NOT NULL,
+			PRIMARY KEY  (code_hash),
+			KEY owner_expiry (owner_id,expires_at_utc),
+			KEY expiry (expires_at_utc)
 		) $charset_collate;";
 
 		$sql[] = "CREATE TABLE $health_connect_activities (

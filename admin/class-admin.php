@@ -46,6 +46,7 @@ final class Admin {
 		$this->submenu( 'swimlog-dashboard', __( 'Swimmer Configuration', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-privacy', 'privacy' );
 
 		add_submenu_page( null, __( 'REST API Documentation', 'chriss-swim-training-progress-evaluation' ), __( 'REST API Documentation', 'chriss-swim-training-progress-evaluation' ), 'swimlog_view_own_results', 'swimlog-api-help', array( $this, 'api_help' ) );
+		add_submenu_page( null, __( 'Health Connect authorization', 'chriss-swim-training-progress-evaluation' ), __( 'Health Connect authorization', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_own_workouts', Health_Connect_Authorization::AUTHORIZE_PAGE, array( 'SwimLogEvaluation\\Health_Connect_Authorization', 'admin_page' ) );
 
 		if ( current_user_can( 'swimlog_manage_settings' ) ) {
 			$this->submenu( 'swimlog-dashboard', __( 'Shortcodes', 'chriss-swim-training-progress-evaluation' ), 'swimlog_manage_settings', 'swimlog-shortcodes', 'shortcodes' );

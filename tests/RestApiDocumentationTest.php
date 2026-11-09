@@ -28,6 +28,12 @@ final class RestApiDocumentationTest extends TestCase {
 			'GPS trackpoints',
 			'GET-only read routes',
 			'POST /health-connect/import-batch',
+			'POST /wp-json/swimlog/v1/health-connect/token',
+			'PKCE',
+			'S256',
+			'code_verifier',
+			'five minutes',
+			'no-store',
 			'one-time token',
 		) as $required ) {
 			$this->assertStringContainsString( $required, $doc );

@@ -8,6 +8,7 @@ final class REST_API {
 
  public static function register(){
   register_rest_route(self::NS,'/health-connect/import-batch',array('methods'=>\WP_REST_Server::CREATABLE,'callback'=>array(__CLASS__,'health_connect_import_batch'),'permission_callback'=>array(__CLASS__,'health_connect_permission')));
+  register_rest_route(self::NS,'/health-connect/token',array('methods'=>\WP_REST_Server::CREATABLE,'callback'=>array(__CLASS__,'health_connect_token'),'permission_callback'=>'__return_true'));
   register_rest_route(self::NS,'/public/workouts',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workouts'),'permission_callback'=>'__return_true','args'=>array('user'=>array('sanitize_callback'=>'absint','required'=>true))));
   register_rest_route(self::NS,'/public/workouts/(?P<id>\d+)',array('methods'=>\WP_REST_Server::READABLE,'callback'=>array(__CLASS__,'public_workout'),'permission_callback'=>'__return_true'));
 
@@ -43,6 +44,16 @@ final class REST_API {
   $result=Health_Connect_Import::receive($owner,$payload);
   if(is_wp_error($result))return $result;
   $response=rest_ensure_response($result);$response->header('Cache-Control','private, no-store');return $response;
+ }
+
+ /** Exchange one short-lived browser-authorized PKCE code for the owner's app token. */
+ public static function health_connect_token($request){
+  nocache_headers();
+  if(!is_ssl())return new \WP_Error('swimlog_hc_https_required',__('Health Connect authorization requires HTTPS.','chriss-swim-training-progress-evaluation'),array('status'=>403));
+  require_once SWIMLOG_EVALUATION_DIR.'includes/class-health-connect-authorization.php';
+  $result=Health_Connect_Authorization::exchange($request->get_json_params());
+  if(is_wp_error($result))return $result;
+  $response=rest_ensure_response($result);$response->header('Cache-Control','private, no-store');$response->header('Pragma','no-cache');return $response;
  }
 
  private static function health_connect_owner($request){

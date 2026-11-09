@@ -8,7 +8,7 @@ Historical release feature descriptions and earlier v1.3 development notes are p
 
 ## v1.4 release
 
-Version 1.4 is the current plugin release. The plugin header/runtime and WordPress.org stable tag are 1.4; the database schema is 1.7. Additive schema versions 1.3–1.7 preserve existing workout and measurement history.
+Version 1.4 remains the current public plugin release and WordPress.org stable tag. Its release schema was 1.7; the active `develop` branch is v1.5-dev with schema 1.8. Additive upgrades preserve existing workout and measurement history.
 
 The release adds private swimming goals for one-time pace targets, cumulative date-range distance and single-workout distance; completion dates and capped progress; per-swimmer primary/secondary unit display; private Health Connect imports; Garmin and iHealth personal-measurement workflows; separate running/walking logs and totals; canonical read-only workout visibility; and explicit planned/structured workout unlinking.
 
@@ -19,6 +19,12 @@ Health Connect imports remain owner-private and require the per-owner app token.
 Public workout output remains read-only and requires both the owner's explicit public-results permission and per-workout approval. Route sharing has separate per-workout and owner-consent gates. Measurements, private notes, photos, source identifiers and device/raw metadata are not exposed.
 
 Garmin history availability and subtype coverage vary by account. Physical-device and complete live Garmin subtype-key acceptance were not established for this release. Do not infer missing activity types from absent GPS. See the [v1.4 release and validation record](docs/v1.4-release-checklist.md), [Garmin user guide](docs/v1.3-garmin-user-guide.md), [Health Connect REST contract](REST-API.md), [canonical visibility policy](docs/public-workout-visibility.md), and [swimming goals contract](docs/v1.3-swim-goals.md).
+
+## v1.5 development
+
+The `develop` branch adds a browser-based authorization flow for the Android Health Connect app. The app opens the configured HTTPS WordPress site in the browser; the swimmer signs in there and explicitly consents. WordPress returns a short-lived, single-use authorization code, which the Android app exchanges using PKCE for the existing owner-scoped Health Connect app token. The app never asks for or receives the WordPress password. A successful authorization replaces the account's single active app token; access can still be revoked under Swimmer Configuration.
+
+The authorization code is stored only as a hash in additive schema 1.8, expires after five minutes and is consumed atomically. The existing HTTPS-only import receiver and owner-private records are unchanged. Android client callback handling remains a separate integration step; no release or package is implied by this development note. See the [Health Connect API and authorization contract](REST-API.md).
 
 
 ## v1.2

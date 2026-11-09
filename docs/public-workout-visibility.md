@@ -1,6 +1,6 @@
 # Canonical workout visibility (development)
 
-This canonical visibility policy is included in plugin release **1.4**. It was introduced with additive schema **1.5** and remains unchanged in the current schema 1.7. The v1.4 release does not alter any access, privacy, route-consent, owner-management or revocation rules below.
+This canonical visibility policy is included in plugin release **1.4**. It was introduced with additive schema **1.5** and remains unchanged in the current v1.5-dev schema 1.8. The v1.4 release does not alter any access, privacy, route-consent, owner-management or revocation rules below.
 
 ## Policy
 

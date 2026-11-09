@@ -8,6 +8,10 @@ Historical data is preserved by default. Deactivation and ordinary updates do
 not delete workout history or original source imports. Derived performances are
 designed to be rebuildable from preserved authoritative workout data.
 
+## v1.5 development: Android Health Connect authorization
+
+The active `develop` branch is v1.5-dev and uses database schema 1.8. The Android app can start authorization in a browser tab on the configured HTTPS WordPress site. The signed-in swimmer reviews the scope and explicitly authorizes the connection. A short-lived, single-use PKCE code is bound to the fixed Android client and callback; the app exchanges it for the existing owner-scoped Health Connect bearer token without collecting the WordPress password. Only the code hash is stored, and redemption is atomic. One token remains active per owner; a successful authorization replaces the previous Health Connect app token. The existing import-batch route and private record behavior are unchanged. Android callback handling and app-side code exchange are still required before this server flow can be used from the installed app.
+
 
 
 Version 1.4 release note: schema 1.5 added canonical per-workout visibility, schema 1.6 added private swim goals, and schema 1.7 added Health Connect receiver storage. Running/walking log and calendar details remain owner-scoped with separate totals; swimming analytics remain swim-only. Public workout views and GPS routes require the explicit canonical approvals described above. Cycling remains deferred. Live Garmin subtype-key coverage and physical-device acceptance have not been established.

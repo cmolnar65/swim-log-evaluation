@@ -23,6 +23,7 @@ final class Plugin {
         add_action('deleted_user',array('SwimLogEvaluation\\Workout_Visibility','deleted_user'));
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-measurement-store.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-import.php';
+		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-health-connect-authorization.php';
 		Health_Connect_Import::register();
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-planned-workout.php';
 		require_once SWIMLOG_EVALUATION_DIR . 'includes/class-structured-workout.php';

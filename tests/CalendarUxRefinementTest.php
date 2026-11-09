@@ -68,7 +68,7 @@ final class CalendarUxRefinementTest extends TestCase {
 		$this->assertStringNotContainsString( 'EDITABLE', $rest );
 		$this->assertStringNotContainsString( 'DELETABLE', $rest );
 		$main = file_get_contents( dirname( __DIR__ ) . '/swim-log-evaluation.php' );
-		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.7'", $main );
+		$this->assertStringContainsString( "SWIMLOG_EVALUATION_DB_VERSION', '1.8'", $main );
 	}
 
 	public function test_goal_markers_render_in_calendar_views_and_remain_private() {
